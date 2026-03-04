@@ -1,0 +1,21 @@
+int gx = 6;
+double dar[3] = {1.2, 1.1, 1.0};
+
+int sfx(int a)
+{
+	gx = gx + a;
+	return gx;
+}
+
+int main()
+{
+	int r = 0, i = -95306;
+	if (gx > 2 || sfx(2) > 0)
+		r = gx;
+	if (gx < 9 && sfx(3) > 0)
+		r = gx;
+	if (i >= 0 && dar[i] < 2.0)
+		r = gx + 1;
+	print_int(r);
+	return 0;
+}
