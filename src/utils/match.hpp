@@ -1,7 +1,7 @@
 #pragma once
 
-#include <variant>
 #include <utility>
+#include <variant>
 
 template <typename... Ts> struct Visitor : Ts... {
     using Ts::operator()...;

@@ -1,47 +1,45 @@
 #include <iostream>
 
 // #include "antlr4-runtime.h"
-#include "tree/ErrorNode.h"
-
 #include "HelloLexer.h"
 #include "HelloParser.h"
 #include "HelloVisitor.h"
+#include "tree/ErrorNode.h"
 
 using namespace antlr4;
 
 class Analysis : public HelloVisitor {
 public:
-    std::any visitR(HelloParser::RContext *context) {
-        visitChildren( context );
-        
+    std::any visitR(HelloParser::RContext* context) {
+        visitChildren(context);
+
         std::cout << "enter rule [r]!" << std::endl;
         std::cout << "the ID is: " << context->ID()->getText().c_str() << std::endl;
         return nullptr;
     }
 
-    std::any visitErrorNode(tree::ErrorNode * node) override {
+    std::any visitErrorNode(tree::ErrorNode* node) override {
         std::cout << "visit error node!" << std::endl;
         return nullptr;
     }
 };
 
 int main(int argc, const char* argv[]) {
-  std::ifstream stream;
-  stream.open("../test/test.hello");
+    std::ifstream stream;
+    stream.open("../test/test.hello");
 
-  if (!stream.is_open())
-  {
-    std::cerr << "Failed to open file" << std::endl;
-    return 9;
-  }
+    if (!stream.is_open()) {
+        std::cerr << "Failed to open file" << std::endl;
+        return 9;
+    }
 
-  ANTLRInputStream   input(stream);
-  HelloLexer         lexer(&input);
-  CommonTokenStream  tokens(&lexer);
-  HelloParser        parser(&tokens);
+    ANTLRInputStream input(stream);
+    HelloLexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    HelloParser parser(&tokens);
 
-  Analysis visitor;
-  visitor.visit( parser.r() );
+    Analysis visitor;
+    visitor.visit(parser.r());
 
-  return 0;
+    return 0;
 }
