@@ -6,8 +6,20 @@
 #include "tui.h"
 
 struct SyntaxError : std::runtime_error {
-    SyntaxError(int line, int col, const std::string& desc)
-        : std::runtime_error(fmt::format(RED BOLD "syntax error " NONE "at {}:{} : {}", line, col, desc)) {}
-    SyntaxError(int line, int col)
-        : std::runtime_error(fmt::format(RED BOLD "syntax error " NONE "at {}:{}", line, col)) {}
+    SyntaxError(int line, int col, const std::string& desc, const std::string& type = "syntax error")
+        : std::runtime_error(fmt::format(RED BOLD "{} " NONE "at {}:{} : {}", type, line, col, desc)) {}
+    SyntaxError(int line, int col, const std::string& type = "syntax error")
+        : std::runtime_error(fmt::format(RED BOLD "{} " NONE "at {}:{}", type, line, col)) {}
+};
+
+struct LexicalError : SyntaxError {
+    using SyntaxError::SyntaxError;
+    LexicalError(int line, int col, const std::string& desc)
+        : SyntaxError(line, col, desc, "tokenize error") {}
+};
+
+struct SyntacticError : SyntaxError {
+    using SyntaxError::SyntaxError;
+    SyntacticError(int line, int col, const std::string& desc)
+        : SyntaxError(line, col, desc, "parse error") {}
 };

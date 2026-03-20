@@ -9,16 +9,9 @@
 #include "CACTBaseVisitor.h"
 #include "CACTLexer.h"
 #include "CACTParser.h"
-#include "tree/ErrorNode.h"
+#include "frontend/syntax/listener.h"
 
 using namespace antlr4;
-
-class Analysis : public CACTBaseVisitor {
-public:
-    std::any visitErrorNode(tree::ErrorNode* node) override {
-        throw SyntaxError(node->getSymbol()->getLine(), node->getSymbol()->getCharPositionInLine());
-    }
-};
 
 enum : uint8_t {
     SUCCESS = 0,
@@ -48,7 +41,13 @@ int main(int argc, const char* argv[]) {
             CommonTokenStream tokens(&lexer);
             CACTParser parser(&tokens);
 
-            Analysis visitor;
+            CACTErrorListener listener;
+            lexer.removeErrorListeners();
+            lexer.addErrorListener(&listener);
+            parser.removeErrorListeners();
+            parser.addErrorListener(&listener);
+
+            CACTBaseVisitor visitor;
             try {
                 visitor.visit(parser.compUnit());
                 fmt::println("{}: " BOLD GREEN "OK" NONE, argv[i]);
