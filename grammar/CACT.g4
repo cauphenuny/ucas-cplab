@@ -51,7 +51,7 @@ WS: [ \t\r\n]+ -> skip;
 
 /****** parser ******/
 
-compUnit: (decl | funcDef)* ;
+compUnit: (decl | funcDef)* EOF;
 decl: constDecl | varDecl ;
 constDecl: CONST basicType constDef (',' constDef)* ';' ;
 constDef: ID ('[' INT_LITERAL ']')* '=' constInitVal ;
