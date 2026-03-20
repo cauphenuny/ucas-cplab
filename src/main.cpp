@@ -1,45 +1,66 @@
 #include <iostream>
+#define FMT_HEADER_ONLY
+#include "utils/error.h"
+#include "utils/tui.h"
+
+#include <fmt/format.h>
 
 // #include "antlr4-runtime.h"
-#include "HelloLexer.h"
-#include "HelloParser.h"
-#include "HelloVisitor.h"
+#include "CACTBaseVisitor.h"
+#include "CACTLexer.h"
+#include "CACTParser.h"
 #include "tree/ErrorNode.h"
 
 using namespace antlr4;
 
-class Analysis : public HelloVisitor {
+class Analysis : public CACTBaseVisitor {
 public:
-    std::any visitR(HelloParser::RContext* context) {
-        visitChildren(context);
-
-        std::cout << "enter rule [r]!" << std::endl;
-        std::cout << "the ID is: " << context->ID()->getText().c_str() << std::endl;
-        return nullptr;
-    }
-
     std::any visitErrorNode(tree::ErrorNode* node) override {
-        std::cout << "visit error node!" << std::endl;
-        return nullptr;
+        throw SyntaxError(node->getSymbol()->getLine(), node->getSymbol()->getCharPositionInLine());
     }
 };
 
+enum : uint8_t {
+    SUCCESS = 0,
+    INVALID_ARGUMENT,
+    SYNTAX_ERROR,
+    TYPE_ERROR,
+    RUNTIME_ERROR = 255,
+};
+
 int main(int argc, const char* argv[]) {
-    std::ifstream stream;
-    stream.open("../test/test.hello");
+    int ret = SUCCESS;
+    try {
+        if (argc < 2) {
+            throw std::runtime_error(fmt::format("usage: {} files ...", argv[0]));
+        }
 
-    if (!stream.is_open()) {
-        std::cerr << "Failed to open file" << std::endl;
-        return 9;
+        for (int i = 1; i < argc; i++) {
+            std::ifstream stream;
+            stream.open(argv[i]);
+
+            if (!stream.is_open()) {
+                throw std::runtime_error(fmt::format("Failed to open file {}", argv[i]));
+            }
+
+            ANTLRInputStream input(stream);
+            CACTLexer lexer(&input);
+            CommonTokenStream tokens(&lexer);
+            CACTParser parser(&tokens);
+
+            Analysis visitor;
+            try {
+                visitor.visit(parser.compUnit());
+                fmt::println("{}: " BOLD GREEN "OK" NONE, argv[i]);
+            } catch (const SyntaxError& e) {
+                fmt::println("{}: {}", argv[i], e.what());
+                ret |= SYNTAX_ERROR;
+            }
+        }
+
+    } catch (const std::runtime_error& e) {
+        std::cerr << e.what() << '\n';
+        return RUNTIME_ERROR;
     }
-
-    ANTLRInputStream input(stream);
-    HelloLexer lexer(&input);
-    CommonTokenStream tokens(&lexer);
-    HelloParser parser(&tokens);
-
-    Analysis visitor;
-    visitor.visit(parser.r());
-
-    return 0;
+    return ret;
 }

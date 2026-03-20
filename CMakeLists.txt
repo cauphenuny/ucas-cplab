@@ -10,9 +10,8 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 include_directories(deps/antlr4-runtime/)
 include_directories(grammar)
-# include_directories(src)
-include_directories(include)
-
+include_directories(src)
+include_directories(deps)
 
 FILE(GLOB_RECURSE SOURCE_FILES "src/*.cpp" "grammar/*.cpp")
 
