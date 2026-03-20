@@ -50,3 +50,78 @@ BLOCK_COMMENT: '/*' .*? '*/' -> skip;
 WS: [ \t\r\n]+ -> skip;
 
 /****** parser ******/
+
+compUnit: (decl | funcDef)* ;
+decl: constDecl | varDecl ;
+constDecl: CONST basicType constDef (',' constDef)* ';' ;
+constDef: ID ('[' INT_LITERAL ']')* '=' constInitVal ;
+varDecl: basicType varDef (',' varDef)* ';' ;
+varDef: ID ('[' INT_LITERAL ']')* ('=' constInitVal)? ;
+constInitVal
+    : constExp
+    | '{' (constInitVal (',' constInitVal)*)? '}'
+    ;
+funcDef: funcType ID '(' funcParams? ')' block ;
+funcParams: funcParam (',' funcParam)* ;
+funcParam: basicType ID ('[' INT_LITERAL? ']' ('[' INT_LITERAL ']')*)?;
+funcArgs: exp (',' exp)* ;
+block: '{' blockItem* '}' ;
+blockItem: decl | stmt ;
+stmt
+    : lVal '=' exp ';'
+    | exp? ';'
+    | block
+    | IF '(' cond ')' stmt (ELSE stmt)?
+    | WHILE '(' cond ')' stmt
+    | BREAK ';'
+    | CONTINUE ';'
+    | RETURN exp? ';'
+    ;
+
+lVal: ID ('[' exp ']')* ;
+
+exp: addExp; // FIXME: why not lOrExp?
+cond: lOrExp;
+constExp: number | boolNumber;
+
+lOrExp
+    : lAndExp
+    | lOrExp ('||' lAndExp)
+    ;
+lAndExp
+    : eqExp
+    | lAndExp ('&&' eqExp)
+    ;
+eqExp
+    : relExp
+    | eqExp ('==' | '!=') relExp
+    ;
+relExp
+    : addExp
+    | relExp ('<' | '>' | '<=' | '>=') addExp
+    ;
+addExp
+    : mulExp
+    | addExp ('+' | '-') mulExp
+    ;
+mulExp
+    : unaryExp
+    | mulExp ('*' | '/' | '%') unaryExp
+    ;
+unaryExp
+    : ('+' | '-' | '!') unaryExp
+    | primaryExp
+    | ID '(' funcArgs? ')'
+    ;
+primaryExp
+    : '(' exp ')'
+    | lVal
+    | number
+    | boolNumber
+    ;
+
+number: INT_LITERAL | FLOAT_LITERAL | DOUBLE_LITERAL;
+boolNumber: TRUE | FALSE;
+
+basicType: INT | BOOL | FLOAT | DOUBLE;
+funcType: basicType | VOID;
