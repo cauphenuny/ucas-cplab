@@ -31,15 +31,16 @@ struct ConstDecl;
 struct VarDecl;
 struct ConstDef;
 struct VarDef;
+struct ConstInitVal;
 
 using Decl = std::variant<ConstDecl, VarDecl>;
 
-struct FuncDef;
-struct FuncParam;
-using FuncParams = std::vector<FuncParam>;
-struct FuncArgs;
-
-struct Block;
+using ConstExp = std::variant<int, float, double, bool>;
+struct LValExp;
+struct PrimaryExp;
+struct UnaryExp;
+struct CallExp;
+struct BinaryExp;
 
 struct IfStmt;
 struct WhileStmt;
@@ -48,22 +49,18 @@ struct BreakStmt;
 struct ContinueStmt;
 struct AssignStmt;
 
-struct LeftVal;
-struct PrimaryExp;
-struct UnaryExp;
-struct CallExp;
-struct BinaryExp;
-
 struct Exp;
 struct Stmt;
-using ExpBox = std::unique_ptr<Exp>;
-using StmtBox = std::unique_ptr<Stmt>;
+using ExpBox = std::unique_ptr<Exp>; // for recursive exp types
+using StmtBox = std::unique_ptr<Stmt>; // for recursive stmt types
 
+struct FuncDef;
+struct FuncParam;
+using FuncParams = std::vector<FuncParam>;
+using FuncArgs = std::vector<Exp>;
+
+struct Block;
 using BlockItem = std::variant<Decl, Stmt>;
-
-using ConstExp = std::variant<int, float, double, bool>;
-
-struct ConstInitVal;
 
 struct ConstInitVal {
     std::variant<ConstExp, std::vector<std::unique_ptr<ConstInitVal>>> val;
@@ -103,7 +100,7 @@ struct FuncParam {
     TO_STRING(FuncParam, type, name, dims);
 };
 
-struct LeftVal {
+struct LValExp {
     std::string name;
     std::vector<Exp> indices;
     TO_STRING(LeftVal, name, indices);
@@ -111,7 +108,7 @@ struct LeftVal {
 
 struct PrimaryExp : traits::ToBoxed<PrimaryExp, Exp> {
 private:
-    using T = std::variant<ExpBox, LeftVal, ConstExp>;
+    using T = std::variant<ExpBox, LValExp, ConstExp>;
     T exp;
 
 public:
@@ -134,11 +131,6 @@ struct UnaryExp : traits::ToBoxed<UnaryExp, Exp> {
     UnaryOp op;
     ExpBox exp;
     TO_STRING(UnaryExp, op, exp);
-};
-
-struct FuncArgs {
-    std::vector<Exp> args;
-    TO_STRING(FuncArgs, args);
 };
 
 struct CallExp {
@@ -227,7 +219,7 @@ struct ContinueStmt : traits::ToBoxed<ContinueStmt, Stmt> {
 };
 
 struct AssignStmt : traits::ToBoxed<AssignStmt, Stmt> {
-    LeftVal var;
+    LValExp var;
     Exp exp;
     TO_STRING(AssignStmt, var, exp);
 };

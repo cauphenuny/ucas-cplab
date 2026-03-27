@@ -24,13 +24,13 @@ int main() {
     args.emplace_back(PrimaryExp(42));
     args.emplace_back(BinaryExp{
         .op = BinaryOp::ADD, .left = PrimaryExp{2}.toBoxed(), .right = PrimaryExp{3}.toBoxed()});
-    auto call = CallExp{.name = "putint", .args = FuncArgs{.args = std::move(args)}};
+    auto call = CallExp{.name = "putint", .args = std::move(args)};
     fmt::println("{}", call);
 
     // 4. If Statement: if (x > 0) return 1; else return 0;
     fmt::println("\n--- If Statement ---");
     auto x_gt_0 = Exp{BinaryExp{.op = BinaryOp::GT,
-                                .left = PrimaryExp{LeftVal{.name = "x"}}.toBoxed(),
+                                .left = PrimaryExp{LValExp{.name = "x"}}.toBoxed(),
                                 .right = PrimaryExp{0}.toBoxed()}};
 
     auto ret1 = std::make_unique<Stmt>(Stmt{ReturnStmt{.exp = Exp{PrimaryExp{1}}}});
@@ -43,7 +43,7 @@ int main() {
     // 5. Unary Expression: -(!x)
     fmt::println("\n--- Unary: -(!x) ---");
     auto not_x = UnaryExp{
-        .op = UnaryOp::NOT, .exp = PrimaryExp{LeftVal{.name = "x"}}.toBoxed()};
+        .op = UnaryOp::NOT, .exp = PrimaryExp{LValExp{.name = "x"}}.toBoxed()};
     auto neg_not_x = UnaryExp{
         .op = UnaryOp::MINUS, .exp = std::move(not_x).toBoxed()};
     fmt::println("{}", neg_not_x);
@@ -51,11 +51,11 @@ int main() {
     // 6. While Loop: while (i < 10) i = i + 1;
     fmt::println("\n--- While Loop ---");
     auto cond = Exp{BinaryExp{
-        .op = BinaryOp::LT, .left = PrimaryExp{LeftVal{.name = "i"}}.toBoxed(), .right = PrimaryExp{10}.toBoxed()}};
+        .op = BinaryOp::LT, .left = PrimaryExp{LValExp{.name = "i"}}.toBoxed(), .right = PrimaryExp{10}.toBoxed()}};
     auto assign = Stmt{AssignStmt{
-        .var = LeftVal{.name = "i"},
+        .var = LValExp{.name = "i"},
         .exp = Exp{BinaryExp{
-            .op = BinaryOp::ADD, .left = PrimaryExp{LeftVal{.name = "i"}}.toBoxed(), .right = PrimaryExp{1}.toBoxed()}}}};
+            .op = BinaryOp::ADD, .left = PrimaryExp{LValExp{.name = "i"}}.toBoxed(), .right = PrimaryExp{1}.toBoxed()}}}};
     auto while_stmt = WhileStmt{.cond = std::move(cond), .stmt = std::move(assign).toBoxed()};
     fmt::println("{}", while_stmt);
 
@@ -68,7 +68,7 @@ int main() {
     
     std::vector<BlockItem> items;
     items.emplace_back(std::move(var_decl));
-    items.emplace_back(Stmt{ReturnStmt{.exp = Exp{PrimaryExp{LeftVal{.name = "x"}}}}});
+    items.emplace_back(Stmt{ReturnStmt{.exp = Exp{PrimaryExp{LValExp{.name = "x"}}}}});
     
     auto main_func = FuncDef{
         .type = Type::INT,
@@ -84,10 +84,10 @@ int main() {
     std::vector<Exp> indices;
     indices.emplace_back(PrimaryExp{1});
     indices.emplace_back(BinaryExp{
-        .op = BinaryOp::ADD, .left = PrimaryExp{LeftVal{.name = "i"}}.toBoxed(), .right = PrimaryExp{2}.toBoxed()});
+        .op = BinaryOp::ADD, .left = PrimaryExp{LValExp{.name = "i"}}.toBoxed(), .right = PrimaryExp{2}.toBoxed()});
     
     auto array_assign = AssignStmt{
-        .var = LeftVal{.name = "a", .indices = std::move(indices)},
+        .var = LValExp{.name = "a", .indices = std::move(indices)},
         .exp = Exp{PrimaryExp{42}}
     };
     fmt::println("{}", array_assign);
@@ -126,23 +126,23 @@ int main() {
         // if (n <= 1) return n;
         auto if_cond = Exp{BinaryExp{
             .op = BinaryOp::LEQ, 
-            .left = PrimaryExp{LeftVal{.name = "n"}}.toBoxed(), 
+            .left = PrimaryExp{LValExp{.name = "n"}}.toBoxed(), 
             .right = PrimaryExp{1}.toBoxed()}};
-        auto ret_n = Stmt{ReturnStmt{.exp = Exp{PrimaryExp{LeftVal{.name = "n"}}}}};
+        auto ret_n = Stmt{ReturnStmt{.exp = Exp{PrimaryExp{LValExp{.name = "n"}}}}};
         fib_items.emplace_back(Stmt{IfStmt{
             .cond = std::move(if_cond), 
             .stmt = std::move(ret_n).toBoxed(), 
             .else_stmt = nullptr}});
         
         // return fib(n-1) + fib(n-2);
-        auto n_minus_1 = BinaryExp{.op = BinaryOp::SUB, .left = PrimaryExp{LeftVal{.name="n"}}.toBoxed(), .right = PrimaryExp{1}.toBoxed()};
-        auto n_minus_2 = BinaryExp{.op = BinaryOp::SUB, .left = PrimaryExp{LeftVal{.name="n"}}.toBoxed(), .right = PrimaryExp{2}.toBoxed()};
+        auto n_minus_1 = BinaryExp{.op = BinaryOp::SUB, .left = PrimaryExp{LValExp{.name="n"}}.toBoxed(), .right = PrimaryExp{1}.toBoxed()};
+        auto n_minus_2 = BinaryExp{.op = BinaryOp::SUB, .left = PrimaryExp{LValExp{.name="n"}}.toBoxed(), .right = PrimaryExp{2}.toBoxed()};
         
         std::vector<Exp> args1; args1.emplace_back(std::move(n_minus_1));
         std::vector<Exp> args2; args2.emplace_back(std::move(n_minus_2));
         
-        auto call1 = CallExp{.name = "fib", .args = FuncArgs{.args = std::move(args1)}};
-        auto call2 = CallExp{.name = "fib", .args = FuncArgs{.args = std::move(args2)}};
+        auto call1 = CallExp{.name = "fib", .args = std::move(args1)};
+        auto call2 = CallExp{.name = "fib", .args = std::move(args2)};
         
         auto add_fib = BinaryExp{.op = BinaryOp::ADD, .left = Exp{std::move(call1)}.toBoxed(), .right = Exp{std::move(call2)}.toBoxed()};
         fib_items.emplace_back(Stmt{ReturnStmt{.exp = Exp{std::move(add_fib)}}});
@@ -155,7 +155,7 @@ int main() {
     {
         std::vector<BlockItem> main_items;
         std::vector<Exp> fib_args; fib_args.emplace_back(PrimaryExp{10});
-        auto fib_call = CallExp{.name = "fib", .args = FuncArgs{.args = std::move(fib_args)}};
+        auto fib_call = CallExp{.name = "fib", .args = std::move(fib_args)};
         main_items.emplace_back(Stmt{ReturnStmt{.exp = Exp{std::move(fib_call)}}});
         
         unit_items.emplace_back(FuncDef{
