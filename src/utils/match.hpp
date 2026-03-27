@@ -9,18 +9,18 @@ template <typename... Ts> struct Visitor : Ts... {
 
 template <typename... Ts> Visitor(Ts...) -> Visitor<Ts...>;
 
-template <typename T, typename... Fs> auto match(T expr, Fs... callbacks) {
+template <typename T, typename... Fs> auto match(T&& expr, Fs&&... callbacks) {
     return std::visit(Visitor{std::forward<Fs>(callbacks)...}, std::forward<T>(expr));
 }
 
 template <typename T> struct Match {
     T value;
-    Match(T&& value) : value(std::forward<T>(value)) {}
-    template <typename... Ts> auto operator()(Ts&&... params) {
-        return std::visit(Visitor{std::forward<Ts>(params)...}, std::forward<T>(value));
+    Match(T&& val) : value(std::forward<T>(val)) {}
+    template <typename... Fs> auto operator()(Fs&&... callbacks) {
+        return std::visit(Visitor{std::forward<Fs>(callbacks)...}, std::forward<T>(value));
     }
     template <typename... Ts> auto operator()(Visitor<Ts...> visitor) {
-        return std::visit(visitor, std::forward<T>(value));
+        return std::visit(std::move(visitor), std::forward<T>(value));
     }
 };
 
