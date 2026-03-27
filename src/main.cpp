@@ -5,11 +5,10 @@
 
 #include <fmt/format.h>
 
-// #include "antlr4-runtime.h"
-#include "CACTBaseVisitor.h"
 #include "CACTLexer.h"
-#include "CACTParser.h"
+#include "frontend/syntax/visitor.h"
 #include "frontend/syntax/listener.h"
+#include "CACTParser.h"
 
 using namespace antlr4;
 
@@ -47,10 +46,13 @@ int main(int argc, const char* argv[]) {
             parser.removeErrorListeners();
             parser.addErrorListener(&listener);
 
-            CACTBaseVisitor visitor;
+            ASTVisitor visitor;
             try {
-                visitor.visit(parser.compUnit());
+                auto res = visitor.visit(parser.compUnit());
+                auto compUnit = ASTVisitor::take<ast::CompUnit>(res);
+                fmt::println("{}", compUnit);
                 fmt::println("{}: " BOLD GREEN "OK" NONE, argv[i]);
+
             } catch (const SyntaxError& e) {
                 fmt::println("{}: {}", argv[i], e.what());
                 ret |= SYNTAX_ERROR;

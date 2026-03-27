@@ -109,7 +109,7 @@ using FuncArgs = std::vector<Exp>;
 
 struct ConstInitVal {
     std::variant<ConstExp, std::vector<std::unique_ptr<ConstInitVal>>> val;
-    TO_STRING(ConstInitVal, val);
+    DELEGATE_TO_STRING(ConstInitVal, val);
 };
 
 struct ConstDecl {
