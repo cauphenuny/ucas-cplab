@@ -191,7 +191,7 @@ std::string serializeFields(const char* names, const T& var, const Args&... rest
         return #ClassName " {}";                 \
     }
 
-#define DELEGATE_TO_STRING(ClassName, field)          \
+#define DELEGATED_TO_STRING(ClassName, field)          \
     [[nodiscard]] std::string toString() const {      \
         return fmt::format(#ClassName ": {}", field); \
     }

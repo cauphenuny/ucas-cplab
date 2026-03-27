@@ -2,6 +2,7 @@
 
 #include "CACTBaseVisitor.h"
 #include "frontend/ast/ast.h"
+#include "utils/error.h"
 
 #include <utility>
 
@@ -17,7 +18,7 @@ public:
         if (a.type() == typeid(node_ptr<T>)) {
             return std::move(*std::any_cast<node_ptr<T>>(a));
         }
-        throw std::runtime_error(fmt::format("take failed for type {}", typeid(T).name()));
+        throw CompilerError(fmt::format("take failed for type {}", typeid(T).name()), "ast-gen error");
     }
 
     std::any visitCompUnit(CACTParser::CompUnitContext* ctx) override {
@@ -86,10 +87,9 @@ public:
         if (ctx->constExp()) {
             initVal.val = take<ast::ConstExp>(visit(ctx->constExp()));
         } else {
-            std::vector<std::unique_ptr<ast::ConstInitVal>> vals;
+            std::vector<ast::ConstInitVal> vals;
             for (auto* child : ctx->constInitVal()) {
-                vals.push_back(
-                    std::make_unique<ast::ConstInitVal>(take<ast::ConstInitVal>(visit(child))));
+                vals.push_back(take<ast::ConstInitVal>(visit(child)));
             }
             initVal.val = std::move(vals);
         }

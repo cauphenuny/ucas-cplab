@@ -1,8 +1,8 @@
 #include <iostream>
 #define FMT_HEADER_ONLY
 #include "fmt/format.h"
-#include "frontend/syntax/listener.h"
-#include "frontend/syntax/visitor.h"
+#include "frontend/syntax/error.h"
+#include "frontend/syntax/visit.h"
 #include "utils/error.h"
 #include "utils/tui.h"
 
