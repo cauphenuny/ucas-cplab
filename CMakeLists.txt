@@ -13,13 +13,33 @@ include_directories(grammar)
 include_directories(src)
 include_directories(deps)
 
-FILE(GLOB_RECURSE SOURCE_FILES "src/*.cpp" "grammar/*.cpp")
+# Project sources excluding tests and main.cpp
+FILE(GLOB_RECURSE ALL_SOURCES "src/*.cpp" "grammar/*.cpp")
 
+# Filter out tests and main.cpp from the core library sources
+set(LIB_SOURCES ${ALL_SOURCES})
+list(FILTER LIB_SOURCES EXCLUDE REGEX "src/tests/.*\\.cpp")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "src/main\\.cpp$") # Match end of string
+
+# ANTLR Lib
 FILE(GLOB_RECURSE ANTLR_LIB_FILES "deps/antlr4-runtime/*.cpp")
 
 # add_definitions(-w -g)
 add_definitions(-g -Wall) # Do not ignore warnings!
 add_library(antlr STATIC ${ANTLR_LIB_FILES})
-add_executable(compiler ${SOURCE_FILES})
+
+# Compiler Core Library
+add_library(compiler_core STATIC ${LIB_SOURCES})
+
+# Main executable
+add_executable(compiler src/main.cpp)
 find_package(Threads REQUIRED)
-target_link_libraries(compiler antlr Threads::Threads)
+target_link_libraries(compiler compiler_core antlr Threads::Threads)
+
+# Add targets for each test in src/tests
+FILE(GLOB TEST_FILES "src/tests/*.cpp")
+foreach(TEST_SOURCE ${TEST_FILES})
+    get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
+    add_executable(${TEST_NAME} ${TEST_SOURCE})
+    target_link_libraries(${TEST_NAME} compiler_core antlr Threads::Threads)
+endforeach()

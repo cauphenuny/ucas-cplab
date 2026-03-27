@@ -1,7 +1,10 @@
 #pragma once
 
+#define FMT_HEADER_ONLY
+#include <fmt/format.h>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -62,3 +65,87 @@ template <typename T> auto serialize(const std::unique_ptr<T>& ptr) -> std::stri
         return serialize(ptr.get());
     }
 }
+
+namespace fmt_indent {
+struct IndentState {
+    int level = 0;
+};
+
+inline thread_local IndentState fmt_indent;
+
+inline auto indent(int level) {
+    return std::string(level * 2, ' ');
+}
+
+struct IndentGuard {
+    IndentGuard() {
+        ++fmt_indent.level;
+    }
+    ~IndentGuard() {
+        --fmt_indent.level;
+    }
+    auto current() {
+        return indent(fmt_indent.level);
+    }
+    auto base() {
+        return indent(fmt_indent.level - 1);
+    }
+};
+
+}  // namespace idt
+
+// NOTE: export .toString() or toString() to fmt formatter
+namespace fmt {
+template <typename T>
+struct formatter<T, std::enable_if_t<has_toString<T>::value || has_free_toString<T>::value, char>> {
+    constexpr auto parse(fmt::format_parse_context& ctx) {
+        return ctx.begin();
+    }
+    template <typename FormatContext> auto format(const T& v, FormatContext& ctx) const {
+        return fmt::format_to(ctx.out(), "{}", serialize(v));
+    }
+};
+}  // namespace fmt
+
+template <typename T, typename... Args>
+std::string serializeFields(const char* names, const T& var, const Args&... rest) {
+    auto& state = fmt_indent::fmt_indent;
+    std::string indent(state.level * 2, ' ');
+
+    while (*names == ' ') names++;
+
+    // Find field name end, skipping commas inside template angle brackets
+    const char* end = names;
+    int angle_depth = 0;
+    while (*end) {
+        if (*end == '<') angle_depth++;
+        else if (*end == '>') angle_depth--;
+        else if (*end == ',' && angle_depth == 0) break;
+        end++;
+    }
+
+    std::string_view field_name(names, end - names);
+    while (!field_name.empty() && field_name.back() == ' ') field_name.remove_suffix(1);
+
+    std::string result;
+    result += indent;
+    result.append(field_name.data(), field_name.size());
+    result += ": ";
+    result += serialize(var);
+    result += ",\n";
+
+    if constexpr (sizeof...(rest) > 0) {
+        if (*end == ',') result += serializeFields(end + 1, rest...);
+    }
+    return result;
+}
+
+#define SERIALIZABLE(ClassName, ...)                                         \
+    std::string toString() const {                                          \
+        auto& state = fmt_indent::fmt_indent;                               \
+        std::string base(state.level * 2, ' ');                             \
+        state.level++;                                                      \
+        std::string body = serializeFields(#__VA_ARGS__, __VA_ARGS__);      \
+        state.level--;                                                      \
+        return #ClassName " {\n" + body + base + "}";                       \
+    }
