@@ -144,7 +144,7 @@ struct FuncArgs {
 struct CallExp {
     std::string name;
     FuncArgs args;
-    TO_STRING(FuncCallUnaryExp, name, args);
+    TO_STRING(CallExp, name, args);
 };
 
 enum class BinaryOp : uint8_t {
@@ -153,7 +153,7 @@ enum class BinaryOp : uint8_t {
     MOD,  //
     ADD,
     SUB,  //
-    LE,
+    LT,
     GT,
     LEQ,
     GEQ,  //
@@ -170,7 +170,7 @@ std::string toString(BinaryOp op) {
         case BinaryOp::MOD: return "%";
         case BinaryOp::ADD: return "+";
         case BinaryOp::SUB: return "-";
-        case BinaryOp::LE: return "<=";
+        case BinaryOp::LT: return "<";
         case BinaryOp::GT: return ">";
         case BinaryOp::LEQ: return "<=";
         case BinaryOp::GEQ: return ">=";
