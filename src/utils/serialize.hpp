@@ -1,9 +1,9 @@
 #pragma once
 
 #define FMT_HEADER_ONLY
+#include "fmt/format.h"
 #include "utils/match.hpp"
 
-#include <fmt/format.h>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -105,8 +105,8 @@ struct has_stream<T,
 
 template <typename T>
 struct is_TO_STRING : std::bool_constant<string_constructible<T>::value ||
-                                            has_free_toString<T>::value || has_toString<T>::value ||
-                                            has_to_string<T>::value || has_stream<T>::value> {};
+                                         has_free_toString<T>::value || has_toString<T>::value ||
+                                         has_to_string<T>::value || has_stream<T>::value> {};
 
 template <typename T> auto serialize(const T& val) -> std::string {
     if constexpr (string_constructible<T>::value) {
@@ -177,7 +177,7 @@ std::string serializeFields(const char* names, const T& var, const Args&... rest
     return result;
 }
 
-#define TO_STRING(ClassName, ...)                                   \
+#define TO_STRING(ClassName, ...)                                      \
     [[nodiscard]] std::string toString() const {                       \
         auto& state = fmt_indent::state;                               \
         auto indent = state.indent();                                  \
@@ -186,8 +186,12 @@ std::string serializeFields(const char* names, const T& var, const Args&... rest
         return #ClassName " {\n" + body + indent + "}";                \
     }
 
-#define EMPTY_TO_STRING(ClassName)\
-    [[nodiscard]] std::string toString() const { return #ClassName " {}"; }
+#define EMPTY_TO_STRING(ClassName)               \
+    [[nodiscard]] std::string toString() const { \
+        return #ClassName " {}";                 \
+    }
 
-#define DELEGATE_TO_STRING(ClassName, field) \
-    [[nodiscard]] std::string toString() const { return fmt::format(#ClassName ": {}", field); }
+#define DELEGATE_TO_STRING(ClassName, field)          \
+    [[nodiscard]] std::string toString() const {      \
+        return fmt::format(#ClassName ": {}", field); \
+    }

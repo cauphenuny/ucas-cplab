@@ -29,7 +29,14 @@ add_definitions(-g -Wall) # Do not ignore warnings!
 add_library(antlr STATIC ${ANTLR_LIB_FILES})
 
 # Compiler Core Library
-add_library(compiler_core STATIC ${LIB_SOURCES})
+if(LIB_SOURCES)
+    add_library(compiler_core STATIC ${LIB_SOURCES})
+else()
+    # Some older CMake versions error when given an empty source list.
+    # Create a tiny dummy source file in the build dir so the target is valid.
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/empty_compiler_core.cpp "// dummy source for compiler_core\n")
+    add_library(compiler_core STATIC ${CMAKE_CURRENT_BINARY_DIR}/empty_compiler_core.cpp)
+endif()
 
 # Main executable
 add_executable(compiler src/main.cpp)

@@ -1,14 +1,13 @@
 #include <iostream>
 #define FMT_HEADER_ONLY
+#include "fmt/format.h"
+#include "frontend/syntax/listener.h"
+#include "frontend/syntax/visitor.h"
 #include "utils/error.h"
 #include "utils/tui.h"
 
-#include <fmt/format.h>
-
-#include "CACTLexer.h"
-#include "frontend/syntax/visitor.h"
-#include "frontend/syntax/listener.h"
-#include "CACTParser.h"
+#include <CACTLexer.h>
+#include <CACTParser.h>
 
 using namespace antlr4;
 

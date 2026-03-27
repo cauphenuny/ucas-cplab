@@ -1,4 +1,5 @@
 #include "utils/serialize.hpp"
+
 #include <variant>
 
 struct Inner {
