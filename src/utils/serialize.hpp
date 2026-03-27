@@ -58,8 +58,8 @@ template <typename T> auto toString(const std::vector<T>& vec) -> std::string {
     auto indent = state.indent();
     auto guard = state.guard();
     std::string result = "[\n";
-    for (const auto& x : vec) {
-        result += indent + "  " + serialize(x) + ",\n";
+    for (size_t i = 0; i < vec.size(); i++) {
+        result += fmt::format("{}  [{}]: {}\n", indent, i, vec[i]);
     }
     result += indent + "]";
     return result;
@@ -188,3 +188,6 @@ std::string serializeFields(const char* names, const T& var, const Args&... rest
 
 #define EMPTY_TO_STRING(ClassName)\
     [[nodiscard]] std::string toString() const { return #ClassName " {}"; }
+
+#define DELEGATE_TO_STRING(ClassName, field) \
+    [[nodiscard]] std::string toString() const { return fmt::format(#ClassName ": {}", field); }

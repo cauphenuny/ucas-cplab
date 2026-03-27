@@ -26,6 +26,52 @@ auto toString(Type type) -> std::string {
     }
 }
 
+enum class UnaryOp : uint8_t { PLUS, MINUS, NOT };
+
+std::string toString(UnaryOp op) {
+    switch (op) {
+        case UnaryOp::PLUS: return "+";
+        case UnaryOp::MINUS: return "-";
+        case UnaryOp::NOT: return "!";
+        default: throw std::runtime_error(fmt::format("invalid unary op: {}", (uint8_t)op));
+    }
+}
+
+enum class BinaryOp : uint8_t {
+    MUL,
+    DIV,
+    MOD,  //
+    ADD,
+    SUB,  //
+    LT,
+    GT,
+    LEQ,
+    GEQ,  //
+    EQ,
+    NEQ,  //
+    AND,
+    OR,
+};
+
+std::string toString(BinaryOp op) {
+    switch (op) {
+        case BinaryOp::MUL: return "*";
+        case BinaryOp::DIV: return "/";
+        case BinaryOp::MOD: return "%";
+        case BinaryOp::ADD: return "+";
+        case BinaryOp::SUB: return "-";
+        case BinaryOp::LT: return "<";
+        case BinaryOp::GT: return ">";
+        case BinaryOp::LEQ: return "<=";
+        case BinaryOp::GEQ: return ">=";
+        case BinaryOp::EQ: return "==";
+        case BinaryOp::NEQ: return "!=";
+        case BinaryOp::AND: return "&&";
+        case BinaryOp::OR: return "||";
+        default: throw std::runtime_error(fmt::format("invalid binary op: {}", (uint8_t)op));
+    }
+}
+
 struct CompUnit;
 struct ConstDecl;
 struct VarDecl;
@@ -51,16 +97,15 @@ struct AssignStmt;
 
 struct Exp;
 struct Stmt;
-using ExpBox = std::unique_ptr<Exp>; // for recursive exp types
-using StmtBox = std::unique_ptr<Stmt>; // for recursive stmt types
+using ExpBox = std::unique_ptr<Exp>;    // for recursive exp types
+using StmtBox = std::unique_ptr<Stmt>;  // for recursive stmt types
+using BlockItem = std::variant<Decl, StmtBox>;
+using Block = std::vector<BlockItem>;
 
 struct FuncDef;
 struct FuncParam;
 using FuncParams = std::vector<FuncParam>;
 using FuncArgs = std::vector<Exp>;
-
-struct Block;
-using BlockItem = std::variant<Decl, Stmt>;
 
 struct ConstInitVal {
     std::variant<ConstExp, std::vector<std::unique_ptr<ConstInitVal>>> val;
@@ -113,19 +158,8 @@ private:
 
 public:
     PrimaryExp(T exp) : exp(std::move(exp)) {}
-    TO_STRING(PrimaryExp, exp);
+    DELEGATE_TO_STRING(PrimaryExp, exp);
 };
-
-enum class UnaryOp : uint8_t { PLUS, MINUS, NOT };
-
-std::string toString(UnaryOp op) {
-    switch (op) {
-        case UnaryOp::PLUS: return "+";
-        case UnaryOp::MINUS: return "-";
-        case UnaryOp::NOT: return "!";
-        default: throw std::runtime_error(fmt::format("invalid unary op: {}", (uint8_t)op));
-    }
-}
 
 struct UnaryExp : traits::ToBoxed<UnaryExp, Exp> {
     UnaryOp op;
@@ -138,41 +172,6 @@ struct CallExp {
     FuncArgs args;
     TO_STRING(CallExp, name, args);
 };
-
-enum class BinaryOp : uint8_t {
-    MUL,
-    DIV,
-    MOD,  //
-    ADD,
-    SUB,  //
-    LT,
-    GT,
-    LEQ,
-    GEQ,  //
-    EQ,
-    NEQ,  //
-    AND,
-    OR,
-};
-
-std::string toString(BinaryOp op) {
-    switch (op) {
-        case BinaryOp::MUL: return "*";
-        case BinaryOp::DIV: return "/";
-        case BinaryOp::MOD: return "%";
-        case BinaryOp::ADD: return "+";
-        case BinaryOp::SUB: return "-";
-        case BinaryOp::LT: return "<";
-        case BinaryOp::GT: return ">";
-        case BinaryOp::LEQ: return "<=";
-        case BinaryOp::GEQ: return ">=";
-        case BinaryOp::EQ: return "==";
-        case BinaryOp::NEQ: return "!=";
-        case BinaryOp::AND: return "&&";
-        case BinaryOp::OR: return "||";
-        default: throw std::runtime_error(fmt::format("invalid binary op: {}", (uint8_t)op));
-    }
-}
 
 struct BinaryExp : traits::ToBoxed<BinaryExp, Exp> {
     BinaryOp op;
@@ -187,9 +186,7 @@ private:
 
 public:
     Exp(T exp) : exp(std::move(exp)) {}
-    [[nodiscard]] auto toString() const {
-        return serialize(exp);
-    }
+    DELEGATE_TO_STRING(Exp, exp);
 };
 
 struct IfStmt : traits::ToBoxed<IfStmt, Stmt> {
@@ -226,19 +223,13 @@ struct AssignStmt : traits::ToBoxed<AssignStmt, Stmt> {
 
 struct Stmt : traits::ToBoxed<Stmt> {
 private:
-    using T = std::variant<IfStmt, WhileStmt, ReturnStmt, BreakStmt, ContinueStmt, AssignStmt>;
+    using T =
+        std::variant<IfStmt, WhileStmt, ReturnStmt, BreakStmt, ContinueStmt, AssignStmt, Block>;
     T stmt;
 
 public:
     Stmt(T stmt) : stmt(std::move(stmt)) {}
-    [[nodiscard]] auto toString() const {
-        return serialize(stmt);
-    }
-};
-
-struct Block {
-    std::vector<BlockItem> items;
-    TO_STRING(Block, items);
+    DELEGATE_TO_STRING(Stmt, stmt);
 };
 
 struct FuncDef {

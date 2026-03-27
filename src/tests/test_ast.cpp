@@ -68,13 +68,13 @@ int main() {
     
     std::vector<BlockItem> items;
     items.emplace_back(std::move(var_decl));
-    items.emplace_back(Stmt{ReturnStmt{.exp = Exp{PrimaryExp{LValExp{.name = "x"}}}}});
+    items.emplace_back(ReturnStmt{.exp = Exp{PrimaryExp{LValExp{.name = "x"}}}}.toBoxed());
     
     auto main_func = FuncDef{
         .type = Type::INT,
         .name = "main",
         .params = {},
-        .block = Block{.items = std::move(items)}
+        .block = std::move(items)
     };
     fmt::println("{}", main_func);
 
@@ -129,10 +129,10 @@ int main() {
             .left = PrimaryExp{LValExp{.name = "n"}}.toBoxed(), 
             .right = PrimaryExp{1}.toBoxed()}};
         auto ret_n = Stmt{ReturnStmt{.exp = Exp{PrimaryExp{LValExp{.name = "n"}}}}};
-        fib_items.emplace_back(Stmt{IfStmt{
+        fib_items.emplace_back(IfStmt{
             .cond = std::move(if_cond), 
             .stmt = std::move(ret_n).toBoxed(), 
-            .else_stmt = nullptr}});
+            .else_stmt = nullptr}.toBoxed());
         
         // return fib(n-1) + fib(n-2);
         auto n_minus_1 = BinaryExp{.op = BinaryOp::SUB, .left = PrimaryExp{LValExp{.name="n"}}.toBoxed(), .right = PrimaryExp{1}.toBoxed()};
@@ -145,10 +145,10 @@ int main() {
         auto call2 = CallExp{.name = "fib", .args = std::move(args2)};
         
         auto add_fib = BinaryExp{.op = BinaryOp::ADD, .left = Exp{std::move(call1)}.toBoxed(), .right = Exp{std::move(call2)}.toBoxed()};
-        fib_items.emplace_back(Stmt{ReturnStmt{.exp = Exp{std::move(add_fib)}}});
+        fib_items.emplace_back(ReturnStmt{.exp = Exp{std::move(add_fib)}}.toBoxed());
         
         unit_items.emplace_back(FuncDef{
-            .type = Type::INT, .name = "fib", .params = std::move(params), .block = Block{.items = std::move(fib_items)}});
+            .type = Type::INT, .name = "fib", .params = std::move(params), .block = std::move(fib_items)});
     }
 
     // int main() { return fib(10); }
@@ -156,10 +156,10 @@ int main() {
         std::vector<BlockItem> main_items;
         std::vector<Exp> fib_args; fib_args.emplace_back(PrimaryExp{10});
         auto fib_call = CallExp{.name = "fib", .args = std::move(fib_args)};
-        main_items.emplace_back(Stmt{ReturnStmt{.exp = Exp{std::move(fib_call)}}});
+        main_items.emplace_back(ReturnStmt{.exp = Exp{std::move(fib_call)}}.toBoxed());
         
         unit_items.emplace_back(FuncDef{
-            .type = Type::INT, .name = "main", .params = {}, .block = Block{.items = std::move(main_items)}});
+            .type = Type::INT, .name = "main", .params = {}, .block = std::move(main_items)});
     }
 
     auto comp_unit = CompUnit{.items = std::move(unit_items)};
