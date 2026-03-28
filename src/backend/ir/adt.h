@@ -39,7 +39,13 @@ struct TypeBox {
     using T = std::unique_ptr<Type>;
     T item;
     TypeBox(T item) : item(std::move(item)) {}
+
     TypeBox();
+    TypeBox(TypeBox&& other) noexcept = default;
+    TypeBox(const TypeBox& other);
+    TypeBox& operator=(TypeBox&& other) noexcept = default;
+    TypeBox& operator=(const TypeBox& other);
+
     [[nodiscard]] auto toString() const -> std::string;
     [[nodiscard]] auto var() const -> const Type&;
     template <typename T> [[nodiscard]] auto is() const -> bool;
@@ -79,7 +85,7 @@ struct Product : mixin::ToBoxed<Product, Type> {
     [[nodiscard]] std::string toString() const {
         switch (items.size()) {
             case 0: return "()";
-            case 1: return fmt::format("({},)", items[0]);
+            case 1: return fmt::format("{}", items[0]);
             default:
                 std::string result;
                 for (size_t i = 0; i < items.size(); i++) {
@@ -102,9 +108,7 @@ struct Sum : mixin::ToBoxed<Sum, Type> {
         }
         return "(" + result + ")";
     }
-    void append(TypeBox item) {
-        items.push_back(std::move(item));
-    }
+    void append(TypeBox item);
 };
 
 struct Func : mixin::ToBoxed<Func, Type> {
@@ -150,6 +154,13 @@ auto TypeBox::match(T&& box, Rest&&... rest) -> decltype(auto) {
 }
 
 TypeBox::TypeBox() : item(Top{}.toBoxed()) {}
+TypeBox::TypeBox(const TypeBox& other) : item(std::make_unique<Type>(*other.item)) {}
+TypeBox& TypeBox::operator=(const TypeBox& other) {
+    if (this != &other) {
+        item = std::make_unique<Type>(*other.item);
+    }
+    return *this;
+}
 
 /************************************************************/
 
@@ -247,48 +258,42 @@ template <typename T> TypeBox construct() {
 inline bool operator<=(const TypeBox&, const Type&);
 inline bool operator<=(const Type&, const TypeBox&);
 inline bool operator<=(const TypeBox&, const TypeBox&);
+inline bool operator<=(const Type&, const Type&);
 
-template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, Type>>>
+template <typename T, typename = std::enable_if_t<!std::is_same_v<T, Type>>>
 bool operator<=(const T& from, const TypeBox& to);
-template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, Type>>>
+template <typename T, typename = std::enable_if_t<!std::is_same_v<T, Type>>>
 bool operator<=(const TypeBox& from, const T& to);
 
 template <typename T1, typename T2> bool operator<=(const T1& from, const T2& to) {
+    if constexpr (std::is_same_v<T1, Bottom>) return true;
+    if constexpr (std::is_same_v<T2, Top>) return true;
     return false;
 }
 
-template <typename T,
-          typename = std::enable_if_t<std::disjunction_v<
-              std::is_same<std::decay_t<T>, Int>, std::is_same<std::decay_t<T>, Float>,
-              std::is_same<std::decay_t<T>, Bool>, std::is_same<std::decay_t<T>, Double>>>>
+template <typename T, typename = std::enable_if_t<std::disjunction_v<
+                          std::is_same<T, Int>, std::is_same<T, Float>, std::is_same<T, Bool>,
+                          std::is_same<T, Double>, std::is_same<T, Top>, std::is_same<T, Bottom>>>>
 bool operator<=(const T& from, const T& to) {
     return true;
 }
 
-template <typename T,
-          typename = std::enable_if_t<std::disjunction_v<
-              std::is_same<std::decay_t<T>, Int>, std::is_same<std::decay_t<T>, Float>,
-              std::is_same<std::decay_t<T>, Bool>, std::is_same<std::decay_t<T>, Double>>>>
+template <typename T, typename = std::enable_if_t<
+                          std::disjunction_v<std::is_same<T, Int>, std::is_same<T, Float>,
+                                             std::is_same<T, Bool>, std::is_same<T, Double>>>>
 bool operator<=(const Primitive& from, const T& to) {
-    return Match{from}([&](const auto& from) -> bool {
-        return from <= to;
-    });
+    return Match{from}([&](const auto& from) -> bool { return from <= to; });
 }
 
-template <typename T,
-          typename = std::enable_if_t<std::disjunction_v<
-              std::is_same<std::decay_t<T>, Int>, std::is_same<std::decay_t<T>, Float>,
-              std::is_same<std::decay_t<T>, Bool>, std::is_same<std::decay_t<T>, Double>>>>
+template <typename T, typename = std::enable_if_t<
+                          std::disjunction_v<std::is_same<T, Int>, std::is_same<T, Float>,
+                                             std::is_same<T, Bool>, std::is_same<T, Double>>>>
 bool operator<=(const T& from, const Primitive& to) {
-    return Match{to}([&](const auto& to) -> bool {
-        return from <= to;
-    });
+    return Match{to}([&](const auto& to) -> bool { return from <= to; });
 }
 
 bool operator<=(const Primitive& from, const Primitive& to) {
-    return Match{from, to}([](const auto& from, const auto& to) -> bool {
-        return from <= to;
-    });
+    return Match{from, to}([](const auto& from, const auto& to) -> bool { return from <= to; });
 }
 
 template <typename ArrayLike, typename T,
@@ -325,9 +330,8 @@ inline bool operator<=(const Product& from, const Product& to) {
     return true;
 }
 
-template <typename T,
-          typename = std::enable_if_t<!std::disjunction_v<std::is_same<std::decay_t<T>, TypeBox>,
-                                                          std::is_same<std::decay_t<T>, Type>>>>
+template <typename T, typename = std::enable_if_t<
+                          !std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>>>
 bool operator<=(const Sum& from, const T& to) {
     for (const auto& item : from.items) {
         if (!(item <= to)) return false;
@@ -335,9 +339,8 @@ bool operator<=(const Sum& from, const T& to) {
     return true;
 }
 
-template <typename T,
-          typename = std::enable_if_t<!std::disjunction_v<std::is_same<std::decay_t<T>, TypeBox>,
-                                                          std::is_same<std::decay_t<T>, Type>>>>
+template <typename T, typename = std::enable_if_t<
+                          !std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>>>
 bool operator<=(const T& from, const Sum& to) {
     for (const auto& item : to.items) {
         if (from <= item) return true;
@@ -378,7 +381,7 @@ template <typename T, typename> bool operator<=(const TypeBox& from, const T& to
     return operator<=(from.var(), to);
 }
 
-template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, Type>>>
+template <typename T, typename = std::enable_if_t<!std::is_same_v<T, Type>>>
 bool operator<=(const T& from, const Type& to) {
     return Match(to)([&](const auto& to) -> bool {
         using To = std::decay_t<decltype(to)>;
@@ -389,7 +392,8 @@ bool operator<=(const T& from, const Type& to) {
     });
 }
 
-template <typename T> bool operator<=(const Type& from, const T& to) {
+template <typename T, typename = std::enable_if_t<!std::is_same_v<T, Type>>>
+bool operator<=(const Type& from, const T& to) {
     return Match(from)([&](const auto& from) -> bool {
         using From = std::decay_t<decltype(from)>;
         if constexpr (std::is_same_v<From, Bottom>) {
@@ -397,6 +401,57 @@ template <typename T> bool operator<=(const Type& from, const T& to) {
         }
         return from <= to;
     });
+}
+
+inline bool operator<=(const Type& from, const Type& to) {
+    return Match(from)([&](const auto& from) -> bool {
+        using From = std::decay_t<decltype(from)>;
+        if constexpr (std::is_same_v<From, Bottom>) {
+            return true;
+        }
+        return from <= to;
+    });
+}
+
+template <typename T1, typename T2> bool operator==(const T1& from, const T2& to) {
+    return (from <= to) && (to <= from);
+}
+
+void Sum::append(TypeBox item) {
+    for (const auto& i : items) {
+        if (i == item) return;
+    }
+    items.push_back(std::move(item));
+}
+
+TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs) {
+    return TypeBox::match(lhs, rhs)(
+        [](const Sum& lhs, const Sum& rhs) {
+            Sum result = lhs;
+            for (const auto& item : rhs.items) {
+                result.append(item);
+            }
+            return std::move(result).toBoxed();
+        },
+        [&](const Sum& lhs, const auto&) {
+            Sum result = lhs;
+            result.append(rhs);
+            return std::move(result).toBoxed();
+        },
+        [&](const auto&, const Sum& rhs) {
+            Sum result;
+            result.append(lhs);
+            for (const auto& item : rhs.items) {
+                result.append(item);
+            }
+            return std::move(result).toBoxed();
+        },
+        [&](const auto&, const auto&) {
+            Sum result;
+            result.append(lhs);
+            result.append(rhs);
+            return std::move(result).toBoxed();
+        });
 }
 
 }  // namespace adt
