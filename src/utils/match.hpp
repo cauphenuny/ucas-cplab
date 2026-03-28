@@ -13,18 +13,20 @@ template <typename T, typename... Fs> auto match(T&& expr, Fs&&... callbacks) {
     return std::visit(Visitor{std::forward<Fs>(callbacks)...}, std::forward<T>(expr));
 }
 
-template <typename T> struct Match {
-    T value;
-    Match(T&& val) : value(std::forward<T>(val)) {}
+template <typename... Ts> struct Match {
+    std::tuple<Ts...> values;
+    Match(Ts&&... val) : values(std::forward<Ts>(val)...) {}
     template <typename... Fs> auto operator()(Fs&&... callbacks) {
-        return std::visit(Visitor{std::forward<Fs>(callbacks)...}, std::forward<T>(value));
-    }
-    template <typename... Ts> auto operator()(Visitor<Ts...> visitor) {
-        return std::visit(std::move(visitor), std::forward<T>(value));
+        return std::apply(
+            [&](auto&&... vs) {
+                return std::visit(Visitor{std::forward<Fs>(callbacks)...},
+                                  std::forward<decltype(vs)>(vs)...);
+            },
+            values);
     }
 };
 
-template <typename T> Match(T&&) -> Match<T&&>;
+template <typename... Ts> Match(Ts&&...) -> Match<Ts&&...>;
 
 /*
 using T = std::variant<int, double>;
