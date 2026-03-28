@@ -24,6 +24,17 @@ template <typename... Ts> struct Match {
             },
             values);
     }
+    template <typename T> Match<Ts..., T> with(T&& val) && {
+        return Match<Ts..., T>(std::forward<Ts>(values)..., std::forward<T>(val));
+    }
+    template <typename... T2s> Match<Ts..., T2s...> with(Match<T2s...>&& other) && {
+        return std::apply(
+            [](auto&&... args) {
+                return Match<Ts..., T2s...>(std::forward<decltype(args)>(args)...);
+            },
+            std::tuple_cat(std::move(values), std::move(other.values))
+        );
+    }
 };
 
 template <typename... Ts> Match(Ts&&...) -> Match<Ts&&...>;
