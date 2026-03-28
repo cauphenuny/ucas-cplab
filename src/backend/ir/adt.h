@@ -15,6 +15,7 @@
 #include <utility>
 #include <variant>
 #include <vector>
+#include <any>
 
 namespace adt {
 
@@ -23,13 +24,16 @@ struct Float;
 struct Bool;
 using Primitive = std::variant<Int, Float, Bool>;
 
-struct Sum;
-struct Product;
 struct Func;
 struct Pointer;
 struct Array;
 
-using Type = std::variant<Primitive, Sum, Product, Func, Pointer, Array>;
+struct Sum;
+struct Product;
+struct Top;
+struct Bottom;
+
+using Type = std::variant<Primitive, Sum, Product, Func, Pointer, Array, Top, Bottom>;
 
 struct TypeBox {
     using T = std::unique_ptr<Type>;
@@ -49,6 +53,14 @@ struct Float : mixin::ToBoxed<Float, Type> {
 
 struct Bool : mixin::ToBoxed<Bool, Type> {
     SIMPLE_TO_STRING("bool");
+};
+
+struct Bottom : mixin::ToBoxed<Bottom, Type> {
+    SIMPLE_TO_STRING("⊥");
+};
+
+struct Top : mixin::ToBoxed<Top, Type> {
+    SIMPLE_TO_STRING("⊤");
 };
 
 struct Product : mixin::ToBoxed<Product, Type> {
@@ -181,6 +193,8 @@ template <typename T> TypeBox construct() {
         return Float{}.toBoxed();
     } else if constexpr (std::is_same_v<U, bool>) {
         return Bool{}.toBoxed();
+    } else if constexpr (std::is_same_v<U, std::any>) {
+        return Top{}.toBoxed();
     } else if constexpr (std::is_pointer_v<U>) {
         return Pointer(construct<std::remove_pointer_t<U>>()).toBoxed();
     } else if constexpr (std::is_array_v<U>) {
@@ -252,7 +266,13 @@ inline bool isSubtype(const Type& from, const Type& to) {
         [](const Array& from, const Array& to) -> bool {
             return isSubtype(from.elem, to.elem) && from.size >= to.size;
         },
-        [](const auto&, const auto&) -> bool { return false; });
+        [](const auto& from, const auto& to) -> bool {
+            if constexpr (std::is_same_v<std::decay_t<decltype(from)>, Bottom> ||
+                          std::is_same_v<std::decay_t<decltype(to)>, Top>) {
+                return true;
+            }
+            return false;
+        });
 }
 
 inline bool isSubtype(const TypeBox& from, const TypeBox& to) {

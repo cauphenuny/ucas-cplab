@@ -85,7 +85,19 @@ void test_subtype() {
     assert(isSubtype(frs1, frs2)); // OK: (int->s1) is convertible to (int->s2)
     assert(!isSubtype(frs2, frs1)); // ERR
 
-    fmt::println("All convertible tests passed!");
+    // Top and bottom
+    auto top = construct<std::any>();
+    auto bottom = Bottom{};
+    assert(isSubtype(top, top));
+    assert(isSubtype(bottom, bottom));
+    assert(isSubtype(bottom, top));
+    assert(!isSubtype(top, bottom));
+    assert(isSubtype(frs2, top));
+    assert(isSubtype(bottom, frs1));
+    auto sometimes_top = construct<std::variant<int, std::any>>();
+    assert(isSubtype(frs1, sometimes_top));
+
+    fmt::println("All subtype tests passed!");
 }
 
 void test_construct() {
@@ -99,6 +111,7 @@ void test_construct() {
     fmt::println("int(int): {}", construct<int(int)>());
     fmt::println("tuple<int, float>: {}", construct<std::tuple<int, float>>());
     fmt::println("variant<int, float>: {}", construct<std::variant<int, float>>());
+    fmt::println("any: {}", construct<std::any>());
     fmt::println(
         "Complex: {}", construct<int (*(*(*)(float, std::variant<int, float> (*)(bool))))(float, int*)>());
 }
