@@ -4,36 +4,37 @@
 
 #define FMT_HEADER_ONLY
 #include "fmt/format.h"
+#include "traits.hpp"
 #include "tui.h"
 
 struct CodeError : std::runtime_error {
-    CodeError(int line, int col, const std::string& desc, const std::string& type = "code error")
+    CodeError(Location loc, const std::string& desc, const std::string& type = "code error")
         : std::runtime_error(
-              fmt::format(RED BOLD "{} " NONE "at {}:{} : {}", type, line, col, desc)) {}
+              fmt::format(RED BOLD "{} " NONE "at {}:{} : {}", type, loc.line, loc.col, desc)) {}
 };
 
 struct SyntaxError : CodeError {
-    SyntaxError(int line, int col, const std::string& desc,
+    SyntaxError(Location loc, const std::string& desc,
                 const std::string& type = "syntax error")
-        : CodeError(line, col, desc, type) {}
+        : CodeError(loc, desc, type) {}
 };
 
 struct LexicalError : SyntaxError {
     using SyntaxError::SyntaxError;
-    LexicalError(int line, int col, const std::string& desc)
-        : SyntaxError(line, col, desc, "tokenize error") {}
+    LexicalError(Location loc, const std::string& desc)
+        : SyntaxError(loc, desc, "tokenize error") {}
 };
 
 struct SyntacticError : SyntaxError {
     using SyntaxError::SyntaxError;
-    SyntacticError(int line, int col, const std::string& desc)
-        : SyntaxError(line, col, desc, "parse error") {}
+    SyntacticError(Location loc, const std::string& desc)
+        : SyntaxError(loc, desc, "parse error") {}
 };
 
 struct SemanticError : CodeError {
-    SemanticError(int line, int col, const std::string& desc,
+    SemanticError(Location loc, const std::string& desc,
                   const std::string& type = "semantic error")
-        : CodeError(line, col, desc, type) {}
+        : CodeError(loc, desc, type) {}
 };
 
 struct CompilerError : std::logic_error {

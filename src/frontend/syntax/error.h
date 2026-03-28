@@ -2,6 +2,7 @@
 
 #include "BaseErrorListener.h"
 #include "Lexer.h"
+#include "utils/traits.hpp"
 #include "utils/error.h"
 
 #include <cstddef>
@@ -13,9 +14,9 @@ public:
                      size_t charPositionInLine, const std::string& msg,
                      std::exception_ptr e) override {
         if (dynamic_cast<antlr4::Lexer*>(recognizer)) {
-            throw LexicalError(line, charPositionInLine, msg);
+            throw LexicalError(Location{(int)line, (int)charPositionInLine}, msg);
         } else {
-            throw SyntacticError(line, charPositionInLine, msg);
+            throw SyntacticError(Location{(int)line, (int)charPositionInLine}, msg);
         }
     }
 };
