@@ -1,4 +1,5 @@
 #include <frontend/ast/ast.h>
+#include <optional>
 #include <utils/serialize.hpp>
 
 int main() {
@@ -50,10 +51,10 @@ int main() {
                               .left = PrimaryExp{LValExp{.name = "i"}}.toBoxed(),
                               .right = PrimaryExp{10}.toBoxed()}};
     auto assign =
-        Stmt{AssignStmt{.var = LValExp{.name = "i"},
-                        .exp = Exp{BinaryExp{.op = BinaryOp::ADD,
-                                             .left = PrimaryExp{LValExp{.name = "i"}}.toBoxed(),
-                                             .right = PrimaryExp{1}.toBoxed()}}}};
+        AssignStmt{.var = LValExp{.name = "i"},
+                   .exp = Exp{BinaryExp{.op = BinaryOp::ADD,
+                                        .left = PrimaryExp{LValExp{.name = "i"}}.toBoxed(),
+                                        .right = PrimaryExp{1}.toBoxed()}}};
     auto while_stmt = WhileStmt{.cond = std::move(cond), .stmt = std::move(assign).toBoxed()};
     fmt::println("{}", while_stmt);
 
@@ -64,22 +65,25 @@ int main() {
     var_defs.push_back(VarDef{.name = "x", .dims = {}, .val = ConstInitVal{.val = ConstExp{1}}});
     auto var_decl = Decl{VarDecl{.type = Type::INT, .defs = std::move(var_defs)}};
 
-    std::vector<BlockItem> items;
+    std::vector<BlockStmt::Item> items;
     items.emplace_back(std::move(var_decl));
-    items.emplace_back(ReturnStmt{.exp = Exp{PrimaryExp{LValExp{.name = "x"}}}}.toBoxed());
+    items.emplace_back(ReturnStmt{.exp = Exp{PrimaryExp{LValExp{.name = "x"}}}});
 
-    auto main_func =
-        FuncDef{.type = Type::INT, .name = "main", .params = {}, .block = std::move(items)};
+    auto main_func = FuncDef{.type = Type::INT,
+                             .name = "main",
+                             .params = {},
+                             .block = BlockStmt{.items = std::move(items)}};
     fmt::println("{}", main_func);
 
     // 8. Array Access and Multi-dimensional Array
     // a[1][i + 2] = 42;
     fmt::println("\n--- Array Access ---");
-    std::vector<Exp> indices;
-    indices.emplace_back(PrimaryExp{1});
+    std::vector<ExpBox> indices;
+    indices.emplace_back(PrimaryExp{1}.toBoxed());
     indices.emplace_back(BinaryExp{.op = BinaryOp::ADD,
                                    .left = PrimaryExp{LValExp{.name = "i"}}.toBoxed(),
-                                   .right = PrimaryExp{2}.toBoxed()});
+                                   .right = PrimaryExp{2}.toBoxed()}
+                             .toBoxed());
 
     auto array_assign = AssignStmt{.var = LValExp{.name = "a", .indices = std::move(indices)},
                                    .exp = Exp{PrimaryExp{42}}};
@@ -115,15 +119,15 @@ int main() {
         FuncParams params;
         params.push_back(FuncParam{.type = Type::INT, .name = "n", .dims = {}});
 
-        std::vector<BlockItem> fib_items;
+        std::vector<BlockStmt::Item> fib_items;
         // if (n <= 1) return n;
         auto if_cond = Exp{BinaryExp{.op = BinaryOp::LEQ,
                                      .left = PrimaryExp{LValExp{.name = "n"}}.toBoxed(),
                                      .right = PrimaryExp{1}.toBoxed()}};
-        auto ret_n = Stmt{ReturnStmt{.exp = Exp{PrimaryExp{LValExp{.name = "n"}}}}};
-        fib_items.emplace_back(IfStmt{
-            .cond = std::move(if_cond), .stmt = std::move(ret_n).toBoxed(), .else_stmt = nullptr}
-                                   .toBoxed());
+        auto ret_n = ReturnStmt{.exp = Exp{PrimaryExp{LValExp{.name = "n"}}}};
+        fib_items.emplace_back(IfStmt{.cond = std::move(if_cond),
+                                      .stmt = std::move(ret_n).toBoxed(),
+                                      .else_stmt = std::nullopt});
 
         // return fib(n-1) + fib(n-2);
         auto n_minus_1 = BinaryExp{.op = BinaryOp::SUB,
@@ -142,26 +146,28 @@ int main() {
         auto call2 = CallExp{.name = "fib", .args = std::move(args2)};
 
         auto add_fib = BinaryExp{.op = BinaryOp::ADD,
-                                 .left = Exp{std::move(call1)}.toBoxed(),
-                                 .right = Exp{std::move(call2)}.toBoxed()};
-        fib_items.emplace_back(ReturnStmt{.exp = Exp{std::move(add_fib)}}.toBoxed());
+                                 .left = std::move(call1).toBoxed(),
+                                 .right = std::move(call2).toBoxed()};
+        fib_items.emplace_back(ReturnStmt{.exp = Exp{std::move(add_fib)}});
 
         unit_items.emplace_back(FuncDef{.type = Type::INT,
                                         .name = "fib",
                                         .params = std::move(params),
-                                        .block = std::move(fib_items)});
+                                        .block = BlockStmt{.items = std::move(fib_items)}});
     }
 
     // int main() { return fib(10); }
     {
-        std::vector<BlockItem> main_items;
+        std::vector<BlockStmt::Item> main_items;
         std::vector<Exp> fib_args;
         fib_args.emplace_back(PrimaryExp{10});
         auto fib_call = CallExp{.name = "fib", .args = std::move(fib_args)};
-        main_items.emplace_back(ReturnStmt{.exp = Exp{std::move(fib_call)}}.toBoxed());
+        main_items.emplace_back(ReturnStmt{.exp = Exp{std::move(fib_call)}});
 
-        unit_items.emplace_back(FuncDef{
-            .type = Type::INT, .name = "main", .params = {}, .block = std::move(main_items)});
+        unit_items.emplace_back(FuncDef{.type = Type::INT,
+                                        .name = "main",
+                                        .params = {},
+                                        .block = BlockStmt{.items = std::move(main_items)}});
     }
 
     auto comp_unit = CompUnit{.items = std::move(unit_items)};
@@ -174,9 +180,7 @@ int main() {
     fmt::println("LValExp with location: {}", x_loc);
 
     BinaryExp add_loc{
-        .op = BinaryOp::ADD,
-        .left = PrimaryExp(2).toBoxed(),
-        .right = PrimaryExp(3).toBoxed()};
+        .op = BinaryOp::ADD, .left = PrimaryExp(2).toBoxed(), .right = PrimaryExp(3).toBoxed()};
     add_loc.loc = {11, 1};
     fmt::println("BinaryExp with location: {}", add_loc);
 

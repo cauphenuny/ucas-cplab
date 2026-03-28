@@ -135,7 +135,7 @@ public:
         if (ctx->funcParams()) {
             funcDef.params = take<ast::FuncParams>(visit(ctx->funcParams()));
         }
-        funcDef.block = take<ast::Block>(visit(ctx->block()));
+        funcDef.block = take<ast::BlockStmt>(visit(ctx->block()));
         return wrap(std::move(funcDef));
     }
 
@@ -162,16 +162,17 @@ public:
     }
 
     std::any visitBlock(CACTParser::BlockContext* ctx) override {
-        ast::Block block;
+        ast::BlockStmt block;
+        block.loc = get_loc(ctx);
         for (auto* itemCtx : ctx->blockItem()) {
-            block.push_back(take<ast::BlockItem>(visit(itemCtx)));
+            block.items.push_back(take<ast::BlockStmt::Item>(visit(itemCtx)));
         }
         return wrap(std::move(block));
     }
 
     std::any visitBlockItem(CACTParser::BlockItemContext* ctx) override {
-        if (ctx->decl()) return wrap(ast::BlockItem(take<ast::Decl>(visit(ctx->decl()))));
-        if (ctx->stmt()) return wrap(ast::BlockItem(take<ast::StmtBox>(visit(ctx->stmt()))));
+        if (ctx->decl()) return wrap(ast::BlockStmt::Item(take<ast::Decl>(visit(ctx->decl()))));
+        if (ctx->stmt()) return wrap(ast::BlockStmt::Item(take<ast::Stmt>(visit(ctx->stmt()))));
         return {};
     }
 
@@ -214,7 +215,7 @@ public:
         lval.loc = get_loc(ctx);
         lval.name = ctx->ID()->getText();
         for (auto* expCtx : ctx->exp()) {
-            lval.indices.push_back(take<ast::Exp>(visit(expCtx)));
+            lval.indices.emplace_back(std::make_unique<ast::Exp>(take<ast::Exp>(visit(expCtx))));
         }
         return wrap(std::move(lval));
     }
@@ -224,9 +225,7 @@ public:
             ast::AssignStmt assign{.var = take<ast::LValExp>(visit(ctx->lVal())),
                                    .exp = take<ast::Exp>(visit(ctx->exp()))};
             assign.loc = get_loc(ctx);
-            auto stmt = std::move(assign).toBoxed();
-            stmt->loc = assign.loc;
-            return wrap(std::move(stmt));
+            return wrap(ast::Stmt(std::move(assign)));
         }
         if (ctx->RETURN()) {
             ast::ReturnStmt stmt;
@@ -234,50 +233,41 @@ public:
             if (ctx->exp()) {
                 stmt.exp = take<ast::Exp>(visit(ctx->exp()));
             }
-            auto boxed = std::move(stmt).toBoxed();
-            boxed->loc = get_loc(ctx);
-            return wrap(std::move(boxed));
+            return wrap(ast::Stmt(std::move(stmt)));
         }
         if (ctx->IF()) {
-            ast::IfStmt ifStmt{.cond = take<ast::Exp>(visit(ctx->cond())),
-                               .stmt = take<ast::StmtBox>(visit(ctx->stmt(0))),
-                               .else_stmt = (ctx->ELSE()) ? take<ast::StmtBox>(visit(ctx->stmt(1)))
-                                                          : nullptr};
+            ast::IfStmt ifStmt{
+                .cond = take<ast::Exp>(visit(ctx->cond())),
+                .stmt = std::make_unique<ast::Stmt>(take<ast::Stmt>(visit(ctx->stmt(0)))),
+                .else_stmt = (ctx->ELSE())
+                                 ? std::make_unique<ast::Stmt>(take<ast::Stmt>(visit(ctx->stmt(1))))
+                                 : std::optional<ast::StmtBox>{}};
             ifStmt.loc = get_loc(ctx);
-            auto boxed = std::move(ifStmt).toBoxed();
-            boxed->loc = get_loc(ctx);
-            return wrap(std::move(boxed));
+            return wrap(ast::Stmt(std::move(ifStmt)));
         }
         if (ctx->WHILE()) {
-            ast::WhileStmt whileStmt{.cond = take<ast::Exp>(visit(ctx->cond())),
-                                     .stmt = take<ast::StmtBox>(visit(ctx->stmt(0)))};
+            ast::WhileStmt whileStmt{
+                .cond = take<ast::Exp>(visit(ctx->cond())),
+                .stmt = std::make_unique<ast::Stmt>(take<ast::Stmt>(visit(ctx->stmt(0))))};
             whileStmt.loc = get_loc(ctx);
-            auto boxed = std::move(whileStmt).toBoxed();
-            boxed->loc = get_loc(ctx);
-            return wrap(std::move(boxed));
+            return wrap(ast::Stmt(std::move(whileStmt)));
         }
         if (ctx->BREAK()) {
             ast::BreakStmt stmt;
             stmt.loc = get_loc(ctx);
-            auto boxed = std::move(stmt).toBoxed();
-            boxed->loc = get_loc(ctx);
-            return wrap(std::move(boxed));
+            return wrap(ast::Stmt(stmt));
         }
         if (ctx->CONTINUE()) {
             ast::ContinueStmt stmt;
             stmt.loc = get_loc(ctx);
-            auto boxed = std::move(stmt).toBoxed();
-            boxed->loc = get_loc(ctx);
-            return wrap(std::move(boxed));
+            return wrap(ast::Stmt(stmt));
         }
         if (ctx->block()) {
-            ast::Stmt stmt(take<ast::Block>(visit(ctx->block())));
-            stmt.loc = get_loc(ctx);
-            return wrap(std::move(stmt).toBoxed());
+            return wrap(ast::Stmt(take<ast::BlockStmt>(visit(ctx->block()))));
         }
-        ast::Stmt stmt(ast::Block{});
-        stmt.loc = get_loc(ctx);
-        return wrap(std::move(stmt).toBoxed());
+        ast::BlockStmt block;
+        block.loc = get_loc(ctx);
+        return wrap(ast::Stmt(std::move(block)));
     }
 
     std::any visitExp(CACTParser::ExpContext* ctx) override {
@@ -290,99 +280,94 @@ public:
 
     std::any visitLOrExp(CACTParser::LOrExpContext* ctx) override {
         if (ctx->lOrExp()) {
-            ast::BinaryExp bin;
+            ast::BinaryExp bin{
+                .op = ast::BinaryOp::OR,
+                .left = std::make_unique<ast::Exp>(take<ast::Exp>(visit(ctx->lOrExp()))),
+                .right = std::make_unique<ast::Exp>(take<ast::Exp>(visit(ctx->lAndExp())))};
             bin.loc = get_loc(ctx->children[1]);
-            bin.op = ast::BinaryOp::OR;
-            bin.left = std::move(take<ast::Exp>(visit(ctx->lOrExp()))).toBoxed();
-            bin.right = std::move(take<ast::Exp>(visit(ctx->lAndExp()))).toBoxed();
-            ast::Exp exp(std::move(bin));
-            exp.loc = bin.loc;
-            return wrap(std::move(exp));
+            return wrap(ast::Exp(std::move(bin)));
         }
         return visit(ctx->lAndExp());
     }
 
     std::any visitLAndExp(CACTParser::LAndExpContext* ctx) override {
         if (ctx->lAndExp()) {
-            ast::BinaryExp bin;
+            ast::BinaryExp bin{
+                .op = ast::BinaryOp::AND,
+                .left = std::make_unique<ast::Exp>(take<ast::Exp>(visit(ctx->lAndExp()))),
+                .right = std::make_unique<ast::Exp>(take<ast::Exp>(visit(ctx->eqExp())))};
             bin.loc = get_loc(ctx->children[1]);
-            bin.op = ast::BinaryOp::AND;
-            bin.left = std::move(take<ast::Exp>(visit(ctx->lAndExp()))).toBoxed();
-            bin.right = std::move(take<ast::Exp>(visit(ctx->eqExp()))).toBoxed();
-            ast::Exp exp(std::move(bin));
-            exp.loc = bin.loc;
-            return wrap(std::move(exp));
+            return wrap(ast::Exp(std::move(bin)));
         }
         return visit(ctx->eqExp());
     }
 
     std::any visitEqExp(CACTParser::EqExpContext* ctx) override {
         if (ctx->eqExp()) {
-            ast::BinaryExp bin;
+            ast::BinaryExp bin{
+                .op = (ctx->getText().find("==") != std::string::npos) ? ast::BinaryOp::EQ
+                                                                       : ast::BinaryOp::NEQ,
+                .left = std::make_unique<ast::Exp>(take<ast::Exp>(visit(ctx->eqExp()))),
+                .right = std::make_unique<ast::Exp>(take<ast::Exp>(visit(ctx->relExp())))};
             bin.loc = get_loc(ctx->children[1]);
-            bin.op = (ctx->getText().find("==") != std::string::npos) ? ast::BinaryOp::EQ
-                                                                      : ast::BinaryOp::NEQ;
-            bin.left = std::move(take<ast::Exp>(visit(ctx->eqExp()))).toBoxed();
-            bin.right = std::move(take<ast::Exp>(visit(ctx->relExp()))).toBoxed();
-            ast::Exp exp(std::move(bin));
-            exp.loc = bin.loc;
-            return wrap(std::move(exp));
+            return wrap(ast::Exp(std::move(bin)));
         }
         return visit(ctx->relExp());
     }
 
     std::any visitRelExp(CACTParser::RelExpContext* ctx) override {
         if (ctx->relExp()) {
-            ast::BinaryExp bin;
-            bin.loc = get_loc(ctx->children[1]);
+            ast::BinaryOp op;
             auto text = ctx->children[1]->getText();
             if (text == "<")
-                bin.op = ast::BinaryOp::LT;
+                op = ast::BinaryOp::LT;
             else if (text == ">")
-                bin.op = ast::BinaryOp::GT;
+                op = ast::BinaryOp::GT;
             else if (text == "<=")
-                bin.op = ast::BinaryOp::LEQ;
+                op = ast::BinaryOp::LEQ;
             else
-                bin.op = ast::BinaryOp::GEQ;
-            bin.left = std::move(take<ast::Exp>(visit(ctx->relExp()))).toBoxed();
-            bin.right = std::move(take<ast::Exp>(visit(ctx->addExp()))).toBoxed();
-            ast::Exp exp(std::move(bin));
-            exp.loc = bin.loc;
-            return wrap(std::move(exp));
+                op = ast::BinaryOp::GEQ;
+
+            ast::BinaryExp bin{
+                .op = op,
+                .left = std::make_unique<ast::Exp>(take<ast::Exp>(visit(ctx->relExp()))),
+                .right = std::make_unique<ast::Exp>(take<ast::Exp>(visit(ctx->addExp())))};
+            bin.loc = get_loc(ctx->children[1]);
+            return wrap(ast::Exp(std::move(bin)));
         }
         return visit(ctx->addExp());
     }
 
     std::any visitAddExp(CACTParser::AddExpContext* ctx) override {
         if (ctx->addExp()) {
-            ast::BinaryExp bin;
+            ast::BinaryExp bin{
+                .op =
+                    (ctx->children[1]->getText() == "+") ? ast::BinaryOp::ADD : ast::BinaryOp::SUB,
+                .left = std::make_unique<ast::Exp>(take<ast::Exp>(visit(ctx->addExp()))),
+                .right = std::make_unique<ast::Exp>(take<ast::Exp>(visit(ctx->mulExp())))};
             bin.loc = get_loc(ctx->children[1]);
-            bin.op = (ctx->children[1]->getText() == "+") ? ast::BinaryOp::ADD : ast::BinaryOp::SUB;
-            bin.left = std::move(take<ast::Exp>(visit(ctx->addExp()))).toBoxed();
-            bin.right = std::move(take<ast::Exp>(visit(ctx->mulExp()))).toBoxed();
-            ast::Exp exp(std::move(bin));
-            exp.loc = bin.loc;
-            return wrap(std::move(exp));
+            return wrap(ast::Exp(std::move(bin)));
         }
         return visit(ctx->mulExp());
     }
 
     std::any visitMulExp(CACTParser::MulExpContext* ctx) override {
         if (ctx->mulExp()) {
-            ast::BinaryExp bin;
-            bin.loc = get_loc(ctx->children[1]);
+            ast::BinaryOp op;
             auto text = ctx->children[1]->getText();
             if (text == "*")
-                bin.op = ast::BinaryOp::MUL;
+                op = ast::BinaryOp::MUL;
             else if (text == "/")
-                bin.op = ast::BinaryOp::DIV;
+                op = ast::BinaryOp::DIV;
             else
-                bin.op = ast::BinaryOp::MOD;
-            bin.left = std::move(take<ast::Exp>(visit(ctx->mulExp()))).toBoxed();
-            bin.right = std::move(take<ast::Exp>(visit(ctx->unaryExp()))).toBoxed();
-            ast::Exp exp(std::move(bin));
-            exp.loc = bin.loc;
-            return wrap(std::move(exp));
+                op = ast::BinaryOp::MOD;
+
+            ast::BinaryExp bin{
+                .op = op,
+                .left = std::make_unique<ast::Exp>(take<ast::Exp>(visit(ctx->mulExp()))),
+                .right = std::make_unique<ast::Exp>(take<ast::Exp>(visit(ctx->unaryExp())))};
+            bin.loc = get_loc(ctx->children[1]);
+            return wrap(ast::Exp(std::move(bin)));
         }
         return visit(ctx->unaryExp());
     }
@@ -396,23 +381,21 @@ public:
             if (ctx->funcArgs()) {
                 call.args = take<ast::FuncArgs>(visit(ctx->funcArgs()));
             }
-            ast::Exp exp(std::move(call));
-            exp.loc = get_loc(ctx);
-            return wrap(std::move(exp));
+            return wrap(ast::Exp(std::move(call)));
         }
-        ast::UnaryExp unary;
-        unary.loc = get_loc(ctx->children[0]);
+        ast::UnaryOp op;
         auto text = ctx->children[0]->getText();
         if (text == "+")
-            unary.op = ast::UnaryOp::PLUS;
+            op = ast::UnaryOp::PLUS;
         else if (text == "-")
-            unary.op = ast::UnaryOp::MINUS;
+            op = ast::UnaryOp::MINUS;
         else
-            unary.op = ast::UnaryOp::NOT;
-        unary.exp = std::move(take<ast::Exp>(visit(ctx->unaryExp()))).toBoxed();
-        ast::Exp exp(std::move(unary));
-        exp.loc = unary.loc;
-        return wrap(std::move(exp));
+            op = ast::UnaryOp::NOT;
+
+        ast::UnaryExp unary{
+            .op = op, .exp = std::make_unique<ast::Exp>(take<ast::Exp>(visit(ctx->unaryExp())))};
+        unary.loc = get_loc(ctx->children[0]);
+        return wrap(ast::Exp(std::move(unary)));
     }
 
     std::any visitPrimaryExp(CACTParser::PrimaryExpContext* ctx) override {
@@ -420,23 +403,17 @@ public:
         if (ctx->lVal()) {
             ast::PrimaryExp primary(take<ast::LValExp>(visit(ctx->lVal())));
             primary.loc = get_loc(ctx);
-            ast::Exp exp(std::move(primary));
-            exp.loc = get_loc(ctx);
-            return wrap(std::move(exp));
+            return wrap(ast::Exp(std::move(primary)));
         }
         if (ctx->number()) {
             ast::PrimaryExp primary(take<ast::ConstExp>(visit(ctx->number())));
             primary.loc = get_loc(ctx);
-            ast::Exp exp(std::move(primary));
-            exp.loc = get_loc(ctx);
-            return wrap(std::move(exp));
+            return wrap(ast::Exp(std::move(primary)));
         }
         if (ctx->boolNumber()) {
             ast::PrimaryExp primary(take<ast::ConstExp>(visit(ctx->boolNumber())));
             primary.loc = get_loc(ctx);
-            ast::Exp exp(std::move(primary));
-            exp.loc = get_loc(ctx);
-            return wrap(std::move(exp));
+            return wrap(ast::Exp(std::move(primary)));
         }
         return {};
     }

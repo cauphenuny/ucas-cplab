@@ -2,6 +2,7 @@
 
 #include "frontend/ast/type.h"
 
+#include <cstddef>
 #include <memory>
 #include <optional>
 #include <string>
@@ -27,6 +28,8 @@ struct PrimaryExp;
 struct UnaryExp;
 struct CallExp;
 struct BinaryExp;
+using Exp = std::variant<PrimaryExp, UnaryExp, CallExp, BinaryExp>;
+struct ExpBox; // for recursive exp
 
 struct IfStmt;
 struct WhileStmt;
@@ -34,13 +37,10 @@ struct ReturnStmt;
 struct BreakStmt;
 struct ContinueStmt;
 struct AssignStmt;
-
-struct Exp;
-struct Stmt;
-using ExpBox = std::unique_ptr<Exp>;    // for recursive exp types
-using StmtBox = std::unique_ptr<Stmt>;  // for recursive stmt types
-using BlockItem = std::variant<Decl, StmtBox>;
-using Block = std::vector<BlockItem>;
+struct BlockStmt;
+using Stmt =
+    std::variant<IfStmt, WhileStmt, ReturnStmt, BreakStmt, ContinueStmt, AssignStmt, BlockStmt>;
+struct StmtBox; // for recursive stmt
 
 struct FuncDef;
 struct FuncParam;
@@ -85,10 +85,22 @@ struct FuncParam : public mixin::Locatable {
     TO_STRING(FuncParam, type, name, dims);
 };
 
+struct ExpBox : public mixin::Locatable {
+private:
+    std::unique_ptr<Exp> exp;
+
+public:
+    ExpBox(std::unique_ptr<Exp> exp);
+    [[nodiscard]] auto toString() const -> std::string;
+    auto toBoxed() && {
+        return std::move(exp);
+    }
+};
+
 struct LValExp : public mixin::Locatable {
     std::string name;
-    std::vector<Exp> indices;
-    TO_STRING(LeftVal, name, indices);
+    std::vector<ExpBox> indices;
+    TO_STRING(LVal, name, indices);
 };
 
 struct PrimaryExp : public mixin::Locatable, mixin::ToBoxed<PrimaryExp, Exp> {
@@ -107,32 +119,41 @@ struct UnaryExp : public mixin::Locatable, mixin::ToBoxed<UnaryExp, Exp> {
     TO_STRING(UnaryExp, op, exp);
 };
 
-struct CallExp : public mixin::Locatable {
-    std::string name;
-    FuncArgs args;
-    TO_STRING(CallExp, name, args);
-};
-
 struct BinaryExp : public mixin::Locatable, mixin::ToBoxed<BinaryExp, Exp> {
     BinaryOp op;
     ExpBox left, right;
     TO_STRING(BinaryExp, op, left, right);
 };
 
-struct Exp : public mixin::Locatable, mixin::ToBoxed<Exp> {
+struct CallExp : public mixin::Locatable, mixin::ToBoxed<CallExp, Exp> {
+    std::string name;
+    FuncArgs args;
+    TO_STRING(CallExp, name, args);
+};
+
+ExpBox::ExpBox(std::unique_ptr<Exp> exp) : exp(std::move(exp)) {
+    this->loc = match(*this->exp, [](const auto& subexp) { return subexp.loc; });
+}
+auto ExpBox::toString() const -> std::string {
+    return fmt::format("ExpBox: {}", *exp);
+}
+
+struct StmtBox : public mixin::Locatable {
 private:
-    using T = std::variant<PrimaryExp, UnaryExp, CallExp, BinaryExp>;
-    T exp;
+    std::unique_ptr<Stmt> stmt;
 
 public:
-    Exp(T exp) : exp(std::move(exp)) {}
-    DELEGATED_TO_STRING(Exp, exp);
+    StmtBox(std::unique_ptr<Stmt> stmt);
+    auto toBoxed() && {
+        return std::move(stmt);
+    }
+    [[nodiscard]] auto toString() const -> std::string;
 };
 
 struct IfStmt : public mixin::Locatable, mixin::ToBoxed<IfStmt, Stmt> {
     Exp cond;
     StmtBox stmt;
-    StmtBox else_stmt;
+    std::optional<StmtBox> else_stmt;
     TO_STRING(IfStmt, cond, stmt, else_stmt);
 };
 
@@ -161,22 +182,24 @@ struct AssignStmt : public mixin::Locatable, mixin::ToBoxed<AssignStmt, Stmt> {
     TO_STRING(AssignStmt, var, exp);
 };
 
-struct Stmt : public mixin::Locatable, mixin::ToBoxed<Stmt> {
-private:
-    using T =
-        std::variant<IfStmt, WhileStmt, ReturnStmt, BreakStmt, ContinueStmt, AssignStmt, Block>;
-    T stmt;
-
-public:
-    Stmt(T stmt) : stmt(std::move(stmt)) {}
-    DELEGATED_TO_STRING(Stmt, stmt);
+struct BlockStmt : public mixin::Locatable, mixin::ToBoxed<BlockStmt, Stmt> {
+    using Item = std::variant<Decl, Stmt>;
+    std::vector<Item> items;
+    DELEGATED_TO_STRING(BlockStmt, items);
 };
+
+StmtBox::StmtBox(std::unique_ptr<Stmt> stmt) : stmt(std::move(stmt)) {
+    this->loc = match(*this->stmt, [](const auto& substmt) { return substmt.loc; });
+}
+auto StmtBox::toString() const -> std::string {
+    return fmt::format("StmtBox: {}", *stmt);
+}
 
 struct FuncDef : public mixin::Locatable {
     Type type;
     std::string name;
     FuncParams params;
-    Block block;
+    BlockStmt block;
     TO_STRING(FuncDef, type, name, params, block);
 };
 
