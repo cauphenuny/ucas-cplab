@@ -24,18 +24,6 @@ struct IndentState {
     void pop() {
         level--;
     }
-    struct IndentStateGuard {
-        IndentState* host;
-        IndentStateGuard(IndentState* h) : host(h) {
-            host->push();
-        }
-        ~IndentStateGuard() {
-            host->pop();
-        }
-    };
-    auto guard() {
-        return IndentStateGuard(this);
-    }
 };
 
 inline thread_local IndentState state;
@@ -53,15 +41,14 @@ struct has_toString<T, std::void_t<decltype(std::declval<T>().toString())>> : st
 
 template <typename T> auto toString(const std::vector<T>& vec) -> std::string {
     if (vec.empty()) return "[]";
-
     auto& state = fmt_indent::state;
-    auto indent = state.indent();
-    auto guard = state.guard();
+    state.push();
     std::string result = "[\n";
     for (size_t i = 0; i < vec.size(); i++) {
-        result += fmt::format("{}  [{}]: {}\n", indent, i, vec[i]);
+        result += fmt::format("{}[{}]: {},\n", state.indent(), i, vec[i]);
     }
-    result += indent + "]";
+    state.pop();
+    result += state.indent() + "]";
     return result;
 }
 
@@ -144,7 +131,7 @@ struct formatter<T, std::enable_if_t<has_toString<T>::value || has_free_toString
 template <typename T, typename... Args>
 std::string serializeFields(const char* names, const T& var, const Args&... rest) {
     auto& state = fmt_indent::state;
-    std::string indent(state.level * 2, ' ');
+    auto indent = state.indent();
 
     while (*names == ' ') names++;
 
@@ -181,8 +168,9 @@ std::string serializeFields(const char* names, const T& var, const Args&... rest
     [[nodiscard]] std::string toString() const {                       \
         auto& state = fmt_indent::state;                               \
         auto indent = state.indent();                                  \
-        auto guard = state.guard();                                    \
+        state.push();                                                  \
         std::string body = serializeFields(#__VA_ARGS__, __VA_ARGS__); \
+        state.pop();                                                   \
         return #ClassName " {\n" + body + indent + "}";                \
     }
 
@@ -191,7 +179,7 @@ std::string serializeFields(const char* names, const T& var, const Args&... rest
         return #ClassName " {}";                 \
     }
 
-#define DELEGATED_TO_STRING(ClassName, field)          \
+#define DELEGATED_TO_STRING(ClassName, field)         \
     [[nodiscard]] std::string toString() const {      \
         return fmt::format(#ClassName ": {}", field); \
     }

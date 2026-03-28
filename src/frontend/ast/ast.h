@@ -179,7 +179,7 @@ struct FuncDef {
 struct CompUnit {
     using Item = std::variant<Decl, FuncDef>;
     std::vector<Item> items;
-    TO_STRING(CompUnit, items);
+    DELEGATED_TO_STRING(CompUnit, items);
 };
 
 }  // namespace ast

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "antlr4-runtime.h"
+#include "BaseErrorListener.h"
+#include "Lexer.h"
 #include "utils/error.h"
 
 class CACTErrorListener : public antlr4::BaseErrorListener {
