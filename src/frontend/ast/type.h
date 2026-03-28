@@ -1,7 +1,11 @@
 #pragma once
-#include <utils/serialize.hpp>
-#include <string>
+#define FMT_HEADER_ONLY
+#include "fmt/format.h"
+
 #include <cstdint>
+#include <stdexcept>
+#include <string>
+#include <utils/serialize.hpp>
 
 namespace ast {
 
@@ -69,4 +73,4 @@ std::string toString(BinaryOp op) {
     }
 }
 
-}
+}  // namespace ast

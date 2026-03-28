@@ -7,10 +7,13 @@
 #include "utils/serialize.hpp"
 #include "utils/traits.hpp"
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <type_traits>
+#include <utility>
+#include <variant>
 #include <vector>
 
 namespace adt {

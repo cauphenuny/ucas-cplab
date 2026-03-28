@@ -1,9 +1,13 @@
 #pragma once
 
 #include "frontend/ast/type.h"
+
+#include <memory>
+#include <optional>
 #include <string>
 #include <utils/serialize.hpp>
 #include <utils/traits.hpp>
+#include <variant>
 #include <vector>
 
 namespace ast {

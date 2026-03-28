@@ -4,6 +4,9 @@
 #include "Lexer.h"
 #include "utils/error.h"
 
+#include <cstddef>
+#include <string>
+
 class CACTErrorListener : public antlr4::BaseErrorListener {
 public:
     void syntaxError(antlr4::Recognizer* recognizer, antlr4::Token* offendingSymbol, size_t line,

@@ -1,5 +1,6 @@
 #pragma once
 #include <stdexcept>
+#include <string>
 
 #define FMT_HEADER_ONLY
 #include "fmt/format.h"

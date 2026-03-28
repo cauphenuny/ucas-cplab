@@ -4,6 +4,9 @@
 #include "frontend/ast/ast.h"
 #include "utils/error.h"
 
+#include <any>
+#include <memory>
+#include <string>
 #include <utility>
 
 class ASTVisitor : public CACTBaseVisitor {
@@ -34,14 +37,13 @@ private:
         return {};
     }
 
-
 public:
-
     template <typename T> static T take(std::any a) {
         if (a.type() == typeid(node_ptr<T>)) {
             return std::move(*std::any_cast<node_ptr<T>>(a));
         }
-        throw CompilerError(fmt::format("take failed for type {}", typeid(T).name()), "ast-gen error");
+        throw CompilerError(fmt::format("take failed for type {}", typeid(T).name()),
+                            "ast-gen error");
     }
 
     std::any visitCompUnit(CACTParser::CompUnitContext* ctx) override {
@@ -237,10 +239,10 @@ public:
             return wrap(std::move(boxed));
         }
         if (ctx->IF()) {
-            ast::IfStmt ifStmt{
-                .cond = take<ast::Exp>(visit(ctx->cond())),
-                .stmt = take<ast::StmtBox>(visit(ctx->stmt(0))),
-                .else_stmt = (ctx->ELSE()) ? take<ast::StmtBox>(visit(ctx->stmt(1))) : nullptr};
+            ast::IfStmt ifStmt{.cond = take<ast::Exp>(visit(ctx->cond())),
+                               .stmt = take<ast::StmtBox>(visit(ctx->stmt(0))),
+                               .else_stmt = (ctx->ELSE()) ? take<ast::StmtBox>(visit(ctx->stmt(1)))
+                                                          : nullptr};
             ifStmt.loc = get_loc(ctx);
             auto boxed = std::move(ifStmt).toBoxed();
             boxed->loc = get_loc(ctx);
