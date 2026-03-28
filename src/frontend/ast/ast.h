@@ -66,14 +66,14 @@ struct VarDecl : public mixin::Locatable {
 
 struct ConstDef : public mixin::Locatable {
     std::string name;
-    std::vector<int> dims;
+    std::vector<std::optional<size_t>> dims;
     ConstInitVal val;
     TO_STRING(ConstDef, name, dims, val);
 };
 
 struct VarDef : public mixin::Locatable {
     std::string name;
-    std::vector<int> dims;
+    std::vector<std::optional<size_t>> dims;
     std::optional<ConstInitVal> val;
     TO_STRING(VarDef, name, dims, val);
 };
@@ -81,15 +81,13 @@ struct VarDef : public mixin::Locatable {
 struct FuncParam : public mixin::Locatable {
     Type type;
     std::string name;
-    std::vector<int> dims;
+    std::vector<std::optional<size_t>> dims;
     TO_STRING(FuncParam, type, name, dims);
 };
 
 struct ExpBox : public mixin::Locatable {
-private:
     std::unique_ptr<Exp> exp;
 
-public:
     ExpBox(std::unique_ptr<Exp> exp);
     [[nodiscard]] auto toString() const -> std::string;
     auto toBoxed() && {
@@ -99,16 +97,16 @@ public:
 
 struct LValExp : public mixin::Locatable {
     std::string name;
-    std::vector<ExpBox> indices;
+    std::vector<std::optional<ExpBox>> indices;
     TO_STRING(LVal, name, indices);
 };
 
 struct PrimaryExp : public mixin::Locatable, mixin::ToBoxed<PrimaryExp, Exp> {
 private:
     using T = std::variant<ExpBox, LValExp, ConstExp>;
-    T exp;
 
 public:
+    T exp;
     PrimaryExp(T exp) : exp(std::move(exp)) {}
     DELEGATED_TO_STRING(PrimaryExp, exp);
 };
@@ -126,9 +124,9 @@ struct BinaryExp : public mixin::Locatable, mixin::ToBoxed<BinaryExp, Exp> {
 };
 
 struct CallExp : public mixin::Locatable, mixin::ToBoxed<CallExp, Exp> {
-    std::string name;
+    LValExp func;
     FuncArgs args;
-    TO_STRING(CallExp, name, args);
+    TO_STRING(CallExp, func, args);
 };
 
 ExpBox::ExpBox(std::unique_ptr<Exp> exp) : exp(std::move(exp)) {
@@ -139,10 +137,8 @@ auto ExpBox::toString() const -> std::string {
 }
 
 struct StmtBox : public mixin::Locatable {
-private:
     std::unique_ptr<Stmt> stmt;
 
-public:
     StmtBox(std::unique_ptr<Stmt> stmt);
     auto toBoxed() && {
         return std::move(stmt);

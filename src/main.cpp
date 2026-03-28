@@ -3,6 +3,7 @@
 #include "fmt/format.h"
 #include "frontend/syntax/error.h"
 #include "frontend/syntax/visit.h"
+#include "backend/ir/semantic.h"
 #include "utils/error.h"
 #include "utils/tui.h"
 
@@ -13,9 +14,9 @@ using namespace antlr4;
 
 enum : uint8_t {
     SUCCESS = 0,
-    INVALID_ARGUMENT,
-    SYNTAX_ERROR,
-    TYPE_ERROR,
+    INVALID_ARGUMENT = 1,
+    SYNTAX_ERROR = 2,
+    SEMANTIC_ERROR = 0, // for PR1, we do not need report semantic errors.
     RUNTIME_ERROR = 255,
 };
 
@@ -48,13 +49,18 @@ int main(int argc, const char* argv[]) {
             ASTVisitor visitor;
             try {
                 auto res = visitor.visit(parser.compUnit());
-                auto compUnit = ASTVisitor::take<ast::CompUnit>(res);
-                fmt::println("{}", compUnit);
+                auto comp_unit = ASTVisitor::take<ast::CompUnit>(res);
+                fmt::println("AST: \n{}\n\n", comp_unit);
+                auto semantic_ast = ir::SemanticAST(std::move(comp_unit));
+                fmt::println("Semantic analysis:\n");
+                semantic_ast.show();
                 fmt::println("{}: " BOLD GREEN "OK" NONE, argv[i]);
-
             } catch (const SyntaxError& e) {
                 fmt::println("{}: {}", argv[i], e.what());
                 ret |= SYNTAX_ERROR;
+            } catch (const SemanticError& e) {
+                fmt::println("{}: {}", argv[i], e.what());
+                ret |= SEMANTIC_ERROR;
             }
         }
 

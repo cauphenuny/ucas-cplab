@@ -23,7 +23,7 @@ int main() {
     args.emplace_back(PrimaryExp(42));
     args.emplace_back(BinaryExp{
         .op = BinaryOp::ADD, .left = PrimaryExp{2}.toBoxed(), .right = PrimaryExp{3}.toBoxed()});
-    auto call = CallExp{.name = "putint", .args = std::move(args)};
+    auto call = CallExp{.func = LValExp{.name = "putint"}, .args = std::move(args)};
     fmt::println("{}", call);
 
     // 4. If Statement: if (x > 0) return 1; else return 0;
@@ -78,7 +78,7 @@ int main() {
     // 8. Array Access and Multi-dimensional Array
     // a[1][i + 2] = 42;
     fmt::println("\n--- Array Access ---");
-    std::vector<ExpBox> indices;
+    std::vector<std::optional<ExpBox>> indices;
     indices.emplace_back(PrimaryExp{1}.toBoxed());
     indices.emplace_back(BinaryExp{.op = BinaryOp::ADD,
                                    .left = PrimaryExp{LValExp{.name = "i"}}.toBoxed(),
@@ -142,8 +142,8 @@ int main() {
         std::vector<Exp> args2;
         args2.emplace_back(std::move(n_minus_2));
 
-        auto call1 = CallExp{.name = "fib", .args = std::move(args1)};
-        auto call2 = CallExp{.name = "fib", .args = std::move(args2)};
+        auto call1 = CallExp{.func = LValExp{.name = "fib"}, .args = std::move(args1)};
+        auto call2 = CallExp{.func = LValExp{.name = "fib"}, .args = std::move(args2)};
 
         auto add_fib = BinaryExp{.op = BinaryOp::ADD,
                                  .left = std::move(call1).toBoxed(),
@@ -161,7 +161,7 @@ int main() {
         std::vector<BlockStmt::Item> main_items;
         std::vector<Exp> fib_args;
         fib_args.emplace_back(PrimaryExp{10});
-        auto fib_call = CallExp{.name = "fib", .args = std::move(fib_args)};
+        auto fib_call = CallExp{.func = LValExp{.name = "fib"}, .args = std::move(fib_args)};
         main_items.emplace_back(ReturnStmt{.exp = Exp{std::move(fib_call)}});
 
         unit_items.emplace_back(FuncDef{.type = Type::INT,

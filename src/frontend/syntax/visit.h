@@ -375,9 +375,11 @@ public:
     std::any visitUnaryExp(CACTParser::UnaryExpContext* ctx) override {
         if (ctx->primaryExp()) return visit(ctx->primaryExp());
         if (ctx->ID()) {
-            ast::CallExp call;
+            ast::CallExp call{
+                .func = ast::LValExp{.name = ctx->ID()->getText()},
+            };
             call.loc = get_loc(ctx);
-            call.name = ctx->ID()->getText();
+            call.func.loc = call.loc;
             if (ctx->funcArgs()) {
                 call.args = take<ast::FuncArgs>(visit(ctx->funcArgs()));
             }
