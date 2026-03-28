@@ -61,7 +61,7 @@ int main() {
     // int main() { int x = 1; return x; }
     fmt::println("\n--- Function Definition ---");
     std::vector<VarDef> var_defs;
-    var_defs.push_back(VarDef{.name = "x", .dims = {}, .val = ConstInitVal{ConstExp{1}}});
+    var_defs.push_back(VarDef{.name = "x", .dims = {}, .val = ConstInitVal{.val = ConstExp{1}}});
     auto var_decl = Decl{VarDecl{.type = Type::INT, .defs = std::move(var_defs)}};
 
     std::vector<BlockItem> items;
@@ -102,7 +102,7 @@ int main() {
 
     // const int N = 100;
     std::vector<ConstDef> n_defs;
-    n_defs.push_back(ConstDef{.name = "N", .dims = {}, .val = ConstInitVal{ConstExp{100}}});
+    n_defs.push_back(ConstDef{.name = "N", .dims = {}, .val = ConstInitVal{.val = ConstExp{100}}});
     unit_items.emplace_back(Decl{ConstDecl{.type = Type::INT, .defs = std::move(n_defs)}});
 
     // int a[100];
@@ -166,6 +166,19 @@ int main() {
 
     auto comp_unit = CompUnit{.items = std::move(unit_items)};
     fmt::println("{}", comp_unit);
+
+    // 10. Location Verification
+    fmt::println("\n--- Location Verification ---");
+    LValExp x_loc{.name = "x"};
+    x_loc.loc = {10, 5};
+    fmt::println("LValExp with location: {}", x_loc);
+
+    BinaryExp add_loc{
+        .op = BinaryOp::ADD,
+        .left = PrimaryExp(2).toBoxed(),
+        .right = PrimaryExp(3).toBoxed()};
+    add_loc.loc = {11, 1};
+    fmt::println("BinaryExp with location: {}", add_loc);
 
     return 0;
 }

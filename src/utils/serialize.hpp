@@ -3,6 +3,7 @@
 #define FMT_HEADER_ONLY
 #include "fmt/format.h"
 #include "utils/match.hpp"
+#include "utils/traits.hpp"
 
 #include <sstream>
 #include <string>
@@ -164,22 +165,34 @@ std::string serializeFields(const char* names, const T& var, const Args&... rest
     return result;
 }
 
+namespace detail {
+template <typename T> std::string getLocString(const T& obj) {
+    if constexpr (traits::is_locatable_v<std::decay_t<T>>) {
+        if (obj.loc) {
+            return fmt::format(" @({}, {})", obj.loc.line, obj.loc.col);
+        }
+    }
+    return "";
+}
+}  // namespace detail
+
 #define TO_STRING(ClassName, ...)                                      \
     [[nodiscard]] std::string toString() const {                       \
         auto& state = fmt_indent::state;                               \
         auto indent = state.indent();                                  \
         state.push();                                                  \
+        std::string base = detail::getLocString(*this);                \
         std::string body = serializeFields(#__VA_ARGS__, __VA_ARGS__); \
         state.pop();                                                   \
-        return #ClassName " {\n" + body + indent + "}";                \
+        return #ClassName + base + " {\n" + body + indent + "}";       \
     }
 
-#define EMPTY_TO_STRING(ClassName)               \
-    [[nodiscard]] std::string toString() const { \
-        return #ClassName " {}";                 \
+#define EMPTY_TO_STRING(ClassName)                               \
+    [[nodiscard]] std::string toString() const {                 \
+        return #ClassName + detail::getLocString(*this) + " {}"; \
     }
 
-#define DELEGATED_TO_STRING(ClassName, field)         \
-    [[nodiscard]] std::string toString() const {      \
-        return fmt::format(#ClassName ": {}", field); \
+#define DELEGATED_TO_STRING(ClassName, field)                                         \
+    [[nodiscard]] std::string toString() const {                                      \
+        return fmt::format(#ClassName + detail::getLocString(*this) + ": {}", field); \
     }

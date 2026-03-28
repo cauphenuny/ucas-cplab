@@ -43,51 +43,51 @@ struct FuncParam;
 using FuncParams = std::vector<FuncParam>;
 using FuncArgs = std::vector<Exp>;
 
-struct ConstInitVal {
+struct ConstInitVal : public mixin::Locatable {
     std::variant<ConstExp, std::vector<ConstInitVal>> val;
     DELEGATED_TO_STRING(ConstInitVal, val);
 };
 
-struct ConstDecl {
+struct ConstDecl : public mixin::Locatable {
     Type type;
     std::vector<ConstDef> defs;
     TO_STRING(ConstDecl, type, defs);
 };
 
-struct VarDecl {
+struct VarDecl : public mixin::Locatable {
     Type type;
     std::vector<VarDef> defs;
     TO_STRING(VarDecl, type, defs);
 };
 
-struct ConstDef {
+struct ConstDef : public mixin::Locatable {
     std::string name;
     std::vector<int> dims;
     ConstInitVal val;
     TO_STRING(ConstDef, name, dims, val);
 };
 
-struct VarDef {
+struct VarDef : public mixin::Locatable {
     std::string name;
     std::vector<int> dims;
     std::optional<ConstInitVal> val;
     TO_STRING(VarDef, name, dims, val);
 };
 
-struct FuncParam {
+struct FuncParam : public mixin::Locatable {
     Type type;
     std::string name;
     std::vector<int> dims;
     TO_STRING(FuncParam, type, name, dims);
 };
 
-struct LValExp {
+struct LValExp : public mixin::Locatable {
     std::string name;
     std::vector<Exp> indices;
     TO_STRING(LeftVal, name, indices);
 };
 
-struct PrimaryExp : traits::ToBoxed<PrimaryExp, Exp> {
+struct PrimaryExp : public mixin::Locatable, mixin::ToBoxed<PrimaryExp, Exp> {
 private:
     using T = std::variant<ExpBox, LValExp, ConstExp>;
     T exp;
@@ -97,25 +97,25 @@ public:
     DELEGATED_TO_STRING(PrimaryExp, exp);
 };
 
-struct UnaryExp : traits::ToBoxed<UnaryExp, Exp> {
+struct UnaryExp : public mixin::Locatable, mixin::ToBoxed<UnaryExp, Exp> {
     UnaryOp op;
     ExpBox exp;
     TO_STRING(UnaryExp, op, exp);
 };
 
-struct CallExp {
+struct CallExp : public mixin::Locatable {
     std::string name;
     FuncArgs args;
     TO_STRING(CallExp, name, args);
 };
 
-struct BinaryExp : traits::ToBoxed<BinaryExp, Exp> {
+struct BinaryExp : public mixin::Locatable, mixin::ToBoxed<BinaryExp, Exp> {
     BinaryOp op;
     ExpBox left, right;
     TO_STRING(BinaryExp, op, left, right);
 };
 
-struct Exp : traits::ToBoxed<Exp> {
+struct Exp : public mixin::Locatable, mixin::ToBoxed<Exp> {
 private:
     using T = std::variant<PrimaryExp, UnaryExp, CallExp, BinaryExp>;
     T exp;
@@ -125,39 +125,39 @@ public:
     DELEGATED_TO_STRING(Exp, exp);
 };
 
-struct IfStmt : traits::ToBoxed<IfStmt, Stmt> {
+struct IfStmt : public mixin::Locatable, mixin::ToBoxed<IfStmt, Stmt> {
     Exp cond;
     StmtBox stmt;
     StmtBox else_stmt;
     TO_STRING(IfStmt, cond, stmt, else_stmt);
 };
 
-struct WhileStmt : traits::ToBoxed<WhileStmt, Stmt> {
+struct WhileStmt : public mixin::Locatable, mixin::ToBoxed<WhileStmt, Stmt> {
     Exp cond;
     StmtBox stmt;
     TO_STRING(WhileStmt, cond, stmt);
 };
 
-struct ReturnStmt : traits::ToBoxed<ReturnStmt, Stmt> {
+struct ReturnStmt : public mixin::Locatable, mixin::ToBoxed<ReturnStmt, Stmt> {
     std::optional<Exp> exp;
     TO_STRING(ReturnStmt, exp);
 };
 
-struct BreakStmt : traits::ToBoxed<BreakStmt, Stmt> {
+struct BreakStmt : public mixin::Locatable, mixin::ToBoxed<BreakStmt, Stmt> {
     EMPTY_TO_STRING(BreakStmt);
 };
 
-struct ContinueStmt : traits::ToBoxed<ContinueStmt, Stmt> {
+struct ContinueStmt : public mixin::Locatable, mixin::ToBoxed<ContinueStmt, Stmt> {
     EMPTY_TO_STRING(ContinueStmt);
 };
 
-struct AssignStmt : traits::ToBoxed<AssignStmt, Stmt> {
+struct AssignStmt : public mixin::Locatable, mixin::ToBoxed<AssignStmt, Stmt> {
     LValExp var;
     Exp exp;
     TO_STRING(AssignStmt, var, exp);
 };
 
-struct Stmt : traits::ToBoxed<Stmt> {
+struct Stmt : public mixin::Locatable, mixin::ToBoxed<Stmt> {
 private:
     using T =
         std::variant<IfStmt, WhileStmt, ReturnStmt, BreakStmt, ContinueStmt, AssignStmt, Block>;
@@ -168,7 +168,7 @@ public:
     DELEGATED_TO_STRING(Stmt, stmt);
 };
 
-struct FuncDef {
+struct FuncDef : public mixin::Locatable {
     Type type;
     std::string name;
     FuncParams params;
@@ -176,7 +176,7 @@ struct FuncDef {
     TO_STRING(FuncDef, type, name, params, block);
 };
 
-struct CompUnit {
+struct CompUnit : public mixin::Locatable {
     using Item = std::variant<Decl, FuncDef>;
     std::vector<Item> items;
     DELEGATED_TO_STRING(CompUnit, items);
