@@ -196,3 +196,8 @@ template <typename T> std::string getLocString(const T& obj) {
     [[nodiscard]] std::string toString() const {                                      \
         return fmt::format(#ClassName + detail::getLocString(*this) + ": {}", field); \
     }
+
+#define SIMPLE_TO_STRING(expr)                   \
+    [[nodiscard]] std::string toString() const { \
+        return expr;                             \
+    }
