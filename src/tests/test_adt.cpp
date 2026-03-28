@@ -11,11 +11,11 @@ void test_subtype() {
     auto v = construct<void>();
 
     // Primitives
-    assert(isSubtype(i, i));
-    assert(isSubtype(f, f));
-    assert(isSubtype(b, b));
-    assert(!isSubtype(i, f));
-    assert(!isSubtype(i, b));
+    assert(operator<=(i, i));
+    assert(operator<=(f, f));
+    assert(operator<=(b, b));
+    assert(!operator<=(i, f));
+    assert(!operator<=(i, b));
 
     // Products
     auto t1 = construct<std::tuple<int, float>>();
@@ -23,52 +23,52 @@ void test_subtype() {
     auto t3 = construct<std::tuple<float, int>>();
     auto t4 = construct<std::tuple<int, float, bool>>();
 
-    assert(isSubtype(t1, t2));
-    assert(!isSubtype(t1, t3));
-    assert(!isSubtype(t1, t4));
+    assert(operator<=(t1, t2));
+    assert(!operator<=(t1, t3));
+    assert(!operator<=(t1, t4));
 
     // Sums (Source)
     auto s1 = construct<std::variant<int, float>>();
-    assert(isSubtype(s1, s1));
-    assert(!isSubtype(s1, i)); // {int, float} is not always int
+    assert(operator<=(s1, s1));
+    assert(!operator<=(s1, i)); // {int, float} is not always int
 
     // Sums (Target)
-    assert(isSubtype(i, s1)); // int can be converted to {int, float}
-    assert(isSubtype(f, s1)); // float can be converted to {int, float}
-    assert(!isSubtype(b, s1)); // bool cannot be converted to {int, float}
+    assert(operator<=(i, s1)); // int can be converted to {int, float}
+    assert(operator<=(f, s1)); // float can be converted to {int, float}
+    assert(!operator<=(b, s1)); // bool cannot be converted to {int, float}
 
     // Sums (Both)
     auto s2 = construct<std::variant<int, float, bool>>();
-    assert(isSubtype(s1, s2)); // {int, float} -> {int, float, bool} is ok
-    assert(!isSubtype(s2, s1)); // {int, float, bool} -> {int, float} is not ok (bool missing)
+    assert(operator<=(s1, s2)); // {int, float} -> {int, float, bool} is ok
+    assert(!operator<=(s2, s1)); // {int, float, bool} -> {int, float} is not ok (bool missing)
 
     // Pointers
     auto pi = construct<int*>();
     auto pf = construct<float*>();
     auto ppi = construct<int**>();
-    assert(isSubtype(pi, pi));
-    assert(!isSubtype(pi, pf));
-    assert(!isSubtype(pi, ppi));
+    assert(operator<=(pi, pi));
+    assert(!operator<=(pi, pf));
+    assert(!operator<=(pi, ppi));
 
     // Arrays
     auto a10 = construct<int[10]>();
     auto a5 = construct<int[5]>();
     auto af10 = construct<float[10]>();
-    assert(isSubtype(a10, a10));
-    assert(isSubtype(a10, a5)); // a[10] can be used as a[5] (if we follow C/C++ or similar rules)
-    assert(!isSubtype(a5, a10));
-    assert(!isSubtype(a10, af10));
-    assert(isSubtype(a10, pi));
-    assert(!isSubtype(pi, a10));
+    assert(operator<=(a10, a10));
+    assert(operator<=(a10, a5)); // a[10] can be used as a[5] (if we follow C/C++ or similar rules)
+    assert(!operator<=(a5, a10));
+    assert(!operator<=(a10, af10));
+    assert(operator<=(a10, pi));
+    assert(!operator<=(pi, a10));
 
     // Functions
     auto f1 = construct<int(int)>();
     auto f2 = construct<int(int)>();
     auto f3 = construct<float(int)>();
     auto f4 = construct<int(float)>();
-    assert(isSubtype(f1, f2));
-    assert(!isSubtype(f1, f3));
-    assert(!isSubtype(f1, f4));
+    assert(operator<=(f1, f2));
+    assert(!operator<=(f1, f3));
+    assert(!operator<=(f1, f4));
 
     // Contra-variant parameters
     // Sum s1 = {int, float}, s2 = {int, float, bool}
@@ -78,26 +78,26 @@ void test_subtype() {
     // The target will call it with s1. s1 is convertible to s2. So it's OK.
     auto fs2 = construct<int(std::variant<int, float, bool>)>();
     auto fs1 = construct<int(std::variant<int, float>)>();
-    assert(isSubtype(fs2, fs1)); // OK: (s2->int) is convertible to (s1->int)
-    assert(!isSubtype(fs1, fs2)); // ERR: (s1->int) is not convertible to (s2->int)
+    assert(operator<=(fs2, fs1)); // OK: (s2->int) is convertible to (s1->int)
+    assert(!operator<=(fs1, fs2)); // ERR: (s1->int) is not convertible to (s2->int)
 
     // Co-variant return
     auto frs1 = construct<std::variant<int, float>(int)>();
     auto frs2 = construct<std::variant<int, float, bool>(int)>();
-    assert(isSubtype(frs1, frs2)); // OK: (int->s1) is convertible to (int->s2)
-    assert(!isSubtype(frs2, frs1)); // ERR
+    assert(operator<=(frs1, frs2)); // OK: (int->s1) is convertible to (int->s2)
+    assert(!operator<=(frs2, frs1)); // ERR
 
     // Top and bottom
     auto top = construct<std::any>();
     auto bottom = Bottom{};
-    assert(isSubtype(top, top));
-    assert(isSubtype(bottom, bottom));
-    assert(isSubtype(bottom, top));
-    assert(!isSubtype(top, bottom));
-    assert(isSubtype(frs2, top));
-    assert(isSubtype(bottom, frs1));
+    assert(operator<=(top, top));
+    assert(operator<=(bottom, bottom));
+    assert(operator<=(bottom, top));
+    assert(!operator<=(top, bottom));
+    assert(operator<=(frs2, top));
+    assert(operator<=(bottom, frs1));
     auto sometimes_top = construct<std::variant<int, std::any>>();
-    assert(isSubtype(frs1, sometimes_top));
+    assert(operator<=(frs1, sometimes_top));
 
     fmt::println("All subtype tests passed!");
 }

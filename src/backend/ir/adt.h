@@ -20,9 +20,10 @@
 namespace adt {
 
 struct Int;
-struct Float;
 struct Bool;
-using Primitive = std::variant<Int, Float, Bool>;
+struct Float;
+struct Double;
+using Primitive = std::variant<Int, Float, Double, Bool>;
 
 struct Func;
 struct Slice;
@@ -38,8 +39,15 @@ struct TypeBox {
     using T = std::unique_ptr<Type>;
     T item;
     TypeBox(T item) : item(std::move(item)) {}
+    TypeBox();
     [[nodiscard]] auto toString() const -> std::string;
     [[nodiscard]] auto var() const -> const Type&;
+    template <typename T> [[nodiscard]] auto is() const -> bool;
+
+    static auto match(const Type& type) -> Match<const Type&>;
+    static auto match(const TypeBox& box) -> Match<const Type&>;
+    template <typename T, typename... Rest>
+    static auto match(T&& box, Rest&&... rest) -> decltype(auto);
 };
 
 struct Int : mixin::ToBoxed<Int, Type> {
@@ -48,6 +56,10 @@ struct Int : mixin::ToBoxed<Int, Type> {
 
 struct Float : mixin::ToBoxed<Float, Type> {
     SIMPLE_TO_STRING("float");
+};
+
+struct Double : mixin::ToBoxed<Double, Type> {
+    SIMPLE_TO_STRING("double");
 };
 
 struct Bool : mixin::ToBoxed<Bool, Type> {
@@ -76,21 +88,22 @@ struct Product : mixin::ToBoxed<Product, Type> {
                 return "(" + result + ")";
         }
     }
+    void append(TypeBox item) {
+        items.push_back(std::move(item));
+    }
 };
 
 struct Sum : mixin::ToBoxed<Sum, Type> {
     std::vector<TypeBox> items;
     [[nodiscard]] std::string toString() const {
-        switch (items.size()) {
-            case 0: return "()";
-            case 1: return fmt::format("({} |)", items[0]);
-            default:
-                std::string result;
-                for (size_t i = 0; i < items.size(); i++) {
-                    result += fmt::format("{}{}", items[i], i == items.size() - 1 ? "" : " | ");
-                }
-                return "(" + result + ")";
+        std::string result;
+        for (size_t i = 0; i < items.size(); i++) {
+            result += fmt::format("{}{}", items[i], i == items.size() - 1 ? "" : " | ");
         }
+        return "(" + result + ")";
+    }
+    void append(TypeBox item) {
+        items.push_back(std::move(item));
     }
 };
 
@@ -106,8 +119,11 @@ struct Slice : mixin::ToBoxed<Slice, Type> {
     std::optional<size_t> size;
     Slice(TypeBox elem, std::optional<size_t> size) : elem(std::move(elem)), size(size) {}
     Slice(TypeBox elem) : elem(std::move(elem)), size(std::nullopt) {}
-    SIMPLE_TO_STRING(size.has_value() ? fmt::format("[{}; {}]", elem, size.value()) : fmt::format("[{}; *]", elem))
-    [[nodiscard]] bool sized() const { return size.has_value(); }
+    SIMPLE_TO_STRING(size.has_value() ? fmt::format("[{}; {}]", elem, size.value())
+                                      : fmt::format("[{}; *]", elem))
+    [[nodiscard]] bool sized() const {
+        return size.has_value();
+    }
 };
 
 std::string TypeBox::toString() const {
@@ -117,6 +133,23 @@ std::string TypeBox::toString() const {
 const Type& TypeBox::var() const {
     return *item;
 }
+
+template <typename T> bool TypeBox::is() const {
+    return std::holds_alternative<T>(*item);
+}
+
+auto TypeBox::match(const Type& type) -> Match<const Type&> {
+    return Match{type};
+}
+auto TypeBox::match(const TypeBox& box) -> Match<const Type&> {
+    return match(box.var());
+}
+template <typename T, typename... Rest>
+auto TypeBox::match(T&& box, Rest&&... rest) -> decltype(auto) {
+    return match(std::forward<Rest>(rest)...).with(match(std::forward<T>(box)));
+}
+
+TypeBox::TypeBox() : item(Top{}.toBoxed()) {}
 
 /************************************************************/
 
@@ -173,8 +206,8 @@ template <typename... Args> struct construct_sum<std::variant<Args...>> {
  * - int -> Int
  * - float -> Float
  * - bool -> Bool
- * - T* -> Pointer
- * - T[N] -> Array
+ * - T* -> Slice(unsized)
+ * - T[N] -> Slice(sized)
  * - void -> Product (empty)
  * - R(Args...) -> Func
  * - std::tuple<Args...> -> Product
@@ -186,6 +219,8 @@ template <typename T> TypeBox construct() {
         return Int{}.toBoxed();
     } else if constexpr (std::is_same_v<U, float>) {
         return Float{}.toBoxed();
+    } else if constexpr (std::is_same_v<U, double>) {
+        return Double{}.toBoxed();
     } else if constexpr (std::is_same_v<U, bool>) {
         return Bool{}.toBoxed();
     } else if constexpr (std::is_same_v<U, std::any>) {
@@ -209,77 +244,159 @@ template <typename T> TypeBox construct() {
 
 /************************************************************/
 
-inline bool isSubtype(const Type&, const Type&);
-inline bool isSubtype(const TypeBox&, const TypeBox&);
-inline bool isSubtype(const TypeBox&, const Type&);
-inline bool isSubtype(const Type&, const TypeBox&);
+inline bool operator<=(const TypeBox&, const Type&);
+inline bool operator<=(const Type&, const TypeBox&);
+inline bool operator<=(const TypeBox&, const TypeBox&);
 
-inline bool isSubtype(const Product& from, const Product& to) {
-    if (from.items.size() != to.items.size()) return false;
+template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, Type>>>
+bool operator<=(const T& from, const TypeBox& to);
+template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, Type>>>
+bool operator<=(const TypeBox& from, const T& to);
+
+template <typename T1, typename T2> bool operator<=(const T1& from, const T2& to) {
+    return false;
+}
+
+template <typename T,
+          typename = std::enable_if_t<std::disjunction_v<
+              std::is_same<std::decay_t<T>, Int>, std::is_same<std::decay_t<T>, Float>,
+              std::is_same<std::decay_t<T>, Bool>, std::is_same<std::decay_t<T>, Double>>>>
+bool operator<=(const T& from, const T& to) {
+    return true;
+}
+
+template <typename T,
+          typename = std::enable_if_t<std::disjunction_v<
+              std::is_same<std::decay_t<T>, Int>, std::is_same<std::decay_t<T>, Float>,
+              std::is_same<std::decay_t<T>, Bool>, std::is_same<std::decay_t<T>, Double>>>>
+bool operator<=(const Primitive& from, const T& to) {
+    return Match{from}([&](const auto& from) -> bool {
+        return from <= to;
+    });
+}
+
+template <typename T,
+          typename = std::enable_if_t<std::disjunction_v<
+              std::is_same<std::decay_t<T>, Int>, std::is_same<std::decay_t<T>, Float>,
+              std::is_same<std::decay_t<T>, Bool>, std::is_same<std::decay_t<T>, Double>>>>
+bool operator<=(const T& from, const Primitive& to) {
+    return Match{to}([&](const auto& to) -> bool {
+        return from <= to;
+    });
+}
+
+bool operator<=(const Primitive& from, const Primitive& to) {
+    return Match{from, to}([](const auto& from, const auto& to) -> bool {
+        return from <= to;
+    });
+}
+
+template <typename ArrayLike, typename T,
+          std::enable_if_t<
+              std::disjunction_v<std::is_same<ArrayLike, Product>, std::is_same<ArrayLike, Sum>>>>
+inline bool operator<=(const ArrayLike& from, const T& to) {
+    if (from.items.size() == 1) {
+        return from.items[0] <= to;
+    } else {
+        return false;
+    }
+}
+
+template <typename ArrayLike, typename T,
+          std::enable_if_t<
+              std::disjunction_v<std::is_same<ArrayLike, Product>, std::is_same<ArrayLike, Sum>>>>
+inline bool operator<=(const T& from, const ArrayLike& to) {
+    if (to.items.size() == 1) {
+        return from <= to.items[0];
+    } else {
+        return false;
+    }
+}
+
+inline bool operator<=(const Product& from, const Product& to) {
+    if (from.items.size() != to.items.size()) {
+        return false;
+    }
     for (size_t i = 0; i < from.items.size(); i++) {
-        if (!isSubtype(from.items[i].var(), to.items[i].var())) return false;
+        if (!(from.items[i] <= to.items[i])) {
+            return false;
+        }
     }
     return true;
 }
 
-template <typename T>
-bool isSubtype(const T& from, const Sum& to) {  // exists T in to s.t. from -> T
+template <typename T,
+          typename = std::enable_if_t<!std::disjunction_v<std::is_same<std::decay_t<T>, TypeBox>,
+                                                          std::is_same<std::decay_t<T>, Type>>>>
+bool operator<=(const Sum& from, const T& to) {
+    for (const auto& item : from.items) {
+        if (!(item <= to)) return false;
+    }
+    return true;
+}
+
+template <typename T,
+          typename = std::enable_if_t<!std::disjunction_v<std::is_same<std::decay_t<T>, TypeBox>,
+                                                          std::is_same<std::decay_t<T>, Type>>>>
+bool operator<=(const T& from, const Sum& to) {
     for (const auto& item : to.items) {
-        if (isSubtype(from, item.var())) return true;
+        if (from <= item) return true;
     }
     return false;
 }
 
-inline bool isSubtype(const Type& from, const Type& to) {
-    return Match(from, to)(
-        [](const Primitive& from, const Primitive& to) -> bool {
-            return Match{from, to}([](const auto& from, const auto& to) -> bool {
-                return std::is_same_v<decltype(from), decltype(to)>;
-            });
-        },
-        [](const Product& from, const Product& to) -> bool { return isSubtype(from, to); },
-        [&](const Sum& from, const auto& /*to*/) -> bool {
-            for (const auto& item : from.items) {
-                if (!isSubtype(item, to)) return false;
-            }
-            return true;
-        },
-        [&](const auto& /*from*/, const Sum& to) -> bool { return isSubtype(from, to); },
-        [](const Sum& from, const Sum& to) -> bool {
-            for (const auto& f : from.items) {
-                if (!isSubtype(f, to)) return false;
-            }
-            return true;
-        },
-        [](const Func& from, const Func& to) -> bool {
-            return isSubtype(to.params, from.params) &&  // contravariance
-                   isSubtype(from.ret, to.ret);          // covariance
-        },
-        [](const Slice& from, const Slice& to) -> bool {
-            if (!isSubtype(from.elem, to.elem)) {
-                return false;
-            }
-            if (!to.sized()) return true; // NOTE: for C-like lang, array is convertible to pointer
-            if (!from.sized()) return !to.sized();
-            return from.size.value() >= to.size.value();
-        },
-        [](const auto& from, const auto& to) -> bool {
-            if constexpr (std::is_same_v<std::decay_t<decltype(from)>, Bottom> ||
-                          std::is_same_v<std::decay_t<decltype(to)>, Top>) {
-                return true;
-            }
-            return false;
-        });
+bool operator<=(const Sum& from, const Sum& to) {  // forall T in from s.t. T -> to
+    for (const auto& item : from.items) {
+        if (!(item <= to)) return false;
+    }
+    return true;
 }
 
-inline bool isSubtype(const TypeBox& from, const TypeBox& to) {
-    return isSubtype(from.var(), to.var());
+bool operator<=(const Func& from, const Func& to) {
+    return (to.params <= from.params) &&  // contravariance
+           (from.ret <= to.ret);          // covariance
 }
-inline bool isSubtype(const TypeBox& from, const Type& to) {
-    return isSubtype(from.var(), to);
+
+bool operator<=(const Slice& from, const Slice& to) {
+    if (!(from.elem <= to.elem)) {
+        return false;
+    }
+    if (!to.sized()) return true;  // NOTE: for C-like lang, array is convertible to pointer
+    if (!from.sized()) return !to.sized();
+    return from.size.value() >= to.size.value();
 }
-inline bool isSubtype(const Type& from, const TypeBox& to) {
-    return isSubtype(from, to.var());
+
+inline bool operator<=(const TypeBox& from, const TypeBox& to) {
+    return operator<=(from.var(), to.var());
+}
+
+template <typename T, typename> bool operator<=(const T& from, const TypeBox& to) {
+    return operator<=(from, to.var());
+}
+
+template <typename T, typename> bool operator<=(const TypeBox& from, const T& to) {
+    return operator<=(from.var(), to);
+}
+
+template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, Type>>>
+bool operator<=(const T& from, const Type& to) {
+    return Match(to)([&](const auto& to) -> bool {
+        using To = std::decay_t<decltype(to)>;
+        if constexpr (std::is_same_v<To, Top>) {
+            return true;
+        }
+        return from <= to;
+    });
+}
+
+template <typename T> bool operator<=(const Type& from, const T& to) {
+    return Match(from)([&](const auto& from) -> bool {
+        using From = std::decay_t<decltype(from)>;
+        if constexpr (std::is_same_v<From, Bottom>) {
+            return true;
+        }
+        return from <= to;
+    });
 }
 
 }  // namespace adt
