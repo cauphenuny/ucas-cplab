@@ -58,6 +58,8 @@ void test_subtype() {
     assert(isSubtype(a10, a5)); // a[10] can be used as a[5] (if we follow C/C++ or similar rules)
     assert(!isSubtype(a5, a10));
     assert(!isSubtype(a10, af10));
+    assert(isSubtype(a10, pi));
+    assert(!isSubtype(pi, a10));
 
     // Functions
     auto f1 = construct<int(int)>();

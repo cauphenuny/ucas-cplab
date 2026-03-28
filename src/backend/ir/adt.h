@@ -7,6 +7,7 @@
 #include "utils/serialize.hpp"
 #include "utils/traits.hpp"
 
+#include <any>
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -15,7 +16,6 @@
 #include <utility>
 #include <variant>
 #include <vector>
-#include <any>
 
 namespace adt {
 
@@ -25,15 +25,14 @@ struct Bool;
 using Primitive = std::variant<Int, Float, Bool>;
 
 struct Func;
-struct Pointer;
-struct Array;
+struct Slice;
 
 struct Sum;
 struct Product;
 struct Top;
 struct Bottom;
 
-using Type = std::variant<Primitive, Sum, Product, Func, Pointer, Array, Top, Bottom>;
+using Type = std::variant<Primitive, Sum, Product, Func, Slice, Top, Bottom>;
 
 struct TypeBox {
     using T = std::unique_ptr<Type>;
@@ -102,17 +101,13 @@ struct Func : mixin::ToBoxed<Func, Type> {
     SIMPLE_TO_STRING(fmt::format("({} -> {})", params, ret))
 };
 
-struct Array : mixin::ToBoxed<Array, Type> {
+struct Slice : mixin::ToBoxed<Slice, Type> {
     TypeBox elem;
-    size_t size;
-    Array(TypeBox elem, size_t size) : elem(std::move(elem)), size(size) {}
-    SIMPLE_TO_STRING(fmt::format("[{}; {}]", elem, size))
-};
-
-struct Pointer : mixin::ToBoxed<Pointer, Type> {
-    TypeBox pointee;
-    Pointer(TypeBox pointee) : pointee(std::move(pointee)) {}
-    SIMPLE_TO_STRING(fmt::format("{}*", pointee))
+    std::optional<size_t> size;
+    Slice(TypeBox elem, std::optional<size_t> size) : elem(std::move(elem)), size(size) {}
+    Slice(TypeBox elem) : elem(std::move(elem)), size(std::nullopt) {}
+    SIMPLE_TO_STRING(size.has_value() ? fmt::format("[{}; {}]", elem, size.value()) : fmt::format("[{}; *]", elem))
+    [[nodiscard]] bool sized() const { return size.has_value(); }
 };
 
 std::string TypeBox::toString() const {
@@ -196,9 +191,9 @@ template <typename T> TypeBox construct() {
     } else if constexpr (std::is_same_v<U, std::any>) {
         return Top{}.toBoxed();
     } else if constexpr (std::is_pointer_v<U>) {
-        return Pointer(construct<std::remove_pointer_t<U>>()).toBoxed();
+        return Slice(construct<std::remove_pointer_t<U>>()).toBoxed();
     } else if constexpr (std::is_array_v<U>) {
-        return Array(construct<std::remove_extent_t<U>>(), std::extent_v<U>).toBoxed();
+        return Slice(construct<std::remove_extent_t<U>>(), std::extent_v<U>).toBoxed();
     } else if constexpr (std::is_void_v<U>) {
         return Product{}.toBoxed();
     } else if constexpr (std::is_function_v<U>) {
@@ -260,11 +255,13 @@ inline bool isSubtype(const Type& from, const Type& to) {
             return isSubtype(to.params, from.params) &&  // contravariance
                    isSubtype(from.ret, to.ret);          // covariance
         },
-        [](const Pointer& from, const Pointer& to) -> bool {
-            return isSubtype(from.pointee, to.pointee);
-        },
-        [](const Array& from, const Array& to) -> bool {
-            return isSubtype(from.elem, to.elem) && from.size >= to.size;
+        [](const Slice& from, const Slice& to) -> bool {
+            if (!isSubtype(from.elem, to.elem)) {
+                return false;
+            }
+            if (!to.sized()) return true; // NOTE: for C-like lang, array is convertible to pointer
+            if (!from.sized()) return !to.sized();
+            return from.size.value() >= to.size.value();
         },
         [](const auto& from, const auto& to) -> bool {
             if constexpr (std::is_same_v<std::decay_t<decltype(from)>, Bottom> ||
