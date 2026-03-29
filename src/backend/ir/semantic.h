@@ -87,12 +87,15 @@ private:
         v.emplace_back(ast::FuncDef{.type = ast::Type::FLOAT, .name = "get_float"});
         v.emplace_back(ast::FuncDef{.type = ast::Type::DOUBLE, .name = "get_double"});
         v.emplace_back(ast::FuncDef{
-            .type = ast::Type::VOID, .name = "put_int", .params = {{.type = ast::Type::INT}}});
-        v.emplace_back(ast::FuncDef{
-            .type = ast::Type::VOID, .name = "put_float", .params = {{.type = ast::Type::FLOAT}}});
+            .type = ast::Type::VOID, .name = "print_int", .params = {{.type = ast::Type::INT}}});
         v.emplace_back(ast::FuncDef{.type = ast::Type::VOID,
-                                    .name = "put_double",
+                                    .name = "print_float",
+                                    .params = {{.type = ast::Type::FLOAT}}});
+        v.emplace_back(ast::FuncDef{.type = ast::Type::VOID,
+                                    .name = "print_double",
                                     .params = {{.type = ast::Type::DOUBLE}}});
+        v.emplace_back(ast::FuncDef{
+            .type = ast::Type::VOID, .name = "print_bool", .params = {{.type = ast::Type::BOOL}}});
         return v;
     }();
 
