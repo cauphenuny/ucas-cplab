@@ -38,8 +38,9 @@ struct BreakStmt;
 struct ContinueStmt;
 struct AssignStmt;
 struct BlockStmt;
+struct ExpStmt;
 using Stmt =
-    std::variant<IfStmt, WhileStmt, ReturnStmt, BreakStmt, ContinueStmt, AssignStmt, BlockStmt>;
+    std::variant<IfStmt, WhileStmt, ReturnStmt, BreakStmt, ContinueStmt, AssignStmt, BlockStmt, ExpStmt>;
 struct StmtBox; // for recursive stmt
 
 struct FuncDef;
@@ -186,6 +187,11 @@ struct BlockStmt : public mixin::Locatable, mixin::ToBoxed<BlockStmt, Stmt> {
     using Item = std::variant<Decl, Stmt>;
     std::vector<Item> items;
     DELEGATED_TO_STRING(BlockStmt, items);
+};
+
+struct ExpStmt : public mixin::Locatable, mixin::ToBoxed<ExpStmt, Stmt> {
+    Exp exp;
+    TO_STRING(ExpStmt, exp);
 };
 
 StmtBox::StmtBox(std::unique_ptr<Stmt> stmt) : stmt(std::move(stmt)) {

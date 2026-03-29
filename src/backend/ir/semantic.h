@@ -33,9 +33,8 @@ struct SemanticAST {
         }
         fmt::println("\n===== Statement types =====\n");
         for (const auto& pair : stmt_types) {
-            match(pair.first, [&](auto substmt) {
-                fmt::println("type({}) = {}", *substmt, pair.second);
-            });
+            match(pair.first,
+                  [&](auto substmt) { fmt::println("type({}) = {}", *substmt, pair.second); });
         }
     }
 
@@ -57,7 +56,8 @@ private:
     using StmtNode =
         std::variant<const ast::StmtBox*, const ast::Stmt*, const ast::IfStmt*,
                      const ast::WhileStmt*, const ast::ReturnStmt*, const ast::AssignStmt*,
-                     const ast::BreakStmt*, const ast::ContinueStmt*, const ast::BlockStmt*>;
+                     const ast::BreakStmt*, const ast::ContinueStmt*, const ast::BlockStmt*,
+                     const ast::ExpStmt*>;
 
     struct StmtType {
         Type ret_type{NEVER};
@@ -335,7 +335,7 @@ private:
                 item, [&](const ast::Decl& subitem) { analysis(&subitem); },
                 [&](const ast::Stmt& subitem) {
                     analysis(&subitem);
-                        stmt_types[block].append(stmt_types[&subitem]);
+                    stmt_types[block].append(stmt_types[&subitem]);
                 });
         }
     }
@@ -390,6 +390,10 @@ private:
         auto exp = &assign_stmt->exp;
         analysis(var);
         analysis(exp, types[var]);
+    }
+
+    void analysis(const ast::ExpStmt* exp_stmt) {
+        analysis(&exp_stmt->exp);
     }
 
     void analysis(const ast::LValID* lid, const Type& upperbound = ANY, bool isfunc = false) {

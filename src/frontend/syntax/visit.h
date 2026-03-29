@@ -289,9 +289,10 @@ public:
         if (ctx->block()) {
             return wrap(ast::Stmt(take<ast::BlockStmt>(visit(ctx->block()))));
         }
-        ast::BlockStmt block;
-        block.loc = get_loc(ctx);
-        return wrap(ast::Stmt(std::move(block)));
+        auto exp = take<ast::Exp>(visit(ctx->exp()));
+        ast::ExpStmt stmt{.exp = std::move(exp)};
+        stmt.loc = get_loc(ctx);
+        return wrap(ast::Stmt(std::move(stmt)));
     }
 
     std::any visitExp(CACTParser::ExpContext* ctx) override {
