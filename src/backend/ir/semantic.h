@@ -81,16 +81,27 @@ private:
 
     std::vector<VarTable> vars;
     std::vector<FuncTable> funcs;
-    void push() {
+    void pushScope() {
         vars.emplace_back();
         funcs.emplace_back();
     }
-    void pop() {
+    void popScope() {
         vars.pop_back();
         funcs.pop_back();
     }
 
-    adt::TypeBox convert(ast::Type type, bool immutable = false) {
+    template <typename T>
+    auto lookup(const std::string& name, const T& tables)
+        -> std::optional<typename T::value_type::mapped_type> {
+        for (auto it = tables.rbegin(); it != tables.rend(); it++) {
+            auto found = it->find(name);
+            if (found != it->end()) return found->second;
+        }
+        return std::nullopt;
+    }
+
+
+    adt::TypeBox calcType(ast::Type type, bool immutable = false) {
         switch (type) {
             case ast::Type::INT: return adt::Int{.immutable = immutable}.toBoxed();
             case ast::Type::FLOAT: return adt::Float{.immutable = immutable}.toBoxed();
@@ -100,31 +111,42 @@ private:
         }
     }
 
-    adt::TypeBox convert(const ast::FuncParam* param) {
-        auto param_type = convert(param->type);
+    adt::TypeBox calcType(const ast::FuncParam* param) {
+        auto param_type = calcType(param->type);
         if (param->dims.size()) {
-            for (size_t i = param->dims.size(); i-- > 0;) {
-                param_type = adt::Slice(std::move(param_type), param->dims[i]).toBoxed();
+            for (size_t i = param->dims.size(); i > 1; i--) {
+                param_type = adt::Slice(std::move(param_type), param->dims[i - 1]).toBoxed();
             }
+            param_type = adt::Slice(std::move(param_type))
+                             .toBoxed();  // NOTE: degrade sized array to unsized array for function
+                                          // parameters
         }
         return param_type;
     }
 
-    adt::Product convert(const ast::FuncParams* params) {
+    adt::Product calcType(const ast::FuncArgs* args) {
+        auto args_type = adt::Product{};
+        for (const auto& arg : *args) {
+            args_type.append(type[&arg]);
+        }
+        return args_type;
+    }
+
+    adt::Product calcType(const ast::FuncParams* params) {
         auto type = adt::Product{};
         for (auto& param : *params) {
-            type.append(convert(&param));
+            type.append(calcType(&param));
         }
         return type;
     }
 
-    adt::Func convert(const ast::FuncDef* func_def) {
-        auto param_types = convert(&func_def->params);
-        auto ret_type = convert(func_def->type);
+    adt::Func calcType(const ast::FuncDef* func_def) {
+        auto param_types = calcType(&func_def->params);
+        auto ret_type = calcType(func_def->type);
         return {std::move(param_types), std::move(ret_type)};
     }
 
-    template <typename T> void check(T node, Type upperbound) {
+    template <typename T> void checkType(T node, Type upperbound) {
         if (!(type[node] <= upperbound)) {
             throw SemanticError(node->loc,
                                 fmt::format("type error (at {}): `{}` is not subtype of `{}`",
@@ -159,11 +181,11 @@ private:
     }
 
     void analysis(const ast::CompUnit* comp_unit) {
-        vars.emplace_back(), funcs.emplace_back();  // builtin
+        pushScope();  // builtin
         for (auto& func : builtin_funcs) {
             analysis(&func, true);
         }
-        vars.emplace_back(), funcs.emplace_back();  // global
+        pushScope();  // global
 
         for (const auto& item : comp_unit->items) {
             match(item, [&](const auto& subitem) { analysis(&subitem); });
@@ -173,19 +195,19 @@ private:
             throw SemanticError(comp_unit->loc, "function `main` is not defined");
         }
         auto main = funcs.back()["main"];
-        check(main, adt::construct<int()>());
+        checkType(main, adt::construct<int()>());
     }
 
     void analysis(const ast::Decl* decl) {
         bool is_const = std::holds_alternative<ast::ConstDecl>(*decl);
         match(*decl, [&](const auto& decl) {
             type[&decl] = VOID;
-            auto elem_type = convert(decl.type, is_const);
+            auto elem_type = calcType(decl.type, is_const);
             for (const auto& def : decl.defs) {
                 registerSymbol(&def);
                 if (def.dims.size()) {
                     // array type
-                    auto elem_type = convert(decl.type, is_const);
+                    auto elem_type = calcType(decl.type, is_const);
                     for (size_t i = def.dims.size(); i > 0; i--) {
                         elem_type = adt::Slice(std::move(elem_type), def.dims[i - 1]).toBoxed();
                     }
@@ -246,21 +268,12 @@ private:
     }
 
     void analysis(const ast::FuncParam* param) {
-        auto param_type = convert(param->type);
-        if (param->dims.size()) {
-            for (size_t i = param->dims.size(); i > 1; i--) {
-                param_type = adt::Slice(std::move(param_type), param->dims[i - 1]).toBoxed();
-            }
-            param_type = adt::Slice(std::move(param_type))
-                             .toBoxed();  // NOTE: degrade sized array to unsized array for function
-                                          // parameters
-        }
-        type[param] = std::move(param_type);
+        type[param] = calcType(param);
         registerSymbol(param);
     }
 
     void analysis(const ast::FuncParams* params) {
-        type[params] = convert(params).toBoxed();
+        type[params] = calcType(params).toBoxed();
         for (const auto& param : *params) {
             analysis(&param);
         }
@@ -270,22 +283,18 @@ private:
         for (const auto& arg : *args) {
             analysis(&arg);
         }
-        auto args_type = adt::Product{};
-        for (const auto& arg : *args) {
-            args_type.append(type[&arg]);
-        }
-        type[args] = std::move(args_type).toBoxed();
+        type[args] = calcType(args).toBoxed();
     }
 
     void analysis(const ast::FuncDef* func_def, bool is_builtin = false) {
-        type[func_def] = convert(func_def).toBoxed();
+        type[func_def] = calcType(func_def).toBoxed();
         registerSymbol(func_def);
-        push();
+        pushScope();
         analysis(&func_def->params);
         analysis(&func_def->block);
-        pop();
+        popScope();
         auto block_type = type[&func_def->block];
-        auto ret_type = convert(func_def).ret;
+        auto ret_type = calcType(func_def).ret;
         if (!is_builtin && !(block_type <= ret_type)) {
             throw SemanticError(
                 func_def->loc,
@@ -320,7 +329,7 @@ private:
         match(
             *stmt,
             [&](const ast::BlockStmt& block) {
-                push(), analysis(&block), pop();
+                pushScope(), analysis(&block), popScope();
                 type[stmt] = type[&block];
             },
             [&](const auto& substmt) {
@@ -361,16 +370,6 @@ private:
         analysis(exp, type[var]);
     }
 
-    template <typename T>
-    auto lookup(const std::string& name, const T& tables)
-        -> std::optional<typename T::value_type::mapped_type> {
-        for (auto it = tables.rbegin(); it != tables.rend(); it++) {
-            auto found = it->find(name);
-            if (found != it->end()) return found->second;
-        }
-        return std::nullopt;
-    }
-
     void analysis(const ast::LValID* lid, const Type& upperbound = ANY, bool isfunc = false) {
         if (!isfunc) {
             auto symdef = lookup(lid->name, vars);
@@ -385,7 +384,7 @@ private:
             }
             type[lid] = type[*funcdef];
         }
-        check(lid, upperbound);
+        checkType(lid, upperbound);
     }
 
     void analysis(const ast::LValExp* lval, const Type& upperbound = ANY, bool isfunc = false) {
@@ -425,7 +424,7 @@ private:
                 analysis(&subexp, upperbound);
                 type[primary] = type[&subexp];
             });
-        check(primary, upperbound);
+        checkType(primary, upperbound);
     }
 
     void analysis(const ast::CallExp* call_exp, const Type& upperbound = ANY) {
@@ -434,7 +433,7 @@ private:
         analysis(args);
         analysis(func, adt::Func{type[args].as<adt::Product>(), upperbound}.toBoxed(), true);
         type[call_exp] = type[func].as<adt::Func>().ret;
-        check(call_exp, upperbound);
+        checkType(call_exp, upperbound);
     }
 
     void analysis(const ast::UnaryExp* unary_exp, const Type& upperbound = ANY) {
@@ -447,7 +446,7 @@ private:
         }
         analysis(exp, operand);
         type[unary_exp] = type[exp];
-        check(unary_exp, upperbound);
+        checkType(unary_exp, upperbound);
     }
 
     void analysis(const ast::BinaryExp* binary_exp, const Type& upperbound = ANY) {
@@ -498,14 +497,14 @@ private:
         } else {
             type[binary_exp] = type[left].as<adt::Slice>().elem;
         }
-        check(binary_exp, upperbound);
+        checkType(binary_exp, upperbound);
     }
 
     void analysis(const ast::ExpBox* exp_box, const Type& upperbound = ANY) {
         auto exp = exp_box->exp.get();
         analysis(exp, upperbound);
         type[exp_box] = type[exp];
-        check(exp_box, upperbound);
+        checkType(exp_box, upperbound);
     }
 };
 
