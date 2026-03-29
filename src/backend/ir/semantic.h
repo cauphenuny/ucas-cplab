@@ -19,34 +19,6 @@ struct SemanticAST {
         analysis(&tree);
     }
 
-    void analysis(const ast::CompUnit* comp_unit) {
-        vars.emplace_back(), funcs.emplace_back();  // builtin
-        for (auto& func : builtin_funcs) {
-            analysis(&func, true);
-        }
-        vars.emplace_back(), funcs.emplace_back();  // global
-
-        for (const auto& item : comp_unit->items) {
-            match(item, [&](const auto& subitem) { analysis(&subitem); });
-        }
-
-        if (funcs.back().count("main") == 0) {
-            throw SemanticError(comp_unit->loc, "function `main` is not defined");
-        }
-        auto main = funcs.back()["main"];
-        auto main_type = convert(main);
-        if (!(main_type.ret <= INT)) {
-            throw SemanticError(
-                main->loc,
-                fmt::format("function `main` should return int, but got `{}`", main_type.ret));
-        }
-        if (!(main_type.params <= VOID)) {
-            throw SemanticError(
-                main->loc, fmt::format("function `main` should not have parameters, but got `{}`",
-                                       main_type.params));
-        }
-    }
-
     void show() const {
         fmt::println("Types: ");
         for (const auto& pair : type) {
@@ -184,6 +156,34 @@ private:
 
     template <typename T> void analysis(const T* elem) {
         type[elem];
+    }
+
+    void analysis(const ast::CompUnit* comp_unit) {
+        vars.emplace_back(), funcs.emplace_back();  // builtin
+        for (auto& func : builtin_funcs) {
+            analysis(&func, true);
+        }
+        vars.emplace_back(), funcs.emplace_back();  // global
+
+        for (const auto& item : comp_unit->items) {
+            match(item, [&](const auto& subitem) { analysis(&subitem); });
+        }
+
+        if (funcs.back().count("main") == 0) {
+            throw SemanticError(comp_unit->loc, "function `main` is not defined");
+        }
+        auto main = funcs.back()["main"];
+        auto main_type = convert(main);
+        if (!(main_type.ret <= INT)) {
+            throw SemanticError(
+                main->loc,
+                fmt::format("function `main` should return int, but got `{}`", main_type.ret));
+        }
+        if (!(main_type.params <= VOID)) {
+            throw SemanticError(
+                main->loc, fmt::format("function `main` should not have parameters, but got `{}`",
+                                       main_type.params));
+        }
     }
 
     void analysis(const ast::Decl* decl) {
@@ -501,7 +501,7 @@ private:
                 result = BOOL;
                 break;
             case ast::BinaryOp::INDEX:
-                loperand = adt::Slice{ANY, std::nullopt}.toBoxed();
+                loperand = adt::Slice{upperbound, std::nullopt}.toBoxed();
                 roperand = INT;
                 break;
         }
