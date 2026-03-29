@@ -6,6 +6,7 @@
 #include "utils/error.h"
 
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -20,35 +21,59 @@ struct SemanticAST {
     }
 
     void show() const {
-        fmt::println("Types: ");
-        for (const auto& pair : type) {
-            match(pair.first,
-                  [&](auto subelem) { fmt::println("typeof({}) = {}", *subelem, pair.second); });
-        }
-        fmt::println("\nDefinitions: ");
-        for (const auto& pair : def) {
+        fmt::println("===== Definitions =====\n");
+        for (const auto& pair : defs) {
             match(pair.second,
                   [&](auto subdef) { fmt::println("def({}) = {}", *pair.first, *subdef); });
+        }
+        fmt::println("\n===== Types =====\n");
+        for (const auto& pair : types) {
+            match(pair.first,
+                  [&](auto subelem) { fmt::println("type({}) = {}", *subelem, pair.second); });
+        }
+        fmt::println("\n===== Statement types =====\n");
+        for (const auto& pair : stmt_types) {
+            match(pair.first, [&](auto substmt) {
+                fmt::println("type({}) = {}", *substmt, pair.second);
+            });
         }
     }
 
 private:
-    using ASTNode = std::variant<
-        const ast::CompUnit*, const ast::Decl*, const ast::ConstDecl*, const ast::ConstDef*,
-        const ast::VarDecl*, const ast::VarDef*, const ast::FuncDef*, const ast::BlockStmt*,
-        const ast::StmtBox*, const ast::Stmt*, const ast::IfStmt*, const ast::WhileStmt*,
-        const ast::ReturnStmt*, const ast::AssignStmt*, const ast::BreakStmt*,
-        const ast::ContinueStmt*, const ast::LValExp*, const ast::Exp*, const ast::PrimaryExp*,
-        const ast::UnaryExp*, const ast::BinaryExp*, const ast::ExpBox*, const ast::ConstExp*,
-        const ast::CallExp*, const ast::FuncParams*, const ast::FuncParam*, const ast::FuncArgs*,
-        const ast::ConstInitVal*, const ast::LValID*>;
-
     using SymDefNode = std::variant<const ast::ConstDef*, const ast::VarDef*, const ast::FuncParam*,
                                     const ast::FuncDef*>;
     using LValNode = const ast::LValExp*;
+    std::unordered_map<LValNode, SymDefNode> defs;
 
-    std::unordered_map<ASTNode, Type> type;
-    std::unordered_map<LValNode, SymDefNode> def;
+    using ExprNode = std::variant<
+        const ast::Decl*, const ast::ConstDecl*, const ast::ConstDef*, const ast::VarDecl*,
+        const ast::VarDef*, const ast::FuncDef*, const ast::LValExp*, const ast::Exp*,
+        const ast::PrimaryExp*, const ast::UnaryExp*, const ast::BinaryExp*, const ast::ExpBox*,
+        const ast::ConstExp*, const ast::CallExp*, const ast::FuncParams*, const ast::FuncParam*,
+        const ast::FuncArgs*, const ast::ConstInitVal*, const ast::LValID*>;
+
+    std::unordered_map<ExprNode, Type> types;
+
+    using StmtNode =
+        std::variant<const ast::StmtBox*, const ast::Stmt*, const ast::IfStmt*,
+                     const ast::WhileStmt*, const ast::ReturnStmt*, const ast::AssignStmt*,
+                     const ast::BreakStmt*, const ast::ContinueStmt*, const ast::BlockStmt*>;
+
+    struct StmtType {
+        Type ret_type{NEVER};
+        bool always_return{false};
+        void append(const StmtType& next) {
+            if (always_return) return;  // if already always return, no need to append
+            ret_type = ret_type | next.ret_type;
+            always_return = next.always_return;
+        }
+        void merge(const StmtType& next) {
+            ret_type = ret_type | next.ret_type;
+            always_return = always_return && next.always_return;
+        }
+        TO_STRING(StmtType, ret_type, always_return);
+    };
+    std::unordered_map<StmtNode, StmtType> stmt_types;
 
     using VarDefNode =
         std::variant<const ast::ConstDef*, const ast::VarDef*, const ast::FuncParam*>;
@@ -100,7 +125,6 @@ private:
         return std::nullopt;
     }
 
-
     adt::TypeBox calcType(ast::Type type, bool immutable = false) {
         switch (type) {
             case ast::Type::INT: return adt::Int{.immutable = immutable}.toBoxed();
@@ -127,7 +151,7 @@ private:
     adt::Product calcType(const ast::FuncArgs* args) {
         auto args_type = adt::Product{};
         for (const auto& arg : *args) {
-            args_type.append(type[&arg]);
+            args_type.append(types[&arg]);
         }
         return args_type;
     }
@@ -147,10 +171,10 @@ private:
     }
 
     template <typename T> void checkType(T node, Type upperbound) {
-        if (!(type[node] <= upperbound)) {
+        if (!(types[node] <= upperbound)) {
             throw SemanticError(node->loc,
                                 fmt::format("type error (at {}): `{}` is not subtype of `{}`",
-                                            *node, type[node], upperbound));
+                                            *node, types[node], upperbound));
         }
     }
 
@@ -176,9 +200,7 @@ private:
             });
     }
 
-    template <typename T> void analysis(const T* elem) {
-        type[elem];
-    }
+    template <typename T> void analysis(const T* elem) {}
 
     void analysis(const ast::CompUnit* comp_unit) {
         pushScope();  // builtin
@@ -201,7 +223,6 @@ private:
     void analysis(const ast::Decl* decl) {
         bool is_const = std::holds_alternative<ast::ConstDecl>(*decl);
         match(*decl, [&](const auto& decl) {
-            type[&decl] = VOID;
             auto elem_type = calcType(decl.type, is_const);
             for (const auto& def : decl.defs) {
                 registerSymbol(&def);
@@ -211,9 +232,9 @@ private:
                     for (size_t i = def.dims.size(); i > 0; i--) {
                         elem_type = adt::Slice(std::move(elem_type), def.dims[i - 1]).toBoxed();
                     }
-                    type[&def] = std::move(elem_type);
+                    types[&def] = std::move(elem_type);
                 } else {
-                    type[&def] = elem_type;
+                    types[&def] = elem_type;
                 }
             }
         });
@@ -224,11 +245,11 @@ private:
         for (const auto& def : decl->defs) {
             Type val_type;
             analysis(&def.val);
-            val_type = type[&def.val];
-            if (!constructable(val_type, type[&def])) {
+            val_type = types[&def.val];
+            if (!constructable(val_type, types[&def])) {
                 throw SemanticError(def.loc,
                                     fmt::format("type error: cannot initialize `{}` with `{}`",
-                                                type[&def], val_type));
+                                                types[&def], val_type));
             }
         }
     }
@@ -238,14 +259,14 @@ private:
             Type val_type;
             if (def.val.has_value()) {
                 analysis(&*def.val);
-                val_type = type[&*def.val];
+                val_type = types[&*def.val];
             } else {
                 val_type = NEVER;
             }
-            if (!constructable(val_type, type[&def])) {
+            if (!constructable(val_type, types[&def])) {
                 throw SemanticError(def.loc,
                                     fmt::format("type error: cannot initialize `{}` with `{}`",
-                                                type[&def], val_type));
+                                                types[&def], val_type));
             }
         }
     }
@@ -255,25 +276,25 @@ private:
             val->val,
             [&](const ast::ConstExp& exp) {
                 analysis(&exp);
-                type[val] = type[&exp];
+                types[val] = types[&exp];
             },
             [&](const std::vector<ast::ConstInitVal>& vals) {
                 Type elem_type = NEVER;
                 for (const auto& val : vals) {
                     analysis(&val);
-                    elem_type = elem_type <= type[&val] ? type[&val] : elem_type;
+                    elem_type = elem_type <= types[&val] ? types[&val] : elem_type;
                 }
-                type[val] = adt::Slice(std::move(elem_type), vals.size()).toBoxed();
+                types[val] = adt::Slice(std::move(elem_type), vals.size()).toBoxed();
             });
     }
 
     void analysis(const ast::FuncParam* param) {
-        type[param] = calcType(param);
+        types[param] = calcType(param);
         registerSymbol(param);
     }
 
     void analysis(const ast::FuncParams* params) {
-        type[params] = calcType(params).toBoxed();
+        types[params] = calcType(params).toBoxed();
         for (const auto& param : *params) {
             analysis(&param);
         }
@@ -283,46 +304,45 @@ private:
         for (const auto& arg : *args) {
             analysis(&arg);
         }
-        type[args] = calcType(args).toBoxed();
+        types[args] = calcType(args).toBoxed();
     }
 
     void analysis(const ast::FuncDef* func_def, bool is_builtin = false) {
-        type[func_def] = calcType(func_def).toBoxed();
+        types[func_def] = calcType(func_def).toBoxed();
         registerSymbol(func_def);
         pushScope();
         analysis(&func_def->params);
         analysis(&func_def->block);
         popScope();
-        auto block_type = type[&func_def->block];
+        auto block_type = stmt_types[&func_def->block];
+        if (!is_builtin && !block_type.always_return) {
+            throw SemanticError(
+                func_def->loc,
+                fmt::format("function '{}' may not return on all paths", func_def->name));
+        }
         auto ret_type = calcType(func_def).ret;
-        if (!is_builtin && !(block_type <= ret_type)) {
+        if (!is_builtin && !(block_type.ret_type <= ret_type)) {
             throw SemanticError(
                 func_def->loc,
                 fmt::format("function '{}' has return type `{}`, but declared as `{}`",
-                            func_def->name, block_type, ret_type));
+                            func_def->name, block_type.ret_type, ret_type));
         }
     }
 
     void analysis(const ast::BlockStmt* block) {
-        bool returned = false;
         for (const auto& item : block->items) {
             match(
                 item, [&](const ast::Decl& subitem) { analysis(&subitem); },
                 [&](const ast::Stmt& subitem) {
                     analysis(&subitem);
-                    if (std::holds_alternative<ast::ReturnStmt>(subitem)) {
-                        returned = true;
-                        type[block] = type[&subitem];
-                    }
+                        stmt_types[block].append(stmt_types[&subitem]);
                 });
-            if (returned) break;
         }
-        if (!returned) type[block] = VOID;
     }
 
     void analysis(const ast::StmtBox* stmt_box) {
         analysis(&*stmt_box->stmt);
-        type[stmt_box] = type[&*stmt_box->stmt];
+        stmt_types[stmt_box] = stmt_types[&*stmt_box->stmt];
     }
 
     void analysis(const ast::Stmt* stmt) {
@@ -330,44 +350,46 @@ private:
             *stmt,
             [&](const ast::BlockStmt& block) {
                 pushScope(), analysis(&block), popScope();
-                type[stmt] = type[&block];
+                stmt_types[stmt] = stmt_types[&block];
             },
             [&](const auto& substmt) {
                 analysis(&substmt);
-                type[stmt] = type[&substmt];
+                stmt_types[stmt] = stmt_types[&substmt];
             });
     }
 
     void analysis(const ast::IfStmt* if_stmt) {
         analysis(&if_stmt->cond, BOOL);
         analysis(&if_stmt->stmt);
+        stmt_types[if_stmt] = stmt_types[&if_stmt->stmt];
         if (if_stmt->else_stmt) {
             auto else_stmt = &*if_stmt->else_stmt;
             analysis(else_stmt);
+            stmt_types[if_stmt].merge(stmt_types[else_stmt]);
         }
     }
 
     void analysis(const ast::WhileStmt* while_stmt) {
         analysis(&while_stmt->cond, BOOL);
         analysis(&while_stmt->stmt);
+        stmt_types[while_stmt].merge(stmt_types[&while_stmt->stmt]);
     }
 
     void analysis(const ast::ReturnStmt* return_stmt) {
         if (return_stmt->exp) {
             auto exp = &*return_stmt->exp;
             analysis(exp);
-            type[return_stmt] = type[exp];
+            stmt_types[return_stmt] = StmtType{.ret_type = types[exp], .always_return = true};
         } else {
-            type[return_stmt] = VOID;
+            stmt_types[return_stmt] = StmtType{.ret_type = VOID, .always_return = true};
         }
     }
 
     void analysis(const ast::AssignStmt* assign_stmt) {
-        type[assign_stmt] = VOID;
         auto var = &assign_stmt->var;
         auto exp = &assign_stmt->exp;
         analysis(var);
-        analysis(exp, type[var]);
+        analysis(exp, types[var]);
     }
 
     void analysis(const ast::LValID* lid, const Type& upperbound = ANY, bool isfunc = false) {
@@ -376,13 +398,13 @@ private:
             if (!symdef) {
                 throw SemanticError(lid->loc, fmt::format("undefined variable '{}'", lid->name));
             }
-            match(*symdef, [&](const auto& def) { type[lid] = type[def]; });
+            match(*symdef, [&](const auto& def) { types[lid] = types[def]; });
         } else {
             auto funcdef = lookup(lid->name, funcs);
             if (!funcdef) {
                 throw SemanticError(lid->loc, fmt::format("undefined function '{}'", lid->name));
             }
-            type[lid] = type[*funcdef];
+            types[lid] = types[*funcdef];
         }
         checkType(lid, upperbound);
     }
@@ -392,23 +414,23 @@ private:
             lval->val,
             [&](const ast::LValID& lid) {
                 analysis(&lid, upperbound, isfunc);
-                type[lval] = type[&lid];
+                types[lval] = types[&lid];
             },
             [&](const ast::BinaryExp& subexp) {
                 analysis(&subexp, upperbound);
-                type[lval] = type[&subexp];
+                types[lval] = types[&subexp];
             });
     }
 
     void analysis(const ast::Exp* exp, const Type& upperbound = ANY) {
         match(*exp, [&](const auto& subexp) {
             analysis(&subexp, upperbound);
-            type[exp] = type[&subexp];
+            types[exp] = types[&subexp];
         });
     }
 
     void analysis(const ast::ConstExp* const_exp, const Type& upperbound = ANY) {
-        type[const_exp] =
+        types[const_exp] =
             match(*const_exp, [&](auto val) { return adt::construct<const decltype(val)>(); });
     }
 
@@ -418,11 +440,11 @@ private:
             primary->exp,
             [&](const ast::LValExp& lval) {
                 analysis(&lval, upperbound, isfunc);
-                type[primary] = type[&lval];
+                types[primary] = types[&lval];
             },
             [&](const auto& subexp) {
                 analysis(&subexp, upperbound);
-                type[primary] = type[&subexp];
+                types[primary] = types[&subexp];
             });
         checkType(primary, upperbound);
     }
@@ -431,8 +453,8 @@ private:
         auto func = &call_exp->func;
         auto args = &call_exp->args;
         analysis(args);
-        analysis(func, adt::Func{type[args].as<adt::Product>(), upperbound}.toBoxed(), true);
-        type[call_exp] = type[func].as<adt::Func>().ret;
+        analysis(func, adt::Func{types[args].as<adt::Product>(), upperbound}.toBoxed(), true);
+        types[call_exp] = types[func].as<adt::Func>().ret;
         checkType(call_exp, upperbound);
     }
 
@@ -445,7 +467,7 @@ private:
             case ast::UnaryOp::NOT: operand = BOOL;
         }
         analysis(exp, operand);
-        type[unary_exp] = type[exp];
+        types[unary_exp] = types[exp];
         checkType(unary_exp, upperbound);
     }
 
@@ -484,18 +506,18 @@ private:
         analysis(left, loperand);
         analysis(right, roperand);
         if (binary_exp->op != ast::BinaryOp::INDEX) {
-            if ((!(type[left] <= type[right])) && !(type[right] <= type[left])) {
+            if ((!(types[left] <= types[right])) && !(types[right] <= types[left])) {
                 throw SemanticError(
                     binary_exp->loc,
-                    fmt::format("type mismatch between `{}` and `{}`", type[left], type[right]));
+                    fmt::format("type mismatch between `{}` and `{}`", types[left], types[right]));
             }
             if (result)
-                type[binary_exp] = *result;
+                types[binary_exp] = *result;
             else {
-                type[binary_exp] = type[left] <= type[right] ? type[right] : type[left];
+                types[binary_exp] = types[left] <= types[right] ? types[right] : types[left];
             }
         } else {
-            type[binary_exp] = type[left].as<adt::Slice>().elem;
+            types[binary_exp] = types[left].as<adt::Slice>().elem;
         }
         checkType(binary_exp, upperbound);
     }
@@ -503,7 +525,7 @@ private:
     void analysis(const ast::ExpBox* exp_box, const Type& upperbound = ANY) {
         auto exp = exp_box->exp.get();
         analysis(exp, upperbound);
-        type[exp_box] = type[exp];
+        types[exp_box] = types[exp];
         checkType(exp_box, upperbound);
     }
 };
