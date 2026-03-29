@@ -480,6 +480,8 @@ private:
         analysis(right, rhs_bound);
         switch (binary_exp->op) {
             case BinaryOp::CALL:
+                lhs_bound = adt::Func(types[right].as<adt::Product>(), ANY).toBoxed();
+                break;
             case BinaryOp::INDEX: lhs_bound = ANY; break;
             case BinaryOp::AND:
             case BinaryOp::OR: lhs_bound = BOOL; break;
@@ -505,10 +507,7 @@ private:
                 checkType(left, adt::Slice(ANY).toBoxed());
                 types[binary_exp] = types[left].as<adt::Slice>().elem;
                 break;
-            case BinaryOp::CALL:
-                checkType(left, adt::Func(types[right].as<adt::Product>(), ANY).toBoxed());
-                types[binary_exp] = types[left].as<adt::Func>().ret;
-                break;
+            case BinaryOp::CALL: types[binary_exp] = types[left].as<adt::Func>().ret; break;
             default:
                 types[binary_exp] = types[left] <= types[right] ? types[right] : types[left];
                 break;
