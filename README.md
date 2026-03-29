@@ -4,6 +4,28 @@
 
 ---
 
+Type System:
+
+```rust
+enum PrimitiveType {
+    Int(i32),
+    Float(f32),
+    Double(f64),
+    Bool(bool),
+}
+enum Type {
+    Top,
+    Bottom,
+    Sum(Vec<Type>),
+    Product(Vec<Type>),
+    Func(Product, Box<Type>),
+    Slice(Box<Type>, Option<usize>),
+    Primitive(PrimitiveType),
+}
+```
+
+---
+
 AST:
 ```rust
 enum ConstExp {
@@ -70,11 +92,7 @@ IR:
 ```rust
 enum Value {
     Named(Type, ASTNode),
-    Temp {
-        type: Type,
-        id: usize,
-        scope: &Block,
-    },
+    Temp(Type, usize, &Block),
     Const(Type, ConstExp),
 }
 enum Inst {
