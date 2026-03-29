@@ -76,7 +76,7 @@ struct ReturnExit {
 };
 
 struct BranchExit {
-    std::optional<Value> cond;
+    Value cond;
     const Block *true_target, *false_target;
     [[nodiscard]] auto toString() const -> std::string;
 };
@@ -113,7 +113,7 @@ auto JumpExit::toString() const -> std::string {
     return fmt::format("jump {}", target ? target->label : "<unknown>");
 }
 
-struct VarDef {
+struct Alloc {
     NamedValue var;
     SIMPLE_TO_STRING(fmt::format("var {}: {}", var, var.type));
 };
@@ -121,7 +121,7 @@ struct VarDef {
 struct Func {
     const Type type;
     const std::string name;
-    std::vector<VarDef> locals;
+    std::vector<Alloc> locals;
     std::vector<Block> blocks;
 
     [[nodiscard]] auto toString() const {
@@ -138,7 +138,7 @@ struct Func {
 };
 
 struct Program {
-    std::vector<VarDef> globals;
+    std::vector<Alloc> globals;
     std::vector<Func> funcs;
     Func* entrance;
 

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "type.h"
 #include "frontend/ast/ast.h"
 #include "frontend/ast/op.h"
+#include "type.h"
 #include "utils/error.h"
 
 #include <string>
@@ -21,7 +21,7 @@ using ExprNode = std::variant<const ast::ConstDef*, const ast::VarDef*, const as
                               const ast::LValExp*, const ast::Exp*, const ast::PrimaryExp*,
                               const ast::UnaryExp*, const ast::BinaryExp*, const ast::ExpBox*,
                               const ast::ConstExp*, const ast::TupleExp*, const ast::FuncParams*,
-                              const ast::FuncParam*, const ast::ConstInitVal*, const ast::LValID*>;
+                              const ast::FuncParam*, const ast::ConstInitVal*, const ast::LVal*>;
 
 using StmtNode =
     std::variant<const ast::StmtBox*, const ast::Stmt*, const ast::IfStmt*, const ast::WhileStmt*,
@@ -400,7 +400,7 @@ private:
         analysis(&exp_stmt->exp);
     }
 
-    void analysis(const ast::LValID* lid, const Type& upperbound = ANY) {
+    void analysis(const ast::LVal* lid, const Type& upperbound = ANY) {
         if (!upperbound.is<adt::Func>()) {
             auto symdef = lookup(lid->name, vars);
             if (!symdef) {

@@ -29,7 +29,7 @@ struct UnaryExp;
 struct BinaryExp;
 struct TupleExp;
 using Exp = std::variant<PrimaryExp, UnaryExp, BinaryExp, TupleExp>;
-struct ExpBox; // for recursive exp
+struct ExpBox;  // for recursive exp
 
 struct IfStmt;
 struct WhileStmt;
@@ -39,9 +39,9 @@ struct ContinueStmt;
 struct AssignStmt;
 struct BlockStmt;
 struct ExpStmt;
-using Stmt =
-    std::variant<IfStmt, WhileStmt, ReturnStmt, BreakStmt, ContinueStmt, AssignStmt, BlockStmt, ExpStmt>;
-struct StmtBox; // for recursive stmt
+using Stmt = std::variant<IfStmt, WhileStmt, ReturnStmt, BreakStmt, ContinueStmt, AssignStmt,
+                          BlockStmt, ExpStmt>;
+struct StmtBox;  // for recursive stmt
 
 struct FuncDef;
 struct FuncParam;
@@ -103,14 +103,14 @@ struct BinaryExp : public mixin::Locatable, mixin::ToBoxed<BinaryExp, Exp> {
     TO_STRING(BinaryExp, op, left, right);
 };
 
-struct LValID : public mixin::Locatable {
+struct LVal : public mixin::Locatable {
     std::string name;
-    DELEGATED_TO_STRING(LValID, name);
+    DELEGATED_TO_STRING(LVal, name);
 };
 
 struct LValExp : public mixin::Locatable {
-    std::variant<LValID, BinaryExp> val;
-    DELEGATED_TO_STRING(LVal, val);
+    std::variant<LVal, BinaryExp> val;
+    DELEGATED_TO_STRING(LValExp, val);
 };
 
 struct PrimaryExp : public mixin::Locatable, mixin::ToBoxed<PrimaryExp, Exp> {
@@ -130,7 +130,7 @@ struct UnaryExp : public mixin::Locatable, mixin::ToBoxed<UnaryExp, Exp> {
 };
 
 struct TupleExp : public mixin::Locatable, mixin::ToBoxed<TupleExp, Exp> {
-    std::vector<ExpBox> elements;
+    std::vector<Exp> elements;
     DELEGATED_TO_STRING(TupleExp, elements);
 };
 
@@ -208,10 +208,10 @@ StmtBox::StmtBox(std::unique_ptr<Stmt> stmt) : stmt(std::move(stmt)) {
 auto StmtBox::toString() const -> std::string {
     return fmt::format("StmtBox: {}", *stmt);
 }
-template<typename T> auto StmtBox::is() const -> bool {
+template <typename T> auto StmtBox::is() const -> bool {
     return std::holds_alternative<T>(*stmt);
 }
-template<typename T> auto StmtBox::as() const -> const T& {
+template <typename T> auto StmtBox::as() const -> const T& {
     return std::get<T>(*stmt);
 }
 

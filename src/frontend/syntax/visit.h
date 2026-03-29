@@ -211,7 +211,7 @@ public:
     }
 
     std::any visitLVal(CACTParser::LValContext* ctx) override {
-        ast::LValID lval_id;
+        ast::LVal lval_id;
         auto loc = get_loc(ctx);
         lval_id.loc = loc;
         lval_id.name = ctx->ID()->getText();
@@ -400,7 +400,7 @@ public:
     std::any visitUnaryExp(CACTParser::UnaryExpContext* ctx) override {
         if (ctx->primaryExp()) return visit(ctx->primaryExp());
         if (ctx->ID()) {
-            ast::LValID lval_id;
+            ast::LVal lval_id;
             lval_id.name = ctx->ID()->getText();
             lval_id.loc = get_loc(ctx);
             ast::LValExp lval_exp{.val = std::move(lval_id)};
@@ -459,7 +459,7 @@ public:
         ast::TupleExp tup;
         tup.loc = get_loc(ctx);
         for (auto* expCtx : ctx->exp()) {
-            tup.elements.emplace_back(std::make_unique<ast::Exp>(take<ast::Exp>(visit(expCtx))));
+            tup.elements.emplace_back(take<ast::Exp>(visit(expCtx)));
         }
         return wrap(std::move(tup));
     }

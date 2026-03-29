@@ -30,7 +30,7 @@ int main() {
     ast::VarDef g_def_ast{.name = "g", .dims = {}, .val = std::nullopt};
     g_def_ast.loc = {0, 0};  // 假设全局变量定义在文件开头
     NamedValue g_named{.type = adt::construct<int>(), .def = &g_def_ast};
-    program.globals.push_back(ir::VarDef{.var = g_named});
+    program.globals.push_back(ir::Alloc{.var = g_named});
 
     ast::FuncDef foo_ast{.type = ast::Type::INT, .name = "foo", .params = {}, .block = {}};
     foo_ast.loc = {2, 1};
@@ -40,7 +40,7 @@ int main() {
     ast::VarDef local_ast{.name = "x", .dims = {}, .val = std::nullopt};
     local_ast.loc = {3, 1};
     NamedValue local_named{.type = adt::construct<int>(), .def = &local_ast};
-    foo.locals.push_back(ir::VarDef{.var = local_named});
+    foo.locals.push_back(ir::Alloc{.var = local_named});
 
     TempValue t1{.type = adt::construct<int>(), .id = 1, .scope = nullptr};
     TempValue t2{.type = adt::construct<int>(), .id = 2, .scope = nullptr};
@@ -60,9 +60,11 @@ int main() {
     entry_insts.emplace_back(RegularInst{.op = InstOp::LT, .result = t2, .lhs = t1, .rhs = c42});
     entry_insts.emplace_back(RegularInst{.op = InstOp::EQ, .result = t1, .lhs = t2, .rhs = c1});
 
-    then_insts.emplace_back(RegularInst{.op = InstOp::STORE, .result = g_named, .lhs = t1, .rhs = t2});
+    then_insts.emplace_back(
+        RegularInst{.op = InstOp::STORE, .result = g_named, .lhs = t1, .rhs = t2});
 
-    else_insts.emplace_back(RegularInst{.op = InstOp::CALL, .result = t1, .lhs = local_named, .rhs = c42});
+    else_insts.emplace_back(
+        RegularInst{.op = InstOp::CALL, .result = t1, .lhs = local_named, .rhs = c42});
     else_insts.emplace_back(AggregateInst{.result = local_named, .src = {c42, t1}});
 
     foo.blocks.reserve(4);
