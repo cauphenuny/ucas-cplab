@@ -6,6 +6,7 @@
 
 #include <string>
 #include <variant>
+#include <vector>
 
 namespace ir {
 
@@ -18,12 +19,16 @@ struct SemanticAST {
     }
 
     void analysis(const ast::CompUnit* comp_unit) {
-        type[comp_unit];
-        vars.emplace_back();
-        funcs.emplace_back();
+        vars.emplace_back(), funcs.emplace_back();  // builtin
+        for (auto& func : builtin_funcs) {
+            funcs.back()[func.name] = &func;
+        }
+        vars.emplace_back(), funcs.emplace_back();  // global
+
         for (const auto& item : comp_unit->items) {
             match(item, [&](const auto& subitem) { analysis(&subitem); });
         }
+
         if (funcs.back().count("main") == 0) {
             throw SemanticError(comp_unit->loc, "function `main` is not defined");
         }
@@ -77,6 +82,22 @@ private:
     using FuncDefNode = const ast::FuncDef*;
     using VarTable = std::unordered_map<std::string, VarDefNode>;
     using FuncTable = std::unordered_map<std::string, FuncDefNode>;
+
+    inline static const auto builtin_funcs = [] {
+        std::vector<ast::FuncDef> v;
+        v.emplace_back(ast::FuncDef{.type = ast::Type::INT, .name = "get_int"});
+        v.emplace_back(ast::FuncDef{.type = ast::Type::FLOAT, .name = "get_float"});
+        v.emplace_back(ast::FuncDef{.type = ast::Type::DOUBLE, .name = "get_double"});
+        v.emplace_back(ast::FuncDef{
+            .type = ast::Type::VOID, .name = "put_int", .params = {{.type = ast::Type::INT}}});
+        v.emplace_back(ast::FuncDef{.type = ast::Type::VOID,
+                                     .name = "put_float",
+                                     .params = {{.type = ast::Type::FLOAT}}});
+        v.emplace_back(ast::FuncDef{.type = ast::Type::VOID,
+                                     .name = "put_double",
+                                     .params = {{.type = ast::Type::DOUBLE}}});
+        return v;
+    }();
 
     inline const static auto VOID = adt::construct<void>();
     inline const static auto NUM = adt::construct<std::variant<int, float, double>>();
