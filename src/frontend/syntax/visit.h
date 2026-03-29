@@ -211,13 +211,37 @@ public:
     }
 
     std::any visitLVal(CACTParser::LValContext* ctx) override {
-        ast::LValExp lval;
-        lval.loc = get_loc(ctx);
-        lval.name = ctx->ID()->getText();
-        for (auto* expCtx : ctx->exp()) {
-            lval.indices.emplace_back(std::make_unique<ast::Exp>(take<ast::Exp>(visit(expCtx))));
+        ast::LValID lval_id;
+        auto loc = get_loc(ctx);
+        lval_id.loc = loc;
+        lval_id.name = ctx->ID()->getText();
+        if (ctx->exp().size()) {
+            ast::LValExp lval{.val = lval_id};
+            lval.loc = lval_id.loc;
+            std::optional<ast::BinaryExp> result;
+            for (auto* expCtx : ctx->exp()) {
+                if (result) {
+                    result = ast::BinaryExp{
+                        .op = ast::BinaryOp::INDEX,
+                        .left = std::move(*std::move(result)).toBoxed(),
+                        .right = std::make_unique<ast::Exp>(take<ast::Exp>(visit(expCtx)))};
+                    result->loc = loc;
+                } else {
+                    result = ast::BinaryExp{
+                        .op = ast::BinaryOp::INDEX,
+                        .left = ast::PrimaryExp{std::move(lval)}.toBoxed(),
+                        .right = std::make_unique<ast::Exp>(take<ast::Exp>(visit(expCtx)))};
+                    result->loc = loc;
+                }
+            }
+            auto ret = ast::LValExp{.val = std::move(*result)};
+            ret.loc = loc;
+            return wrap(std::move(ret));
+        } else {
+            auto ret = ast::LValExp{.val = lval_id};
+            ret.loc = loc;
+            return wrap(std::move(ret));
         }
-        return wrap(std::move(lval));
     }
 
     std::any visitStmt(CACTParser::StmtContext* ctx) override {
@@ -376,7 +400,7 @@ public:
         if (ctx->primaryExp()) return visit(ctx->primaryExp());
         if (ctx->ID()) {
             ast::CallExp call{
-                .func = ast::LValExp{.name = ctx->ID()->getText()},
+                .func = ast::LValID{.name = ctx->ID()->getText()},
             };
             call.loc = get_loc(ctx);
             call.func.loc = call.loc;

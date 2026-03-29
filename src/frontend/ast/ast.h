@@ -95,10 +95,20 @@ struct ExpBox : public mixin::Locatable {
     }
 };
 
-struct LValExp : public mixin::Locatable {
+struct BinaryExp : public mixin::Locatable, mixin::ToBoxed<BinaryExp, Exp> {
+    BinaryOp op;
+    ExpBox left, right;
+    TO_STRING(BinaryExp, op, left, right);
+};
+
+struct LValID : public mixin::Locatable {
     std::string name;
-    std::vector<std::optional<ExpBox>> indices;
-    TO_STRING(LVal, name, indices);
+    DELEGATED_TO_STRING(LValID, name);
+};
+
+struct LValExp : public mixin::Locatable {
+    std::variant<LValID, BinaryExp> val;
+    DELEGATED_TO_STRING(LVal, val);
 };
 
 struct PrimaryExp : public mixin::Locatable, mixin::ToBoxed<PrimaryExp, Exp> {
@@ -117,14 +127,8 @@ struct UnaryExp : public mixin::Locatable, mixin::ToBoxed<UnaryExp, Exp> {
     TO_STRING(UnaryExp, op, exp);
 };
 
-struct BinaryExp : public mixin::Locatable, mixin::ToBoxed<BinaryExp, Exp> {
-    BinaryOp op;
-    ExpBox left, right;
-    TO_STRING(BinaryExp, op, left, right);
-};
-
 struct CallExp : public mixin::Locatable, mixin::ToBoxed<CallExp, Exp> {
-    LValExp func;
+    LValID func;
     FuncArgs args;
     TO_STRING(CallExp, func, args);
 };

@@ -51,7 +51,8 @@ enum class BinaryOp : uint8_t {
     EQ,
     NEQ,  //
     AND,
-    OR,
+    OR,  //
+    INDEX,
 };
 
 std::string toString(BinaryOp op) {
@@ -69,6 +70,7 @@ std::string toString(BinaryOp op) {
         case BinaryOp::NEQ: return "!=";
         case BinaryOp::AND: return "&&";
         case BinaryOp::OR: return "||";
+        case BinaryOp::INDEX: return "[]";
         default: throw std::runtime_error(fmt::format("invalid binary op: {}", (uint8_t)op));
     }
 }

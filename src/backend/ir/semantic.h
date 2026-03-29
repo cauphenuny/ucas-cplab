@@ -2,6 +2,7 @@
 
 #include "adt.h"
 #include "frontend/ast/ast.h"
+#include "frontend/ast/type.h"
 #include "utils/error.h"
 
 #include <string>
@@ -21,7 +22,7 @@ struct SemanticAST {
     void analysis(const ast::CompUnit* comp_unit) {
         vars.emplace_back(), funcs.emplace_back();  // builtin
         for (auto& func : builtin_funcs) {
-            funcs.back()[func.name] = &func;
+            analysis(&func, true);
         }
         vars.emplace_back(), funcs.emplace_back();  // global
 
@@ -34,12 +35,12 @@ struct SemanticAST {
         }
         auto main = funcs.back()["main"];
         auto main_type = convert(main);
-        if (!(main_type.ret <= adt::construct<int>())) {
+        if (!(main_type.ret <= INT)) {
             throw SemanticError(
                 main->loc,
                 fmt::format("function `main` should return int, but got `{}`", main_type.ret));
         }
-        if (!(main_type.params <= adt::construct<void>())) {
+        if (!(main_type.params <= VOID)) {
             throw SemanticError(
                 main->loc, fmt::format("function `main` should not have parameters, but got `{}`",
                                        main_type.params));
@@ -68,7 +69,7 @@ private:
         const ast::ContinueStmt*, const ast::LValExp*, const ast::Exp*, const ast::PrimaryExp*,
         const ast::UnaryExp*, const ast::BinaryExp*, const ast::ExpBox*, const ast::ConstExp*,
         const ast::CallExp*, const ast::FuncParams*, const ast::FuncParam*, const ast::FuncArgs*,
-        const ast::ConstInitVal*>;
+        const ast::ConstInitVal*, const ast::LValID*>;
 
     using SymDefNode = std::variant<const ast::ConstDef*, const ast::VarDef*, const ast::FuncParam*,
                                     const ast::FuncDef*>;
@@ -90,18 +91,19 @@ private:
         v.emplace_back(ast::FuncDef{.type = ast::Type::DOUBLE, .name = "get_double"});
         v.emplace_back(ast::FuncDef{
             .type = ast::Type::VOID, .name = "put_int", .params = {{.type = ast::Type::INT}}});
+        v.emplace_back(ast::FuncDef{
+            .type = ast::Type::VOID, .name = "put_float", .params = {{.type = ast::Type::FLOAT}}});
         v.emplace_back(ast::FuncDef{.type = ast::Type::VOID,
-                                     .name = "put_float",
-                                     .params = {{.type = ast::Type::FLOAT}}});
-        v.emplace_back(ast::FuncDef{.type = ast::Type::VOID,
-                                     .name = "put_double",
-                                     .params = {{.type = ast::Type::DOUBLE}}});
+                                    .name = "put_double",
+                                    .params = {{.type = ast::Type::DOUBLE}}});
         return v;
     }();
 
     inline const static auto VOID = adt::construct<void>();
     inline const static auto NUM = adt::construct<std::variant<int, float, double>>();
     inline const static auto BOOL = adt::construct<bool>();
+    inline const static auto INT = adt::construct<int>();
+
     inline const static auto ANY = adt::construct<std::any>();
     inline const static auto NEVER = adt::TypeBox{adt::Bottom{}.toBoxed()};
 
@@ -126,10 +128,20 @@ private:
         }
     }
 
+    adt::TypeBox convert(const ast::FuncParam* param) {
+        auto param_type = convert(param->type);
+        if (param->dims.size()) {
+            for (size_t i = param->dims.size(); i-- > 0;) {
+                param_type = adt::Slice(std::move(param_type), param->dims[i]).toBoxed();
+            }
+        }
+        return param_type;
+    }
+
     adt::Product convert(const ast::FuncParams* params) {
         auto type = adt::Product{};
         for (auto& param : *params) {
-            type.append(convert(param.type));
+            type.append(convert(&param));
         }
         return type;
     }
@@ -142,8 +154,9 @@ private:
 
     template <typename T> void check(T node, Type upperbound) {
         if (!(type[node] <= upperbound)) {
-            throw SemanticError(node->loc, fmt::format("type error: `{}` is not subtype of `{}`",
-                                                       type[node], upperbound));
+            throw SemanticError(node->loc,
+                                fmt::format("type error ({}): `{}` is not subtype of `{}`", *node,
+                                            type[node], upperbound));
         }
     }
 
@@ -175,7 +188,7 @@ private:
 
     void analysis(const ast::Decl* decl) {
         match(*decl, [&](const auto& decl) {
-            type[&decl] = adt::construct<void>();
+            type[&decl] = VOID;
             auto elem_type = convert(decl.type);
             for (const auto& def : decl.defs) {
                 registerSymbol(&def);
@@ -244,10 +257,12 @@ private:
     void analysis(const ast::FuncParam* param) {
         auto param_type = convert(param->type);
         if (param->dims.size()) {
-            auto param_type = convert(param->type);
-            for (size_t i = param->dims.size(); i > 0; i--) {
+            for (size_t i = param->dims.size(); i > 1; i--) {
                 param_type = adt::Slice(std::move(param_type), param->dims[i - 1]).toBoxed();
             }
+            param_type = adt::Slice(std::move(param_type))
+                             .toBoxed();  // NOTE: degrade sized array to unsized array for function
+                                          // parameters
         }
         type[param] = std::move(param_type);
         registerSymbol(param);
@@ -271,7 +286,7 @@ private:
         type[args] = std::move(args_type).toBoxed();
     }
 
-    void analysis(const ast::FuncDef* func_def) {
+    void analysis(const ast::FuncDef* func_def, bool is_builtin = false) {
         type[func_def] = convert(func_def).toBoxed();
         registerSymbol(func_def);
         push();
@@ -280,7 +295,7 @@ private:
         pop();
         auto block_type = type[&func_def->block];
         auto ret_type = convert(func_def).ret;
-        if (!(block_type <= ret_type)) {
+        if (!is_builtin && !(block_type <= ret_type)) {
             throw SemanticError(
                 func_def->loc,
                 fmt::format("function '{}' has return type `{}`, but declared as `{}`",
@@ -302,7 +317,7 @@ private:
                 });
             if (returned) break;
         }
-        if (!returned) type[block] = adt::construct<void>();
+        if (!returned) type[block] = VOID;
     }
 
     void analysis(const ast::StmtBox* stmt_box) {
@@ -342,12 +357,12 @@ private:
             analysis(exp);
             type[return_stmt] = type[exp];
         } else {
-            type[return_stmt] = adt::construct<void>();
+            type[return_stmt] = VOID;
         }
     }
 
     void analysis(const ast::AssignStmt* assign_stmt) {
-        type[assign_stmt] = adt::construct<void>();
+        type[assign_stmt] = VOID;
         auto var = &assign_stmt->var;
         auto exp = &assign_stmt->exp;
         analysis(var);
@@ -368,42 +383,36 @@ private:
         return std::nullopt;
     }
 
-    void analysis(const ast::LValExp* lval, const Type& upperbound = ANY, bool isfunc = false) {
-        if (isfunc) {
-            auto symdef = lookup(lval->name, funcs);
+    void analysis(const ast::LValID* lid, const Type& upperbound = ANY, bool isfunc = false) {
+        if (!isfunc) {
+            auto symdef = lookup(lid->name, vars);
             if (!symdef) {
-                throw SemanticError(lval->loc, fmt::format("undefined function '{}'", lval->name));
+                throw SemanticError(
+                    lid->loc,
+                    fmt::format("undefined {} '{}'", isfunc ? "function" : "variable", lid->name));
             }
-            type[lval] = type[*symdef];
+            match(*symdef, [&](const auto& def) { type[lid] = type[def]; });
         } else {
-            auto symdef = lookup(lval->name, vars);
-            if (!symdef) {
-                throw SemanticError(lval->loc, fmt::format("undefined variable '{}'", lval->name));
+            auto funcdef = lookup(lid->name, funcs);
+            if (!funcdef) {
+                throw SemanticError(lid->loc, fmt::format("undefined function '{}'", lid->name));
             }
-            match(*symdef, [&](const auto& def) {
-                if (lval->indices.size() > def->dims.size()) {
-                    throw SemanticError(
-                        lval->loc, fmt::format("too many indices for variable '{}'", lval->name));
-                }
-                auto elem_type = type[def];
-                for (auto& index : lval->indices) {
-                    if (!index) {
-                        throw SemanticError(
-                            lval->loc, fmt::format("missing index in l-value '{}'", lval->name));
-                    }
-                    analysis(&*index, adt::construct<int>());
-                    match(
-                        elem_type.var(), [&](const adt::Slice& slice) { elem_type = slice.elem; },
-                        [&](const auto&) {
-                            throw SemanticError(
-                                lval->loc,
-                                fmt::format("variable '{}' is not subscriptable", lval->name));
-                        });
-                }
-                type[lval] = elem_type;
-            });
+            type[lid] = type[*funcdef];
         }
-        check(lval, upperbound);
+        check(lid, upperbound);
+    }
+
+    void analysis(const ast::LValExp* lval, const Type& upperbound = ANY, bool isfunc = false) {
+        match(
+            lval->val,
+            [&](const ast::LValID& lid) {
+                analysis(&lid, upperbound, isfunc);
+                type[lval] = type[&lid];
+            },
+            [&](const ast::BinaryExp& subexp) {
+                analysis(&subexp, upperbound);
+                type[lval] = type[&subexp];
+            });
     }
 
     void analysis(const ast::Exp* exp, const Type& upperbound = ANY) {
@@ -436,8 +445,8 @@ private:
     void analysis(const ast::CallExp* call_exp, const Type& upperbound = ANY) {
         auto func = &call_exp->func;
         auto args = &call_exp->args;
-        analysis(func, upperbound, true);
         analysis(args);
+        analysis(func, adt::Func{type[args].as<adt::Product>(), upperbound}.toBoxed(), true);
         auto func_def = *lookup(func->name, funcs);
         auto func_type = convert(func_def);
         if (!(type[args] <= func_type.params)) {
@@ -465,39 +474,50 @@ private:
     void analysis(const ast::BinaryExp* binary_exp, const Type& upperbound = ANY) {
         auto left = &binary_exp->left;
         auto right = &binary_exp->right;
-        Type operand;
+        Type loperand, roperand;
         std::optional<Type> result;
         switch (binary_exp->op) {
             case ast::BinaryOp::ADD:
             case ast::BinaryOp::SUB:
             case ast::BinaryOp::MUL:
             case ast::BinaryOp::DIV:
-            case ast::BinaryOp::MOD: operand = NUM; break;
+            case ast::BinaryOp::MOD: loperand = roperand = NUM; break;
             case ast::BinaryOp::EQ:
             case ast::BinaryOp::NEQ:
             case ast::BinaryOp::LT:
             case ast::BinaryOp::GT:
             case ast::BinaryOp::LEQ:
             case ast::BinaryOp::GEQ:
-                operand = NUM;
+                loperand = NUM;
+                roperand = NUM;
                 result = BOOL;
                 break;
             case ast::BinaryOp::AND:
             case ast::BinaryOp::OR:
-                operand = BOOL;
+                loperand = BOOL;
+                roperand = BOOL;
                 result = BOOL;
                 break;
+            case ast::BinaryOp::INDEX:
+                loperand = adt::Slice{ANY, std::nullopt}.toBoxed();
+                roperand = INT;
+                break;
         }
-        analysis(left, operand);
-        analysis(right, operand);
-        if ((!(type[left] <= type[right])) && !(type[right] <= type[left])) {
-            throw SemanticError(binary_exp->loc, fmt::format("type mismatch between `{}` and `{}`",
-                                                             type[left], type[right]));
-        }
-        if (result)
-            type[binary_exp] = *result;
-        else {
-            type[binary_exp] = type[left] <= type[right] ? type[right] : type[left];
+        analysis(left, loperand);
+        analysis(right, roperand);
+        if (binary_exp->op != ast::BinaryOp::INDEX) {
+            if ((!(type[left] <= type[right])) && !(type[right] <= type[left])) {
+                throw SemanticError(
+                    binary_exp->loc,
+                    fmt::format("type mismatch between `{}` and `{}`", type[left], type[right]));
+            }
+            if (result)
+                type[binary_exp] = *result;
+            else {
+                type[binary_exp] = type[left] <= type[right] ? type[right] : type[left];
+            }
+        } else {
+            type[binary_exp] = type[left].as<adt::Slice>().elem;
         }
         check(binary_exp, upperbound);
     }

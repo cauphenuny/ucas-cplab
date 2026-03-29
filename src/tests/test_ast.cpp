@@ -1,3 +1,5 @@
+#include "frontend/ast/type.h"
+
 #include <frontend/ast/ast.h>
 #include <optional>
 #include <utils/serialize.hpp>
@@ -23,13 +25,13 @@ int main() {
     args.emplace_back(PrimaryExp(42));
     args.emplace_back(BinaryExp{
         .op = BinaryOp::ADD, .left = PrimaryExp{2}.toBoxed(), .right = PrimaryExp{3}.toBoxed()});
-    auto call = CallExp{.func = LValExp{.name = "putint"}, .args = std::move(args)};
+    auto call = CallExp{.func = LValID{.name = "putint"}, .args = std::move(args)};
     fmt::println("{}", call);
 
     // 4. If Statement: if (x > 0) return 1; else return 0;
     fmt::println("\n--- If Statement ---");
     auto x_gt_0 = Exp{BinaryExp{.op = BinaryOp::GT,
-                                .left = PrimaryExp{LValExp{.name = "x"}}.toBoxed(),
+                                .left = PrimaryExp{LValExp{LValID{.name = "x"}}}.toBoxed(),
                                 .right = PrimaryExp{0}.toBoxed()}};
 
     auto ret1 = std::make_unique<Stmt>(Stmt{ReturnStmt{.exp = Exp{PrimaryExp{1}}}});
@@ -41,19 +43,20 @@ int main() {
 
     // 5. Unary Expression: -(!x)
     fmt::println("\n--- Unary: -(!x) ---");
-    auto not_x = UnaryExp{.op = UnaryOp::NOT, .exp = PrimaryExp{LValExp{.name = "x"}}.toBoxed()};
+    auto not_x =
+        UnaryExp{.op = UnaryOp::NOT, .exp = PrimaryExp{LValExp{LValID{.name = "x"}}}.toBoxed()};
     auto neg_not_x = UnaryExp{.op = UnaryOp::MINUS, .exp = std::move(not_x).toBoxed()};
     fmt::println("{}", neg_not_x);
 
     // 6. While Loop: while (i < 10) i = i + 1;
     fmt::println("\n--- While Loop ---");
     auto cond = Exp{BinaryExp{.op = BinaryOp::LT,
-                              .left = PrimaryExp{LValExp{.name = "i"}}.toBoxed(),
+                              .left = PrimaryExp{LValExp{LValID{.name = "i"}}}.toBoxed(),
                               .right = PrimaryExp{10}.toBoxed()}};
     auto assign =
-        AssignStmt{.var = LValExp{.name = "i"},
+        AssignStmt{.var = LValExp{LValID{.name = "i"}},
                    .exp = Exp{BinaryExp{.op = BinaryOp::ADD,
-                                        .left = PrimaryExp{LValExp{.name = "i"}}.toBoxed(),
+                                        .left = PrimaryExp{LValExp{LValID{.name = "i"}}}.toBoxed(),
                                         .right = PrimaryExp{1}.toBoxed()}}};
     auto while_stmt = WhileStmt{.cond = std::move(cond), .stmt = std::move(assign).toBoxed()};
     fmt::println("{}", while_stmt);
@@ -67,7 +70,7 @@ int main() {
 
     std::vector<BlockStmt::Item> items;
     items.emplace_back(std::move(var_decl));
-    items.emplace_back(ReturnStmt{.exp = Exp{PrimaryExp{LValExp{.name = "x"}}}});
+    items.emplace_back(ReturnStmt{.exp = Exp{PrimaryExp{LValExp{LValID{.name = "x"}}}}});
 
     auto main_func = FuncDef{.type = Type::INT,
                              .name = "main",
@@ -78,15 +81,23 @@ int main() {
     // 8. Array Access and Multi-dimensional Array
     // a[1][i + 2] = 42;
     fmt::println("\n--- Array Access ---");
-    std::vector<std::optional<ExpBox>> indices;
+    std::vector<ExpBox> indices;
     indices.emplace_back(PrimaryExp{1}.toBoxed());
     indices.emplace_back(BinaryExp{.op = BinaryOp::ADD,
-                                   .left = PrimaryExp{LValExp{.name = "i"}}.toBoxed(),
+                                   .left = PrimaryExp{LValExp{LValID{.name = "i"}}}.toBoxed(),
                                    .right = PrimaryExp{2}.toBoxed()}
                              .toBoxed());
 
-    auto array_assign = AssignStmt{.var = LValExp{.name = "a", .indices = std::move(indices)},
-                                   .exp = Exp{PrimaryExp{42}}};
+    auto array_assign = AssignStmt{
+        .var = LValExp{BinaryExp{
+            .op = BinaryOp::INDEX,
+            .left = PrimaryExp{LValExp{BinaryExp{
+                                   .op = BinaryOp::INDEX,
+                                   .left = PrimaryExp{LValExp{LValID{.name = "a"}}}.toBoxed(),
+                                   .right = std::move(indices[1])}}}
+                        .toBoxed(),
+            .right = std::move(indices[0])}},
+        .exp = Exp{PrimaryExp{42}}};
     fmt::println("{}", array_assign);
 
     // 9. CompUnit: Full Module Example
@@ -122,19 +133,19 @@ int main() {
         std::vector<BlockStmt::Item> fib_items;
         // if (n <= 1) return n;
         auto if_cond = Exp{BinaryExp{.op = BinaryOp::LEQ,
-                                     .left = PrimaryExp{LValExp{.name = "n"}}.toBoxed(),
+                                     .left = PrimaryExp{LValExp{LValID{.name = "n"}}}.toBoxed(),
                                      .right = PrimaryExp{1}.toBoxed()}};
-        auto ret_n = ReturnStmt{.exp = Exp{PrimaryExp{LValExp{.name = "n"}}}};
+        auto ret_n = ReturnStmt{.exp = Exp{PrimaryExp{LValExp{LValID{.name = "n"}}}}};
         fib_items.emplace_back(IfStmt{.cond = std::move(if_cond),
                                       .stmt = std::move(ret_n).toBoxed(),
                                       .else_stmt = std::nullopt});
 
         // return fib(n-1) + fib(n-2);
         auto n_minus_1 = BinaryExp{.op = BinaryOp::SUB,
-                                   .left = PrimaryExp{LValExp{.name = "n"}}.toBoxed(),
+                                   .left = PrimaryExp{LValExp{LValID{.name = "n"}}}.toBoxed(),
                                    .right = PrimaryExp{1}.toBoxed()};
         auto n_minus_2 = BinaryExp{.op = BinaryOp::SUB,
-                                   .left = PrimaryExp{LValExp{.name = "n"}}.toBoxed(),
+                                   .left = PrimaryExp{LValExp{LValID{.name = "n"}}}.toBoxed(),
                                    .right = PrimaryExp{2}.toBoxed()};
 
         std::vector<Exp> args1;
@@ -142,8 +153,8 @@ int main() {
         std::vector<Exp> args2;
         args2.emplace_back(std::move(n_minus_2));
 
-        auto call1 = CallExp{.func = LValExp{.name = "fib"}, .args = std::move(args1)};
-        auto call2 = CallExp{.func = LValExp{.name = "fib"}, .args = std::move(args2)};
+        auto call1 = CallExp{.func = LValID{.name = "fib"}, .args = std::move(args1)};
+        auto call2 = CallExp{.func = LValID{.name = "fib"}, .args = std::move(args2)};
 
         auto add_fib = BinaryExp{.op = BinaryOp::ADD,
                                  .left = std::move(call1).toBoxed(),
@@ -161,7 +172,7 @@ int main() {
         std::vector<BlockStmt::Item> main_items;
         std::vector<Exp> fib_args;
         fib_args.emplace_back(PrimaryExp{10});
-        auto fib_call = CallExp{.func = LValExp{.name = "fib"}, .args = std::move(fib_args)};
+        auto fib_call = CallExp{.func = LValID{.name = "fib"}, .args = std::move(fib_args)};
         main_items.emplace_back(ReturnStmt{.exp = Exp{std::move(fib_call)}});
 
         unit_items.emplace_back(FuncDef{.type = Type::INT,
@@ -175,7 +186,7 @@ int main() {
 
     // 10. Location Verification
     fmt::println("\n--- Location Verification ---");
-    LValExp x_loc{.name = "x"};
+    LValID x_loc{.name = "x"};
     x_loc.loc = {10, 5};
     fmt::println("LValExp with location: {}", x_loc);
 
