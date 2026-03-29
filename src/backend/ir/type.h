@@ -47,6 +47,7 @@ struct TypeBox {
 
     [[nodiscard]] auto toString() const -> std::string;
     [[nodiscard]] auto var() const -> const Type&;
+    [[nodiscard]] auto immutable() const -> bool;
     template <typename T> [[nodiscard]] auto is() const -> bool;
     template <typename T> [[nodiscard]] auto as() const -> const T&;
 
@@ -164,6 +165,20 @@ std::string TypeBox::toString() const {
 
 const Type& TypeBox::var() const {
     return *item;
+}
+
+bool TypeBox::immutable() const {
+    return Match{*item}([](const auto& t) -> bool {
+        using T = std::decay_t<decltype(t)>;
+        if constexpr (std::is_same_v<T, Product> || std::is_same_v<T, Sum> ||
+                      std::is_same_v<T, Func> || std::is_same_v<T, Slice>) {
+            return t.immutable;
+        } else if constexpr (std::is_same_v<T, Primitive>) {
+            return Match{t}([](const auto& prim) -> bool { return prim.immutable; });
+        } else {
+            return true;  // Top and Bottom are always immutable
+        }
+    });
 }
 
 template <typename T> bool TypeBox::is() const {
@@ -412,12 +427,23 @@ bool operator<=(const Sum& from, const Sum& to) {  // forall T in from s.t. T ->
 }
 
 bool operator<=(const Func& from, const Func& to) {
+    if (from.immutable && !to.immutable) {
+        return false;
+    }
     return (to.params <= from.params) &&  // contravariance
            (from.ret <= to.ret);          // covariance
 }
 
 bool operator<=(const Slice& from, const Slice& to) {
+    if (from.immutable && !to.immutable) {
+        return false;
+    }
     if (!(from.elem <= to.elem)) {
+        return false;
+    }
+    if (!to.elem.immutable() &&
+        !(to.elem <= from.elem)) {  // if to's element is mutable, then from's element must be the
+                                    // same type as to's element
         return false;
     }
     if (!to.sized()) return true;  // NOTE: for C-like lang, array is convertible to pointer

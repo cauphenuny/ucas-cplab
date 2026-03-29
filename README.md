@@ -8,10 +8,10 @@ Type System:
 
 ```rust
 enum PrimitiveType {
-    Int(i32),
-    Float(f32),
-    Double(f64),
-    Bool(bool),
+    Int,
+    Float,
+    Double,
+    Bool,
 }
 enum Type {
     Top,

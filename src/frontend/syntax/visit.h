@@ -225,13 +225,13 @@ public:
                         .op = ast::BinaryOp::INDEX,
                         .left = std::move(*std::move(result)).toBoxed(),
                         .right = std::make_unique<ast::Exp>(take<ast::Exp>(visit(expCtx)))};
-                    result->loc = loc;
+                    result->loc = expCtx->start ? get_loc(expCtx) : loc;
                 } else {
                     result = ast::BinaryExp{
                         .op = ast::BinaryOp::INDEX,
                         .left = ast::PrimaryExp{std::move(lval)}.toBoxed(),
                         .right = std::make_unique<ast::Exp>(take<ast::Exp>(visit(expCtx)))};
-                    result->loc = loc;
+                    result->loc = expCtx->start ? get_loc(expCtx) : loc;
                 }
             }
             auto ret = ast::LValExp{.val = std::move(*result)};
