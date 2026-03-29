@@ -36,9 +36,8 @@ struct Bottom;
 using Type = std::variant<Primitive, Sum, Product, Func, Slice, Top, Bottom>;
 
 struct TypeBox {
-    using T = std::unique_ptr<Type>;
-    T item;
-    TypeBox(T item) : item(std::move(item)) {}
+    std::unique_ptr<Type> item;
+    TypeBox(std::unique_ptr<Type> item) : item(std::move(item)) {}
 
     TypeBox();
     TypeBox(TypeBox&& other) noexcept = default;
@@ -120,7 +119,6 @@ struct Sum : mixin::ToBoxed<Sum, Type> {
     void append(TypeBox item);
 
     friend TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs);
-    template <typename T1, typename T2> friend bool operator<=(const T1& from, const T2& to);
     friend bool operator<=(const Sum& from, const Sum& to);
     template <typename T, typename> friend bool operator<=(const Sum& from, const T& to);
     template <typename T, typename> friend bool operator<=(const T& from, const Sum& to);
