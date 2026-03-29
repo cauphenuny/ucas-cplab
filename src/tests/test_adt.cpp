@@ -106,6 +106,14 @@ void test_subtype() {
     assert(s_union == s1);
 
     fmt::println("All subtype tests passed!");
+
+    // constructable
+    assert(constructable(construct<int[5]>(), construct<int[10]>())); // smaller array can construct bigger array
+    assert(!constructable(construct<int[10]>(), construct<int[5]>()));
+    assert(!constructable(construct<int[5]>(), construct<int*>())); // array cannot construct pointer
+    assert(
+        !constructable(construct<int*>(), construct<int[5]>()));  // pointer cannot construct array
+    assert(constructable(construct<int[6]>(), construct<int[2][3]>())); // flat array can construct multi-dim array
 }
 
 void test_construct() {

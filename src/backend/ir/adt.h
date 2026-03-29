@@ -477,7 +477,7 @@ bool constructable(const TypeBox& from_box, const TypeBox& to_box) {
                 type = type.as<Slice>().elem;
             }
             return constructable(from.elem, type) && size.has_value() && from.size.has_value() &&
-                   size.value() > from.size.value();
+                   size.value() >= from.size.value();
         }
         if (!to.elem.is<Slice>() && from.elem.is<Slice>()) {
             // NOTE: multi-dim array can not construct flat array
