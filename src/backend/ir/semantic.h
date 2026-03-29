@@ -127,8 +127,8 @@ private:
     template <typename T> void check(T node, Type upperbound) {
         if (!(type[node] <= upperbound)) {
             throw SemanticError(node->loc,
-                                fmt::format("type error (at {}): `{}` is not subtype of `{}`", *node,
-                                            type[node], upperbound));
+                                fmt::format("type error (at {}): `{}` is not subtype of `{}`",
+                                            *node, type[node], upperbound));
         }
     }
 
@@ -173,17 +173,7 @@ private:
             throw SemanticError(comp_unit->loc, "function `main` is not defined");
         }
         auto main = funcs.back()["main"];
-        auto main_type = convert(main);
-        if (!(main_type.ret <= INT)) {
-            throw SemanticError(
-                main->loc,
-                fmt::format("function `main` should return int, but got `{}`", main_type.ret));
-        }
-        if (!(main_type.params <= VOID)) {
-            throw SemanticError(
-                main->loc, fmt::format("function `main` should not have parameters, but got `{}`",
-                                       main_type.params));
-        }
+        check(main, adt::construct<int()>());
     }
 
     void analysis(const ast::Decl* decl) {
@@ -369,10 +359,6 @@ private:
         auto exp = &assign_stmt->exp;
         analysis(var);
         analysis(exp, type[var]);
-        if (!(type[exp] <= type[var])) {
-            throw SemanticError(assign_stmt->loc,
-                                fmt::format("cannot assign `{}` to `{}`", type[exp], type[var]));
-        }
     }
 
     template <typename T>
@@ -389,9 +375,7 @@ private:
         if (!isfunc) {
             auto symdef = lookup(lid->name, vars);
             if (!symdef) {
-                throw SemanticError(
-                    lid->loc,
-                    fmt::format("undefined {} '{}'", isfunc ? "function" : "variable", lid->name));
+                throw SemanticError(lid->loc, fmt::format("undefined variable '{}'", lid->name));
             }
             match(*symdef, [&](const auto& def) { type[lid] = type[def]; });
         } else {
@@ -449,14 +433,7 @@ private:
         auto args = &call_exp->args;
         analysis(args);
         analysis(func, adt::Func{type[args].as<adt::Product>(), upperbound}.toBoxed(), true);
-        auto func_def = *lookup(func->name, funcs);
-        auto func_type = convert(func_def);
-        if (!(type[args] <= func_type.params)) {
-            throw SemanticError(call_exp->loc,
-                                fmt::format("function '{}': `{}` can not be called with `{}`",
-                                            func->name, func_type, type[args], func_type.params));
-        }
-        type[call_exp] = func_type.ret;
+        type[call_exp] = type[func].as<adt::Func>().ret;
         check(call_exp, upperbound);
     }
 
