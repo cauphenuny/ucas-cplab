@@ -120,8 +120,14 @@ struct Sum : mixin::ToBoxed<Sum, Type> {
 
     friend TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs);
     friend bool operator<=(const Sum& from, const Sum& to);
-    template <typename T, typename> friend bool operator<=(const Sum& from, const T& to);
-    template <typename T, typename> friend bool operator<=(const T& from, const Sum& to);
+    template <typename T>
+    friend std::enable_if_t<!std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>,
+                            bool>
+    operator<=(const Sum& from, const T& to);
+    template <typename T>
+    friend std::enable_if_t<!std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>,
+                            bool>
+    operator<=(const T& from, const Sum& to);
 
 private:
     std::vector<TypeBox> items;
@@ -377,18 +383,18 @@ inline bool operator<=(const Product& from, const Product& to) {
     return true;
 }
 
-template <typename T, typename = std::enable_if_t<
-                          !std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>>>
-bool operator<=(const Sum& from, const T& to) {
+template <typename T>
+std::enable_if_t<!std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>, bool>
+operator<=(const Sum& from, const T& to) {
     for (const auto& item : from.items) {
         if (!(item <= to)) return false;
     }
     return true;
 }
 
-template <typename T, typename = std::enable_if_t<
-                          !std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>>>
-bool operator<=(const T& from, const Sum& to) {
+template <typename T>
+std::enable_if_t<!std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>, bool>
+operator<=(const T& from, const Sum& to) {
     for (const auto& item : to.items) {
         if (from <= item) return true;
     }
