@@ -44,11 +44,12 @@ private:
     using LValNode = const ast::LValExp*;
     std::unordered_map<LValNode, SymDefNode> defs;
 
-    using ExprNode = std::variant<
-        const ast::ConstDef*, const ast::VarDef*, const ast::FuncDef*, const ast::LValExp*,
-        const ast::Exp*, const ast::PrimaryExp*, const ast::UnaryExp*, const ast::BinaryExp*,
-        const ast::ExpBox*, const ast::ConstExp*, const ast::CallExp*, const ast::FuncParams*,
-        const ast::FuncParam*, const ast::FuncArgs*, const ast::ConstInitVal*, const ast::LValID*>;
+    using ExprNode =
+        std::variant<const ast::ConstDef*, const ast::VarDef*, const ast::FuncDef*,
+                     const ast::LValExp*, const ast::Exp*, const ast::PrimaryExp*,
+                     const ast::UnaryExp*, const ast::BinaryExp*, const ast::ExpBox*,
+                     const ast::ConstExp*, const ast::TupleExp*, const ast::FuncParams*,
+                     const ast::FuncParam*, const ast::ConstInitVal*, const ast::LValID*>;
 
     std::unordered_map<ExprNode, Type> types;
 
@@ -151,9 +152,9 @@ private:
         return param_type;
     }
 
-    adt::Product calcType(const ast::FuncArgs* args) {
+    adt::Product calcType(const ast::TupleExp* tuple) {
         auto args_type = adt::Product{};
-        for (const auto& arg : *args) {
+        for (const auto& arg : tuple->elements) {
             args_type.append(types[&arg]);
         }
         return args_type;
@@ -303,13 +304,6 @@ private:
         }
     }
 
-    void analysis(const ast::FuncArgs* args) {
-        for (const auto& arg : *args) {
-            analysis(&arg);
-        }
-        types[args] = calcType(args).toBoxed();
-    }
-
     void analysis(const ast::FuncDef* func_def, bool is_builtin = false) {
         types[func_def] = calcType(func_def).toBoxed();
         registerSymbol(func_def);
@@ -399,8 +393,8 @@ private:
         analysis(&exp_stmt->exp);
     }
 
-    void analysis(const ast::LValID* lid, const Type& upperbound = ANY, bool isfunc = false) {
-        if (!isfunc) {
+    void analysis(const ast::LValID* lid, const Type& upperbound = ANY) {
+        if (!upperbound.is<adt::Func>()) {
             auto symdef = lookup(lid->name, vars);
             if (!symdef) {
                 throw SemanticError(lid->loc, fmt::format("undefined variable '{}'", lid->name));
@@ -416,17 +410,11 @@ private:
         checkType(lid, upperbound);
     }
 
-    void analysis(const ast::LValExp* lval, const Type& upperbound = ANY, bool isfunc = false) {
-        match(
-            lval->val,
-            [&](const ast::LValID& lid) {
-                analysis(&lid, upperbound, isfunc);
-                types[lval] = types[&lid];
-            },
-            [&](const ast::BinaryExp& subexp) {
-                analysis(&subexp, upperbound);
-                types[lval] = types[&subexp];
-            });
+    void analysis(const ast::LValExp* lval, const Type& upperbound = ANY) {
+        match(lval->val, [&](const auto& subexp) {
+            analysis(&subexp, upperbound);
+            types[lval] = types[&subexp];
+        });
     }
 
     void analysis(const ast::Exp* exp, const Type& upperbound = ANY) {
@@ -436,33 +424,25 @@ private:
         });
     }
 
+    void analysis(const ast::TupleExp* tuple, const Type& upperbound = ANY) {
+        for (const auto& element : tuple->elements) {
+            analysis(&element, ANY);
+        }
+        types[tuple] = calcType(tuple).toBoxed();
+        checkType(tuple, upperbound);
+    }
+
     void analysis(const ast::ConstExp* const_exp, const Type& upperbound = ANY) {
         types[const_exp] =
             match(*const_exp, [&](auto val) { return adt::construct<const decltype(val)>(); });
     }
 
-    void analysis(const ast::PrimaryExp* primary, const Type& upperbound = ANY,
-                  bool isfunc = false) {
-        match(
-            primary->exp,
-            [&](const ast::LValExp& lval) {
-                analysis(&lval, upperbound, isfunc);
-                types[primary] = types[&lval];
-            },
-            [&](const auto& subexp) {
-                analysis(&subexp, upperbound);
-                types[primary] = types[&subexp];
-            });
+    void analysis(const ast::PrimaryExp* primary, const Type& upperbound = ANY) {
+        match(primary->exp, [&](const auto& subexp) {
+            analysis(&subexp, upperbound);
+            types[primary] = types[&subexp];
+        });
         checkType(primary, upperbound);
-    }
-
-    void analysis(const ast::CallExp* call_exp, const Type& upperbound = ANY) {
-        auto func = &call_exp->func;
-        auto args = &call_exp->args;
-        analysis(args);
-        analysis(func, adt::Func{types[args].as<adt::Product>(), upperbound}.toBoxed(), true);
-        types[call_exp] = types[func].as<adt::Func>().ret;
-        checkType(call_exp, upperbound);
     }
 
     void analysis(const ast::UnaryExp* unary_exp, const Type& upperbound = ANY) {
@@ -479,52 +459,48 @@ private:
     }
 
     void analysis(const ast::BinaryExp* binary_exp, const Type& upperbound = ANY) {
+        using namespace ast;
         auto left = &binary_exp->left;
         auto right = &binary_exp->right;
-        Type loperand, roperand;
-        std::optional<Type> result;
+        Type lhs_bound, rhs_bound;
         switch (binary_exp->op) {
-            case ast::BinaryOp::ADD:
-            case ast::BinaryOp::SUB:
-            case ast::BinaryOp::MUL:
-            case ast::BinaryOp::DIV:
-            case ast::BinaryOp::MOD: loperand = roperand = NUM; break;
-            case ast::BinaryOp::EQ:
-            case ast::BinaryOp::NEQ:
-            case ast::BinaryOp::LT:
-            case ast::BinaryOp::GT:
-            case ast::BinaryOp::LEQ:
-            case ast::BinaryOp::GEQ:
-                loperand = NUM;
-                roperand = NUM;
-                result = BOOL;
-                break;
-            case ast::BinaryOp::AND:
-            case ast::BinaryOp::OR:
-                loperand = BOOL;
-                roperand = BOOL;
-                result = BOOL;
-                break;
-            case ast::BinaryOp::INDEX:
-                loperand = adt::Slice{upperbound, std::nullopt}.toBoxed();
-                roperand = INT;
-                break;
+            case BinaryOp::AND:
+            case BinaryOp::OR: rhs_bound = BOOL; break;
+            case BinaryOp::INDEX: rhs_bound = INT; break;
+            case BinaryOp::CALL: rhs_bound = ANY; break;
+            default: rhs_bound = NUM; break;
         }
-        analysis(left, loperand);
-        analysis(right, roperand);
-        if (binary_exp->op != ast::BinaryOp::INDEX) {
-            if ((!(types[left] <= types[right])) && !(types[right] <= types[left])) {
+        analysis(right, rhs_bound);
+        switch (binary_exp->op) {
+            case BinaryOp::CALL:
+                lhs_bound = adt::Func{types[right].as<adt::Product>(), upperbound}.toBoxed();
+                break;
+            case BinaryOp::INDEX: lhs_bound = adt::Slice{upperbound, std::nullopt}.toBoxed(); break;
+            case BinaryOp::AND:
+            case BinaryOp::OR: lhs_bound = BOOL; break;
+            default: rhs_bound = NUM; break;
+        }
+        analysis(left, lhs_bound);
+        if (binary_exp->op != BinaryOp::INDEX && binary_exp->op != BinaryOp::CALL) {
+            if (!(types[left] <= types[right]) && !(types[right] <= types[left])) {
                 throw SemanticError(
                     binary_exp->loc,
-                    fmt::format("type mismatch between `{}` and `{}`", types[left], types[right]));
+                    fmt::format("type error: cannot apply operator `{}` to `{}` and `{}`",
+                                binary_exp->op, types[left], types[right]));
             }
-            if (result)
-                types[binary_exp] = *result;
-            else {
+        }
+        switch (binary_exp->op) {
+            case BinaryOp::EQ:
+            case BinaryOp::NEQ:
+            case BinaryOp::LT:
+            case BinaryOp::GT:
+            case BinaryOp::LEQ:
+            case BinaryOp::GEQ: types[binary_exp] = BOOL; break;
+            case BinaryOp::INDEX: types[binary_exp] = types[left].as<adt::Slice>().elem; break;
+            case BinaryOp::CALL: types[binary_exp] = types[left].as<adt::Func>().ret; break;
+            default:
                 types[binary_exp] = types[left] <= types[right] ? types[right] : types[left];
-            }
-        } else {
-            types[binary_exp] = types[left].as<adt::Slice>().elem;
+                break;
         }
         checkType(binary_exp, upperbound);
     }

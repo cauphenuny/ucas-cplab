@@ -400,13 +400,23 @@ public:
     std::any visitUnaryExp(CACTParser::UnaryExpContext* ctx) override {
         if (ctx->primaryExp()) return visit(ctx->primaryExp());
         if (ctx->ID()) {
-            ast::CallExp call{
-                .func = ast::LValID{.name = ctx->ID()->getText()},
+            ast::LValID lval_id;
+            lval_id.name = ctx->ID()->getText();
+            lval_id.loc = get_loc(ctx);
+            ast::LValExp lval_exp{.val = std::move(lval_id)};
+            lval_exp.loc = lval_id.loc;
+            ast::PrimaryExp prim{std::move(lval_exp)};
+            prim.loc = lval_id.loc;
+
+            ast::BinaryExp call{
+                .op = ast::BinaryOp::CALL,
+                .left = std::move(prim).toBoxed(),
+                .right = ast::TupleExp{}.toBoxed(),
             };
             call.loc = get_loc(ctx);
-            call.func.loc = call.loc;
             if (ctx->funcArgs()) {
-                call.args = take<ast::FuncArgs>(visit(ctx->funcArgs()));
+                auto args = take<ast::TupleExp>(visit(ctx->funcArgs()));
+                call.right = std::move(args).toBoxed();
             }
             return wrap(ast::Exp(std::move(call)));
         }
@@ -446,10 +456,11 @@ public:
     }
 
     std::any visitFuncArgs(CACTParser::FuncArgsContext* ctx) override {
-        ast::FuncArgs args;
+        ast::TupleExp tup;
+        tup.loc = get_loc(ctx);
         for (auto* expCtx : ctx->exp()) {
-            args.push_back(take<ast::Exp>(visit(expCtx)));
+            tup.elements.emplace_back(std::make_unique<ast::Exp>(take<ast::Exp>(visit(expCtx))));
         }
-        return wrap(std::move(args));
+        return wrap(std::move(tup));
     }
 };

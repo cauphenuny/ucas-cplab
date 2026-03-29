@@ -26,9 +26,9 @@ using ConstExp = std::variant<int, float, double, bool>;
 struct LValExp;
 struct PrimaryExp;
 struct UnaryExp;
-struct CallExp;
 struct BinaryExp;
-using Exp = std::variant<PrimaryExp, UnaryExp, CallExp, BinaryExp>;
+struct TupleExp;
+using Exp = std::variant<PrimaryExp, UnaryExp, BinaryExp, TupleExp>;
 struct ExpBox; // for recursive exp
 
 struct IfStmt;
@@ -46,7 +46,6 @@ struct StmtBox; // for recursive stmt
 struct FuncDef;
 struct FuncParam;
 using FuncParams = std::vector<FuncParam>;
-using FuncArgs = std::vector<Exp>;
 
 struct ConstInitVal : public mixin::Locatable {
     std::variant<ConstExp, std::vector<ConstInitVal>> val;
@@ -94,6 +93,8 @@ struct ExpBox : public mixin::Locatable {
     auto toBoxed() && {
         return std::move(exp);
     }
+    template <typename T> [[nodiscard]] auto is() const -> bool;
+    template <typename T> [[nodiscard]] auto as() const -> const T&;
 };
 
 struct BinaryExp : public mixin::Locatable, mixin::ToBoxed<BinaryExp, Exp> {
@@ -128,10 +129,9 @@ struct UnaryExp : public mixin::Locatable, mixin::ToBoxed<UnaryExp, Exp> {
     TO_STRING(UnaryExp, op, exp);
 };
 
-struct CallExp : public mixin::Locatable, mixin::ToBoxed<CallExp, Exp> {
-    LValID func;
-    FuncArgs args;
-    TO_STRING(CallExp, func, args);
+struct TupleExp : public mixin::Locatable, mixin::ToBoxed<TupleExp, Exp> {
+    std::vector<ExpBox> elements;
+    DELEGATED_TO_STRING(TupleExp, elements);
 };
 
 ExpBox::ExpBox(std::unique_ptr<Exp> exp) : exp(std::move(exp)) {
@@ -139,6 +139,12 @@ ExpBox::ExpBox(std::unique_ptr<Exp> exp) : exp(std::move(exp)) {
 }
 auto ExpBox::toString() const -> std::string {
     return fmt::format("ExpBox: {}", *exp);
+}
+template <typename T> auto ExpBox::is() const -> bool {
+    return std::holds_alternative<T>(*exp);
+}
+template <typename T> auto ExpBox::as() const -> const T& {
+    return std::get<T>(*exp);
 }
 
 struct StmtBox : public mixin::Locatable {
@@ -149,6 +155,8 @@ struct StmtBox : public mixin::Locatable {
         return std::move(stmt);
     }
     [[nodiscard]] auto toString() const -> std::string;
+    template <typename T> [[nodiscard]] auto is() const -> bool;
+    template <typename T> [[nodiscard]] auto as() const -> const T&;
 };
 
 struct IfStmt : public mixin::Locatable, mixin::ToBoxed<IfStmt, Stmt> {
@@ -199,6 +207,12 @@ StmtBox::StmtBox(std::unique_ptr<Stmt> stmt) : stmt(std::move(stmt)) {
 }
 auto StmtBox::toString() const -> std::string {
     return fmt::format("StmtBox: {}", *stmt);
+}
+template<typename T> auto StmtBox::is() const -> bool {
+    return std::holds_alternative<T>(*stmt);
+}
+template<typename T> auto StmtBox::as() const -> const T& {
+    return std::get<T>(*stmt);
 }
 
 struct FuncDef : public mixin::Locatable {

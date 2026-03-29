@@ -19,13 +19,17 @@ int main() {
         .op = BinaryOp::ADD, .left = PrimaryExp(1).toBoxed(), .right = std::move(mul).toBoxed()};
     fmt::println("{}", add);
 
-    // 3. Function Call: putint(42)
+    // 3. Function Call: putint(42, 2 + 3)
     fmt::println("\n--- Function Call: putint(42, 2 + 3) ---");
-    std::vector<Exp> args;
-    args.emplace_back(PrimaryExp(42));
-    args.emplace_back(BinaryExp{
-        .op = BinaryOp::ADD, .left = PrimaryExp{2}.toBoxed(), .right = PrimaryExp{3}.toBoxed()});
-    auto call = CallExp{.func = LValID{.name = "putint"}, .args = std::move(args)};
+    std::vector<ExpBox> call_args;
+    call_args.emplace_back(PrimaryExp{42}.toBoxed());
+    call_args.emplace_back(BinaryExp{
+        .op = BinaryOp::ADD, .left = PrimaryExp{2}.toBoxed(), .right = PrimaryExp{3}.toBoxed()}
+                             .toBoxed());
+    auto call = BinaryExp{
+        .op = BinaryOp::CALL,
+        .left = PrimaryExp{LValExp{LValID{.name = "putint"}}}.toBoxed(),
+        .right = TupleExp{.elements = std::move(call_args)}.toBoxed()};
     fmt::println("{}", call);
 
     // 4. If Statement: if (x > 0) return 1; else return 0;
@@ -148,13 +152,19 @@ int main() {
                                    .left = PrimaryExp{LValExp{LValID{.name = "n"}}}.toBoxed(),
                                    .right = PrimaryExp{2}.toBoxed()};
 
-        std::vector<Exp> args1;
-        args1.emplace_back(std::move(n_minus_1));
-        std::vector<Exp> args2;
-        args2.emplace_back(std::move(n_minus_2));
+        std::vector<ExpBox> args1;
+        args1.emplace_back(std::move(n_minus_1).toBoxed());
+        std::vector<ExpBox> args2;
+        args2.emplace_back(std::move(n_minus_2).toBoxed());
 
-        auto call1 = CallExp{.func = LValID{.name = "fib"}, .args = std::move(args1)};
-        auto call2 = CallExp{.func = LValID{.name = "fib"}, .args = std::move(args2)};
+        auto call1 = BinaryExp{
+            .op = BinaryOp::CALL,
+            .left = PrimaryExp{LValExp{LValID{.name = "fib"}}}.toBoxed(),
+            .right = TupleExp{.elements = std::move(args1)}.toBoxed()};
+        auto call2 = BinaryExp{
+            .op = BinaryOp::CALL,
+            .left = PrimaryExp{LValExp{LValID{.name = "fib"}}}.toBoxed(),
+            .right = TupleExp{.elements = std::move(args2)}.toBoxed()};
 
         auto add_fib = BinaryExp{.op = BinaryOp::ADD,
                                  .left = std::move(call1).toBoxed(),
@@ -170,9 +180,12 @@ int main() {
     // int main() { return fib(10); }
     {
         std::vector<BlockStmt::Item> main_items;
-        std::vector<Exp> fib_args;
-        fib_args.emplace_back(PrimaryExp{10});
-        auto fib_call = CallExp{.func = LValID{.name = "fib"}, .args = std::move(fib_args)};
+        std::vector<ExpBox> fib_args;
+        fib_args.emplace_back(PrimaryExp{10}.toBoxed());
+        auto fib_call = BinaryExp{
+            .op = BinaryOp::CALL,
+            .left = PrimaryExp{LValExp{LValID{.name = "fib"}}}.toBoxed(),
+            .right = TupleExp{.elements = std::move(fib_args)}.toBoxed()};
         main_items.emplace_back(ReturnStmt{.exp = Exp{std::move(fib_call)}});
 
         unit_items.emplace_back(FuncDef{.type = Type::INT,
