@@ -1,8 +1,8 @@
 #pragma once
 
-#include "adt.h"
+#include "type.h"
 #include "frontend/ast/ast.h"
-#include "frontend/ast/type.h"
+#include "frontend/ast/op.h"
 #include "utils/error.h"
 
 #include <string>
@@ -12,11 +12,26 @@
 
 namespace ir {
 
-struct SemanticAST {
-    using Type = adt::TypeBox;
-    const ast::CompUnit tree;
+using SymDefNode = std::variant<const ast::ConstDef*, const ast::VarDef*, const ast::FuncParam*,
+                                const ast::FuncDef*>;
+using VarDefNode = std::variant<const ast::ConstDef*, const ast::VarDef*, const ast::FuncParam*>;
+using FuncDefNode = const ast::FuncDef*;
+using LValNode = const ast::LValExp*;
+using ExprNode = std::variant<const ast::ConstDef*, const ast::VarDef*, const ast::FuncDef*,
+                              const ast::LValExp*, const ast::Exp*, const ast::PrimaryExp*,
+                              const ast::UnaryExp*, const ast::BinaryExp*, const ast::ExpBox*,
+                              const ast::ConstExp*, const ast::TupleExp*, const ast::FuncParams*,
+                              const ast::FuncParam*, const ast::ConstInitVal*, const ast::LValID*>;
 
-    SemanticAST(ast::CompUnit comp_unit) : tree(std::move(comp_unit)) {
+using StmtNode =
+    std::variant<const ast::StmtBox*, const ast::Stmt*, const ast::IfStmt*, const ast::WhileStmt*,
+                 const ast::ReturnStmt*, const ast::AssignStmt*, const ast::BreakStmt*,
+                 const ast::ContinueStmt*, const ast::BlockStmt*, const ast::ExpStmt*,
+                 const ast::Decl*, const ast::ConstDecl*, const ast::VarDecl*>;
+
+struct SemanticInfo {
+
+    SemanticInfo(const ast::CompUnit& comp_unit) : tree(comp_unit) {
         analysis(&tree);
     }
 
@@ -38,27 +53,22 @@ struct SemanticAST {
         }
     }
 
+    auto definition_of(const LValNode& lval) {
+        return defs[lval];
+    }
+
+    auto type_of(const ExprNode& expr) {
+        return types[expr];
+    }
+
 private:
-    using SymDefNode = std::variant<const ast::ConstDef*, const ast::VarDef*, const ast::FuncParam*,
-                                    const ast::FuncDef*>;
-    using LValNode = const ast::LValExp*;
+    const ast::CompUnit& tree;
+
+    using Type = adt::TypeBox;
+
     std::unordered_map<LValNode, SymDefNode> defs;
 
-    using ExprNode =
-        std::variant<const ast::ConstDef*, const ast::VarDef*, const ast::FuncDef*,
-                     const ast::LValExp*, const ast::Exp*, const ast::PrimaryExp*,
-                     const ast::UnaryExp*, const ast::BinaryExp*, const ast::ExpBox*,
-                     const ast::ConstExp*, const ast::TupleExp*, const ast::FuncParams*,
-                     const ast::FuncParam*, const ast::ConstInitVal*, const ast::LValID*>;
-
     std::unordered_map<ExprNode, Type> types;
-
-    using StmtNode =
-        std::variant<const ast::StmtBox*, const ast::Stmt*, const ast::IfStmt*,
-                     const ast::WhileStmt*, const ast::ReturnStmt*, const ast::AssignStmt*,
-                     const ast::BreakStmt*, const ast::ContinueStmt*, const ast::BlockStmt*,
-                     const ast::ExpStmt*, const ast::Decl*, const ast::ConstDecl*,
-                     const ast::VarDecl*>;
 
     struct StmtType {
         Type ret_type{NEVER};
@@ -76,9 +86,6 @@ private:
     };
     std::unordered_map<StmtNode, StmtType> stmt_types;
 
-    using VarDefNode =
-        std::variant<const ast::ConstDef*, const ast::VarDef*, const ast::FuncParam*>;
-    using FuncDefNode = const ast::FuncDef*;
     using VarTable = std::unordered_map<std::string, VarDefNode>;
     using FuncTable = std::unordered_map<std::string, FuncDefNode>;
 

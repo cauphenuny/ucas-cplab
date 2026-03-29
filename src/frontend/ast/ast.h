@@ -1,6 +1,6 @@
 #pragma once
 
-#include "frontend/ast/type.h"
+#include "frontend/ast/op.h"
 
 #include <cstddef>
 #include <memory>

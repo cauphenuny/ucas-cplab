@@ -140,7 +140,8 @@ struct Func : mixin::ToBoxed<Func, Type> {
     Product params;
     TypeBox ret;
     Func(Product params, TypeBox ret) : params(std::move(params)), ret(std::move(ret)) {}
-    SIMPLE_TO_STRING(fmt::format("{}({} -> {})", immutable ? "const" : "", params, ret))
+    SIMPLE_TO_STRING(fmt::format("{}{} -> {}{}", immutable ? "const (" : "", params, ret,
+                                 immutable ? ")" : ""))
 };
 
 struct Slice : mixin::ToBoxed<Slice, Type> {

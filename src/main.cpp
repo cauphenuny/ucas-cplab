@@ -51,9 +51,9 @@ int main(int argc, const char* argv[]) {
                 auto res = visitor.visit(parser.compUnit());
                 auto comp_unit = ASTVisitor::take<ast::CompUnit>(res);
                 fmt::println("AST: \n{}\n\n", comp_unit);
-                auto semantic_ast = ir::SemanticAST(std::move(comp_unit));
+                auto info = ir::SemanticInfo(comp_unit);
                 fmt::println("Semantic analysis:\n");
-                semantic_ast.show();
+                info.show();
                 fmt::println("{}: " BOLD GREEN "OK" NONE, argv[i]);
             } catch (const SyntaxError& e) {
                 fmt::println("{}: {}", argv[i], e.what());
