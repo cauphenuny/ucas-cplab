@@ -49,6 +49,7 @@ struct TypeBox {
     [[nodiscard]] auto toString() const -> std::string;
     [[nodiscard]] auto var() const -> const Type&;
     template <typename T> [[nodiscard]] auto is() const -> bool;
+    template <typename T> [[nodiscard]] auto as() const -> const T&;
 
     static auto match(const Type& type) -> Match<const Type&>;
     static auto match(const TypeBox& box) -> Match<const Type&>;
@@ -140,6 +141,13 @@ const Type& TypeBox::var() const {
 
 template <typename T> bool TypeBox::is() const {
     return std::holds_alternative<T>(*item);
+}
+
+template <typename T> const T& TypeBox::as() const {
+    if (!is<T>()) {
+        throw std::bad_variant_access();
+    }
+    return std::get<T>(*item);
 }
 
 auto TypeBox::match(const Type& type) -> Match<const Type&> {
@@ -452,6 +460,35 @@ TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs) {
             result.append(rhs);
             return std::move(result).toBoxed();
         });
+}
+
+bool constructable(const TypeBox& from_box, const TypeBox& to_box) {
+    if (from_box.is<Slice>() && to_box.is<Slice>()) {
+        const auto& from = from_box.as<Slice>();
+        const auto& to = to_box.as<Slice>();
+        // NOTE: flat array can construct multi-dim array
+        if (!from.elem.is<Slice>() && to.elem.is<Slice>()) {
+            auto size = to.size;
+            auto type = to.elem;
+            while (type.is<Slice>()) {
+                if (auto dimsize = type.as<Slice>().size; size.has_value() && dimsize.has_value()) {
+                    size = size.value() * dimsize.value();
+                }
+                type = type.as<Slice>().elem;
+            }
+            return constructable(from.elem, type) && size.has_value() && from.size.has_value() &&
+                   size.value() > from.size.value();
+        }
+        if (!to.elem.is<Slice>() && from.elem.is<Slice>()) {
+            // NOTE: multi-dim array can not construct flat array
+            return false;
+        }
+        return constructable(from.elem, to.elem) &&
+               ((!from.size.has_value() && !to.size.has_value()) ||
+                (from.size.has_value() && to.size.has_value() &&
+                 from.size.value() <= to.size.value()));
+    }
+    return from_box <= to_box;
 }
 
 }  // namespace adt

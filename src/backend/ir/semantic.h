@@ -24,6 +24,21 @@ struct SemanticAST {
         for (const auto& item : comp_unit->items) {
             match(item, [&](const auto& subitem) { analysis(&subitem); });
         }
+        if (funcs.back().count("main") == 0) {
+            throw SemanticError(comp_unit->loc, "function `main` is not defined");
+        }
+        auto main = funcs.back()["main"];
+        auto main_type = convert(main);
+        if (!(main_type.ret <= adt::construct<int>())) {
+            throw SemanticError(
+                main->loc,
+                fmt::format("function `main` should return int, but got `{}`", main_type.ret));
+        }
+        if (!(main_type.params <= adt::construct<void>())) {
+            throw SemanticError(
+                main->loc, fmt::format("function `main` should not have parameters, but got `{}`",
+                                       main_type.params));
+        }
     }
 
     void show() const {
@@ -47,7 +62,8 @@ private:
         const ast::ReturnStmt*, const ast::AssignStmt*, const ast::BreakStmt*,
         const ast::ContinueStmt*, const ast::LValExp*, const ast::Exp*, const ast::PrimaryExp*,
         const ast::UnaryExp*, const ast::BinaryExp*, const ast::ExpBox*, const ast::ConstExp*,
-        const ast::CallExp*, const ast::FuncParams*, const ast::FuncParam*, const ast::FuncArgs*>;
+        const ast::CallExp*, const ast::FuncParams*, const ast::FuncParam*, const ast::FuncArgs*,
+        const ast::ConstInitVal*>;
 
     using SymDefNode = std::variant<const ast::ConstDef*, const ast::VarDef*, const ast::FuncParam*,
                                     const ast::FuncDef*>;
@@ -66,6 +82,7 @@ private:
     inline const static auto NUM = adt::construct<std::variant<int, float, double>>();
     inline const static auto BOOL = adt::construct<bool>();
     inline const static auto ANY = adt::construct<std::any>();
+    inline const static auto NEVER = adt::TypeBox{adt::Bottom{}.toBoxed()};
 
     std::vector<VarTable> vars;
     std::vector<FuncTable> funcs;
@@ -115,9 +132,9 @@ private:
             [&](VarDefNode subdef) {
                 match(subdef, [&](const auto& subdef) {
                     if (vars.back().count(subdef->name)) {
-                        throw SemanticError(
-                            subdef->loc,
-                            fmt::format("redefinition of variable '{}'", subdef->name));
+                        throw SemanticError(subdef->loc,
+                                            fmt::format("redefinition of variable '{}' at depth {}",
+                                                        subdef->name, vars.size() - 1));
                     }
                     vars.back()[subdef->name] = subdef;
                 });
@@ -153,6 +170,54 @@ private:
                 }
             }
         });
+        match(*decl, [&](const auto& decl) { analysis(&decl); });
+    }
+
+    void analysis(const ast::ConstDecl* decl) {
+        for (const auto& def : decl->defs) {
+            Type val_type;
+            analysis(&def.val);
+            val_type = type[&def.val];
+            if (!constructable(val_type, type[&def])) {
+                throw SemanticError(def.loc,
+                                    fmt::format("type error: cannot initialize `{}` with `{}`",
+                                                type[&def], val_type));
+            }
+        }
+    }
+
+    void analysis(const ast::VarDecl* decl) {
+        for (const auto& def : decl->defs) {
+            Type val_type;
+            if (def.val.has_value()) {
+                analysis(&*def.val);
+                val_type = type[&*def.val];
+            } else {
+                val_type = NEVER;
+            }
+            if (!constructable(val_type, type[&def])) {
+                throw SemanticError(def.loc,
+                                    fmt::format("type error: cannot initialize `{}` with `{}`",
+                                                type[&def], val_type));
+            }
+        }
+    }
+
+    void analysis(const ast::ConstInitVal* val) {
+        match(
+            val->val,
+            [&](const ast::ConstExp& exp) {
+                analysis(&exp);
+                type[val] = type[&exp];
+            },
+            [&](const std::vector<ast::ConstInitVal>& vals) {
+                Type elem_type = NEVER;
+                for (const auto& val : vals) {
+                    analysis(&val);
+                    elem_type = elem_type <= type[&val] ? type[&val] : elem_type;
+                }
+                type[val] = adt::Slice(std::move(elem_type), vals.size()).toBoxed();
+            });
     }
 
     void analysis(const ast::FuncParam* param) {
@@ -227,9 +292,9 @@ private:
     void analysis(const ast::Stmt* stmt) {
         match(
             *stmt,
-            [&](const ast::BlockStmt* block) {
-                push(), analysis(block), pop();
-                type[stmt] = type[block];
+            [&](const ast::BlockStmt& block) {
+                push(), analysis(&block), pop();
+                type[stmt] = type[&block];
             },
             [&](const auto& substmt) {
                 analysis(&substmt);
@@ -238,7 +303,7 @@ private:
     }
 
     void analysis(const ast::IfStmt* if_stmt) {
-        analysis(&if_stmt->cond);
+        analysis(&if_stmt->cond, BOOL);
         analysis(&if_stmt->stmt);
         if (if_stmt->else_stmt) {
             analysis(&*if_stmt->else_stmt);
@@ -246,7 +311,7 @@ private:
     }
 
     void analysis(const ast::WhileStmt* while_stmt) {
-        analysis(&while_stmt->cond);
+        analysis(&while_stmt->cond, BOOL);
         analysis(&while_stmt->stmt);
     }
 
@@ -356,7 +421,7 @@ private:
         auto func_type = convert(func_def);
         if (!(type[args] <= func_type.params)) {
             throw SemanticError(call_exp->loc,
-                                fmt::format("func '{}': `{}` can not be called with `{}`",
+                                fmt::format("function '{}': `{}` can not be called with `{}`",
                                             func->name, func_type, type[args], func_type.params));
         }
         type[call_exp] = func_type.ret;
@@ -365,37 +430,28 @@ private:
 
     void analysis(const ast::UnaryExp* unary_exp, const Type& upperbound = ANY) {
         auto exp = &unary_exp->exp;
-        analysis(exp, upperbound);
-        type[unary_exp] = type[exp];
         Type operand;
         switch (unary_exp->op) {
             case ast::UnaryOp::PLUS:
             case ast::UnaryOp::MINUS: operand = NUM; break;
             case ast::UnaryOp::NOT: operand = BOOL;
         }
-        if (!(type[exp] <= operand)) {
-            throw SemanticError(unary_exp->loc,
-                                fmt::format("unary operator `{}` cannot be applied to `{}`",
-                                            unary_exp->op, type[exp]));
-        }
+        analysis(exp, operand);
+        type[unary_exp] = type[exp];
         check(unary_exp, upperbound);
     }
 
     void analysis(const ast::BinaryExp* binary_exp, const Type& upperbound = ANY) {
         auto left = &binary_exp->left;
         auto right = &binary_exp->right;
-        analysis(left, upperbound);
-        analysis(right, upperbound);
-        Type operand, result;
+        Type operand;
+        std::optional<Type> result;
         switch (binary_exp->op) {
             case ast::BinaryOp::ADD:
             case ast::BinaryOp::SUB:
             case ast::BinaryOp::MUL:
             case ast::BinaryOp::DIV:
-            case ast::BinaryOp::MOD:
-                operand = NUM;
-                result = NUM;
-                break;
+            case ast::BinaryOp::MOD: operand = NUM; break;
             case ast::BinaryOp::EQ:
             case ast::BinaryOp::NEQ:
             case ast::BinaryOp::LT:
@@ -411,13 +467,17 @@ private:
                 result = BOOL;
                 break;
         }
-        if (!(type[left] <= operand) || !(type[right] <= operand)) {
-            throw SemanticError(
-                binary_exp->loc,
-                fmt::format("binary operator `{}` cannot be applied to `{}` and `{}`",
-                            binary_exp->op, type[left], type[right]));
+        analysis(left, operand);
+        analysis(right, operand);
+        if ((!(type[left] <= type[right])) && !(type[right] <= type[left])) {
+            throw SemanticError(binary_exp->loc, fmt::format("type mismatch between `{}` and `{}`",
+                                                             type[left], type[right]));
         }
-        type[binary_exp] = result;
+        if (result)
+            type[binary_exp] = *result;
+        else {
+            type[binary_exp] = type[left] <= type[right] ? type[right] : type[left];
+        }
         check(binary_exp, upperbound);
     }
 
