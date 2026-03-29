@@ -104,7 +104,9 @@ void test_subtype() {
     assert(!(i == f));
     auto s_union = (i | f);
     assert(s_union == s1);
-    assert(adt::Sum{.items = {construct<int>()}} == construct<int>());
+    auto s = adt::Sum{};
+    s.append(construct<int>());
+    assert(s == construct<int>());
 
     fmt::println("All subtype tests passed!");
 

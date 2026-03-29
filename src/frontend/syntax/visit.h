@@ -156,7 +156,7 @@ public:
             param.dims.push_back(std::stoi(intLit->getText(), nullptr, 0));
         }
         if (ctx->getText().find("[]") != std::string::npos) {
-            param.dims.insert(param.dims.begin(), -1);
+            param.dims.insert(param.dims.begin(), std::nullopt);
         }
         return wrap(std::move(param));
     }

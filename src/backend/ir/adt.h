@@ -58,31 +58,37 @@ struct TypeBox {
 };
 
 struct Int : mixin::ToBoxed<Int, Type> {
-    SIMPLE_TO_STRING("int");
+    bool immutable{false};
+    SIMPLE_TO_STRING(immutable ? "const int" : "int");
 };
 
 struct Float : mixin::ToBoxed<Float, Type> {
-    SIMPLE_TO_STRING("float");
+    bool immutable{false};
+    SIMPLE_TO_STRING(immutable ? "const float" : "float");
 };
 
 struct Double : mixin::ToBoxed<Double, Type> {
-    SIMPLE_TO_STRING("double");
+    bool immutable{false};
+    SIMPLE_TO_STRING(immutable ? "const double" : "double");
 };
 
 struct Bool : mixin::ToBoxed<Bool, Type> {
-    SIMPLE_TO_STRING("bool");
+    bool immutable{false};
+    SIMPLE_TO_STRING(immutable ? "const bool" : "bool");
 };
 
 struct Bottom : mixin::ToBoxed<Bottom, Type> {
+    inline constexpr static bool immutable{true};
     SIMPLE_TO_STRING("⊥");
 };
 
 struct Top : mixin::ToBoxed<Top, Type> {
+    inline constexpr static bool immutable{true};
     SIMPLE_TO_STRING("⊤");
 };
 
 struct Product : mixin::ToBoxed<Product, Type> {
-    std::vector<TypeBox> items;
+    bool immutable{false};
     [[nodiscard]] std::string toString() const {
         switch (items.size()) {
             case 0: return "()";
@@ -92,40 +98,54 @@ struct Product : mixin::ToBoxed<Product, Type> {
                 for (size_t i = 0; i < items.size(); i++) {
                     result += fmt::format("{}{}", items[i], i == items.size() - 1 ? "" : ", ");
                 }
-                return "(" + result + ")";
+                return (immutable ? "const (" : "(") + result + ")";
         }
     }
-    void append(TypeBox item) {
-        items.push_back(std::move(item));
-    }
+    void append(TypeBox item);
+    friend bool operator<=(const Product& from, const Product& to);
+
+private:
+    std::vector<TypeBox> items;
 };
 
 struct Sum : mixin::ToBoxed<Sum, Type> {
-    std::vector<TypeBox> items;
+    bool immutable{false};
     [[nodiscard]] std::string toString() const {
         std::string result;
         for (size_t i = 0; i < items.size(); i++) {
             result += fmt::format("{}{}", items[i], i == items.size() - 1 ? "" : " | ");
         }
-        return "(" + result + ")";
+        return (immutable ? "const (" : "(") + result + ")";
     }
     void append(TypeBox item);
+
+    friend TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs);
+    template <typename T1, typename T2> friend bool operator<=(const T1& from, const T2& to);
+    friend bool operator<=(const Sum& from, const Sum& to);
+    template <typename T, typename> friend bool operator<=(const Sum& from, const T& to);
+    template <typename T, typename> friend bool operator<=(const T& from, const Sum& to);
+
+private:
+    std::vector<TypeBox> items;
 };
 
 struct Func : mixin::ToBoxed<Func, Type> {
+    bool immutable{false};
     Product params;
     TypeBox ret;
     Func(Product params, TypeBox ret) : params(std::move(params)), ret(std::move(ret)) {}
-    SIMPLE_TO_STRING(fmt::format("({} -> {})", params, ret))
+    SIMPLE_TO_STRING(fmt::format("{}({} -> {})", immutable ? "const" : "", params, ret))
 };
 
 struct Slice : mixin::ToBoxed<Slice, Type> {
+    bool immutable{false};
     TypeBox elem;
     std::optional<size_t> size;
     Slice(TypeBox elem, std::optional<size_t> size) : elem(std::move(elem)), size(size) {}
     Slice(TypeBox elem) : elem(std::move(elem)), size(std::nullopt) {}
-    SIMPLE_TO_STRING(size.has_value() ? fmt::format("[{}; {}]", elem, size.value())
-                                      : fmt::format("[{}; *]", elem))
+    SIMPLE_TO_STRING(size.has_value()
+                         ? fmt::format("{}[{}; {}]", immutable ? "const" : "", elem, size.value())
+                         : fmt::format("{}[{}; *]", immutable ? "const" : "", elem))
     [[nodiscard]] bool sized() const {
         return size.has_value();
     }
@@ -169,6 +189,9 @@ TypeBox& TypeBox::operator=(const TypeBox& other) {
     }
     return *this;
 }
+void Product::append(TypeBox item) {
+    items.push_back(std::move(item));
+}
 
 /************************************************************/
 
@@ -184,35 +207,44 @@ template <typename... Args> struct is_tuple<std::tuple<Args...>> : std::true_typ
 template <typename T> struct is_variant : std::false_type {};
 template <typename... Args> struct is_variant<std::variant<Args...>> : std::true_type {};
 
+template <typename T> T mark_immutable(bool immutable) {
+    auto t = T{};
+    t.immutable = immutable;
+    return t;
+}
+
 template <typename T> struct construct_func;
 
 template <typename R, typename... Args> struct construct_func<R(Args...)> {
-    static TypeBox apply() {
-        std::vector<TypeBox> items;
-        (items.push_back(construct<Args>()), ...);
-        auto params = Product{.items = std::move(items)};
+    static TypeBox apply(bool immutable = false) {
+        auto params = Product{};
+        (params.append(construct<Args>()), ...);
         auto ret = construct<R>();
-        return Func(std::move(params), std::move(ret)).toBoxed();
+        auto func = Func(std::move(params), std::move(ret));
+        func.immutable = immutable;
+        return std::move(func).toBoxed();
     }
 };
 
 template <typename T> struct construct_product;
 
 template <typename... Args> struct construct_product<std::tuple<Args...>> {
-    static TypeBox apply() {
-        std::vector<TypeBox> items;
-        (items.push_back(construct<Args>()), ...);
-        return Product{.items = std::move(items)}.toBoxed();
+    static TypeBox apply(bool immutable = false) {
+        auto params = Product{};
+        (params.append(construct<Args>()), ...);
+        params.immutable = immutable;
+        return std::move(params).toBoxed();
     }
 };
 
 template <typename T> struct construct_sum;
 
 template <typename... Args> struct construct_sum<std::variant<Args...>> {
-    static TypeBox apply() {
-        std::vector<TypeBox> items;
-        (items.push_back(construct<Args>()), ...);
-        return Sum{.items = std::move(items)}.toBoxed();
+    static TypeBox apply(bool immutable = false) {
+        auto sum = Sum{};
+        (sum.append(construct<Args>()), ...);
+        sum.immutable = immutable;
+        return std::move(sum).toBoxed();
     }
 };
 
@@ -233,29 +265,38 @@ template <typename... Args> struct construct_sum<std::variant<Args...>> {
  * - std::variant<Args...> -> Sum
  */
 template <typename T> TypeBox construct() {
-    using U = std::remove_cv_t<std::remove_reference_t<T>>;
+    using Raw = std::remove_reference_t<T>;
+    using U = std::remove_cv_t<Raw>;
+    constexpr bool immutable = std::is_const_v<Raw>;
+
     if constexpr (std::is_same_v<U, int>) {
-        return Int{}.toBoxed();
+        return mark_immutable<Int>(immutable).toBoxed();
     } else if constexpr (std::is_same_v<U, float>) {
-        return Float{}.toBoxed();
+        return mark_immutable<Float>(immutable).toBoxed();
     } else if constexpr (std::is_same_v<U, double>) {
-        return Double{}.toBoxed();
+        return mark_immutable<Double>(immutable).toBoxed();
     } else if constexpr (std::is_same_v<U, bool>) {
-        return Bool{}.toBoxed();
+        return mark_immutable<Bool>(immutable).toBoxed();
     } else if constexpr (std::is_same_v<U, std::any>) {
         return Top{}.toBoxed();
     } else if constexpr (std::is_pointer_v<U>) {
-        return Slice(construct<std::remove_pointer_t<U>>()).toBoxed();
+        auto t = Slice(construct<std::remove_pointer_t<Raw>>());
+        t.immutable = immutable;
+        return std::move(t).toBoxed();
     } else if constexpr (std::is_array_v<U>) {
-        return Slice(construct<std::remove_extent_t<U>>(), std::extent_v<U>).toBoxed();
+        auto t = Slice(construct<std::remove_extent_t<Raw>>(), std::extent_v<U>);
+        t.immutable = immutable;
+        return std::move(t).toBoxed();
     } else if constexpr (std::is_void_v<U>) {
-        return Product{}.toBoxed();
+        auto t = Product{};
+        t.immutable = immutable;
+        return std::move(t).toBoxed();
     } else if constexpr (std::is_function_v<U>) {
-        return construct_func<U>::apply();
+        return construct_func<U>::apply(immutable);
     } else if constexpr (is_tuple<U>::value) {
-        return construct_product<U>::apply();
+        return construct_product<U>::apply(immutable);
     } else if constexpr (is_variant<U>::value) {
-        return construct_sum<U>::apply();
+        return construct_sum<U>::apply(immutable);
     } else {
         static_assert(false_v<U>::value, "Unsupported type for ir::construct<T>");
     }
@@ -283,7 +324,7 @@ template <typename T, typename = std::enable_if_t<std::disjunction_v<
                           std::is_same<T, Int>, std::is_same<T, Float>, std::is_same<T, Bool>,
                           std::is_same<T, Double>, std::is_same<T, Top>, std::is_same<T, Bottom>>>>
 bool operator<=(const T& from, const T& to) {
-    return true;
+    return !to.immutable || from.immutable;  // if to is immutable, from must also be immutable
 }
 
 template <typename T, typename = std::enable_if_t<

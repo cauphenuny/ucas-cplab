@@ -99,7 +99,7 @@ private:
         return v;
     }();
 
-    inline const static auto VOID = adt::construct<void>();
+    inline const static auto VOID = adt::construct<const void>();
     inline const static auto NUM = adt::construct<std::variant<int, float, double>>();
     inline const static auto BOOL = adt::construct<bool>();
     inline const static auto INT = adt::construct<int>();
@@ -118,13 +118,13 @@ private:
         funcs.pop_back();
     }
 
-    adt::TypeBox convert(ast::Type type) {
+    adt::TypeBox convert(ast::Type type, bool immutable = false) {
         switch (type) {
-            case ast::Type::INT: return adt::Int{}.toBoxed();
-            case ast::Type::FLOAT: return adt::Float{}.toBoxed();
-            case ast::Type::BOOL: return adt::Bool{}.toBoxed();
-            case ast::Type::VOID: return adt::Product{}.toBoxed();
-            case ast::Type::DOUBLE: return adt::Double{}.toBoxed();
+            case ast::Type::INT: return adt::Int{.immutable = immutable}.toBoxed();
+            case ast::Type::FLOAT: return adt::Float{.immutable = immutable}.toBoxed();
+            case ast::Type::BOOL: return adt::Bool{.immutable = immutable}.toBoxed();
+            case ast::Type::DOUBLE: return adt::Double{.immutable = immutable}.toBoxed();
+            case ast::Type::VOID: return adt::construct<const void>();
         }
     }
 
@@ -187,14 +187,15 @@ private:
     }
 
     void analysis(const ast::Decl* decl) {
+        bool is_const = std::holds_alternative<ast::ConstDecl>(*decl);
         match(*decl, [&](const auto& decl) {
             type[&decl] = VOID;
-            auto elem_type = convert(decl.type);
+            auto elem_type = convert(decl.type, is_const);
             for (const auto& def : decl.defs) {
                 registerSymbol(&def);
                 if (def.dims.size()) {
                     // array type
-                    auto elem_type = convert(decl.type);
+                    auto elem_type = convert(decl.type, is_const);
                     for (size_t i = def.dims.size(); i > 0; i--) {
                         elem_type = adt::Slice(std::move(elem_type), def.dims[i - 1]).toBoxed();
                     }
@@ -425,7 +426,7 @@ private:
 
     void analysis(const ast::ConstExp* const_exp, const Type& upperbound = ANY) {
         type[const_exp] =
-            match(*const_exp, [&](auto val) { return adt::construct<decltype(val)>(); });
+            match(*const_exp, [&](auto val) { return adt::construct<const decltype(val)>(); });
     }
 
     void analysis(const ast::PrimaryExp* primary, const Type& upperbound = ANY,
