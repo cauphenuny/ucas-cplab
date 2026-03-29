@@ -91,7 +91,7 @@ struct Product : mixin::ToBoxed<Product, Type> {
     [[nodiscard]] std::string toString() const {
         switch (items.size()) {
             case 0: return "()";
-            case 1: return fmt::format("{}", items[0]);
+            case 1: return fmt::format("({},)", items[0]);
             default:
                 std::string result;
                 for (size_t i = 0; i < items.size(); i++) {
