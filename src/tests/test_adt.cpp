@@ -107,8 +107,10 @@ void test_subtype() {
     auto s = adt::Sum{};
     s.append(construct<int>());
     assert(s == construct<int>());
-
-    fmt::println("All subtype tests passed!");
+    auto never = TypeBox{Bottom{}.toBoxed()};
+    assert((never | construct<int>()) == construct<int>());
+    assert((never | never) == never);
+    assert((never | construct<void>()) == construct<void>());
 
     // constructable
     assert(constructable(construct<int[5]>(), construct<int[10]>())); // smaller array can construct bigger array
@@ -117,6 +119,8 @@ void test_subtype() {
     assert(
         !constructable(construct<int*>(), construct<int[5]>()));  // pointer cannot construct array
     assert(constructable(construct<int[6]>(), construct<int[2][3]>())); // flat array can construct multi-dim array
+
+    fmt::println("All subtype tests passed!");
 }
 
 void test_construct() {
@@ -133,6 +137,15 @@ void test_construct() {
     fmt::println("any: {}", construct<std::any>());
     fmt::println(
         "Complex: {}", construct<int (*(*(*)(float, std::variant<int, float> (*)(bool))))(float, int*)>());
+    
+    fmt::println("\nUnion tests:");
+    auto never = TypeBox{Bottom{}.toBoxed()};
+    auto i = construct<int>();
+    auto v = construct<void>();
+    fmt::println("NEVER | INT: {}", never | i);
+    fmt::println("NEVER | NEVER: {}", never | never);
+    fmt::println("VOID | NEVER: {}", v | never);
+    fmt::println("INT | INT: {}", i | i);
 }
 
 int main() {

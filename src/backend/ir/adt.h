@@ -110,6 +110,8 @@ private:
 struct Sum : mixin::ToBoxed<Sum, Type> {
     bool immutable{false};
     [[nodiscard]] std::string toString() const {
+        if (items.empty()) return "⊥";
+        if (items.size() == 1) return items[0].toString();
         std::string result;
         for (size_t i = 0; i < items.size(); i++) {
             result += fmt::format("{}{}", items[i], i == items.size() - 1 ? "" : " | ");
@@ -471,6 +473,7 @@ template <typename T1, typename T2> bool operator==(const T1& from, const T2& to
 }
 
 void Sum::append(TypeBox item) {
+    if (item.is<Bottom>()) return;  // ⊥ does not add any information
     for (const auto& i : items) {
         if (i == item) return;
     }
@@ -478,33 +481,24 @@ void Sum::append(TypeBox item) {
 }
 
 TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs) {
-    return TypeBox::match(lhs, rhs)(
-        [](const Sum& lhs, const Sum& rhs) {
-            Sum result = lhs;
-            for (const auto& item : rhs.items) {
-                result.append(item);
-            }
-            return std::move(result).toBoxed();
-        },
-        [&](const Sum& lhs, const auto&) {
-            Sum result = lhs;
-            result.append(rhs);
-            return std::move(result).toBoxed();
-        },
-        [&](const auto&, const Sum& rhs) {
-            Sum result;
-            result.append(lhs);
-            for (const auto& item : rhs.items) {
-                result.append(item);
-            }
-            return std::move(result).toBoxed();
-        },
-        [&](const auto&, const auto&) {
-            Sum result;
-            result.append(lhs);
-            result.append(rhs);
-            return std::move(result).toBoxed();
-        });
+    if (lhs.is<Bottom>()) return rhs;
+    if (rhs.is<Bottom>()) return lhs;
+    if (lhs == rhs) return lhs;
+
+    Sum result;
+    auto append_to_sum = [&](const TypeBox& b) {
+        TypeBox::match(b)(
+            [&](const Sum& s) {
+                for (const auto& item : s.items) result.append(item);
+            },
+            [&](const auto&) { result.append(b); });
+    };
+
+    append_to_sum(lhs);
+    append_to_sum(rhs);
+
+    if (result.items.size() == 1) return result.items[0];
+    return std::move(result).toBoxed();
 }
 
 bool constructable(const TypeBox& from_box, const TypeBox& to_box) {
