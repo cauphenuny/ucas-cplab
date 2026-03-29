@@ -45,11 +45,10 @@ private:
     std::unordered_map<LValNode, SymDefNode> defs;
 
     using ExprNode = std::variant<
-        const ast::Decl*, const ast::ConstDecl*, const ast::ConstDef*, const ast::VarDecl*,
-        const ast::VarDef*, const ast::FuncDef*, const ast::LValExp*, const ast::Exp*,
-        const ast::PrimaryExp*, const ast::UnaryExp*, const ast::BinaryExp*, const ast::ExpBox*,
-        const ast::ConstExp*, const ast::CallExp*, const ast::FuncParams*, const ast::FuncParam*,
-        const ast::FuncArgs*, const ast::ConstInitVal*, const ast::LValID*>;
+        const ast::ConstDef*, const ast::VarDef*, const ast::FuncDef*, const ast::LValExp*,
+        const ast::Exp*, const ast::PrimaryExp*, const ast::UnaryExp*, const ast::BinaryExp*,
+        const ast::ExpBox*, const ast::ConstExp*, const ast::CallExp*, const ast::FuncParams*,
+        const ast::FuncParam*, const ast::FuncArgs*, const ast::ConstInitVal*, const ast::LValID*>;
 
     std::unordered_map<ExprNode, Type> types;
 
@@ -57,7 +56,8 @@ private:
         std::variant<const ast::StmtBox*, const ast::Stmt*, const ast::IfStmt*,
                      const ast::WhileStmt*, const ast::ReturnStmt*, const ast::AssignStmt*,
                      const ast::BreakStmt*, const ast::ContinueStmt*, const ast::BlockStmt*,
-                     const ast::ExpStmt*>;
+                     const ast::ExpStmt*, const ast::Decl*, const ast::ConstDecl*,
+                     const ast::VarDecl*>;
 
     struct StmtType {
         Type ret_type{NEVER};
