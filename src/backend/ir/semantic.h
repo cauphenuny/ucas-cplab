@@ -155,7 +155,7 @@ private:
     template <typename T> void check(T node, Type upperbound) {
         if (!(type[node] <= upperbound)) {
             throw SemanticError(node->loc,
-                                fmt::format("type error ({}): `{}` is not subtype of `{}`", *node,
+                                fmt::format("type error (at {}): `{}` is not subtype of `{}`", *node,
                                             type[node], upperbound));
         }
     }
@@ -342,7 +342,8 @@ private:
         analysis(&if_stmt->cond, BOOL);
         analysis(&if_stmt->stmt);
         if (if_stmt->else_stmt) {
-            analysis(&*if_stmt->else_stmt);
+            auto else_stmt = &*if_stmt->else_stmt;
+            analysis(else_stmt);
         }
     }
 
@@ -366,7 +367,7 @@ private:
         auto var = &assign_stmt->var;
         auto exp = &assign_stmt->exp;
         analysis(var);
-        analysis(exp);
+        analysis(exp, type[var]);
         if (!(type[exp] <= type[var])) {
             throw SemanticError(assign_stmt->loc,
                                 fmt::format("cannot assign `{}` to `{}`", type[exp], type[var]));
