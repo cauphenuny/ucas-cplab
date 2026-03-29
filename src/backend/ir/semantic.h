@@ -361,12 +361,12 @@ private:
     void analysis(const ast::IfStmt* if_stmt) {
         analysis(&if_stmt->cond, BOOL);
         analysis(&if_stmt->stmt);
-        stmt_types[if_stmt] = stmt_types[&if_stmt->stmt];
         if (if_stmt->else_stmt) {
             auto else_stmt = &*if_stmt->else_stmt;
             analysis(else_stmt);
-            stmt_types[if_stmt].merge(stmt_types[else_stmt]);
+            stmt_types[if_stmt] = stmt_types[else_stmt];
         }
+        stmt_types[if_stmt].merge(stmt_types[&if_stmt->stmt]);
     }
 
     void analysis(const ast::WhileStmt* while_stmt) {
