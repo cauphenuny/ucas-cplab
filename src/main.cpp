@@ -1,10 +1,10 @@
 #include <iostream>
 #define FMT_HEADER_ONLY
 #include "fmt/format.h"
-#include "frontend/syntax/error.h"
-#include "frontend/syntax/visit.h"
-#include "backend/ir/semantic.h"
-#include "utils/error.h"
+#include "frontend/syntax/error.hpp"
+#include "frontend/syntax/visit.hpp"
+#include "frontend/ast/analysis/semantic_ast.h"
+#include "utils/error.hpp"
 #include "utils/tui.h"
 
 #include <CACTLexer.h>
@@ -50,7 +50,7 @@ int main(int argc, const char* argv[]) {
             try {
                 std::unique_ptr<ast::CompUnit> ast(std::any_cast<ast::CompUnit*>(visitor.visit(parser.compUnit())));
                 fmt::println("AST: \n{}\n\n", ast);
-                auto semantic_ast = ir::SemanticAST(std::move(ast));
+                auto semantic_ast = ast::SemanticAST(std::move(ast));
                 fmt::println("Semantic analysis:\n");
                 semantic_ast.show();
                 fmt::println("{}: " BOLD GREEN "OK" NONE, argv[i]);

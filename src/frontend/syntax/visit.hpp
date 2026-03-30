@@ -1,8 +1,8 @@
 #pragma once
 
 #include "CACTBaseVisitor.h"
-#include "frontend/ast/ast.h"
-#include "utils/error.h"
+#include "frontend/ast/ast.hpp"
+#include "utils/error.hpp"
 
 #include <any>
 #include <memory>

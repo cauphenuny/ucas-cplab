@@ -1,6 +1,6 @@
 #pragma once
 
-#include "frontend/ast/op.h"
+#include "frontend/ast/op.hpp"
 
 #include <cstddef>
 #include <memory>
@@ -134,10 +134,10 @@ struct TupleExp : public mixin::Locatable, mixin::ToBoxed<TupleExp, Exp> {
     DELEGATED_TO_STRING(TupleExp, elements);
 };
 
-ExpBox::ExpBox(std::unique_ptr<Exp> exp) : exp(std::move(exp)) {
+inline ExpBox::ExpBox(std::unique_ptr<Exp> exp) : exp(std::move(exp)) {
     this->loc = match(*this->exp, [](const auto& subexp) { return subexp.loc; });
 }
-auto ExpBox::toString() const -> std::string {
+inline auto ExpBox::toString() const -> std::string {
     return fmt::format("ExpBox: {}", *exp);
 }
 template <typename T> auto ExpBox::is() const -> bool {
@@ -202,10 +202,10 @@ struct ExpStmt : public mixin::Locatable, mixin::ToBoxed<ExpStmt, Stmt> {
     TO_STRING(ExpStmt, exp);
 };
 
-StmtBox::StmtBox(std::unique_ptr<Stmt> stmt) : stmt(std::move(stmt)) {
+inline StmtBox::StmtBox(std::unique_ptr<Stmt> stmt) : stmt(std::move(stmt)) {
     this->loc = match(*this->stmt, [](const auto& substmt) { return substmt.loc; });
 }
-auto StmtBox::toString() const -> std::string {
+inline auto StmtBox::toString() const -> std::string {
     return fmt::format("StmtBox: {}", *stmt);
 }
 template <typename T> auto StmtBox::is() const -> bool {

@@ -14,7 +14,10 @@ include_directories(src)
 include_directories(deps)
 
 # Project sources excluding tests and main.cpp
-FILE(GLOB_RECURSE ALL_SOURCES "src/*.cpp" "grammar/*.cpp")
+FILE(GLOB_RECURSE ALL_SOURCES CONFIGURE_DEPENDS
+    "src/*.cpp"
+    "grammar/*.cpp"
+)
 
 # Filter out tests and main.cpp from the core library sources
 set(LIB_SOURCES ${ALL_SOURCES})
@@ -27,6 +30,8 @@ FILE(GLOB_RECURSE ANTLR_LIB_FILES "deps/antlr4-runtime/*.cpp")
 # add_definitions(-w -g)
 add_definitions(-g -Wall) # Do not ignore warnings!
 add_library(antlr STATIC ${ANTLR_LIB_FILES})
+
+message("LIB_SOURCES: ${LIB_SOURCES}")
 
 # Compiler Core Library
 if(LIB_SOURCES)

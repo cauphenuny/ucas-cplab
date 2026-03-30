@@ -3,7 +3,7 @@
 #include "BaseErrorListener.h"
 #include "Lexer.h"
 #include "utils/traits.hpp"
-#include "utils/error.h"
+#include "utils/error.hpp"
 
 #include <cstddef>
 #include <string>

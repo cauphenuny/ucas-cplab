@@ -1,4 +1,4 @@
-#include "backend/ir/type.h"
+#include "backend/ir/type.hpp"
 
 #include <cassert>
 

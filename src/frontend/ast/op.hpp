@@ -17,7 +17,7 @@ enum class Type : uint8_t {
     VOID,
 };
 
-auto toString(Type type) -> std::string {
+inline auto toString(Type type) -> std::string {
     switch (type) {
         case Type::INT: return "int";
         case Type::FLOAT: return "float";
@@ -29,7 +29,7 @@ auto toString(Type type) -> std::string {
 
 enum class UnaryOp : uint8_t { PLUS, MINUS, NOT };
 
-std::string toString(UnaryOp op) {
+inline std::string toString(UnaryOp op) {
     switch (op) {
         case UnaryOp::PLUS: return "+";
         case UnaryOp::MINUS: return "-";
@@ -56,7 +56,7 @@ enum class BinaryOp : uint8_t {
     CALL,
 };
 
-std::string toString(BinaryOp op) {
+inline std::string toString(BinaryOp op) {
     switch (op) {
         case BinaryOp::MUL: return "*";
         case BinaryOp::DIV: return "/";

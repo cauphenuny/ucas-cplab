@@ -1,8 +1,7 @@
-#include "backend/ir/ir.h"
-#include "backend/ir/semantic.h"
+#include "backend/ir/ir.hpp"
 
-#include <frontend/ast/ast.h>
-#include <frontend/ast/op.h>
+#include <frontend/ast/ast.hpp>
+#include <frontend/ast/op.hpp>
 #include <utils/serialize.hpp>
 
 int main() {

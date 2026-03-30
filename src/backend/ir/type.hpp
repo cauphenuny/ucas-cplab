@@ -159,15 +159,15 @@ struct Slice : mixin::ToBoxed<Slice, Type> {
     }
 };
 
-std::string TypeBox::toString() const {
+inline std::string TypeBox::toString() const {
     return serialize(*item);
 }
 
-const Type& TypeBox::var() const {
+inline const Type& TypeBox::var() const {
     return *item;
 }
 
-bool TypeBox::immutable() const {
+inline bool TypeBox::immutable() const {
     return Match{*item}([](const auto& t) -> bool {
         using T = std::decay_t<decltype(t)>;
         if constexpr (std::is_same_v<T, Product> || std::is_same_v<T, Sum> ||
@@ -192,10 +192,10 @@ template <typename T> const T& TypeBox::as() const {
     return std::get<T>(*item);
 }
 
-auto TypeBox::match(const Type& type) -> Match<const Type&> {
+inline auto TypeBox::match(const Type& type) -> Match<const Type&> {
     return Match{type};
 }
-auto TypeBox::match(const TypeBox& box) -> Match<const Type&> {
+inline auto TypeBox::match(const TypeBox& box) -> Match<const Type&> {
     return match(box.var());
 }
 template <typename T, typename... Rest>
@@ -203,15 +203,15 @@ auto TypeBox::match(T&& box, Rest&&... rest) -> decltype(auto) {
     return match(std::forward<Rest>(rest)...).with(match(std::forward<T>(box)));
 }
 
-TypeBox::TypeBox() : item(Top{}.toBoxed()) {}
-TypeBox::TypeBox(const TypeBox& other) : item(std::make_unique<Type>(*other.item)) {}
-TypeBox& TypeBox::operator=(const TypeBox& other) {
+inline TypeBox::TypeBox() : item(Top{}.toBoxed()) {}
+inline TypeBox::TypeBox(const TypeBox& other) : item(std::make_unique<Type>(*other.item)) {}
+inline TypeBox& TypeBox::operator=(const TypeBox& other) {
     if (this != &other) {
         item = std::make_unique<Type>(*other.item);
     }
     return *this;
 }
-void Product::append(TypeBox item) {
+inline void Product::append(TypeBox item) {
     items.push_back(std::move(item));
 }
 
@@ -363,7 +363,7 @@ bool operator<=(const T& from, const Primitive& to) {
     return Match{to}([&](const auto& to) -> bool { return from <= to; });
 }
 
-bool operator<=(const Primitive& from, const Primitive& to) {
+inline bool operator<=(const Primitive& from, const Primitive& to) {
     return Match{from, to}([](const auto& from, const auto& to) -> bool { return from <= to; });
 }
 
@@ -419,14 +419,14 @@ operator<=(const T& from, const Sum& to) {
     return false;
 }
 
-bool operator<=(const Sum& from, const Sum& to) {  // forall T in from s.t. T -> to
+inline bool operator<=(const Sum& from, const Sum& to) {  // forall T in from s.t. T -> to
     for (const auto& item : from.items) {
         if (!(item <= to)) return false;
     }
     return true;
 }
 
-bool operator<=(const Func& from, const Func& to) {
+inline bool operator<=(const Func& from, const Func& to) {
     if (from.immutable && !to.immutable) {
         return false;
     }
@@ -434,7 +434,7 @@ bool operator<=(const Func& from, const Func& to) {
            (from.ret <= to.ret);          // covariance
 }
 
-bool operator<=(const Slice& from, const Slice& to) {
+inline bool operator<=(const Slice& from, const Slice& to) {
     if (from.immutable && !to.immutable) {
         return false;
     }
@@ -499,7 +499,7 @@ template <typename T1, typename T2> bool operator==(const T1& from, const T2& to
     return (from <= to) && (to <= from);
 }
 
-void Sum::append(TypeBox item) {
+inline void Sum::append(TypeBox item) {
     if (item.is<Bottom>()) return;  // ⊥ does not add any information
     for (const auto& i : items) {
         if (i == item) return;
@@ -507,7 +507,7 @@ void Sum::append(TypeBox item) {
     items.push_back(std::move(item));
 }
 
-TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs) {
+inline TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs) {
     if (lhs.is<Bottom>()) return rhs;
     if (rhs.is<Bottom>()) return lhs;
     if (lhs == rhs) return lhs;
@@ -528,7 +528,7 @@ TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs) {
     return std::move(result).toBoxed();
 }
 
-bool constructable(const TypeBox& from_box, const TypeBox& to_box) {
+inline bool constructable(const TypeBox& from_box, const TypeBox& to_box) {
     if (from_box.is<Slice>() && to_box.is<Slice>()) {
         const auto& from = from_box.as<Slice>();
         const auto& to = to_box.as<Slice>();

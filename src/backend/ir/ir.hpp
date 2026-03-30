@@ -1,8 +1,8 @@
 #pragma once
 
-#include "op.h"
-#include "semantic.h"
-#include "type.h"
+#include "op.hpp"
+#include "frontend/ast/analysis/semantic_ast.h"
+#include "type.hpp"
 
 #include <variant>
 
@@ -14,7 +14,7 @@ struct Block;
 
 struct NamedValue {
     Type type;
-    SymDefNode def;
+    ast::SymDefNode def;
 
     SIMPLE_TO_STRING(match(
         def, [&](const ast::FuncDef* f) { return f->name; },
@@ -154,8 +154,8 @@ struct Program {
         return str;
     }
 
-    Program(const SemanticAST& ast) : ast(ast) {}
-    const SemanticAST& ast;
+    Program(const ast::SemanticAST& ast) : ast(ast) {}
+    const ast::SemanticAST& ast;
 };
 
 }  // namespace ir

@@ -26,7 +26,7 @@ enum class InstOp : uint8_t {
     CALL, //
 };
 
-std::string toString(InstOp op) {
+inline std::string toString(InstOp op) {
     switch (op) {
         case InstOp::MUL: return "*";
         case InstOp::DIV: return "/";

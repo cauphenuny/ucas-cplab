@@ -1,6 +1,6 @@
-#include "frontend/ast/op.h"
+#include "frontend/ast/op.hpp"
 
-#include <frontend/ast/ast.h>
+#include <frontend/ast/ast.hpp>
 #include <optional>
 #include <utils/serialize.hpp>
 
