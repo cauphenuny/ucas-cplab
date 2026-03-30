@@ -21,11 +21,11 @@ int main() {
 
     std::vector<CompUnit::Item> unit_items;
     unit_items.emplace_back(std::move(main_def));
-    CompUnit comp_unit{.items = std::move(unit_items)};
+    auto comp_unit = std::make_unique<CompUnit>(Location{}, std::move(unit_items));
 
-    SemanticInfo info(comp_unit);
+    SemanticAST info(std::move(comp_unit));
 
-    Program program(comp_unit, info);
+    Program program(info);
 
     ast::VarDef g_def_ast{.name = "g", .dims = {}, .val = std::nullopt};
     g_def_ast.loc = {0, 0};  // 假设全局变量定义在文件开头

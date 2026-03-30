@@ -189,7 +189,7 @@ int main() {
                                         .block = BlockStmt{.items = std::move(main_items)}});
     }
 
-    auto comp_unit = CompUnit{.items = std::move(unit_items)};
+    auto comp_unit = CompUnit{Location{}, std::move(unit_items)};
     fmt::println("{}", comp_unit);
 
     // 10. Location Verification

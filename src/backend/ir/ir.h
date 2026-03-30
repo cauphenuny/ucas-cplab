@@ -154,9 +154,8 @@ struct Program {
         return str;
     }
 
-    Program(const ast::CompUnit& code, const SemanticInfo& info) : code(code), info(info) {}
-    const ast::CompUnit& code;
-    const SemanticInfo& info;
+    Program(const SemanticAST& ast) : ast(ast) {}
+    const SemanticAST& ast;
 };
 
 }  // namespace ir

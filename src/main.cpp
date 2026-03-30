@@ -48,12 +48,11 @@ int main(int argc, const char* argv[]) {
 
             ASTVisitor visitor;
             try {
-                auto res = visitor.visit(parser.compUnit());
-                auto comp_unit = ASTVisitor::take<ast::CompUnit>(res);
-                fmt::println("AST: \n{}\n\n", comp_unit);
-                auto info = ir::SemanticInfo(comp_unit);
+                std::unique_ptr<ast::CompUnit> ast(std::any_cast<ast::CompUnit*>(visitor.visit(parser.compUnit())));
+                fmt::println("AST: \n{}\n\n", ast);
+                auto semantic_ast = ir::SemanticAST(std::move(ast));
                 fmt::println("Semantic analysis:\n");
-                info.show();
+                semantic_ast.show();
                 fmt::println("{}: " BOLD GREEN "OK" NONE, argv[i]);
             } catch (const SyntaxError& e) {
                 fmt::println("{}: {}", argv[i], e.what());

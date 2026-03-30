@@ -29,10 +29,10 @@ using StmtNode =
                  const ast::ContinueStmt*, const ast::BlockStmt*, const ast::ExpStmt*,
                  const ast::Decl*, const ast::ConstDecl*, const ast::VarDecl*>;
 
-struct SemanticInfo {
+struct SemanticAST {
 
-    SemanticInfo(const ast::CompUnit& comp_unit) : tree(comp_unit) {
-        analysis(&tree);
+    SemanticAST(std::unique_ptr<ast::CompUnit> comp_unit) : tree(std::move(comp_unit)) {
+        analysis(tree.get());
     }
 
     void show() const {
@@ -61,8 +61,10 @@ struct SemanticInfo {
         return types[expr];
     }
 
+    [[nodiscard]] auto& ast() const { return *tree; }
+
 private:
-    const ast::CompUnit& tree;
+    const std::unique_ptr<const ast::CompUnit> tree;
 
     using Type = adt::TypeBox;
 
@@ -314,18 +316,19 @@ private:
     void analysis(const ast::FuncDef* func_def, bool is_builtin = false) {
         types[func_def] = calcType(func_def).toBoxed();
         registerSymbol(func_def);
+        if (is_builtin) return;
         pushScope();
         analysis(&func_def->params);
         analysis(&func_def->block);
         popScope();
         auto block_type = stmt_types[&func_def->block];
-        if (!is_builtin && !block_type.always_return) {
+        if (!block_type.always_return) {
             throw SemanticError(
                 func_def->loc,
                 fmt::format("function '{}' may not return on all paths", func_def->name));
         }
-        auto ret_type = calcType(func_def).ret;
-        if (!is_builtin && !(block_type.ret_type <= ret_type)) {
+        auto ret_type = types[func_def].as<adt::Func>().ret;
+        if (!(block_type.ret_type <= ret_type)) {
             throw SemanticError(
                 func_def->loc,
                 fmt::format("function '{}' has return type `{}`, but declared as `{}`",

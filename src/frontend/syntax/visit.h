@@ -47,19 +47,19 @@ public:
     }
 
     std::any visitCompUnit(CACTParser::CompUnitContext* ctx) override {
-        ast::CompUnit compUnit;
-        compUnit.loc = get_loc(ctx);
+        auto loc = get_loc(ctx);
+        auto items = std::vector<ast::CompUnit::Item>{};
         for (auto* child : ctx->children) {
             auto res = visit(child);
             if (res.has_value()) {
                 if (res.type() == typeid(node_ptr<ast::Decl>)) {
-                    compUnit.items.emplace_back(take<ast::Decl>(res));
+                    items.emplace_back(take<ast::Decl>(res));
                 } else if (res.type() == typeid(node_ptr<ast::FuncDef>)) {
-                    compUnit.items.emplace_back(take<ast::FuncDef>(res));
+                    items.emplace_back(take<ast::FuncDef>(res));
                 }
             }
         }
-        return wrap(std::move(compUnit));
+        return std::make_any<ast::CompUnit*>(new ast::CompUnit(loc, std::move(items)));
     }
 
     std::any visitDecl(CACTParser::DeclContext* ctx) override {

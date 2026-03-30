@@ -227,6 +227,8 @@ struct CompUnit : public mixin::Locatable {
     using Item = std::variant<Decl, FuncDef>;
     std::vector<Item> items;
     DELEGATED_TO_STRING(CompUnit, items);
+    CompUnit(Location loc, std::vector<Item> items) : items(std::move(items)) { this->loc = loc; }
+    CompUnit(CompUnit&&) = delete; // NOTE: AST is not movable because some nodes's address will be used as keys in semantic analysis
 };
 
 }  // namespace ast
