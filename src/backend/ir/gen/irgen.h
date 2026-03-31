@@ -7,7 +7,7 @@
 namespace ir::gen {
 
 struct Generator {
-    static Program generate(const ast::SemanticAST& info);
+    Program generate(const ast::SemanticAST& info);
 
 private:
     const ast::SemanticAST* info;
@@ -19,12 +19,16 @@ private:
 
     [[nodiscard]] auto gen(const ast::FuncDef* func) -> Func;
 
+    [[nodiscard]] auto gen(const ast::BlockStmt* block_stmt, Func* func, Block* scope) -> Block*;
     [[nodiscard]] auto gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block*;
     [[nodiscard]] auto gen(const ast::StmtBox* stmt_box, Func* func, Block* scope) -> Block* {
         return gen(stmt_box->stmt.get(), func, scope);
     }
 
+    [[nodiscard]] auto gen(const ast::LVal* lval, const ast::LValExp* container) -> LeftValue;
     [[nodiscard]] auto gen(const ast::LValExp* exp, Func* func, Block* scope) -> LeftValue;
+    [[nodiscard]] auto gen(const ast::BinaryExp* exp, Func* func, Block* scope) -> Value;
+    [[nodiscard]] auto gen(const ast::ConstExp* exp, Func* func, Block* scope) -> Value;
     [[nodiscard]] auto gen(const ast::Exp* exp, Func* func, Block* scope) -> Value;
     [[nodiscard]] auto gen(const ast::ExpBox* exp_box, Func* func, Block* scope) -> Value {
         return gen(exp_box->exp.get(), func, scope);

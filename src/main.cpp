@@ -4,6 +4,7 @@
 #include "frontend/syntax/error.hpp"
 #include "frontend/syntax/visit.hpp"
 #include "frontend/ast/analysis/semantic_ast.h"
+#include "backend/ir/gen/irgen.h"
 #include "utils/error.hpp"
 #include "utils/tui.h"
 
@@ -53,6 +54,8 @@ int main(int argc, const char* argv[]) {
                 auto semantic_ast = ast::SemanticAST(std::move(ast));
                 fmt::println("Semantic analysis:\n");
                 semantic_ast.show();
+                auto program_ir = ir::gen::Generator().generate(semantic_ast);
+                fmt::println("\n\nIR:\n{}", program_ir);
                 fmt::println("{}: " BOLD GREEN "OK" NONE, argv[i]);
             } catch (const SyntaxError& e) {
                 fmt::println("{}: {}", argv[i], e.what());

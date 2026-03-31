@@ -1,8 +1,54 @@
 #include "backend/ir/ir.hpp"
 #include "frontend/ast/ast.hpp"
+#include "frontend/ast/op.hpp"
 #include "irgen.h"
+#include "utils/error.hpp"
 
 namespace ir::gen {
+
+auto Generator::branch(const ast::Exp* cond, Func* func, Block* scope, const Block* true_block,
+                       const Block* false_block) -> BranchExit {
+    return match(*cond, [&](const ast::BinaryExp& binary_exp) -> BranchExit {
+        switch (binary_exp.op) {
+            case ast::BinaryOp::AND: {
+                auto right_block = func->newBlock();
+                auto left_exit = branch(binary_exp.left.exp.get(), func, scope, right_block, false_block);
+                right_block->exit = branch(binary_exp.right.exp.get(), func, right_block, true_block, false_block);
+                return left_exit;
+            }
+            case ast::BinaryOp::OR: {
+                auto right_block = func->newBlock();
+                auto left_exit = branch(binary_exp.left.exp.get(), func, scope, true_block, right_block);
+                right_block->exit = branch(binary_exp.right.exp.get(), func, right_block, true_block, false_block);
+                return left_exit;
+            }
+            default:
+                throw CompilerError(fmt::format("invalid condition expression `{}` for branch", binary_exp));
+        }
+        },
+        [&](const auto& exp) {
+            auto cond_val = gen(cond, func, scope);
+            return BranchExit{cond_val, true_block, false_block};
+        });
+}
+
+auto Generator::gen(const ast::BlockStmt* block_stmt, Func* func, Block* scope) -> Block* {
+    auto current_scope = scope;
+    for (const auto& stmt : block_stmt->items) {
+        match(
+            stmt,
+            [&](const ast::Decl& decl) {
+                for (const auto& alloc : gen(&decl)) {
+                    func->addAlloc(alloc);
+                }
+            },
+            [&](const ast::Stmt& stmt) { current_scope = gen(&stmt, func, current_scope); });
+        if (!current_scope) {
+            break;
+        }
+    }
+    return current_scope;
+}
 
 auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
     return match(
@@ -37,29 +83,11 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
             func->popLoop();
             return exit_block;
         },
-        [&](const ast::BlockStmt& block_stmt) {
-            auto current_scope = scope;
-            for (const auto& stmt : block_stmt.items) {
-                match(
-                    stmt,
-                    [&](const ast::Decl& decl) {
-                        for (const auto& alloc : gen(&decl)) {
-                            func->addAlloc(alloc);
-                        }
-                    },
-                    [&](const ast::Stmt& stmt) {
-                        current_scope = gen(&stmt, func, current_scope);
-                    });
-                if (!current_scope) {
-                    break;
-                }
-            }
-            return current_scope;
-        },
+        [&](const ast::BlockStmt& block_stmt) { return gen(&block_stmt, func, scope); },
         [&](const ast::AssignStmt& assign_stmt) {
             auto var = gen(&assign_stmt.var, func, scope);
             auto exp = gen(&assign_stmt.exp, func, scope);
-            scope->insts.emplace_back(RegularInst{InstOp::MOV, var, {}, exp});
+            scope->insts.emplace_back(UnaryInst{UnaryInstOp::MOV, var, exp});
             return scope;
         },
         [&](const ast::ExpStmt& exp_stmt) {
@@ -68,7 +96,7 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
         },
         [&](const ast::ReturnStmt& return_stmt) -> Block* {
             scope->exit = ReturnExit{return_stmt.exp ? gen(&*return_stmt.exp, func, scope)
-                                                      : Value{ConstexprValue{}}};
+                                                     : Value{ConstexprValue{}}};
             return nullptr;
         },
         [&](const ast::ContinueStmt&) -> Block* {

@@ -42,16 +42,13 @@ struct ConstexprValue {
                          [&](auto v) { return fmt::format("{}", v); }););
 
     ConstexprValue() : type(adt::construct<void>()), val(std::monostate{}) {}
-    ConstexprValue(int v) : type(adt::construct<int>()), val(v) {}
-    ConstexprValue(float v) : type(adt::construct<float>()), val(v) {}
-    ConstexprValue(double v) : type(adt::construct<double>()), val(v) {}
-    ConstexprValue(bool v) : type(adt::construct<bool>()), val(v) {}
+    template <typename T> ConstexprValue(T v) : type(adt::construct<T>()), val(v) {}
 };
 
 using LeftValue = std::variant<NamedValue, TempValue>;
-using Value = std::variant<ConstexprValue, NamedValue, TempValue>;
+using Value = std::variant<ConstexprValue, LeftValue>;
 
-struct AggregateInst {
+struct PackInst {
     LeftValue result;
     std::vector<Value> src;
 
@@ -66,19 +63,27 @@ struct AggregateInst {
     }
 };
 
-struct RegularInst {
+struct UnaryInst {
+    UnaryInstOp op;
+    LeftValue result;
+    Value operand;
+
+    SIMPLE_TO_STRING(op == UnaryInstOp::MOV ? fmt::format("let {} = {}", result, operand)
+                                            : fmt::format("let {} = {}{}", result, op, operand))
+};
+
+struct BinaryInst {
     InstOp op;
     LeftValue result;
     Value lhs, rhs;
 
-    SIMPLE_TO_STRING(op == InstOp::MOV     ? fmt::format("let {} = {}", result, lhs)
-                     : op == InstOp::LOAD  ? fmt::format("let {} = {}[{}]", result, lhs, rhs)
+    SIMPLE_TO_STRING(op == InstOp::LOAD    ? fmt::format("let {} = {}[{}]", result, lhs, rhs)
                      : op == InstOp::STORE ? fmt::format("let {}[{}] = {}", result, lhs, rhs)
                      : op == InstOp::CALL  ? fmt::format("let {} = {}({})", result, lhs, rhs)
                                            : fmt::format("let {} = {} {} {}", result, lhs, op, rhs))
 };
 
-using Inst = std::variant<RegularInst, AggregateInst>;
+using Inst = std::variant<UnaryInst, BinaryInst, PackInst>;
 
 struct ReturnExit {
     Value exp;
@@ -119,12 +124,12 @@ private:
     std::optional<Exit> exit;  // construct Block first, then assign exit instrument.
 };
 
-auto BranchExit::toString() const -> std::string {
+inline auto BranchExit::toString() const -> std::string {
     return fmt::format("br {}? {} : {}", cond, true_target ? true_target->label : "<unknown>",
                        false_target ? false_target->label : "<unknown>");
 }
 
-auto JumpExit::toString() const -> std::string {
+inline auto JumpExit::toString() const -> std::string {
     return fmt::format("jump {}", target ? target->label : "<unknown>");
 }
 
@@ -136,11 +141,28 @@ struct Alloc {
 };
 
 struct Func {
-    const Type type;
+    const Type ret_type;
     const std::string name;
+    const std::vector<NamedValue> params;
+
+    Func(Type ret_type, std::string name, std::vector<NamedValue> params = {})
+        : ret_type(std::move(ret_type)), name(std::move(name)), params(std::move(params)) {
+        newBlock(".entry");
+    }
+
     [[nodiscard]] auto toString() const {
+        std::string params = "";
+        for (const auto& param : this->params) {
+            params += fmt::format("{}: {}, ", param, param.type);
+        }
+        if (!params.empty()) params.pop_back(), params.pop_back();
+
         std::string str;
-        str += fmt::format("func {}{}:\n", name, type);
+        if (ret_type == adt::construct<void>()) {
+            str += fmt::format("func {}({}):\n", name, params);
+        } else {
+            str += fmt::format("func {}({}) -> {}:\n", name, params, ret_type);
+        }
         for (const auto& def : locals) {
             str += fmt::format("  {}\n", def);
         }
@@ -171,10 +193,6 @@ struct Func {
         locals.push_back(alloc);
     }
 
-    Func(Type type, std::string name) : type(std::move(type)), name(std::move(name)) {
-        newBlock(".entry");
-    }
-
     void pushLoop(const Block* continue_target, const Block* break_target) {
         loops.push_back(LoopContext{continue_target, break_target});
     }
@@ -201,10 +219,6 @@ private:
 };
 
 struct Program {
-    std::vector<Alloc> globals;
-    std::vector<Func> funcs;
-    Func* entrance;
-
     [[nodiscard]] auto toString() const {
         std::string str;
         for (const auto& def : globals) {
@@ -219,6 +233,17 @@ struct Program {
 
     Program(const ast::SemanticAST& ast) : ast(ast) {}
     const ast::SemanticAST& ast;
+
+    void addFunc(Func func) {
+        funcs.push_back(std::move(func));
+    }
+    void addAlloc(Alloc alloc) {
+        globals.push_back(std::move(alloc));
+    }
+
+private:
+    std::vector<Alloc> globals;
+    std::vector<Func> funcs;
 };
 
 }  // namespace ir

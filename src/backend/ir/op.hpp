@@ -1,11 +1,14 @@
 #pragma once
 #define FMT_HEADER_ONLY
 #include "fmt/format.h"
+#include "frontend/ast/op.hpp"
 
 #include <cstdint>
 #include <string>
 
 namespace ir {
+
+enum class UnaryInstOp : uint8_t { MOV, NOT, NEG };
 
 enum class InstOp : uint8_t {
     MUL,
@@ -20,12 +23,19 @@ enum class InstOp : uint8_t {
     EQ,
     NEQ,  //
     AND,
-    OR,     //
-    LOAD,   //
+    OR,
+    LOAD,
     STORE,  //
-    CALL, //
-    MOV, //
+    CALL,   //
 };
+
+inline std::string toString(UnaryInstOp op) {
+    switch (op) {
+        case UnaryInstOp::MOV: return "mov";
+        case UnaryInstOp::NOT: return "!";
+        default: throw std::runtime_error(fmt::format("invalid unary inst op: {}", (uint8_t)op));
+    }
+}
 
 inline std::string toString(InstOp op) {
     switch (op) {
@@ -42,10 +52,40 @@ inline std::string toString(InstOp op) {
         case InstOp::NEQ: return "!=";
         case InstOp::AND: return "&&";
         case InstOp::OR: return "||";
-        case InstOp::LOAD: return "ld";
-        case InstOp::STORE: return "st";
+        case InstOp::LOAD: return "load";
+        case InstOp::STORE: return "store";
         case InstOp::CALL: return "call";
         default: throw std::runtime_error(fmt::format("invalid inst op: {}", (uint8_t)op));
+    }
+}
+
+inline auto convert_op(ast::BinaryOp op) -> InstOp {
+    switch (op) {
+        case ast::BinaryOp::MUL: return InstOp::MUL;
+        case ast::BinaryOp::DIV: return InstOp::DIV;
+        case ast::BinaryOp::MOD: return InstOp::MOD;
+        case ast::BinaryOp::ADD: return InstOp::ADD;
+        case ast::BinaryOp::SUB: return InstOp::SUB;
+        case ast::BinaryOp::LT: return InstOp::LT;
+        case ast::BinaryOp::GT: return InstOp::GT;
+        case ast::BinaryOp::LEQ: return InstOp::LEQ;
+        case ast::BinaryOp::GEQ: return InstOp::GEQ;
+        case ast::BinaryOp::EQ: return InstOp::EQ;
+        case ast::BinaryOp::NEQ: return InstOp::NEQ;
+        case ast::BinaryOp::AND: return InstOp::AND;
+        case ast::BinaryOp::OR: return InstOp::OR;
+        case ast::BinaryOp::INDEX:
+            return InstOp::LOAD;  // NOTE: store operation will be generated in gen(const
+                                  // ast::AssignStmt*)
+        case ast::BinaryOp::CALL: return InstOp::CALL;
+    }
+}
+
+inline auto convert_op(ast::UnaryOp op) -> UnaryInstOp {
+    switch (op) {
+        case ast::UnaryOp::PLUS: return UnaryInstOp::MOV;
+        case ast::UnaryOp::MINUS: return UnaryInstOp::NEG;
+        case ast::UnaryOp::NOT: return UnaryInstOp::NOT;
     }
 }
 

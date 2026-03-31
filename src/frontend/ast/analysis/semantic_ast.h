@@ -50,12 +50,20 @@ struct SemanticAST {
         }
     }
 
-    auto definition_of(const LValNode& lval) {
-        return defs[lval];
+    [[nodiscard]] auto definition_of(const LValNode& lval) const {
+        try {
+            return defs.at(lval);
+        } catch (const std::out_of_range&) {
+            throw CompilerError(fmt::format("can not find definition of variable '{}'", *lval));
+        }
     }
 
-    auto type_of(const ExprNode& expr) {
-        return types[expr];
+    [[nodiscard]] auto type_of(const ExprNode& expr) const {
+        try {
+            return types.at(expr);
+        } catch (const std::out_of_range&) {
+            return match(expr, [&](auto subexpr) -> Type { throw CompilerError(fmt::format("can not find type of expression '{}'", *subexpr)); });
+        }
     }
 
     [[nodiscard]] auto& ast() const {
