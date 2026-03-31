@@ -49,14 +49,18 @@ auto Generator::gen(const ast::Exp* exp, Func* func, Block* scope) -> Value {
         },
         [&](const ast::BinaryExp& binary_exp) -> Value { return gen(&binary_exp, func, scope); },
         [&](const ast::TupleExp& tuple_exp) -> Value {
-            std::vector<Value> elements;
-            elements.reserve(tuple_exp.elements.size());
-            for (const auto& element : tuple_exp.elements) {
-                elements.push_back(gen(&element, func, scope));
+            if (!tuple_exp.elements.empty()) {
+                std::vector<Value> elements;
+                elements.reserve(tuple_exp.elements.size());
+                for (const auto& element : tuple_exp.elements) {
+                    elements.push_back(gen(&element, func, scope));
+                }
+                auto result = func->newTemp(this->info->type_of(&tuple_exp));
+                scope->add(PackInst{result, std::move(elements)});
+                return LeftValue{result};
+            } else {
+                return ConstexprValue{};
             }
-            auto result = func->newTemp(this->info->type_of(&tuple_exp));
-            scope->add(PackInst{result, std::move(elements)});
-            return LeftValue{result};
         });
 }
 
