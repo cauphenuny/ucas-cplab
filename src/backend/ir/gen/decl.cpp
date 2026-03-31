@@ -33,7 +33,11 @@ auto Generator::gen(const ast::FuncDef* func) -> Func {
     auto ir_func = Func(type.ret, func->name, std::move(params));
     auto end = gen(&func->block, &ir_func, ir_func.entrance());
     if (end) {
-        throw CompilerError(fmt::format("control may reach end of function '{}'", func->name));
+        if (!(type.ret <= adt::construct<void>())) {
+            throw CompilerError(fmt::format("control may reach end of function '{}'", func->name));
+        } else {
+            end->exit = ReturnExit{};
+        }
     }
     return ir_func;
 }
