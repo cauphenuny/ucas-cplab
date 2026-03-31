@@ -1,11 +1,20 @@
 #pragma once
 
+#define FMT_HEADER_ONLY
+#include "fmt/format.h"
+
 #include <memory>
+#include <string>
 #include <type_traits>
 
 struct Location {
     int line{-1}, col{-1};
-    operator bool() const { return line != -1 && col != -1; }
+    operator bool() const {
+        return line != -1 && col != -1;
+    }
+    [[nodiscard]] auto toString() const -> std::string {
+        return fmt::format("{}_{}", line, col);
+    }
 };
 
 namespace mixin {

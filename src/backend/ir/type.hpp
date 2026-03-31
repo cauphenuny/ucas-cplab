@@ -157,6 +157,7 @@ struct Slice : mixin::ToBoxed<Slice, Type> {
     [[nodiscard]] bool sized() const {
         return size.has_value();
     }
+    [[nodiscard]] auto flatten() const -> Slice;
 };
 
 inline std::string TypeBox::toString() const {
@@ -213,6 +214,20 @@ inline TypeBox& TypeBox::operator=(const TypeBox& other) {
 }
 inline void Product::append(TypeBox item) {
     items.push_back(std::move(item));
+}
+
+inline auto Slice::flatten() const -> Slice {
+    if (elem.is<Slice>()) {
+        auto inner = elem.as<Slice>();
+        auto new_elem = std::move(inner.elem);
+        std::optional<size_t> new_size;
+        if (size.has_value() && inner.size.has_value()) {
+            new_size = size.value() * inner.size.value();
+        }
+        return Slice(std::move(new_elem), new_size).flatten();
+    } else {
+        return *this;
+    }
 }
 
 /************************************************************/
@@ -534,16 +549,9 @@ inline bool constructable(const TypeBox& from_box, const TypeBox& to_box) {
         const auto& to = to_box.as<Slice>();
         // NOTE: flat array can construct multi-dim array
         if (!from.elem.is<Slice>() && to.elem.is<Slice>()) {
-            auto size = to.size;
-            auto type = to.elem;
-            while (type.is<Slice>()) {
-                if (auto dimsize = type.as<Slice>().size; size.has_value() && dimsize.has_value()) {
-                    size = size.value() * dimsize.value();
-                }
-                type = type.as<Slice>().elem;
-            }
-            return constructable(from.elem, type) && size.has_value() && from.size.has_value() &&
-                   size.value() >= from.size.value();
+            auto flattened_to = to.flatten();
+            return constructable(from.elem, flattened_to.elem) && flattened_to.size.has_value() &&
+                   from.size.has_value() && flattened_to.size.value() >= from.size.value();
         }
         if (!to.elem.is<Slice>() && from.elem.is<Slice>()) {
             // NOTE: multi-dim array can not construct flat array

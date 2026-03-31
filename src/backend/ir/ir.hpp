@@ -1,9 +1,10 @@
 #pragma once
 
-#include "op.hpp"
 #include "frontend/ast/analysis/semantic_ast.h"
+#include "op.hpp"
 #include "type.hpp"
 
+#include <utility>
 #include <variant>
 
 namespace ir {
@@ -11,6 +12,10 @@ namespace ir {
 using Type = adt::TypeBox;
 
 struct Block;
+struct Func;
+namespace gen {
+struct Generator;
+}
 
 struct NamedValue {
     Type type;
@@ -18,28 +23,33 @@ struct NamedValue {
 
     SIMPLE_TO_STRING(match(
         def, [&](const ast::FuncDef* f) { return f->name; },
-        [&](auto v) { return fmt::format("{}_{}_{}", v->name, v->loc.line, v->loc.col); }));
+        [&](auto v) { return fmt::format("{}_{}", v->name, v->loc); }));
 };
 
 struct TempValue {
     Type type;
     size_t id;
-    const Block* scope;
 
     SIMPLE_TO_STRING(fmt::format("${}", id));
 };
 
 struct ConstexprValue {
     Type type;
-    std::variant<int, float, bool, double, std::monostate> val;
+    std::variant<std::monostate, int, float, bool, double> val;
 
     SIMPLE_TO_STRING(match(
                          val, [&](std::monostate) { return std::string(""); },
                          [&](auto v) { return fmt::format("{}", v); }););
+
+    ConstexprValue() : type(adt::construct<void>()), val(std::monostate{}) {}
+    ConstexprValue(int v) : type(adt::construct<int>()), val(v) {}
+    ConstexprValue(float v) : type(adt::construct<float>()), val(v) {}
+    ConstexprValue(double v) : type(adt::construct<double>()), val(v) {}
+    ConstexprValue(bool v) : type(adt::construct<bool>()), val(v) {}
 };
 
 using LeftValue = std::variant<NamedValue, TempValue>;
-using Value = std::variant<NamedValue, TempValue, ConstexprValue>;
+using Value = std::variant<ConstexprValue, NamedValue, TempValue>;
 
 struct AggregateInst {
     LeftValue result;
@@ -61,7 +71,8 @@ struct RegularInst {
     LeftValue result;
     Value lhs, rhs;
 
-    SIMPLE_TO_STRING(op == InstOp::LOAD    ? fmt::format("let {} = {}[{}]", result, lhs, rhs)
+    SIMPLE_TO_STRING(op == InstOp::MOV     ? fmt::format("let {} = {}", result, lhs)
+                     : op == InstOp::LOAD  ? fmt::format("let {} = {}[{}]", result, lhs, rhs)
                      : op == InstOp::STORE ? fmt::format("let {}[{}] = {}", result, lhs, rhs)
                      : op == InstOp::CALL  ? fmt::format("let {} = {}({})", result, lhs, rhs)
                                            : fmt::format("let {} = {} {} {}", result, lhs, op, rhs))
@@ -90,18 +101,22 @@ using Exit = std::variant<BranchExit, JumpExit, ReturnExit>;
 
 struct Block {
     const std::string label;
-    std::vector<Inst> insts;
-    Exit exit;
-
     [[nodiscard]] auto toString() const {
         std::string str;
         str += fmt::format("{}:\n", label);
         for (const auto& inst : insts) {
             str += fmt::format("  {}\n", inst);
         }
-        str += fmt::format("  {}\n", exit);
+        str += exit ? fmt::format("  {}\n", *exit) : fmt::format("  <noexit>\n");
         return str;
     }
+    explicit Block(std::string label) : label(std::move(label)) {}
+
+    friend struct gen::Generator;
+
+private:
+    std::vector<Inst> insts;
+    std::optional<Exit> exit;  // construct Block first, then assign exit instrument.
 };
 
 auto BranchExit::toString() const -> std::string {
@@ -115,15 +130,14 @@ auto JumpExit::toString() const -> std::string {
 
 struct Alloc {
     NamedValue var;
-    SIMPLE_TO_STRING(fmt::format("var {}: {}", var, var.type));
+    const ast::ConstInitVal* init;
+    SIMPLE_TO_STRING(init ? fmt::format("var {}: {} = {}", var, var.type, *init)
+                          : fmt::format("var {}: {}", var, var.type));
 };
 
 struct Func {
     const Type type;
     const std::string name;
-    std::vector<Alloc> locals;
-    std::vector<Block> blocks;
-
     [[nodiscard]] auto toString() const {
         std::string str;
         str += fmt::format("func {}{}:\n", name, type);
@@ -135,6 +149,55 @@ struct Func {
         }
         return str;
     }
+
+    auto newTemp(const Type& type) -> TempValue {
+        return TempValue{.type = type, .id = temp_count++};
+    }
+
+    auto newBlock(const std::string& label) -> Block* {
+        blocks.emplace_back(label);
+        return &blocks.back();
+    }
+
+    auto newBlock() -> Block* {
+        return newBlock(fmt::format(".L{}", temp_label_count++));
+    }
+
+    auto entrance() -> Block* {
+        return &blocks.front();
+    }
+
+    void addAlloc(const Alloc& alloc) {
+        locals.push_back(alloc);
+    }
+
+    Func(Type type, std::string name) : type(std::move(type)), name(std::move(name)) {
+        newBlock(".entry");
+    }
+
+    void pushLoop(const Block* continue_target, const Block* break_target) {
+        loops.push_back(LoopContext{continue_target, break_target});
+    }
+    void popLoop() {
+        loops.pop_back();
+    }
+    [[nodiscard]] auto& currentLoop() const {
+        if (loops.empty()) {
+            throw CompilerError("No loop context available");
+        }
+        return loops.back();
+    }
+
+private:
+    std::vector<Alloc> locals;
+    std::vector<Block> blocks;
+    struct LoopContext {
+        const Block* continue_target;
+        const Block* break_target;
+    };
+    std::vector<LoopContext> loops;  // for break/continue target
+    size_t temp_count{0};
+    size_t temp_label_count{0};
 };
 
 struct Program {

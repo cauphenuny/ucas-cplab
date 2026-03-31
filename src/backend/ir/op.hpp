@@ -24,6 +24,7 @@ enum class InstOp : uint8_t {
     LOAD,   //
     STORE,  //
     CALL, //
+    MOV, //
 };
 
 inline std::string toString(InstOp op) {
