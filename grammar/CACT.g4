@@ -82,7 +82,7 @@ lVal: ID ('[' exp ']')* ;
 
 exp: addExp; // FIXME: why not lOrExp?
 cond: lOrExp;
-constExp: number | boolNumber;
+constExp: ('+' | '-')* number | '!'* boolNumber;
 
 lOrExp
     : lAndExp

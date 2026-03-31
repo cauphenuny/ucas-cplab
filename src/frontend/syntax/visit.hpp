@@ -191,8 +191,43 @@ public:
     }
 
     std::any visitConstExp(CACTParser::ConstExpContext* ctx) override {
-        if (ctx->number()) return visit(ctx->number());
-        if (ctx->boolNumber()) return visit(ctx->boolNumber());
+        // Handle optional leading unary operators in const expressions.
+        // Grammar: ('+' | '-')* number | '!'* boolNumber
+        if (ctx->number()) {
+            auto val = take<ast::ConstExp>(visit(ctx->number()));
+            // count '-' before the number to determine sign
+            int sign = 1;
+            for (auto* child : ctx->children) {
+                if (child == ctx->number()) break;
+                if (auto* term = dynamic_cast<antlr4::tree::TerminalNode*>(child)) {
+                    auto t = term->getText();
+                    if (t == "-") sign *= -1;
+                }
+            }
+            if (sign == -1) {
+                val = match(val, [](auto&& v) -> ast::ConstExp {
+                    return -v;
+                });
+            }
+            return wrap(std::move(val));
+        }
+        if (ctx->boolNumber()) {
+            auto val = take<ast::ConstExp>(visit(ctx->boolNumber()));
+            // count '!' before the bool to determine parity
+            int bangs = 0;
+            for (auto* child : ctx->children) {
+                if (child == ctx->boolNumber()) break;
+                if (auto* term = dynamic_cast<antlr4::tree::TerminalNode*>(child)) {
+                    if (term->getText() == "!") ++bangs;
+                }
+            }
+            if (bangs % 2 == 1) {
+                val = match(val, [](bool v) -> ast::ConstExp {
+                    return !v;
+                });
+            }
+            return wrap(std::move(val));
+        }
         return {};
     }
 
