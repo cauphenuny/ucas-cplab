@@ -9,7 +9,7 @@ auto Generator::gen(const ast::ConstDef* def) -> Alloc {
 }
 
 auto Generator::gen(const ast::VarDef* def) -> Alloc {
-    return Alloc{NamedValue{this->info->type_of(def), def}, nullptr};
+    return Alloc{NamedValue{this->info->type_of(def), def}, def->val ? &*def->val : nullptr};
 }
 
 auto Generator::gen(const ast::Decl* decl) -> std::vector<Alloc> {
