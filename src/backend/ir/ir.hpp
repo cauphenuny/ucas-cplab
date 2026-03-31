@@ -100,6 +100,11 @@ struct BranchExit {
 
 struct JumpExit {
     const Block* target;
+    JumpExit(const Block* target) : target(target) {
+        if (!target) {
+            throw CompilerError("target block cannot be null");
+        }
+    }
     [[nodiscard]] auto toString() const -> std::string;
 };
 

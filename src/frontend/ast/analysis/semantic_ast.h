@@ -66,6 +66,14 @@ struct SemanticAST {
         }
     }
 
+    [[nodiscard]] auto type_of(const StmtNode& stmt) const {
+        try {
+            return stmt_types.at(stmt);
+        } catch (const std::out_of_range&) {
+            return match(stmt, [&](auto substmt) -> StmtType { throw CompilerError(fmt::format("can not find type of statement '{}'", *substmt)); });
+        }
+    }
+
     [[nodiscard]] auto& ast() const {
         return *tree;
     }

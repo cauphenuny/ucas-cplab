@@ -62,17 +62,20 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
         *stmt,
         [&](const ast::IfStmt& if_stmt) {
             auto true_block = func->newBlock(fmt::format(".if_true_{}", if_stmt.loc));
-            auto exit_block = func->newBlock(fmt::format(".if_exit_{}", if_stmt.loc));
-            true_block = gen(&if_stmt.stmt, func, true_block);
-            true_block->exit = JumpExit{exit_block};
+            auto always_return = this->info->type_of(&if_stmt).always_return;
+            auto exit_block = always_return ? nullptr : func->newBlock(fmt::format(".if_exit_{}", if_stmt.loc));
             if (if_stmt.else_stmt) {
                 auto false_block = func->newBlock(fmt::format(".if_false_{}", if_stmt.loc));
-                false_block = gen(&*if_stmt.else_stmt, func, false_block);
-                false_block->exit = JumpExit{exit_block};
                 scope->exit = branch(&if_stmt.cond, func, scope, true_block, false_block);
+                true_block = gen(&if_stmt.stmt, func, true_block);
+                if (true_block) true_block->exit = JumpExit{exit_block};  // not return
+                false_block = gen(&*if_stmt.else_stmt, func, false_block);
+                if (false_block) false_block->exit = JumpExit{exit_block};
                 return exit_block;
             } else {
                 scope->exit = branch(&if_stmt.cond, func, scope, true_block, exit_block);
+                true_block = gen(&if_stmt.stmt, func, true_block);
+                if (true_block) true_block->exit = JumpExit{exit_block};  // not return
                 return exit_block;
             }
         },
