@@ -83,7 +83,12 @@ void SemanticAST::analysis(const ConstInitVal* val) {
             Type elem_type = NEVER;
             for (const auto& val : vals) {
                 analysis(&val);
-                elem_type = elem_type <= types[&val] ? types[&val] : elem_type;
+                if (!adt::constructable(elem_type, types[&val]) && !adt::constructable(types[&val], elem_type)) {
+                    throw SemanticError(val.loc,
+                                        fmt::format("type error: array elements have incompatible types `{}` and `{}`",
+                                                    elem_type, types[&val]));
+                }
+                elem_type = adt::constructable(elem_type, types[&val]) ? types[&val] : elem_type;
             }
             types[val] = adt::Slice(std::move(elem_type), vals.size()).toBoxed();
         });
