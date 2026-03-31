@@ -33,7 +33,7 @@ inline std::string toString(UnaryInstOp op) {
     switch (op) {
         case UnaryInstOp::MOV: return "mov";
         case UnaryInstOp::NOT: return "!";
-        default: throw std::runtime_error(fmt::format("invalid unary inst op: {}", (uint8_t)op));
+        case UnaryInstOp::NEG: return "-";
     }
 }
 
@@ -55,7 +55,6 @@ inline std::string toString(InstOp op) {
         case InstOp::LOAD: return "load";
         case InstOp::STORE: return "store";
         case InstOp::CALL: return "call";
-        default: throw std::runtime_error(fmt::format("invalid inst op: {}", (uint8_t)op));
     }
 }
 

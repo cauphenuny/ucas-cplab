@@ -136,7 +136,7 @@ inline auto JumpExit::toString() const -> std::string {
 struct Alloc {
     NamedValue var;
     const ast::ConstInitVal* init;
-    SIMPLE_TO_STRING(init ? fmt::format("var {}: {} = {}", var, var.type, *init)
+    SIMPLE_TO_STRING(init ? fmt::format("var {}: {} = {}", var, var.type, init->str())
                           : fmt::format("var {}: {}", var, var.type));
 };
 

@@ -50,6 +50,23 @@ using FuncParams = std::vector<FuncParam>;
 struct ConstInitVal : public mixin::Locatable {
     std::variant<ConstExp, std::vector<ConstInitVal>> val;
     DELEGATED_TO_STRING(ConstInitVal, val);
+
+    [[nodiscard]] auto str() const -> std::string {
+        return match(
+            val, [&](const ConstExp& subval) { return fmt::format("{}", subval); },
+            [&](const std::vector<ConstInitVal>& subvals) {
+                std::string str = "{";
+                for (const auto& subval : subvals) {
+                    str += fmt::format("{}, ", subval.str());
+                }
+                if (!subvals.empty()) {
+                    str.pop_back();
+                    str.pop_back();
+                }
+                str += "}";
+                return str;
+            });
+    }
 };
 
 struct ConstDecl : public mixin::Locatable {
