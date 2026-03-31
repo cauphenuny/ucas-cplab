@@ -90,10 +90,23 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
         },
         [&](const ast::BlockStmt& block_stmt) { return gen(&block_stmt, func, scope); },
         [&](const ast::AssignStmt& assign_stmt) {
-            auto var = gen(&assign_stmt.var, func, scope);
-            auto exp = gen(&assign_stmt.exp, func, scope);
-            scope->add(UnaryInst{UnaryInstOp::MOV, var, exp});
-            return scope;
+            return match(
+                assign_stmt.var.val,
+                [&](const ast::LVal& lval) {
+                    auto var = gen(&lval);
+                    auto exp = gen(&assign_stmt.exp, func, scope);
+                    scope->add(UnaryInst{UnaryInstOp::MOV, var, exp});
+                    return scope;
+                },
+                [&](const ast::BinaryExp& exp) {
+                    auto& lhs = exp.left.as<ast::PrimaryExp>();
+                    auto& lval = std::get<ast::LValExp>(lhs.exp);
+                    auto array = gen(&lval, func, scope);
+                    auto index = gen(&exp.right, func, scope);
+                    auto exp_val = gen(&assign_stmt.exp, func, scope);
+                    scope->add(BinaryInst{InstOp::STORE, array, index, exp_val});
+                    return scope;
+                });
         },
         [&](const ast::ExpStmt& exp_stmt) {
             auto _ = gen(&exp_stmt.exp, func, scope);  // discard the result
