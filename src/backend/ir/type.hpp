@@ -62,22 +62,22 @@ struct TypeBox {
 
 struct Int : mixin::ToBoxed<Int, Type> {
     bool immutable{false};
-    SIMPLE_TO_STRING(immutable ? "const int" : "int");
+    SIMPLE_TO_STRING(immutable ? "int const" : "int");
 };
 
 struct Float : mixin::ToBoxed<Float, Type> {
     bool immutable{false};
-    SIMPLE_TO_STRING(immutable ? "const float" : "float");
+    SIMPLE_TO_STRING(immutable ? "float const" : "float");
 };
 
 struct Double : mixin::ToBoxed<Double, Type> {
     bool immutable{false};
-    SIMPLE_TO_STRING(immutable ? "const double" : "double");
+    SIMPLE_TO_STRING(immutable ? "double const" : "double");
 };
 
 struct Bool : mixin::ToBoxed<Bool, Type> {
     bool immutable{false};
-    SIMPLE_TO_STRING(immutable ? "const bool" : "bool");
+    SIMPLE_TO_STRING(immutable ? "bool const" : "bool");
 };
 
 struct Bottom : mixin::ToBoxed<Bottom, Type> {
@@ -101,7 +101,7 @@ struct Product : mixin::ToBoxed<Product, Type> {
                 for (size_t i = 0; i < items.size(); i++) {
                     result += fmt::format("{}{}", items[i], i == items.size() - 1 ? "" : ", ");
                 }
-                return (immutable ? "const (" : "(") + result + ")";
+                return fmt::format("({}){}", result, immutable ? " const" : "");
         }
     }
     void append(TypeBox item);
@@ -120,7 +120,7 @@ struct Sum : mixin::ToBoxed<Sum, Type> {
         for (size_t i = 0; i < items.size(); i++) {
             result += fmt::format("{}{}", items[i], i == items.size() - 1 ? "" : " | ");
         }
-        return (immutable ? "const (" : "(") + result + ")";
+        return fmt::format("({}){}", result, immutable ? " const" : "");
     }
     void append(TypeBox item);
 
@@ -144,8 +144,8 @@ struct Func : mixin::ToBoxed<Func, Type> {
     Product params;
     TypeBox ret;
     Func(Product params, TypeBox ret) : params(std::move(params)), ret(std::move(ret)) {}
-    SIMPLE_TO_STRING(fmt::format("{}{} -> {}{}", immutable ? "const (" : "", params, ret,
-                                 immutable ? ")" : ""))
+    SIMPLE_TO_STRING(fmt::format("{}{} -> {}{}", immutable ? "(" : "", params, ret,
+                                 immutable ? ") const" : ""))
 };
 
 struct Slice : mixin::ToBoxed<Slice, Type> {
@@ -155,8 +155,8 @@ struct Slice : mixin::ToBoxed<Slice, Type> {
     Slice(TypeBox elem, std::optional<size_t> size) : elem(std::move(elem)), size(size) {}
     Slice(TypeBox elem) : elem(std::move(elem)), size(std::nullopt) {}
     SIMPLE_TO_STRING(size.has_value()
-                         ? fmt::format("{}[{}; {}]", immutable ? "const" : "", elem, size.value())
-                         : fmt::format("{}[{}; *]", immutable ? "const" : "", elem))
+                         ? fmt::format("[{}; {}]{}", elem, size.value(), immutable ? " const" : "")
+                         : fmt::format("[{}; *]{}", elem, immutable ? " const" : ""));
     [[nodiscard]] bool sized() const {
         return size.has_value();
     }
