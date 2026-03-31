@@ -148,6 +148,16 @@ void test_construct() {
     fmt::println("INT | INT: {}", i | i);
 }
 
+void test_slice() {
+    using namespace adt;
+    auto slice1 = construct<int[10]>();
+    fmt::println("decay({}): {}", slice1, slice1.decay());
+    auto slice2 = construct<int[10][20]>();
+    fmt::println("flatten({}): {}", slice2, slice2.flatten());
+    auto slice3 = construct<int[10][20]>();
+    fmt::println("decay({}): {}", slice3, slice3.decay());
+}
+
 int main() {
     fmt::println("Testing construct...");
     test_construct();
@@ -155,5 +165,7 @@ int main() {
     fmt::println("\nTesting subtype...");
     test_subtype();
 
+    fmt::println("\nTesting slice decay and flatten...");
+    test_slice();
     return 0;
 }

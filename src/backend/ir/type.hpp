@@ -55,6 +55,9 @@ struct TypeBox {
     static auto match(const TypeBox& box) -> Match<const Type&>;
     template <typename T, typename... Rest>
     static auto match(T&& box, Rest&&... rest) -> decltype(auto);
+
+    [[nodiscard]] auto decay() const -> TypeBox;
+    [[nodiscard]] auto flatten() const -> TypeBox;
 };
 
 struct Int : mixin::ToBoxed<Int, Type> {
@@ -158,6 +161,7 @@ struct Slice : mixin::ToBoxed<Slice, Type> {
         return size.has_value();
     }
     [[nodiscard]] auto flatten() const -> Slice;
+    [[nodiscard]] auto decay() const -> Slice;
 };
 
 inline std::string TypeBox::toString() const {
@@ -228,6 +232,26 @@ inline auto Slice::flatten() const -> Slice {
     } else {
         return *this;
     }
+}
+
+inline auto Slice::decay() const -> Slice {
+    if (sized()) {
+        return {elem, std::nullopt};
+    } else {
+        return *this;
+    }
+}
+
+inline auto TypeBox::decay() const -> TypeBox {
+    return Match{*item}(
+        [&](const Slice& slice) -> TypeBox { return slice.decay().toBoxed(); },
+        [&](const auto&) { return *this; });
+}
+
+inline auto TypeBox::flatten() const -> TypeBox {
+    return Match{*item}(
+        [&](const Slice& slice) -> TypeBox { return slice.flatten().toBoxed(); },
+        [&](const auto&) { return *this; });
 }
 
 /************************************************************/

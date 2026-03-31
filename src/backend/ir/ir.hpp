@@ -49,6 +49,20 @@ struct ConstexprValue {
 using LeftValue = std::variant<NamedValue, TempValue>;
 using Value = std::variant<ConstexprValue, LeftValue>;
 
+inline auto type(const LeftValue& value) -> Type {
+    return match(
+        value, [&](const auto& var) { return var.type; });
+}
+
+inline auto type(const ConstexprValue& value) -> Type {
+    return value.type;
+}
+
+inline auto type(const Value& value) -> Type {
+    return match(
+        value, [&](const auto& val) { return type(val); });
+}
+
 struct PackInst {
     LeftValue result;
     std::vector<Value> src;
@@ -60,7 +74,7 @@ struct PackInst {
         }
         rhs.pop_back();
         if (rhs.size() > 1) rhs.pop_back();
-        return fmt::format("{} = ({})", result, rhs);
+        return fmt::format("{}: {} = ({})", result, type(result), rhs);
     }
 };
 
@@ -69,8 +83,8 @@ struct UnaryInst {
     LeftValue result;
     Value operand;
 
-    SIMPLE_TO_STRING(op == UnaryInstOp::MOV ? fmt::format("{} = {}", result, operand)
-                                            : fmt::format("{} = {}{}", result, op, operand))
+    SIMPLE_TO_STRING(op == UnaryInstOp::MOV ? fmt::format("{}: {} = {}", result, type(result), operand)
+                                            : fmt::format("{}: {} = {}{}", result, type(result), op, operand))
 };
 
 struct BinaryInst {
@@ -78,10 +92,10 @@ struct BinaryInst {
     LeftValue result;
     Value lhs, rhs;
 
-    SIMPLE_TO_STRING(op == InstOp::LOAD    ? fmt::format("{} = {}[{}]", result, lhs, rhs)
+    SIMPLE_TO_STRING(op == InstOp::LOAD    ? fmt::format("{}: {} = {}[{}]", result, type(result), lhs, rhs)
                      : op == InstOp::STORE ? fmt::format("{}[{}] = {}", result, lhs, rhs)
-                     : op == InstOp::CALL  ? fmt::format("{} = {}({})", result, lhs, rhs)
-                                           : fmt::format("{} = {} {} {}", result, lhs, op, rhs))
+                     : op == InstOp::CALL  ? fmt::format("{}: {} = {}({})", result, type(result), lhs, rhs)
+                                           : fmt::format("{}: {} = {} {} {}", result, type(result), lhs, op, rhs))
 };
 
 using Inst = std::variant<UnaryInst, BinaryInst, PackInst>;
