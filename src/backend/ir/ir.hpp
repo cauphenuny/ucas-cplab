@@ -60,7 +60,7 @@ struct PackInst {
         }
         rhs.pop_back();
         if (rhs.size() > 1) rhs.pop_back();
-        return fmt::format("let {} = ({})", result, rhs);
+        return fmt::format("{} = ({})", result, rhs);
     }
 };
 
@@ -69,8 +69,8 @@ struct UnaryInst {
     LeftValue result;
     Value operand;
 
-    SIMPLE_TO_STRING(op == UnaryInstOp::MOV ? fmt::format("let {} = {}", result, operand)
-                                            : fmt::format("let {} = {}{}", result, op, operand))
+    SIMPLE_TO_STRING(op == UnaryInstOp::MOV ? fmt::format("{} = {}", result, operand)
+                                            : fmt::format("{} = {}{}", result, op, operand))
 };
 
 struct BinaryInst {
@@ -78,10 +78,10 @@ struct BinaryInst {
     LeftValue result;
     Value lhs, rhs;
 
-    SIMPLE_TO_STRING(op == InstOp::LOAD    ? fmt::format("let {} = {}[{}]", result, lhs, rhs)
-                     : op == InstOp::STORE ? fmt::format("let {}[{}] = {}", result, lhs, rhs)
-                     : op == InstOp::CALL  ? fmt::format("let {} = {}({})", result, lhs, rhs)
-                                           : fmt::format("let {} = {} {} {}", result, lhs, op, rhs))
+    SIMPLE_TO_STRING(op == InstOp::LOAD    ? fmt::format("{} = {}[{}]", result, lhs, rhs)
+                     : op == InstOp::STORE ? fmt::format("{}[{}] = {}", result, lhs, rhs)
+                     : op == InstOp::CALL  ? fmt::format("{} = {}({})", result, lhs, rhs)
+                                           : fmt::format("{} = {} {} {}", result, lhs, op, rhs))
 };
 
 using Inst = std::variant<UnaryInst, BinaryInst, PackInst>;
@@ -135,7 +135,7 @@ private:
 };
 
 inline auto BranchExit::toString() const -> std::string {
-    return fmt::format("br {} ? {} : {}", cond, true_target ? true_target->label : "<unknown>",
+    return fmt::format("branch {} ? {} : {}", cond, true_target ? true_target->label : "<unknown>",
                        false_target ? false_target->label : "<unknown>");
 }
 
@@ -146,8 +146,8 @@ inline auto JumpExit::toString() const -> std::string {
 struct Alloc {
     NamedValue var;
     const ast::ConstInitVal* init;
-    SIMPLE_TO_STRING(init ? fmt::format("var {}: {} = {}", var, var.type, init->str())
-                          : fmt::format("var {}: {}", var, var.type));
+    SIMPLE_TO_STRING(init ? fmt::format("let {}: {} = {}", var, var.type, init->str())
+                          : fmt::format("let {}: {}", var, var.type));
 };
 
 struct Func {
