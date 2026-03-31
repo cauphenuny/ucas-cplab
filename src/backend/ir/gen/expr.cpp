@@ -5,13 +5,13 @@
 
 namespace ir::gen {
 
-auto Generator::gen(const ast::LVal* lval, const ast::LValExp* container) -> LeftValue {
-    return NamedValue{this->info->type_of(lval), this->info->definition_of(container)};
+auto Generator::gen(const ast::LVal* lval) -> LeftValue {
+    return NamedValue{this->info->type_of(lval), this->info->definition_of(lval)};
 }
 
 auto Generator::gen(const ast::LValExp* lval, Func* func, Block* scope) -> LeftValue {
     return match(
-        lval->val, [&](const ast::LVal& val) -> LeftValue { return gen(&val, lval); },
+        lval->val, [&](const ast::LVal& val) -> LeftValue { return gen(&val); },
         [&](const ast::BinaryExp& exp) -> LeftValue {
             auto result = gen(&exp, func, scope);
             return match(
@@ -26,7 +26,7 @@ auto Generator::gen(const ast::BinaryExp* exp, Func* func, Block* scope) -> Valu
     auto left = gen(&exp->left, func, scope);
     auto right = gen(&exp->right, func, scope);
     auto result = func->newTemp(this->info->type_of(exp));
-    scope->insts.emplace_back(BinaryInst{convert_op(exp->op), result, left, right});
+    scope->add(BinaryInst{convert_op(exp->op), result, left, right});
     return LeftValue{result};
 }
 
@@ -44,7 +44,7 @@ auto Generator::gen(const ast::Exp* exp, Func* func, Block* scope) -> Value {
         [&](const ast::UnaryExp& unary_exp) -> Value {
             auto operand = gen(&unary_exp.exp, func, scope);
             auto result = func->newTemp(this->info->type_of(&unary_exp));
-            scope->insts.emplace_back(UnaryInst{convert_op(unary_exp.op), result, operand});
+            scope->add(UnaryInst{convert_op(unary_exp.op), result, operand});
             return LeftValue{result};
         },
         [&](const ast::BinaryExp& binary_exp) -> Value { return gen(&binary_exp, func, scope); },
@@ -55,7 +55,7 @@ auto Generator::gen(const ast::Exp* exp, Func* func, Block* scope) -> Value {
                 elements.push_back(gen(&element, func, scope));
             }
             auto result = func->newTemp(this->info->type_of(&tuple_exp));
-            scope->insts.emplace_back(PackInst{result, std::move(elements)});
+            scope->add(PackInst{result, std::move(elements)});
             return LeftValue{result};
         });
 }

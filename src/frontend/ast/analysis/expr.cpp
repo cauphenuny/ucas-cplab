@@ -9,12 +9,13 @@ void SemanticAST::analysis(const LVal* lid, const Type& upperbound) {
         if (!symdef) {
             throw SemanticError(lid->loc, fmt::format("undefined variable '{}'", lid->name));
         }
-        match(*symdef, [&](const auto& def) { types[lid] = types[def]; });
+        match(*symdef, [&](const auto& def) { defs[lid] = def; types[lid] = types[def]; });
     } else {
         auto funcdef = lookup(lid->name, funcs);
         if (!funcdef) {
             throw SemanticError(lid->loc, fmt::format("undefined function '{}'", lid->name));
         }
+        defs[lid] = *funcdef;
         types[lid] = types[*funcdef];
     }
     checkType(lid, upperbound);

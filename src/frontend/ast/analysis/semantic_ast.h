@@ -15,7 +15,7 @@ namespace ast {
 using SymDefNode = std::variant<const ConstDef*, const VarDef*, const FuncParam*, const FuncDef*>;
 using VarDefNode = std::variant<const ConstDef*, const VarDef*, const FuncParam*>;
 using FuncDefNode = const FuncDef*;
-using LValNode = const LValExp*;
+using LValNode = const LVal*;
 using ExprNode = std::variant<const ConstDef*, const VarDef*, const FuncDef*, const LValExp*,
                               const Exp*, const PrimaryExp*, const UnaryExp*, const BinaryExp*,
                               const ExpBox*, const ConstExp*, const TupleExp*, const FuncParams*,

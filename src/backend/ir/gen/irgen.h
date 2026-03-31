@@ -25,7 +25,7 @@ private:
         return gen(stmt_box->stmt.get(), func, scope);
     }
 
-    [[nodiscard]] auto gen(const ast::LVal* lval, const ast::LValExp* container) -> LeftValue;
+    [[nodiscard]] auto gen(const ast::LVal* lval) -> LeftValue;
     [[nodiscard]] auto gen(const ast::LValExp* exp, Func* func, Block* scope) -> LeftValue;
     [[nodiscard]] auto gen(const ast::BinaryExp* exp, Func* func, Block* scope) -> Value;
     [[nodiscard]] auto gen(const ast::ConstExp* exp, Func* func, Block* scope) -> Value;
