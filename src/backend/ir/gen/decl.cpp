@@ -47,7 +47,7 @@ auto Generator::generate(const ast::SemanticAST& info) -> Program {
             item,
             [&](const ast::Decl& decl) {
                 for (auto&& alloc : gen(&decl)) {
-                    prog.addAlloc(std::move(alloc));
+                    prog.addGlobal(std::move(alloc));
                 }
             },
             [&](const ast::FuncDef& func) {

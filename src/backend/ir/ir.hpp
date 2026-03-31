@@ -112,7 +112,8 @@ using Exit = std::variant<BranchExit, JumpExit, ReturnExit>;
 
 struct Block {
     const std::string label;
-    Block(Block&&) = delete;  // NOTE: Block is not movable because some instructions may hold references to it.
+    Block(Block&&) =
+        delete;  // NOTE: Block is not movable because some instructions may hold references to it.
 
     [[nodiscard]] auto toString() const {
         std::string str;
@@ -178,22 +179,36 @@ struct Func {
         } else {
             str += fmt::format("func {}({}) -> {}:\n", name, params, ret_type);
         }
-        for (const auto& def : locals) {
+        for (const auto& def : locals_) {
             str += fmt::format("  {}\n", def);
         }
-        for (const auto& block : blocks) {
+        for (const auto& block : blocks_) {
             str += fmt::format("{}", *block);
         }
         return str;
     }
 
+    const auto& locals() {
+        return locals_;
+    }
+
+    const auto& blocks() {
+        return blocks_;
+    }
+
+    const auto& temps() {
+        return temps_;
+    }
+
     auto newTemp(const Type& type) -> TempValue {
-        return TempValue{.type = type, .id = temp_count++};
+        auto temp = TempValue{.type = type, .id = temps_.size()};
+        temps_.push_back(type);
+        return temp;
     }
 
     auto newBlock(const std::string& label) -> Block* {
-        blocks.emplace_back(std::make_unique<Block>(label));
-        return blocks.back().get();
+        blocks_.emplace_back(std::make_unique<Block>(label));
+        return blocks_.back().get();
     }
 
     auto newBlock() -> Block* {
@@ -201,11 +216,11 @@ struct Func {
     }
 
     auto entrance() -> Block* {
-        return blocks.front().get();
+        return blocks_.front().get();
     }
 
-    void addAlloc(const Alloc& alloc) {
-        locals.push_back(alloc);
+    void addLocal(const Alloc& alloc) {
+        locals_.push_back(alloc);
     }
 
     void pushLoop(const Block* continue_target, const Block* break_target) {
@@ -224,14 +239,14 @@ struct Func {
     Func(Func&&) = default;
 
 private:
-    std::vector<Alloc> locals;
-    std::vector<std::unique_ptr<Block>> blocks;
+    std::vector<Alloc> locals_;
+    std::vector<Type> temps_;
+    std::vector<std::unique_ptr<Block>> blocks_;
     struct LoopContext {
         const Block* continue_target;
         const Block* break_target;
     };
     std::vector<LoopContext> loops;  // for break/continue target
-    size_t temp_count{0};
     size_t temp_label_count{0};
 };
 
@@ -254,7 +269,7 @@ struct Program {
     void addFunc(Func func) {
         funcs.push_back(std::move(func));
     }
-    void addAlloc(Alloc alloc) {
+    void addGlobal(Alloc alloc) {
         globals.push_back(std::move(alloc));
     }
 

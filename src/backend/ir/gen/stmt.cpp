@@ -46,7 +46,7 @@ auto Generator::gen(const ast::BlockStmt* block_stmt, Func* func, Block* scope) 
             stmt,
             [&](const ast::Decl& decl) {
                 for (const auto& alloc : gen(&decl)) {
-                    func->addAlloc(alloc);
+                    func->addLocal(alloc);
                 }
             },
             [&](const ast::Stmt& stmt) { current_scope = gen(&stmt, func, current_scope); });
