@@ -49,6 +49,17 @@ struct ConstexprValue {
 using LeftValue = std::variant<NamedValue, TempValue>;
 using Value = std::variant<ConstexprValue, LeftValue>;
 
+inline LeftValue as_lvalue(const Value& value) {
+    return match(
+        value, [&](const LeftValue& val) -> LeftValue {
+                return val;
+        },
+        [&](const ConstexprValue& c) -> LeftValue {
+                throw CompilerError(fmt::format("expected LeftValue, got {}", c));
+            }
+        );
+}
+
 inline auto type(const LeftValue& value) -> Type {
     return match(
         value, [&](const auto& var) { return var.type; });

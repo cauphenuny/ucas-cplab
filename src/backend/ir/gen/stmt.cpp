@@ -101,13 +101,11 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
                     scope->add(UnaryInst{UnaryInstOp::MOV, var, exp});
                     return scope;
                 },
-                [&](const ast::BinaryExp& exp) {
-                    auto& lhs = exp.left.as<ast::PrimaryExp>();
-                    auto& lval = std::get<ast::LValExp>(lhs.exp);
-                    auto array = gen(&lval, func, scope);
+                [&](const ast::BinaryExp& exp) { // array indexing
+                    auto array = gen(&exp.left, func, scope);
                     auto index = gen(&exp.right, func, scope);
                     auto exp_val = gen(&assign_stmt.exp, func, scope);
-                    scope->add(BinaryInst{InstOp::STORE, array, index, exp_val});
+                    scope->add(BinaryInst{InstOp::STORE, as_lvalue(array), index, exp_val});
                     return scope;
                 });
         },

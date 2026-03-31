@@ -156,6 +156,8 @@ void test_slice() {
     fmt::println("flatten({}): {}", slice2, slice2.flatten());
     auto slice3 = construct<int[10][20]>();
     fmt::println("decay({}): {}", slice3, slice3.decay());
+    auto slice4 = construct<int[10][20][30]>();
+    fmt::println("flatten({}): {}", slice4, slice4.flatten());
 }
 
 int main() {
