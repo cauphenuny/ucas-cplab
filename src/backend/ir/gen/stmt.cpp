@@ -2,29 +2,36 @@
 #include "frontend/ast/ast.hpp"
 #include "frontend/ast/op.hpp"
 #include "irgen.h"
-#include "utils/error.hpp"
 
 namespace ir::gen {
 
 auto Generator::branch(const ast::Exp* cond, Func* func, Block* scope, const Block* true_block,
                        const Block* false_block) -> BranchExit {
-    return match(*cond, [&](const ast::BinaryExp& binary_exp) -> BranchExit {
-        switch (binary_exp.op) {
-            case ast::BinaryOp::AND: {
-                auto right_block = func->newBlock();
-                auto left_exit = branch(binary_exp.left.exp.get(), func, scope, right_block, false_block);
-                right_block->exit = branch(binary_exp.right.exp.get(), func, right_block, true_block, false_block);
-                return left_exit;
+    return match(
+        *cond,
+        [&](const ast::BinaryExp& binary_exp) -> BranchExit {
+            switch (binary_exp.op) {
+                case ast::BinaryOp::AND: {
+                    auto right_block = func->newBlock();
+                    auto left_exit =
+                        branch(binary_exp.left.exp.get(), func, scope, right_block, false_block);
+                    right_block->exit = branch(binary_exp.right.exp.get(), func, right_block,
+                                               true_block, false_block);
+                    return left_exit;
+                }
+                case ast::BinaryOp::OR: {
+                    auto right_block = func->newBlock();
+                    auto left_exit =
+                        branch(binary_exp.left.exp.get(), func, scope, true_block, right_block);
+                    right_block->exit = branch(binary_exp.right.exp.get(), func, right_block,
+                                               true_block, false_block);
+                    return left_exit;
+                }
+                default: {
+                    auto cond_val = gen(cond, func, scope);
+                    return BranchExit{cond_val, true_block, false_block};
+                }
             }
-            case ast::BinaryOp::OR: {
-                auto right_block = func->newBlock();
-                auto left_exit = branch(binary_exp.left.exp.get(), func, scope, true_block, right_block);
-                right_block->exit = branch(binary_exp.right.exp.get(), func, right_block, true_block, false_block);
-                return left_exit;
-            }
-            default:
-                throw CompilerError(fmt::format("invalid condition expression `{}` for branch", binary_exp));
-        }
         },
         [&](const auto& exp) {
             auto cond_val = gen(cond, func, scope);
@@ -56,18 +63,16 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
         [&](const ast::IfStmt& if_stmt) {
             auto true_block = func->newBlock(fmt::format(".if_true_{}", if_stmt.loc));
             auto exit_block = func->newBlock(fmt::format(".if_exit_{}", if_stmt.loc));
+            true_block = gen(&if_stmt.stmt, func, true_block);
+            true_block->exit = JumpExit{exit_block};
             if (if_stmt.else_stmt) {
                 auto false_block = func->newBlock(fmt::format(".if_false_{}", if_stmt.loc));
-                scope->exit = branch(&if_stmt.cond, func, scope, true_block, false_block);
-                true_block = gen(&if_stmt.stmt, func, true_block);
-                true_block->exit = JumpExit{exit_block};
                 false_block = gen(&*if_stmt.else_stmt, func, false_block);
                 false_block->exit = JumpExit{exit_block};
+                scope->exit = branch(&if_stmt.cond, func, scope, true_block, false_block);
                 return exit_block;
             } else {
                 scope->exit = branch(&if_stmt.cond, func, scope, true_block, exit_block);
-                true_block = gen(&if_stmt.stmt, func, true_block);
-                true_block->exit = JumpExit{exit_block};
                 return exit_block;
             }
         },
@@ -87,7 +92,7 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
         [&](const ast::AssignStmt& assign_stmt) {
             auto var = gen(&assign_stmt.var, func, scope);
             auto exp = gen(&assign_stmt.exp, func, scope);
-            scope->insts.emplace_back(UnaryInst{UnaryInstOp::MOV, var, exp});
+            scope->add(UnaryInst{UnaryInstOp::MOV, var, exp});
             return scope;
         },
         [&](const ast::ExpStmt& exp_stmt) {

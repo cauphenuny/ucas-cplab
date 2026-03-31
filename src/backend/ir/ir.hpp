@@ -4,6 +4,7 @@
 #include "op.hpp"
 #include "type.hpp"
 
+#include <string>
 #include <utility>
 #include <variant>
 
@@ -106,6 +107,8 @@ using Exit = std::variant<BranchExit, JumpExit, ReturnExit>;
 
 struct Block {
     const std::string label;
+    Block(Block&&) = delete;  // NOTE: Block is not movable because some instructions may hold references to it.
+
     [[nodiscard]] auto toString() const {
         std::string str;
         str += fmt::format("{}:\n", label);
@@ -115,9 +118,16 @@ struct Block {
         str += exit ? fmt::format("  {}\n", *exit) : fmt::format("  <noexit>\n");
         return str;
     }
-    explicit Block(std::string label) : label(std::move(label)) {}
+    void add(Inst inst) {
+        insts.push_back(std::move(inst));
+    }
 
     friend struct gen::Generator;
+    friend struct Func;
+
+    Block(std::string label, std::vector<Inst> insts, Exit exit)
+        : label(std::move(label)), insts(std::move(insts)), exit(std::move(exit)) {}
+    explicit Block(std::string label) : label(std::move(label)) {}
 
 private:
     std::vector<Inst> insts;
@@ -125,7 +135,7 @@ private:
 };
 
 inline auto BranchExit::toString() const -> std::string {
-    return fmt::format("br {}? {} : {}", cond, true_target ? true_target->label : "<unknown>",
+    return fmt::format("br {} ? {} : {}", cond, true_target ? true_target->label : "<unknown>",
                        false_target ? false_target->label : "<unknown>");
 }
 
@@ -167,7 +177,7 @@ struct Func {
             str += fmt::format("  {}\n", def);
         }
         for (const auto& block : blocks) {
-            str += fmt::format("{}", block);
+            str += fmt::format("{}", *block);
         }
         return str;
     }
@@ -177,8 +187,8 @@ struct Func {
     }
 
     auto newBlock(const std::string& label) -> Block* {
-        blocks.emplace_back(label);
-        return &blocks.back();
+        blocks.emplace_back(std::make_unique<Block>(label));
+        return blocks.back().get();
     }
 
     auto newBlock() -> Block* {
@@ -186,7 +196,7 @@ struct Func {
     }
 
     auto entrance() -> Block* {
-        return &blocks.front();
+        return blocks.front().get();
     }
 
     void addAlloc(const Alloc& alloc) {
@@ -206,9 +216,11 @@ struct Func {
         return loops.back();
     }
 
+    Func(Func&&) = default;
+
 private:
     std::vector<Alloc> locals;
-    std::vector<Block> blocks;
+    std::vector<std::unique_ptr<Block>> blocks;
     struct LoopContext {
         const Block* continue_target;
         const Block* break_target;
