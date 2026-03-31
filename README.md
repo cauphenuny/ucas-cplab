@@ -92,12 +92,13 @@ IR:
 ```rust
 enum Value {
     Named(Type, ASTNode),
-    Temp(Type, usize, &Block),
+    Temp(Type, usize),
     Const(Type, ConstExp),
 }
 enum Inst {
-    Regular(InstOp, Value, Value, Value),
-    Aggregate(Value, Vec<Value>),
+    Unary(UnaryOp, Value, Value),
+    Binary(BinaryOp, Value, Value, Value),
+    Pack(Value, Vec<Value>),
 }
 enum Exit {
     Return(Value),
@@ -105,7 +106,7 @@ enum Exit {
     Jump(&Block),
 }
 struct Block(String, Vec<Inst>, Exit)
-struct Alloc(Value)
-struct Func(Type, String, Vec<Alloc>, Vec<Block>)
+struct Alloc(Value, Option<Value>)
+struct Func(Type, String, Vec<(Type, String)>, Vec<Alloc>, Vec<Block>)
 struct Program(Vec<Alloc>, Vec<Func>)
 ```
