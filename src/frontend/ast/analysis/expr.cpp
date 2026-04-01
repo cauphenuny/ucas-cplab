@@ -108,8 +108,12 @@ void SemanticAST::analysis(const BinaryExp* binary_exp, const Type& upperbound) 
         case BinaryOp::LEQ:
         case BinaryOp::GEQ: types[binary_exp] = BOOL; break;
         case BinaryOp::INDEX:
-            checkType(left, adt::Slice(ANY).toBoxed());
-            types[binary_exp] = types[left].as<adt::Slice>().elem;
+            checkType(left, adt::Pointer(ANY).toBoxed());
+            if (types[left].is<adt::Array>()) {
+                types[binary_exp] = types[left].as<adt::Array>().elem;
+            } else {
+                types[binary_exp] = types[left].as<adt::Pointer>().elem;
+            }
             break;
         case BinaryOp::CALL: types[binary_exp] = types[left].as<adt::Func>().ret; break;
         default:

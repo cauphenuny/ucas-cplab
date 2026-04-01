@@ -26,14 +26,15 @@ struct Double;
 using Primitive = std::variant<Int, Float, Double, Bool>;
 
 struct Func;
-struct Slice;
+struct Array;
+struct Pointer;
 
 struct Sum;
 struct Product;
 struct Top;
 struct Bottom;
 
-using Type = std::variant<Primitive, Sum, Product, Func, Slice, Top, Bottom>;
+using Type = std::variant<Primitive, Sum, Product, Func, Array, Pointer, Top, Bottom>;
 
 struct TypeBox {
     std::unique_ptr<Type> item;
@@ -148,20 +149,23 @@ struct Func : mixin::ToBoxed<Func, Type> {
                                  immutable ? ") const" : ""))
 };
 
-struct Slice : mixin::ToBoxed<Slice, Type> {
+/// Unsized array / pointer type: [elem; *]
+struct Pointer : mixin::ToBoxed<Pointer, Type> {
     bool immutable{false};
     TypeBox elem;
-    std::optional<size_t> size;
-    Slice(TypeBox elem, std::optional<size_t> size) : elem(std::move(elem)), size(size) {}
-    Slice(TypeBox elem) : elem(std::move(elem)), size(std::nullopt) {}
-    SIMPLE_TO_STRING(size.has_value()
-                         ? fmt::format("[{}; {}]{}", elem, size.value(), immutable ? " const" : "")
-                         : fmt::format("[{}; *]{}", elem, immutable ? " const" : ""));
-    [[nodiscard]] bool sized() const {
-        return size.has_value();
-    }
-    [[nodiscard]] auto flatten() const -> Slice;
-    [[nodiscard]] auto decay() const -> Slice;
+    Pointer(TypeBox elem) : elem(std::move(elem)) {}
+    SIMPLE_TO_STRING(fmt::format("[{}; *]{}", elem, immutable ? " const" : ""));
+};
+
+/// Sized array type: [elem; size]
+struct Array : mixin::ToBoxed<Array, Type> {
+    bool immutable{false};
+    TypeBox elem;
+    size_t size;
+    Array(TypeBox elem, size_t size) : elem(std::move(elem)), size(size) {}
+    SIMPLE_TO_STRING(fmt::format("[{}; {}]{}", elem, size, immutable ? " const" : ""));
+    [[nodiscard]] auto flatten() const -> Array;
+    [[nodiscard]] auto decay() const -> Pointer;
 };
 
 inline std::string TypeBox::toString() const {
@@ -176,7 +180,8 @@ inline bool TypeBox::immutable() const {
     return Match{*item}([](const auto& t) -> bool {
         using T = std::decay_t<decltype(t)>;
         if constexpr (std::is_same_v<T, Product> || std::is_same_v<T, Sum> ||
-                      std::is_same_v<T, Func> || std::is_same_v<T, Slice>) {
+                      std::is_same_v<T, Func> || std::is_same_v<T, Array> ||
+                      std::is_same_v<T, Pointer>) {
             return t.immutable;
         } else if constexpr (std::is_same_v<T, Primitive>) {
             return Match{t}([](const auto& prim) -> bool { return prim.immutable; });
@@ -220,38 +225,29 @@ inline void Product::append(TypeBox item) {
     items.push_back(std::move(item));
 }
 
-inline auto Slice::flatten() const -> Slice {
-    if (elem.is<Slice>()) {
-        auto inner = elem.as<Slice>();
-        auto new_elem = std::move(inner.elem);
-        std::optional<size_t> new_size;
-        if (size.has_value() && inner.size.has_value()) {
-            new_size = size.value() * inner.size.value();
-        }
-        return Slice(std::move(new_elem), new_size).flatten();
-    } else {
-        return *this;
+inline auto Array::flatten() const -> Array {
+    if (elem.is<Array>()) {
+        const auto& inner = elem.as<Array>();
+        size_t new_size = size * inner.size;
+        return Array(inner.elem, new_size).flatten();
     }
+    return *this;
 }
 
-inline auto Slice::decay() const -> Slice {
-    if (sized()) {
-        return {elem, std::nullopt};
-    } else {
-        return *this;
-    }
+inline auto Array::decay() const -> Pointer {
+    auto p = Pointer(elem);
+    p.immutable = immutable;
+    return p;
 }
 
 inline auto TypeBox::decay() const -> TypeBox {
-    return Match{*item}(
-        [&](const Slice& slice) -> TypeBox { return slice.decay().toBoxed(); },
-        [&](const auto&) { return *this; });
+    return Match{*item}([&](const Array& arr) -> TypeBox { return arr.decay().toBoxed(); },
+                        [&](const auto&) { return *this; });
 }
 
 inline auto TypeBox::flatten() const -> TypeBox {
-    return Match{*item}(
-        [&](const Slice& slice) -> TypeBox { return slice.flatten().toBoxed(); },
-        [&](const auto&) { return *this; });
+    return Match{*item}([&](const Array& arr) -> TypeBox { return arr.flatten().toBoxed(); },
+                        [&](const auto&) { return *this; });
 }
 
 /************************************************************/
@@ -318,8 +314,8 @@ template <typename... Args> struct construct_sum<std::variant<Args...>> {
  * - int -> Int
  * - float -> Float
  * - bool -> Bool
- * - T* -> Slice(unsized)
- * - T[N] -> Slice(sized)
+ * - T* -> Pointer
+ * - T[N] -> Array
  * - void -> Product (empty)
  * - R(Args...) -> Func
  * - std::tuple<Args...> -> Product
@@ -341,11 +337,11 @@ template <typename T> TypeBox construct() {
     } else if constexpr (std::is_same_v<U, std::any>) {
         return Top{}.toBoxed();
     } else if constexpr (std::is_pointer_v<U>) {
-        auto t = Slice(construct<std::remove_pointer_t<Raw>>());
+        auto t = Pointer(construct<std::remove_pointer_t<Raw>>());
         t.immutable = immutable;
         return std::move(t).toBoxed();
     } else if constexpr (std::is_array_v<U>) {
-        auto t = Slice(construct<std::remove_extent_t<Raw>>(), std::extent_v<U>);
+        auto t = Array(construct<std::remove_extent_t<Raw>>(), std::extent_v<U>);
         t.immutable = immutable;
         return std::move(t).toBoxed();
     } else if constexpr (std::is_void_v<U>) {
@@ -473,21 +469,25 @@ inline bool operator<=(const Func& from, const Func& to) {
            (from.ret <= to.ret);          // covariance
 }
 
-inline bool operator<=(const Slice& from, const Slice& to) {
-    if (from.immutable && !to.immutable) {
-        return false;
-    }
-    if (!(from.elem <= to.elem)) {
-        return false;
-    }
-    if (!to.elem.immutable() &&
-        !(to.elem <= from.elem)) {  // if to's element is mutable, then from's element must be the
-                                    // same type as to's element
-        return false;
-    }
-    if (!to.sized()) return true;  // NOTE: for C-like lang, array is convertible to pointer
-    if (!from.sized()) return !to.sized();
-    return from.size.value() >= to.size.value();
+inline bool operator<=(const Array& from, const Array& to) {
+    if (from.immutable && !to.immutable) return false;
+    if (!(from.elem <= to.elem)) return false;
+    if (!to.elem.immutable() && !(to.elem <= from.elem)) return false;
+    return from.size >= to.size;
+}
+
+inline bool operator<=(const Array& from, const Pointer& to) {
+    if (from.immutable && !to.immutable) return false;
+    if (!(from.elem <= to.elem)) return false;
+    if (!to.elem.immutable() && !(to.elem <= from.elem)) return false;
+    return true;
+}
+
+inline bool operator<=(const Pointer& from, const Pointer& to) {
+    if (from.immutable && !to.immutable) return false;
+    if (!(from.elem <= to.elem)) return false;
+    if (!to.elem.immutable() && !(to.elem <= from.elem)) return false;
+    return true;
 }
 
 inline bool operator<=(const TypeBox& from, const TypeBox& to) {
@@ -568,24 +568,30 @@ inline TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs) {
 }
 
 inline bool constructable(const TypeBox& from_box, const TypeBox& to_box) {
-    if (from_box.is<Slice>() && to_box.is<Slice>()) {
-        const auto& from = from_box.as<Slice>();
-        const auto& to = to_box.as<Slice>();
+    if (from_box.is<Array>() && to_box.is<Array>()) {
+        const auto& from = from_box.as<Array>();
+        const auto& to = to_box.as<Array>();
         // NOTE: flat array can construct multi-dim array
-        if (!from.elem.is<Slice>() && to.elem.is<Slice>()) {
-            auto flattened_to = to.flatten();
-            return constructable(from.elem, flattened_to.elem) && flattened_to.size.has_value() &&
-                   from.size.has_value() && flattened_to.size.value() >= from.size.value();
+        if (!from.elem.is<Array>() && to.elem.is<Array>()) {
+            auto flattened_to = to_box.flatten();
+            if (!flattened_to.is<Array>()) return false;
+            const auto& fa = flattened_to.as<Array>();
+            return constructable(from.elem, fa.elem) && fa.size >= from.size;
         }
-        if (!to.elem.is<Slice>() && from.elem.is<Slice>()) {
+        if (!to.elem.is<Array>() && from.elem.is<Array>()) {
             // NOTE: multi-dim array can not construct flat array
             return false;
         }
-        return constructable(from.elem, to.elem) &&
-               ((!from.size.has_value() && !to.size.has_value()) ||
-                (from.size.has_value() && to.size.has_value() &&
-                 from.size.value() <= to.size.value()));
+        return constructable(from.elem, to.elem) && from.size <= to.size;
     }
+    if (from_box.is<Pointer>() && to_box.is<Pointer>()) {
+        const auto& from = from_box.as<Pointer>();
+        const auto& to = to_box.as<Pointer>();
+        return constructable(from.elem, to.elem);
+    }
+    // Array -> Pointer is not constructable (even though Array <= Pointer by subtyping)
+    if (from_box.is<Array>() && to_box.is<Pointer>()) return false;
+    if (from_box.is<Pointer>() && to_box.is<Array>()) return false;
     return from_box <= to_box;
 }
 

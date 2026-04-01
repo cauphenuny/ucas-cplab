@@ -31,7 +31,7 @@ void SemanticAST::analysis(const Decl* decl) {
                 // array type
                 auto elem_type = calcType(decl.type, is_const);
                 for (size_t i = def.dims.size(); i > 0; i--) {
-                    elem_type = adt::Slice(std::move(elem_type), def.dims[i - 1]).toBoxed();
+                    elem_type = adt::Array(std::move(elem_type), def.dims[i - 1].value()).toBoxed();
                 }
                 types[&def] = std::move(elem_type);
             } else {
@@ -90,7 +90,7 @@ void SemanticAST::analysis(const ConstInitVal* val) {
                 }
                 elem_type = adt::constructable(elem_type, types[&val]) ? types[&val] : elem_type;
             }
-            types[val] = adt::Slice(std::move(elem_type), vals.size()).toBoxed();
+            types[val] = adt::Array(std::move(elem_type), vals.size()).toBoxed();
         });
 }
 
