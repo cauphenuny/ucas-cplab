@@ -63,21 +63,25 @@ struct TypeBox {
 };
 
 struct Int : mixin::ToBoxed<Int, Type> {
+    using type = int;
     bool immutable{false};
     SIMPLE_TO_STRING(immutable ? "int const" : "int");
 };
 
 struct Float : mixin::ToBoxed<Float, Type> {
+    using type = float;
     bool immutable{false};
     SIMPLE_TO_STRING(immutable ? "float const" : "float");
 };
 
 struct Double : mixin::ToBoxed<Double, Type> {
+    using type = double;
     bool immutable{false};
     SIMPLE_TO_STRING(immutable ? "double const" : "double");
 };
 
 struct Bool : mixin::ToBoxed<Bool, Type> {
+    using type = bool;
     bool immutable{false};
     SIMPLE_TO_STRING(immutable ? "bool const" : "bool");
 };
@@ -148,6 +152,14 @@ struct Sum : mixin::ToBoxed<Sum, Type> {
         if (items_.size() < 2) {
             throw CompilerError("Sum type must have at least 2 items");
         }
+    }
+
+    [[nodiscard]] size_t index_of(const TypeBox& item) const;
+    [[nodiscard]] const TypeBox& type_of(size_t index) const {
+        if (index >= items_.size()) {
+            throw CompilerError(fmt::format("Index {} out of bounds for Sum type {}", index, *this));
+        }
+        return items_[index];
     }
 
 private:
@@ -536,6 +548,15 @@ inline void Sum::append(TypeBox item) {
         if (i == item) return;
     }
     items_.push_back(std::move(item));
+}
+
+inline size_t Sum::index_of(const TypeBox& item) const {
+    for (size_t i = 0; i < items_.size(); i++) {
+        if (items_[i] == item) {
+            return i;
+        }
+    }
+    throw CompilerError(fmt::format("Type {} not found in Sum type {}", item, *this));
 }
 
 inline TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs) {

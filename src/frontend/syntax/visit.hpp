@@ -438,20 +438,14 @@ public:
             ast::LVal lval_id;
             lval_id.name = ctx->ID()->getText();
             lval_id.loc = get_loc(ctx);
-            ast::LValExp lval_exp{.val = std::move(lval_id)};
-            lval_exp.loc = lval_id.loc;
-            ast::PrimaryExp prim{std::move(lval_exp)};
-            prim.loc = lval_id.loc;
-
-            ast::BinaryExp call{
-                .op = ast::BinaryOp::CALL,
-                .left = std::move(prim).toBoxed(),
-                .right = ast::TupleExp{}.toBoxed(),
+            ast::CallExp call{
+                .func = std::move(lval_id),
+                .args = {},
             };
             call.loc = get_loc(ctx);
             if (ctx->funcArgs()) {
-                auto args = take<ast::TupleExp>(visit(ctx->funcArgs()));
-                call.right = std::move(args).toBoxed();
+                auto args = take<ast::FuncArgs>(visit(ctx->funcArgs()));
+                call.args = std::move(args);
             }
             return wrap(ast::Exp(std::move(call)));
         }
@@ -491,11 +485,10 @@ public:
     }
 
     std::any visitFuncArgs(CACTParser::FuncArgsContext* ctx) override {
-        ast::TupleExp tup;
-        tup.loc = get_loc(ctx);
+        ast::FuncArgs args;
         for (auto* expCtx : ctx->exp()) {
-            tup.elements.emplace_back(take<ast::Exp>(visit(expCtx)));
+            args.emplace_back(take<ast::Exp>(visit(expCtx)));
         }
-        return wrap(std::move(tup));
+        return wrap(std::move(args));
     }
 };

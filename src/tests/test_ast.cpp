@@ -25,9 +25,7 @@ int main() {
     call_args.emplace_back(PrimaryExp{42});
     call_args.emplace_back(BinaryExp{
         .op = BinaryOp::ADD, .left = PrimaryExp{2}.toBoxed(), .right = PrimaryExp{3}.toBoxed()});
-    auto call = BinaryExp{.op = BinaryOp::CALL,
-                          .left = PrimaryExp{LValExp{LVal{.name = "putint"}}}.toBoxed(),
-                          .right = TupleExp{.elements = std::move(call_args)}.toBoxed()};
+    auto call = CallExp{.func = LVal{.name = "putint"}, .args = std::move(call_args)};
     fmt::println("{}", call);
 
     // 4. If Statement: if (x > 0) return 1; else return 0;
@@ -155,12 +153,8 @@ int main() {
         std::vector<Exp> args2;
         args2.emplace_back(std::move(n_minus_2));
 
-        auto call1 = BinaryExp{.op = BinaryOp::CALL,
-                               .left = PrimaryExp{LValExp{LVal{.name = "fib"}}}.toBoxed(),
-                               .right = TupleExp{.elements = std::move(args1)}.toBoxed()};
-        auto call2 = BinaryExp{.op = BinaryOp::CALL,
-                               .left = PrimaryExp{LValExp{LVal{.name = "fib"}}}.toBoxed(),
-                               .right = TupleExp{.elements = std::move(args2)}.toBoxed()};
+        auto call1 = CallExp{.func = LVal{.name = "fib"}, .args = std::move(args1)};
+        auto call2 = CallExp{.func = LVal{.name = "fib"}, .args = std::move(args2)};
 
         auto add_fib = BinaryExp{.op = BinaryOp::ADD,
                                  .left = std::move(call1).toBoxed(),
@@ -178,9 +172,7 @@ int main() {
         std::vector<BlockStmt::Item> main_items;
         std::vector<Exp> fib_args;
         fib_args.emplace_back(PrimaryExp{10});
-        auto fib_call = BinaryExp{.op = BinaryOp::CALL,
-                                  .left = PrimaryExp{LValExp{LVal{.name = "fib"}}}.toBoxed(),
-                                  .right = TupleExp{.elements = std::move(fib_args)}.toBoxed()};
+        auto fib_call = CallExp{.func = LVal{.name = "fib"}, .args = std::move(fib_args)};
         main_items.emplace_back(ReturnStmt{.exp = Exp{std::move(fib_call)}});
 
         unit_items.emplace_back(FuncDef{.type = Type::INT,

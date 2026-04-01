@@ -25,9 +25,9 @@ adt::TypeBox SemanticAST::calcType(const FuncParam* param) {
     return param_type;
 }
 
-adt::Product SemanticAST::calcType(const TupleExp* tuple) {
+adt::Product SemanticAST::calcType(const FuncArgs* args) {
     auto args_type = adt::Product{};
-    for (const auto& arg : tuple->elements) {
+    for (const auto& arg : *args) {
         args_type.append(types[&arg]);
     }
     return args_type;
@@ -36,7 +36,7 @@ adt::Product SemanticAST::calcType(const TupleExp* tuple) {
 adt::Product SemanticAST::calcType(const FuncParams* params) {
     auto type = adt::Product{};
     for (auto& param : *params) {
-        type.append(calcType(&param));
+        type.append(types[&param]);
     }
     return type;
 }

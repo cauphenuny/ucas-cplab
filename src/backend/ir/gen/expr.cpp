@@ -48,22 +48,18 @@ auto Generator::gen(const ast::Exp* exp, Func* func, Block* scope) -> Value {
             return LeftValue{result};
         },
         [&](const ast::BinaryExp& binary_exp) -> Value { return gen(&binary_exp, func, scope); },
-        [&](const ast::TupleExp& tuple_exp) -> Value {
-            if (!tuple_exp.elements.empty()) {
-                std::vector<Value> elements;
-                adt::Product prod_type;
-                elements.reserve(tuple_exp.elements.size());
-                for (const auto& element : tuple_exp.elements) {
-                    auto v = gen(&element, func, scope);
-                    prod_type.append(type(v));
-                    elements.push_back(std::move(v));
-                }
-                auto result = func->newTemp(std::move(prod_type).toBoxed());
-                scope->add(PackInst{result, std::move(elements)});
-                return LeftValue{result};
-            } else {
-                return ConstexprValue{};
+        [&](const ast::CallExp& call_exp) -> Value {
+            auto result = func->newTemp(this->info->type_of(&call_exp).decay());
+            auto inst = CallInst{
+                .result = result,
+                .func = gen(&call_exp.func),
+                .args = {},
+            };
+            for (auto& arg : call_exp.args) {
+                inst.args.push_back(gen(&arg, func, scope));
             }
+            scope->add(std::move(inst));
+            return LeftValue{result};
         });
 }
 

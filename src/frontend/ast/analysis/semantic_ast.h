@@ -18,8 +18,8 @@ using FuncDefNode = const FuncDef*;
 using LValNode = const LVal*;
 using ExprNode = std::variant<const ConstDef*, const VarDef*, const FuncDef*, const LValExp*,
                               const Exp*, const PrimaryExp*, const UnaryExp*, const BinaryExp*,
-                              const ExpBox*, const ConstExp*, const TupleExp*, const FuncParams*,
-                              const FuncParam*, const ConstInitVal*, const LVal*>;
+                              const ExpBox*, const ConstExp*, const CallExp*, const FuncParams*,
+                              const FuncArgs*, const FuncParam*, const ConstInitVal*, const LVal*>;
 
 using StmtNode =
     std::variant<const StmtBox*, const Stmt*, const IfStmt*, const WhileStmt*, const ReturnStmt*,
@@ -62,7 +62,9 @@ struct SemanticAST {
         try {
             return types.at(expr);
         } catch (const std::out_of_range&) {
-            return match(expr, [&](auto subexpr) -> Type { throw CompilerError(fmt::format("can not find type of expression '{}'", *subexpr)); });
+            return match(expr, [&](auto subexpr) -> Type {
+                throw CompilerError(fmt::format("can not find type of expression '{}'", *subexpr));
+            });
         }
     }
 
@@ -70,7 +72,9 @@ struct SemanticAST {
         try {
             return stmt_types.at(stmt);
         } catch (const std::out_of_range&) {
-            return match(stmt, [&](auto substmt) -> StmtType { throw CompilerError(fmt::format("can not find type of statement '{}'", *substmt)); });
+            return match(stmt, [&](auto substmt) -> StmtType {
+                throw CompilerError(fmt::format("can not find type of statement '{}'", *substmt));
+            });
         }
     }
 
@@ -124,6 +128,7 @@ private:
 
     void analysis(const FuncParam* param);
     void analysis(const FuncParams* params);
+    void analysis(const FuncArgs* args);
     void analysis(const FuncDef* func_def, bool is_builtin = false);
 
     void analysis(const Stmt* stmt);
@@ -138,7 +143,7 @@ private:
     void analysis(const Exp* exp, const Type& upperbound = ANY);
     void analysis(const LVal* lid, const Type& upperbound = ANY);
     void analysis(const LValExp* lval, const Type& upperbound = ANY);
-    void analysis(const TupleExp* tuple, const Type& upperbound = ANY);
+    void analysis(const CallExp* call, const Type& upperbound = ANY);
     void analysis(const ConstExp* const_exp, const Type& upperbound = ANY);
     void analysis(const PrimaryExp* primary, const Type& upperbound = ANY);
     void analysis(const UnaryExp* unary_exp, const Type& upperbound = ANY);
@@ -147,7 +152,7 @@ private:
 
     auto calcType(ast::Type type, bool immutable = false) -> adt::TypeBox;
     auto calcType(const FuncParam* param) -> adt::TypeBox;
-    auto calcType(const TupleExp* tuple) -> adt::Product;
+    auto calcType(const FuncArgs* args) -> adt::Product;
     auto calcType(const FuncParams* params) -> adt::Product;
     auto calcType(const FuncDef* func_def) -> adt::Func;
 

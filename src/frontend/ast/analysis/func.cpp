@@ -3,15 +3,22 @@
 namespace ast {
 
 void SemanticAST::analysis(const FuncParam* param) {
-    types[param] = calcType(param);
     registerSymbol(param);
+    types[param] = calcType(param);
 }
 
 void SemanticAST::analysis(const FuncParams* params) {
-    types[params] = calcType(params).toBoxed();
     for (const auto& param : *params) {
         analysis(&param);
     }
+    types[params] = calcType(params).toBoxed();
+}
+
+void SemanticAST::analysis(const FuncArgs* args) {
+    for (const auto& arg : *args) {
+        analysis(&arg);
+    }
+    types[args] = calcType(args).toBoxed();
 }
 
 void SemanticAST::analysis(const FuncDef* func_def, bool is_builtin) {

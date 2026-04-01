@@ -69,29 +69,12 @@ inline auto type(const Value& value) -> Type {
     return match(value, [&](const auto& val) { return type(val); });
 }
 
-struct PackInst {
-    LeftValue result;
-    std::vector<Value> src;
-
-    [[nodiscard]] auto toString() const {
-        std::string rhs;
-        for (auto&& item : src) {
-            rhs += fmt::format("{}, ", item);
-        }
-        rhs.pop_back();
-        if (rhs.size() > 1) rhs.pop_back();
-        return fmt::format("{}: {} = ({})", result, type(result), rhs);
-    }
-};
-
 struct UnaryInst {
     UnaryInstOp op;
     LeftValue result;
     Value operand;
 
-    SIMPLE_TO_STRING(op == UnaryInstOp::MOV
-                         ? fmt::format("{}: {} = {}", result, type(result), operand)
-                         : fmt::format("{}: {} = {}{}", result, type(result), op, operand))
+    SIMPLE_TO_STRING(fmt::format("{}: {} = {}{}", result, type(result), op, operand))
 };
 
 struct BinaryInst {
@@ -101,13 +84,26 @@ struct BinaryInst {
 
     SIMPLE_TO_STRING(op == InstOp::LOAD
                          ? fmt::format("{}: {} = {}[{}]", result, type(result), lhs, rhs)
-                     : op == InstOp::STORE ? fmt::format("{}[{}] = {}", result, lhs, rhs)
-                     : op == InstOp::CALL
-                         ? fmt::format("{}: {} = {}({})", result, type(result), lhs, rhs)
+                     : op == InstOp::STORE
+                         ? fmt::format("{}[{}] = {}", result, lhs, rhs)
                          : fmt::format("{}: {} = {} {} {}", result, type(result), lhs, op, rhs))
 };
 
-using Inst = std::variant<UnaryInst, BinaryInst, PackInst>;
+struct CallInst {
+    LeftValue result, func;
+    std::vector<Value> args;
+
+    [[nodiscard]] auto toString() const {
+        std::string arg_str;
+        for (auto&& arg : args) {
+            arg_str += fmt::format("{}, ", arg);
+        }
+        if (!arg_str.empty()) arg_str.pop_back(), arg_str.pop_back();
+        return fmt::format("{}: {} = {}({})", result, type(result), func, arg_str);
+    }
+};
+
+using Inst = std::variant<UnaryInst, BinaryInst, CallInst>;
 
 struct ReturnExit {
     Value exp;
@@ -294,6 +290,15 @@ struct Program {
     }
     void addGlobal(Alloc alloc) {
         globals.push_back(std::move(alloc));
+    }
+
+    [[nodiscard]] const Func& findFunc(const std::string& name) const {
+        for (const auto& func : funcs) {
+            if (func.name == name) {
+                return func;
+            }
+        }
+        throw CompilerError(fmt::format("function '{}' not found", name));
     }
 
 private:

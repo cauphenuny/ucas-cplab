@@ -35,12 +35,13 @@ void SemanticAST::analysis(const Exp* exp, const Type& upperbound) {
     });
 }
 
-void SemanticAST::analysis(const TupleExp* tuple, const Type& upperbound) {
-    for (const auto& element : tuple->elements) {
-        analysis(&element, ANY);
-    }
-    types[tuple] = calcType(tuple).toBoxed();
-    checkType(tuple, upperbound);
+void SemanticAST::analysis(const CallExp* call, const Type& upperbound) {
+    auto args = &call->args;
+    analysis(args);
+    auto func = &call->func;
+    analysis(func, adt::Func(types[args].as<adt::Product>(), ANY).toBoxed());
+    types[call] = types[func].as<adt::Func>().ret;
+    checkType(call, upperbound);
 }
 
 void SemanticAST::analysis(const ConstExp* const_exp, const Type& upperbound) {
@@ -78,21 +79,17 @@ void SemanticAST::analysis(const BinaryExp* binary_exp, const Type& upperbound) 
         case BinaryOp::AND:
         case BinaryOp::OR: rhs_bound = BOOL; break;
         case BinaryOp::INDEX: rhs_bound = INT; break;
-        case BinaryOp::CALL: rhs_bound = ANY; break;
         default: rhs_bound = NUM; break;
     }
     analysis(right, rhs_bound);
     switch (binary_exp->op) {
-        case BinaryOp::CALL:
-            lhs_bound = adt::Func(types[right].as<adt::Product>(), ANY).toBoxed();
-            break;
         case BinaryOp::INDEX: lhs_bound = ANY; break;
         case BinaryOp::AND:
         case BinaryOp::OR: lhs_bound = BOOL; break;
         default: rhs_bound = NUM; break;
     }
     analysis(left, lhs_bound);
-    if (binary_exp->op != BinaryOp::INDEX && binary_exp->op != BinaryOp::CALL) {
+    if (binary_exp->op != BinaryOp::INDEX) {
         if (!(types[left] <= types[right]) && !(types[right] <= types[left])) {
             throw SemanticError(
                 binary_exp->loc,
@@ -115,7 +112,6 @@ void SemanticAST::analysis(const BinaryExp* binary_exp, const Type& upperbound) 
                 types[binary_exp] = types[left].as<adt::Pointer>().elem;
             }
             break;
-        case BinaryOp::CALL: types[binary_exp] = types[left].as<adt::Func>().ret; break;
         default:
             types[binary_exp] = types[left] <= types[right] ? types[right] : types[left];
             break;

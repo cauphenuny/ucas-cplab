@@ -1,6 +1,4 @@
 #pragma once
-#define FMT_HEADER_ONLY
-#include "fmt/format.h"
 #include "frontend/ast/op.hpp"
 
 #include <cstdint>
@@ -26,12 +24,11 @@ enum class InstOp : uint8_t {
     OR,
     LOAD,
     STORE,  //
-    CALL,   //
 };
 
 inline std::string toString(UnaryInstOp op) {
     switch (op) {
-        case UnaryInstOp::MOV: return "mov";
+        case UnaryInstOp::MOV: return "";
         case UnaryInstOp::NOT: return "!";
         case UnaryInstOp::NEG: return "-";
     }
@@ -54,7 +51,6 @@ inline std::string toString(InstOp op) {
         case InstOp::OR: return "||";
         case InstOp::LOAD: return "load";
         case InstOp::STORE: return "store";
-        case InstOp::CALL: return "call";
     }
 }
 
@@ -76,7 +72,6 @@ inline auto convert_op(ast::BinaryOp op) -> InstOp {
         case ast::BinaryOp::INDEX:
             return InstOp::LOAD;  // NOTE: store operation will be generated in gen(const
                                   // ast::AssignStmt*)
-        case ast::BinaryOp::CALL: return InstOp::CALL;
     }
 }
 

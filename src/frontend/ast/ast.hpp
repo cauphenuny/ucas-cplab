@@ -27,8 +27,8 @@ struct LValExp;
 struct PrimaryExp;
 struct UnaryExp;
 struct BinaryExp;
-struct TupleExp;
-using Exp = std::variant<PrimaryExp, UnaryExp, BinaryExp, TupleExp>;
+struct CallExp;
+using Exp = std::variant<PrimaryExp, UnaryExp, BinaryExp, CallExp>;
 struct ExpBox;  // for recursive exp
 
 struct IfStmt;
@@ -46,6 +46,7 @@ struct StmtBox;  // for recursive stmt
 struct FuncDef;
 struct FuncParam;
 using FuncParams = std::vector<FuncParam>;
+using FuncArgs = std::vector<Exp>;
 
 struct ConstInitVal : public mixin::Locatable {
     std::variant<ConstExp, std::vector<ConstInitVal>> val;
@@ -146,9 +147,10 @@ struct UnaryExp : public mixin::Locatable, mixin::ToBoxed<UnaryExp, Exp> {
     TO_STRING(UnaryExp, op, exp);
 };
 
-struct TupleExp : public mixin::Locatable, mixin::ToBoxed<TupleExp, Exp> {
-    std::vector<Exp> elements;
-    DELEGATED_TO_STRING(TupleExp, elements);
+struct CallExp : public mixin::Locatable, mixin::ToBoxed<CallExp, Exp> {
+    LVal func;
+    FuncArgs args;
+    TO_STRING(CallExp, func, args);
 };
 
 inline ExpBox::ExpBox(std::unique_ptr<Exp> exp) : exp(std::move(exp)) {
