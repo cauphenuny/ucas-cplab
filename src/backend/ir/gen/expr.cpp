@@ -51,11 +51,14 @@ auto Generator::gen(const ast::Exp* exp, Func* func, Block* scope) -> Value {
         [&](const ast::TupleExp& tuple_exp) -> Value {
             if (!tuple_exp.elements.empty()) {
                 std::vector<Value> elements;
+                adt::Product prod_type;
                 elements.reserve(tuple_exp.elements.size());
                 for (const auto& element : tuple_exp.elements) {
-                    elements.push_back(gen(&element, func, scope));
+                    auto v = gen(&element, func, scope);
+                    prod_type.append(type(v));
+                    elements.push_back(std::move(v));
                 }
-                auto result = func->newTemp(this->info->type_of(&tuple_exp).decay());
+                auto result = func->newTemp(std::move(prod_type).toBoxed());
                 scope->add(PackInst{result, std::move(elements)});
                 return LeftValue{result};
             } else {
