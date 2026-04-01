@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "utils/error.hpp"
 #define FMT_HEADER_ONLY
 #include "fmt/format.h"
 #include "utils/serialize.hpp"
@@ -94,36 +95,40 @@ struct Top : mixin::ToBoxed<Top, Type> {
 struct Product : mixin::ToBoxed<Product, Type> {
     bool immutable{false};
     [[nodiscard]] std::string toString() const {
-        switch (items.size()) {
+        switch (items_.size()) {
             case 0: return "()";
-            case 1: return fmt::format("({},)", items[0]);
+            case 1: return fmt::format("({},)", items_[0]);
             default:
                 std::string result;
-                for (size_t i = 0; i < items.size(); i++) {
-                    result += fmt::format("{}{}", items[i], i == items.size() - 1 ? "" : ", ");
+                for (size_t i = 0; i < items_.size(); i++) {
+                    result += fmt::format("{}{}", items_[i], i == items_.size() - 1 ? "" : ", ");
                 }
                 return fmt::format("({}){}", result, immutable ? " const" : "");
         }
     }
     void append(TypeBox item);
     friend bool operator<=(const Product& from, const Product& to);
+    [[nodiscard]] const auto& items() const {
+        return items_;
+    }
 
 private:
-    std::vector<TypeBox> items;
+    std::vector<TypeBox> items_;
 };
 
 struct Sum : mixin::ToBoxed<Sum, Type> {
     bool immutable{false};
     [[nodiscard]] std::string toString() const {
-        if (items.empty()) return "⊥";
-        if (items.size() == 1) return items[0].toString();
         std::string result;
-        for (size_t i = 0; i < items.size(); i++) {
-            result += fmt::format("{}{}", items[i], i == items.size() - 1 ? "" : " | ");
+        for (size_t i = 0; i < items_.size(); i++) {
+            result += fmt::format("{}{}", items_[i], i == items_.size() - 1 ? "" : " | ");
         }
         return fmt::format("({}){}", result, immutable ? " const" : "");
     }
     void append(TypeBox item);
+    [[nodiscard]] const auto& items() const {
+        return items_;
+    }
 
     friend TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs);
     friend bool operator<=(const Sum& from, const Sum& to);
@@ -136,8 +141,17 @@ struct Sum : mixin::ToBoxed<Sum, Type> {
                             bool>
     operator<=(const T& from, const Sum& to);
 
+    Sum(std::vector<TypeBox> items) {
+        for (auto& item : items) {
+            append(std::move(item));
+        }
+        if (items_.size() < 2) {
+            throw CompilerError("Sum type must have at least 2 items");
+        }
+    }
+
 private:
-    std::vector<TypeBox> items;
+    std::vector<TypeBox> items_;
 };
 
 struct Func : mixin::ToBoxed<Func, Type> {
@@ -222,7 +236,7 @@ inline TypeBox& TypeBox::operator=(const TypeBox& other) {
     return *this;
 }
 inline void Product::append(TypeBox item) {
-    items.push_back(std::move(item));
+    items_.push_back(std::move(item));
 }
 
 inline auto Array::flatten() const -> Array {
@@ -298,8 +312,8 @@ template <typename T> struct construct_sum;
 
 template <typename... Args> struct construct_sum<std::variant<Args...>> {
     static TypeBox apply(bool immutable = false) {
-        auto sum = Sum{};
-        (sum.append(construct<Args>()), ...);
+        auto items = std::vector<TypeBox>{construct<Args>()...};
+        auto sum = Sum(std::move(items));
         sum.immutable = immutable;
         return std::move(sum).toBoxed();
     }
@@ -402,34 +416,12 @@ inline bool operator<=(const Primitive& from, const Primitive& to) {
     return Match{from, to}([](const auto& from, const auto& to) -> bool { return from <= to; });
 }
 
-template <typename ArrayLike, typename T,
-          std::enable_if_t<
-              std::disjunction_v<std::is_same<ArrayLike, Product>, std::is_same<ArrayLike, Sum>>>>
-inline bool operator<=(const ArrayLike& from, const T& to) {
-    if (from.items.size() == 1) {
-        return from.items[0] <= to;
-    } else {
-        return false;
-    }
-}
-
-template <typename ArrayLike, typename T,
-          std::enable_if_t<
-              std::disjunction_v<std::is_same<ArrayLike, Product>, std::is_same<ArrayLike, Sum>>>>
-inline bool operator<=(const T& from, const ArrayLike& to) {
-    if (to.items.size() == 1) {
-        return from <= to.items[0];
-    } else {
-        return false;
-    }
-}
-
 inline bool operator<=(const Product& from, const Product& to) {
-    if (from.items.size() != to.items.size()) {
+    if (from.items_.size() != to.items_.size()) {
         return false;
     }
-    for (size_t i = 0; i < from.items.size(); i++) {
-        if (!(from.items[i] <= to.items[i])) {
+    for (size_t i = 0; i < from.items_.size(); i++) {
+        if (!(from.items_[i] <= to.items_[i])) {
             return false;
         }
     }
@@ -439,7 +431,7 @@ inline bool operator<=(const Product& from, const Product& to) {
 template <typename T>
 std::enable_if_t<!std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>, bool>
 operator<=(const Sum& from, const T& to) {
-    for (const auto& item : from.items) {
+    for (const auto& item : from.items_) {
         if (!(item <= to)) return false;
     }
     return true;
@@ -448,14 +440,14 @@ operator<=(const Sum& from, const T& to) {
 template <typename T>
 std::enable_if_t<!std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>, bool>
 operator<=(const T& from, const Sum& to) {
-    for (const auto& item : to.items) {
+    for (const auto& item : to.items_) {
         if (from <= item) return true;
     }
     return false;
 }
 
 inline bool operator<=(const Sum& from, const Sum& to) {  // forall T in from s.t. T -> to
-    for (const auto& item : from.items) {
+    for (const auto& item : from.items_) {
         if (!(item <= to)) return false;
     }
     return true;
@@ -540,10 +532,10 @@ template <typename T1, typename T2> bool operator==(const T1& from, const T2& to
 
 inline void Sum::append(TypeBox item) {
     if (item.is<Bottom>()) return;  // ⊥ does not add any information
-    for (const auto& i : items) {
+    for (const auto& i : items_) {
         if (i == item) return;
     }
-    items.push_back(std::move(item));
+    items_.push_back(std::move(item));
 }
 
 inline TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs) {
@@ -551,20 +543,28 @@ inline TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs) {
     if (rhs.is<Bottom>()) return lhs;
     if (lhs == rhs) return lhs;
 
-    Sum result;
+    auto collect = std::vector<TypeBox>{};
     auto append_to_sum = [&](const TypeBox& b) {
         TypeBox::match(b)(
             [&](const Sum& s) {
-                for (const auto& item : s.items) result.append(item);
+                for (const auto& item : s.items_) collect.push_back(item);
             },
-            [&](const auto&) { result.append(b); });
+            [&](const auto&) { collect.push_back(b); });
     };
 
     append_to_sum(lhs);
     append_to_sum(rhs);
 
-    if (result.items.size() == 1) return result.items[0];
-    return std::move(result).toBoxed();
+    auto unique = std::vector<TypeBox>();
+
+    for (auto& item : collect) {
+        if (std::all_of(unique.begin(), unique.end(),
+                        [&](const TypeBox& u) { return !(item == u); }))
+            unique.push_back(std::move(item));
+    }
+
+    if (unique.size() == 1) return unique[0];
+    return Sum(std::move(unique)).toBoxed();
 }
 
 inline bool constructable(const TypeBox& from_box, const TypeBox& to_box) {

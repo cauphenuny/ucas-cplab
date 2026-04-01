@@ -104,9 +104,6 @@ void test_subtype() {
     assert(!(i == f));
     auto s_union = (i | f);
     assert(s_union == s1);
-    auto s = adt::Sum{};
-    s.append(construct<int>());
-    assert(s == construct<int>());
     auto never = TypeBox{Bottom{}.toBoxed()};
     assert((never | construct<int>()) == construct<int>());
     assert((never | never) == never);
