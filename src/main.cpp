@@ -23,17 +23,33 @@ enum : uint8_t {
 
 int main(int argc, const char* argv[]) {
     int ret = SUCCESS;
+    bool print_ast = false;
+    bool print_ir = false;
+    bool print_semantic = false;
+    std::set<std::string> files;
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg == "--ast") {
+            print_ast = true;
+        } else if (arg == "--ir") {
+            print_ir = true;
+        } else if (arg == "--sem") {
+            print_semantic = true;
+        } else {
+            files.insert(arg);
+        }
+    }
     try {
         if (argc < 2) {
-            throw std::runtime_error(fmt::format("usage: {} files ...", argv[0]));
+            throw std::runtime_error(fmt::format("usage: {} [--ast] [--ir] [--sem] files ...", argv[0]));
         }
 
-        for (int i = 1; i < argc; i++) {
+        for (const auto& file : files) {
             std::ifstream stream;
-            stream.open(argv[i]);
+            stream.open(file);
 
             if (!stream.is_open()) {
-                throw std::runtime_error(fmt::format("Failed to open file {}", argv[i]));
+                throw std::runtime_error(fmt::format("Failed to open file {}", file));
             }
 
             ANTLRInputStream input(stream);
@@ -50,18 +66,25 @@ int main(int argc, const char* argv[]) {
             ASTVisitor visitor;
             try {
                 std::unique_ptr<ast::CompUnit> ast(std::any_cast<ast::CompUnit*>(visitor.visit(parser.compUnit())));
-                fmt::println("AST: \n{}\n\n", ast);
+                if (print_ast) {
+                    fmt::println("AST:\n{}\n", ast);
+                }
                 auto semantic_ast = ast::SemanticAST(std::move(ast));
-                fmt::println("Semantic analysis:\n");
-                semantic_ast.show();
+                if (print_semantic) {
+                    fmt::println("Semantic analysis:\n");
+                    semantic_ast.show();
+                    fmt::println("\n");
+                }
                 auto program_ir = ir::gen::Generator().generate(semantic_ast);
-                fmt::println("\n\nIR:\n{}", program_ir);
-                fmt::println("{}: " BOLD GREEN "OK" NONE, argv[i]);
+                if (print_ir) {
+                    fmt::println("IR:\n{}", program_ir);
+                }
+                fmt::println("{}: " BOLD GREEN "OK" NONE, file);
             } catch (const SyntaxError& e) {
-                fmt::println("{}: {}", argv[i], e.what());
+                fmt::println("{}: {}", file, e.what());
                 ret |= SYNTAX_ERROR;
             } catch (const SemanticError& e) {
-                fmt::println("{}: {}", argv[i], e.what());
+                fmt::println("{}: {}", file, e.what());
                 ret |= SEMANTIC_ERROR;
             }
         }

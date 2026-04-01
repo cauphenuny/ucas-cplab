@@ -51,18 +51,14 @@ using Value = std::variant<ConstexprValue, LeftValue>;
 
 inline LeftValue as_lvalue(const Value& value) {
     return match(
-        value, [&](const LeftValue& val) -> LeftValue {
-                return val;
-        },
+        value, [&](const LeftValue& val) -> LeftValue { return val; },
         [&](const ConstexprValue& c) -> LeftValue {
-                throw CompilerError(fmt::format("expected LeftValue, got {}", c));
-            }
-        );
+            throw CompilerError(fmt::format("expected LeftValue, got {}", c));
+        });
 }
 
 inline auto type(const LeftValue& value) -> Type {
-    return match(
-        value, [&](const auto& var) { return var.type; });
+    return match(value, [&](const auto& var) { return var.type; });
 }
 
 inline auto type(const ConstexprValue& value) -> Type {
@@ -70,8 +66,7 @@ inline auto type(const ConstexprValue& value) -> Type {
 }
 
 inline auto type(const Value& value) -> Type {
-    return match(
-        value, [&](const auto& val) { return type(val); });
+    return match(value, [&](const auto& val) { return type(val); });
 }
 
 struct PackInst {
@@ -94,8 +89,9 @@ struct UnaryInst {
     LeftValue result;
     Value operand;
 
-    SIMPLE_TO_STRING(op == UnaryInstOp::MOV ? fmt::format("{}: {} = {}", result, type(result), operand)
-                                            : fmt::format("{}: {} = {}{}", result, type(result), op, operand))
+    SIMPLE_TO_STRING(op == UnaryInstOp::MOV
+                         ? fmt::format("{}: {} = {}", result, type(result), operand)
+                         : fmt::format("{}: {} = {}{}", result, type(result), op, operand))
 };
 
 struct BinaryInst {
@@ -103,10 +99,12 @@ struct BinaryInst {
     LeftValue result;
     Value lhs, rhs;
 
-    SIMPLE_TO_STRING(op == InstOp::LOAD    ? fmt::format("{}: {} = {}[{}]", result, type(result), lhs, rhs)
+    SIMPLE_TO_STRING(op == InstOp::LOAD
+                         ? fmt::format("{}: {} = {}[{}]", result, type(result), lhs, rhs)
                      : op == InstOp::STORE ? fmt::format("{}[{}] = {}", result, lhs, rhs)
-                     : op == InstOp::CALL  ? fmt::format("{}: {} = {}({})", result, type(result), lhs, rhs)
-                                           : fmt::format("{}: {} = {} {} {}", result, type(result), lhs, op, rhs))
+                     : op == InstOp::CALL
+                         ? fmt::format("{}: {} = {}({})", result, type(result), lhs, rhs)
+                         : fmt::format("{}: {} = {} {} {}", result, type(result), lhs, op, rhs))
 };
 
 using Inst = std::variant<UnaryInst, BinaryInst, PackInst>;
@@ -281,7 +279,7 @@ struct Program {
         for (const auto& def : globals) {
             str += fmt::format("{}\n", def);
         }
-        str += "\n";
+        if (!str.empty()) str += "\n";
         for (const auto& func : funcs) {
             str += fmt::format("{}\n", func);
         }
