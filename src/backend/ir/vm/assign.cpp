@@ -35,18 +35,20 @@ void VirtualMachine::assign(const adt::Sum& dest_type, std::byte* dest, const ir
 
 void VirtualMachine::assign(const adt::Array& dest_type, std::byte* dest,
                             const adt::Array& src_type, const std::byte* src) const {
-    if (dest_type.size < src_type.size) {
+    auto dest_type_flatten = dest_type.flatten();
+    auto src_type_flatten = src_type.flatten();
+    if (dest_type_flatten.size < src_type_flatten.size) {
         throw COMPILER_ERROR(fmt::format("Cannot assign array of size {} to array of size {}",
-                                         src_type.size, dest_type.size));
+                                         src_type_flatten.size, dest_type_flatten.size));
     }
     size_t i = 0;
-    auto src_view = as_array(src, adt::size_of(src_type.elem));
-    auto dest_view = as_array(dest, adt::size_of(dest_type.elem));
-    for (i = 0; i < src_type.size; i++) {
-        assign(dest_type.elem, dest_view[i], src_type.elem, src_view[i]);
+    auto src_view = as_array(src, adt::size_of(src_type_flatten.elem));
+    auto dest_view = as_array(dest, adt::size_of(dest_type_flatten.elem));
+    for (i = 0; i < src_type_flatten.size; i++) {
+        assign(dest_type_flatten.elem, dest_view[i], src_type_flatten.elem, src_view[i]);
     }
-    for (; i < dest_type.size; i++) {
-        memset(dest_view[i], 0, adt::size_of(dest_type.elem));
+    for (; i < dest_type_flatten.size; i++) {
+        memset(dest_view[i], 0, adt::size_of(dest_type_flatten.elem));
     }
 }
 

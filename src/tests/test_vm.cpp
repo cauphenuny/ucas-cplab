@@ -23,6 +23,7 @@ int main() {
     int ret = env.execute(prog);
     fmt::println("Output: \n{}\n", out_stream.str());
     assert(ret == 42);
+    assert(out_stream.str() == "123\n");
 }
 
 void test_index() {
@@ -42,18 +43,26 @@ int main() {
     int ret = env.execute(prog);
     fmt::println("Output: \n{}\n", out_stream.str());
     assert(ret == 10);
+    assert(out_stream.str() == "-10\n");
 }
 
 void test_multidim_init() {
     auto text = R"(
 int main() {
-    int arr[2][3] = {{1, 2, 3}, {4, 5}};
+    int arr[2][3] = {{1, 2}, {3, 4, 5}};
+    int flat[2][3] = {1, 2, 3, 4, 5};
     print_int(arr[0][0]);
     print_int(arr[0][1]);
     print_int(arr[0][2]);
     print_int(arr[1][0]);
     print_int(arr[1][1]);
     print_int(arr[1][2]);
+    print_int(flat[0][0]);
+    print_int(flat[0][1]);
+    print_int(flat[0][2]);
+    print_int(flat[1][0]);
+    print_int(flat[1][1]);
+    print_int(flat[1][2]);
     return 0;
 }
     )";
@@ -67,6 +76,7 @@ int main() {
     int ret = env.execute(prog);
     fmt::println("Output: \n{}\n", out_stream.str());
     assert(ret == 0);
+    assert(out_stream.str() == "1\n2\n0\n3\n4\n5\n1\n2\n3\n4\n5\n0\n");
 }
 
 int main() {
