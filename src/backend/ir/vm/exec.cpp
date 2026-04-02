@@ -80,7 +80,7 @@ void VirtualMachine::alloc(StackFrame& frame, const Alloc& alloc, std::byte* buf
     if (frame.vars.count(alloc.var)) {
         throw COMPILER_ERROR(fmt::format("Variable {} already defined in this scope", alloc.var));
     }
-    frame.vars[alloc.var] = View{.data = buffer, .type = alloc.var.type};
+    frame.vars[alloc.var] = View{.data = buffer, .type = alloc.var.type.decay()};
     if (alloc.init) {
         auto init_val = view_of(*alloc.init);
         assign(alloc.var.type, frame.vars[alloc.var].data, init_val.type, init_val.data);

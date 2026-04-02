@@ -78,16 +78,14 @@ private:
 
     void assign(const adt::Primitive& dest_type, std::byte* dest, const adt::Primitive& src_type,
                 const std::byte* src) const;
-
     void assign(const adt::Sum& dest_type, std::byte* dest, const ir::Type& src_type,
                 const std::byte* src) const;
-
     void assign(const adt::Array& dest_type, std::byte* dest, const adt::Array& src_type,
                 const std::byte* src) const;
-
+    void assign(const adt::Pointer& dest_type, std::byte* dest, const adt::Pointer& src_type,
+                const std::byte* src) const;
     void assign(const adt::Product& dest_type, std::byte* dest, const adt::Product& src_type,
                 const std::byte* src) const;
-
     void assign(const Type& dest_type, std::byte* dest, const Type& src_type,
                 const std::byte* src) const;
 
