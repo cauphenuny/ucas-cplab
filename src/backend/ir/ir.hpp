@@ -321,6 +321,7 @@ struct Program {
         for (const auto& func : funcs) {
             str += fmt::format("{}\n", func);
         }
+        str.pop_back(), str.pop_back();  // remove last newlines
         return str;
     }
 

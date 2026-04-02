@@ -92,13 +92,13 @@ private:
 
     void assign(View& dest, const View& src) const;
 
-    void execute(const BinaryInst& inst, const View& lhs, const View& rhs, View& ret) const;
-    void execute(const UnaryInst& inst, const View& operand, View& ret) const;
-    void execute(const CallInst& inst, const std::vector<View>& srcs, View& ret) const;
+    void execute(const BinaryInst& inst, const View& lhs, const View& rhs, View& ret);
+    void execute(const UnaryInst& inst, const View& operand, View& ret);
+    void execute(const CallInst& inst, const std::vector<View>& srcs, View& ret);
 
-    auto execute(const Block& block, StackFrame& frame, View& ret) const -> const Block*;
-    void execute(const Func& func, const std::vector<View>& args, View& ret) const;
-    void execute(const BuiltinFunc& func, const std::vector<View>& args, View& ret) const;
+    auto execute(const Block& block, StackFrame& frame, View& ret) -> const Block*;
+    void execute(const Func& func, const std::vector<View>& args, View& ret);
+    void execute(const BuiltinFunc& func, const std::vector<View>& args, View& ret);
 
     [[nodiscard]] auto view_of(const LeftValue& lval, const StackFrame& frame) const -> View {
         auto fn = [](const LeftValue& val, const StackFrame& frame) -> std::optional<View> {
@@ -121,10 +121,34 @@ private:
         throw COMPILER_ERROR(fmt::format("Undefined variable: {}", lval));
     }
 
+    [[nodiscard]] auto container_of(const LeftValue& lval, StackFrame& frame) -> View& {
+        auto fn = [](const LeftValue& val, StackFrame& f) -> View* {
+            return match(
+                val,
+                [&](const NamedValue& var) -> View* {
+                    auto it = f.vars.find(var);
+                    if (it != f.vars.end()) return &it->second;
+                    return nullptr;
+                },
+                [&](const TempValue& temp) -> View* {
+                    if (temp.id < f.temps.size()) return &f.temps[temp.id];
+                    return nullptr;
+                });
+        };
+        if (auto* local = fn(lval, frame)) return *local;
+        if (auto* global = fn(lval, global_frame)) return *global;
+        throw COMPILER_ERROR(fmt::format("Undefined variable: {}", lval));
+    }
+
     [[nodiscard]] auto view_of(const ConstexprValue& c) const -> View {
-        return match(c.val, [&](const auto& val) -> const View {
-            return View{.data = (std::byte*)&val, .type = c.type};
-        });
+        return match(
+            c.val,
+            [&](const std::unique_ptr<std::byte[]>& vec) -> View {
+                return View{.data = vec.get(), .type = c.type};
+            },
+            [&](const auto& val) -> View {
+                return View{.data = (std::byte*)&val, .type = c.type};
+            });
     }
 
     [[nodiscard]] auto view_of(const Value& value, const StackFrame& frame) const -> View {

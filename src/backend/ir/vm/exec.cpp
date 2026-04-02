@@ -3,16 +3,15 @@
 
 namespace ir::vm {
 
-void VirtualMachine::execute(const BinaryInst& inst, const View& lhs, const View& rhs,
-                             View& ret) const {
+void VirtualMachine::execute(const BinaryInst& inst, const View& lhs, const View& rhs, View& ret) {
     eval(inst.op, ret, lhs, rhs);
 }
 
-void VirtualMachine::execute(const UnaryInst& inst, const View& operand, View& ret) const {
+void VirtualMachine::execute(const UnaryInst& inst, const View& operand, View& ret) {
     eval(inst.op, ret, operand);
 }
 
-void VirtualMachine::execute(const CallInst& inst, const std::vector<View>& srcs, View& ret) const {
+void VirtualMachine::execute(const CallInst& inst, const std::vector<View>& srcs, View& ret) {
     auto func = inst.func;
     auto def = func.def;
     auto name = match(def, [&](const auto* d) { return d->name; });
@@ -24,29 +23,27 @@ void VirtualMachine::execute(const CallInst& inst, const std::vector<View>& srcs
     }
 }
 
-void VirtualMachine::execute(const BuiltinFunc& func, const std::vector<View>& args,
-                             View& ret) const {
+void VirtualMachine::execute(const BuiltinFunc& func, const std::vector<View>& args, View& ret) {
     func.apply(ret, args, input, output);
 }
 
-auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) const
-    -> const Block* {
+auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) -> const Block* {
     for (const auto& inst : block.insts) {
         match(
             inst,
             [&](const UnaryInst& unary) {
                 auto operand = view_of(unary.operand, frame);
-                auto result = view_of(unary.result, frame);
+                auto& result = container_of(unary.result, frame);
                 execute(unary, operand, result);
             },
             [&](const BinaryInst& binary) {
                 auto lhs = view_of(binary.lhs, frame);
                 auto rhs = view_of(binary.rhs, frame);
-                auto result = view_of(binary.result, frame);
+                auto& result = container_of(binary.result, frame);
                 execute(binary, lhs, rhs, result);
             },
             [&](const CallInst& call) {
-                auto result = view_of(call.result, frame);
+                auto& result = container_of(call.result, frame);
                 std::vector<View> srcs;
                 srcs.reserve(call.args.size());
                 for (const auto& arg : call.args) {
@@ -90,7 +87,7 @@ void VirtualMachine::alloc(StackFrame& frame, const Alloc& alloc, std::byte* buf
     }
 }
 
-void VirtualMachine::execute(const Func& func, const std::vector<View>& args, View& ret) const {
+void VirtualMachine::execute(const Func& func, const std::vector<View>& args, View& ret) {
 
     size_t stack_size = 0;
     for (const auto& local : func.locals()) {
