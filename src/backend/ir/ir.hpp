@@ -46,26 +46,27 @@ struct TempValue {
 struct ConstexprValue;
 
 inline auto serializeArray(const Type& type, std::byte* buffer) -> std::string {
-    std::string result = "{";
-    auto elem_type = type.as<adt::Array>().elem.var();
+    std::string result;
+    auto elem_type = type.as<adt::Array>().elem;
     auto size = type.as<adt::Array>().size;
     for (size_t i = 0; i < size; i++) {
         result += match(
-            elem_type,
+            elem_type.var(),
             [&](const adt::Primitive& prim) -> std::string {
-                return match(prim, [&](auto v) { return fmt::format("{}", v); });
+                return match(prim, [&](auto v) {
+                    using type = typename decltype(v)::type;
+                    return fmt::format("{}", *(type*)buffer);
+                });
             },
-            [&](const adt::Array& arr) -> std::string {
-                return serializeArray(arr.elem, buffer);
-            },
+            [&](const adt::Array& arr) -> std::string { return serializeArray(elem_type, buffer); },
             [&](const auto&) -> std::string {
-                throw CompilerError(
+                throw COMPILER_ERROR(
                     fmt::format("Unsupported type in ConstexprValue array: {}", elem_type));
-            });
+            }) + ", ";
         buffer += adt::size_of(elem_type);
     }
-    result += "}";
-    return result;
+    if (result.size())        result.pop_back(), result.pop_back();
+    return "{" + result + "}";
 }
 
 struct ConstexprValue {
