@@ -4,12 +4,38 @@
 
 namespace ir::gen {
 
+auto Generator::gen(const ast::ConstInitVal* init) -> ConstexprValue {
+    return match(
+        init->val,
+        [&](const ast::ConstExp& val) -> ConstexprValue {
+            return match(val, [](auto v) { return ConstexprValue(v); });
+        },
+        [&](const std::vector<ast::ConstInitVal>& subvals) -> ConstexprValue {
+            auto type = this->info->type_of(init).as<adt::Array>();
+            auto buffer = std::make_unique<std::byte[]>(adt::size_of(type));
+            memset(buffer, 0, sizeof(buffer));
+            auto construct = [&](auto self, const ast::ConstInitVal& val, std::byte* buf) {
+                match(
+                    val.val,
+                    [&](const ast::ConstExp& exp) { *buf = match(exp, [](auto v) { return v; }); },
+                    [&](const std::vector<ast::ConstInitVal>& subval) {
+                        auto length = type.size;
+                        auto elem_size = adt::size_of(type.elem);
+                        for (size_t i = 0; i < length; i++) {
+                            self(self, subval[i], buf + i * elem_size);
+                        }
+                    });
+            };
+        });
+}
+
 auto Generator::gen(const ast::ConstDef* def) -> Alloc {
-    return Alloc{NamedValue{this->info->type_of(def), def}, &def->val};
+    return Alloc{NamedValue{this->info->type_of(def), def}, gen(&def->val)};
 }
 
 auto Generator::gen(const ast::VarDef* def) -> Alloc {
-    return Alloc{NamedValue{this->info->type_of(def), def}, def->val ? &*def->val : nullptr};
+    return Alloc{NamedValue{this->info->type_of(def), def},
+                 def->val ? gen(&*def->val) : std::nullopt};
 }
 
 auto Generator::gen(const ast::Decl* decl) -> std::vector<Alloc> {

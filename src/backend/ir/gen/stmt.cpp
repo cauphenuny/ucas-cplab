@@ -29,13 +29,13 @@ auto Generator::branch(const ast::Exp* cond, Func* func, Block* scope, const Blo
                 }
                 default: {
                     auto cond_val = gen(cond, func, scope);
-                    return BranchExit{cond_val, true_block, false_block};
+                    return BranchExit{std::move(cond_val), true_block, false_block};
                 }
             }
         },
         [&](const auto& exp) {
             auto cond_val = gen(cond, func, scope);
-            return BranchExit{cond_val, true_block, false_block};
+            return BranchExit{std::move(cond_val), true_block, false_block};
         });
 }
 
@@ -63,7 +63,8 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
         [&](const ast::IfStmt& if_stmt) {
             auto true_block = func->newBlock(fmt::format(".if_true_{}", if_stmt.loc));
             auto always_return = this->info->type_of(&if_stmt).always_return;
-            auto exit_block = always_return ? nullptr : func->newBlock(fmt::format(".if_exit_{}", if_stmt.loc));
+            auto exit_block =
+                always_return ? nullptr : func->newBlock(fmt::format(".if_exit_{}", if_stmt.loc));
             if (if_stmt.else_stmt) {
                 auto false_block = func->newBlock(fmt::format(".if_false_{}", if_stmt.loc));
                 scope->exit = branch(&if_stmt.cond, func, scope, true_block, false_block);
@@ -98,14 +99,15 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
                 [&](const ast::LVal& lval) {
                     auto var = gen(&lval);
                     auto exp = gen(&assign_stmt.exp, func, scope);
-                    scope->add(UnaryInst{UnaryInstOp::MOV, var, exp});
+                    scope->add(UnaryInst{UnaryInstOp::MOV, std::move(var), std::move(exp)});
                     return scope;
                 },
-                [&](const ast::BinaryExp& exp) { // array indexing
+                [&](const ast::BinaryExp& exp) {  // array indexing
                     auto array = gen(&exp.left, func, scope);
                     auto index = gen(&exp.right, func, scope);
                     auto exp_val = gen(&assign_stmt.exp, func, scope);
-                    scope->add(BinaryInst{InstOp::STORE, as_lvalue(array), index, exp_val});
+                    scope->add(BinaryInst{InstOp::STORE, as_lvalue(array), std::move(index),
+                                          std::move(exp_val)});
                     return scope;
                 });
         },

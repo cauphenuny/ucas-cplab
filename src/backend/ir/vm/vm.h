@@ -99,7 +99,7 @@ private:
     void execute(const Func& func, const std::vector<View>& args, View& ret) const;
     void execute(const BuiltinFunc& func, const std::vector<View>& args, View& ret) const;
 
-    [[nodiscard]] auto lookup(const LeftValue& lval, const StackFrame& frame) const -> View {
+    [[nodiscard]] auto view_of(const LeftValue& lval, const StackFrame& frame) const -> View {
         auto fn = [](const LeftValue& val, const StackFrame& frame) -> std::optional<View> {
             return match(
                 val,
@@ -120,22 +120,26 @@ private:
         throw CompilerError(fmt::format("Undefined variable: {}", lval));
     }
 
-    [[nodiscard]] auto lookup(const ConstexprValue& c) const -> View {
+    [[nodiscard]] auto view_of(const ConstexprValue& c) const -> View {
         return match(c.val, [&](const auto& val) -> const View {
             return View{.data = (std::byte*)&val, .type = c.type};
         });
     }
 
-    [[nodiscard]] auto lookup(const Value& value, const StackFrame& frame) const -> View {
-        return match(value, [&](const auto& lval) { return lookup(lval, frame); });
+    [[nodiscard]] auto view_of(const Value& value, const StackFrame& frame) const -> View {
+        return match(
+            value, [&](const auto& lval) { return view_of(lval, frame); },
+            [&](const ConstexprValue& c) { return view_of(c); });
     }
+
+    void alloc(StackFrame& frame, const Alloc& alloc, std::byte* buffer) const;
 
     DataLayout layout{sizeof(int), sizeof(float), sizeof(double), sizeof(std::byte*)};
 
-    using BinaryOpFunc = std::function<void(View dest, const View& lhs, const View& rhs)>;
+    using BinaryOpFunc = std::function<void(View& dest, const View& lhs, const View& rhs)>;
     std::unordered_map<InstOp, BinaryOpFunc> binary_ops;
 
-    using UnaryOpFunc = std::function<void(View dest, const View& operand)>;
+    using UnaryOpFunc = std::function<void(View& dest, const View& operand)>;
     std::unordered_map<UnaryInstOp, UnaryOpFunc> unary_ops;
 
     const ast::SemanticAST* ast;
@@ -147,59 +151,59 @@ private:
     StackFrame global_frame;
 
 public:
-    void execute(const Program& program);
+    int execute(const Program& program);
 
     VirtualMachine(std::istream& input, std::ostream& output) : input(input), output(output) {
-        unary_ops[UnaryInstOp::MOV] = [this](const View& dest, const View& operand) {
+        unary_ops[UnaryInstOp::MOV] = [this](View& dest, const View& operand) {
             std::memcpy(dest.data, operand.data, layout.size_of(dest.type));
         };
-        unary_ops[UnaryInstOp::NOT] = [this](View dest, const View& operand) {
+        unary_ops[UnaryInstOp::NOT] = [this](View& dest, const View& operand) {
             eval_unary<std::logical_not>(dest, operand);
         };
-        unary_ops[UnaryInstOp::NEG] = [this](View dest, const View& operand) {
+        unary_ops[UnaryInstOp::NEG] = [this](View& dest, const View& operand) {
             eval_unary<std::negate>(dest, operand);
         };
 
-        binary_ops[InstOp::ADD] = [this](View dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::ADD] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_binary<std::plus>(dest, lhs, rhs);
         };
-        binary_ops[InstOp::SUB] = [this](View dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::SUB] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_binary<std::minus>(dest, lhs, rhs);
         };
-        binary_ops[InstOp::MUL] = [this](View dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::MUL] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_binary<std::multiplies>(dest, lhs, rhs);
         };
-        binary_ops[InstOp::DIV] = [this](View dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::DIV] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_binary<std::divides>(dest, lhs, rhs);
         };
-        binary_ops[InstOp::MOD] = [this](View dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::MOD] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_binary<std::modulus>(dest, lhs, rhs);
         };
-        binary_ops[InstOp::LT] = [this](View dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::LT] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_comparison<std::less>(dest, lhs, rhs);
         };
-        binary_ops[InstOp::GT] = [this](View dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::GT] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_comparison<std::greater>(dest, lhs, rhs);
         };
-        binary_ops[InstOp::LEQ] = [this](View dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::LEQ] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_comparison<std::less_equal>(dest, lhs, rhs);
         };
-        binary_ops[InstOp::GEQ] = [this](View dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::GEQ] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_comparison<std::greater_equal>(dest, lhs, rhs);
         };
-        binary_ops[InstOp::EQ] = [this](View dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::EQ] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_comparison<std::equal_to>(dest, lhs, rhs);
         };
-        binary_ops[InstOp::NEQ] = [this](View dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::NEQ] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_comparison<std::not_equal_to>(dest, lhs, rhs);
         };
-        binary_ops[InstOp::AND] = [this](View dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::AND] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_binary<std::logical_and>(dest, lhs, rhs);
         };
-        binary_ops[InstOp::OR] = [this](View dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::OR] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_binary<std::logical_or>(dest, lhs, rhs);
         };
-        binary_ops[InstOp::LOAD] = [this](View dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::LOAD] = [this](View& dest, const View& lhs, const View& rhs) {
             // NOTE: lhs: pointer, rhs: offset
             using namespace adt;
             if (!rhs.type.is<Primitive>() ||
@@ -215,7 +219,7 @@ public:
                 lhs.type.is<Pointer>() ? lhs.type.as<Pointer>().elem : lhs.type.as<Array>().elem;
             dest.data = lhs.data + offset * layout.size_of(elem_type);
         };
-        binary_ops[InstOp::STORE] = [this](View dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::STORE] = [this](View& dest, const View& lhs, const View& rhs) {
             // NOTE: dest: pointer, lhs: offset, rhs: value
             using namespace adt;
             if (!lhs.type.is<Primitive>() ||

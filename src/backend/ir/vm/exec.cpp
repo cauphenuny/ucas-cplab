@@ -1,3 +1,4 @@
+#include "backend/ir/ir.hpp"
 #include "vm.h"
 
 namespace ir::vm {
@@ -34,27 +35,34 @@ auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) c
         match(
             inst,
             [&](const UnaryInst& unary) {
-                auto operand = lookup(unary.operand, frame);
-                execute(unary, operand, ret);
+                auto operand = view_of(unary.operand, frame);
+                auto result = view_of(unary.result, frame);
+                execute(unary, operand, result);
             },
             [&](const BinaryInst& binary) {
-                auto lhs = lookup(binary.lhs, frame);
-                auto rhs = lookup(binary.rhs, frame);
-                execute(binary, lhs, rhs, ret);
+                auto lhs = view_of(binary.lhs, frame);
+                auto rhs = view_of(binary.rhs, frame);
+                auto result = view_of(binary.result, frame);
+                execute(binary, lhs, rhs, result);
             },
             [&](const CallInst& call) {
-                std::vector<View> srcs(call.args.size());
+                auto result = view_of(call.result, frame);
+                std::vector<View> srcs;
+                srcs.reserve(call.args.size());
                 for (const auto& arg : call.args) {
-                    srcs.push_back(lookup(arg, frame));
+                    srcs.push_back(view_of(arg, frame));
                 }
-                execute(call, srcs, ret);
+                execute(call, srcs, result);
             });
     }
-    auto exit = block.exit.value();
+    if (!block.exit) {
+        throw CompilerError(fmt::format("Block {} has no exit instruction", block.label));
+    }
+    auto& exit = block.exit.value();
     return match(
         exit,
         [&](const BranchExit& branch) -> const Block* {
-            View cond = lookup(branch.cond, frame);
+            View cond = view_of(branch.cond, frame);
             if (*(bool*)cond.data) {
                 return branch.true_target;
             } else {
@@ -63,10 +71,23 @@ auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) c
         },
         [&](const JumpExit& jump) -> const Block* { return jump.target; },
         [&](const ReturnExit& ret_exit) -> const Block* {
-            View exp = lookup(ret_exit.exp, frame);
+            View exp = view_of(ret_exit.exp, frame);
             assign(ret, exp);
             return nullptr;
         });
+}
+
+void VirtualMachine::alloc(StackFrame& frame, const Alloc& alloc, std::byte* buffer) const {
+    if (frame.vars.count(alloc.var)) {
+        throw CompilerError(fmt::format("Variable {} already defined in this scope", alloc.var));
+    }
+    frame.vars[alloc.var] = View{.data = buffer, .type = alloc.var.type};
+    if (alloc.init) {
+        auto init_val = view_of(*alloc.init);
+        assign(alloc.var.type, frame.vars[alloc.var].data, init_val.type, init_val.data);
+    } else {
+        memset(frame.vars[alloc.var].data, 0, layout.size_of(alloc.var.type));
+    }
 }
 
 void VirtualMachine::execute(const Func& func, const std::vector<View>& args, View& ret) const {
@@ -86,6 +107,11 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
     StackFrame frame;
     std::byte* cur = buffer.get();
     /// params
+    if (func.params.size() != args.size()) {
+        throw CompilerError(
+            fmt::format("Argument count mismatch in call to {}: expected {}, got {}", func.name,
+                        func.params.size(), args.size()));
+    }
     for (size_t i = 0; i < func.params.size(); i++) {
         frame.vars[func.params[i]] = View{.data = cur, .type = func.params[i].type};
         assign(func.params[i].type, cur, args[i].type, args[i].data);
@@ -93,7 +119,7 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
     }
     /// locals
     for (const auto& local : func.locals()) {
-        frame.vars[local.var] = View{.data = cur, .type = local.var.type};
+        alloc(frame, local, cur);
         cur += layout.size_of(local.var.type);
     }
     /// temps
@@ -106,6 +132,34 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
     while (cur_block) {
         cur_block = execute(*cur_block, frame, ret);
     }
+}
+
+int VirtualMachine::execute(const Program& program) {
+    this->ast = &program.ast;
+    this->program = &program;
+    this->global_frame = StackFrame();
+
+    size_t global_size = 0;
+    /// global variables
+    for (const auto& global : program.globals) {
+        global_size += layout.size_of(global.var.type);
+    }
+    /// return value
+    global_size += sizeof(int);
+
+    auto buffer = std::make_unique<std::byte[]>(global_size);
+    std::byte* cur = buffer.get();
+    for (const auto& global : program.globals) {
+        alloc(global_frame, global, cur);
+        cur += layout.size_of(global.var.type);
+    }
+
+    View ret{.data = cur, .type = adt::construct<int>()};
+
+    auto& main_func = program.findFunc("main");
+    std::vector<View> args;
+    execute(main_func, args, ret);
+    return *(int*)ret.data;
 }
 
 }  // namespace ir::vm

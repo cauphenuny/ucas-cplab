@@ -4,6 +4,7 @@
 #include "op.hpp"
 #include "type.hpp"
 
+#include <cstddef>
 #include <functional>
 #include <string>
 #include <utility>
@@ -42,16 +43,46 @@ struct TempValue {
     SIMPLE_TO_STRING(fmt::format("${}", id));
 };
 
+struct ConstexprValue;
+
+inline auto serializeArray(const Type& type, std::byte* buffer) -> std::string {
+    std::string result = "{";
+    auto elem_type = type.as<adt::Array>().elem.var();
+    auto size = type.as<adt::Array>().size;
+    for (size_t i = 0; i < size; i++) {
+        result += match(
+            elem_type,
+            [&](const adt::Primitive& prim) -> std::string {
+                return match(prim, [&](auto v) { return fmt::format("{}", v); });
+            },
+            [&](const adt::Array& arr) -> std::string {
+                return serializeArray(arr.elem, buffer);
+            },
+            [&](const auto&) -> std::string {
+                throw CompilerError(
+                    fmt::format("Unsupported type in ConstexprValue array: {}", elem_type));
+            });
+        buffer += adt::size_of(elem_type);
+    }
+    result += "}";
+    return result;
+}
+
 struct ConstexprValue {
     Type type;
-    std::variant<std::monostate, int, float, bool, double> val;
+    std::variant<std::monostate, int, float, bool, double, std::unique_ptr<std::byte[]>> val;
 
     SIMPLE_TO_STRING(match(
                          val, [&](std::monostate) { return std::string(""); },
+                         [&](const std::unique_ptr<std::byte[]>& vec) -> std::string {
+                             return serializeArray(type, vec.get());
+                         },
                          [&](auto v) { return fmt::format("{}", v); }););
 
     ConstexprValue() : type(adt::construct<void>()), val(std::monostate{}) {}
     template <typename T> ConstexprValue(T v) : type(adt::construct<T>()), val(v) {}
+    ConstexprValue(Type type, std::unique_ptr<std::byte[]> vec)
+        : type(std::move(type)), val(std::move(vec)) {}
 };
 
 using LeftValue = std::variant<NamedValue, TempValue>;
@@ -180,8 +211,8 @@ inline auto JumpExit::toString() const -> std::string {
 
 struct Alloc {
     NamedValue var;
-    const ast::ConstInitVal* init;
-    SIMPLE_TO_STRING(init ? fmt::format("let {}: {} = {}", var, var.type, init->str())
+    std::optional<ConstexprValue> init;
+    SIMPLE_TO_STRING(init ? fmt::format("let {}: {} = {}", var, var.type, init)
                           : fmt::format("let {}: {}", var, var.type));
 };
 
@@ -310,6 +341,8 @@ struct Program {
         }
         throw CompilerError(fmt::format("function '{}' not found", name));
     }
+
+    friend struct vm::VirtualMachine;
 
 private:
     std::vector<Alloc> globals;

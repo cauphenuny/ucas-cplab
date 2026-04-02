@@ -13,6 +13,7 @@ private:
     const ast::SemanticAST* info;
     const ast::CompUnit* ast;
 
+    [[nodiscard]] auto gen(const ast::ConstInitVal* init) -> ConstexprValue;
     [[nodiscard]] auto gen(const ast::VarDef* def) -> Alloc;
     [[nodiscard]] auto gen(const ast::ConstDef* def) -> Alloc;
     [[nodiscard]] auto gen(const ast::Decl* decl) -> std::vector<Alloc>;
