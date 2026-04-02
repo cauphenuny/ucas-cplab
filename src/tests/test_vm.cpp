@@ -54,6 +54,7 @@ void func(int a[][3]) {
 int main() {
     int arr[2][3] = {{1, 2}, {3, 4, 5}};
     int flat[2][3] = {1, 2, 3, 4, 5};
+    int mismatch[2][4] = {{2, 3}, {4, 5, 6}};
     print_int(arr[0][0]);
     print_int(arr[0][1]);
     print_int(arr[0][2]);
@@ -67,6 +68,14 @@ int main() {
     print_int(flat[1][1]);
     print_int(flat[1][2]);
     func(arr);
+    print_int(mismatch[0][0]);
+    print_int(mismatch[0][1]);
+    print_int(mismatch[0][2]);
+    print_int(mismatch[0][3]);
+    print_int(mismatch[1][0]);
+    print_int(mismatch[1][1]);
+    print_int(mismatch[1][2]);
+    print_int(mismatch[1][3]);
     return 0;
 }
     )";
@@ -80,7 +89,7 @@ int main() {
     int ret = env.execute(prog);
     fmt::println("Output: \n{}\n", out_stream.str());
     assert(ret == 0);
-    assert(out_stream.str() == "1\n2\n0\n3\n4\n5\n1\n2\n3\n4\n5\n0\n5\n");
+    assert(out_stream.str() == "1\n2\n0\n3\n4\n5\n1\n2\n3\n4\n5\n0\n5\n2\n3\n0\n0\n4\n5\n6\n0\n");
 }
 
 void test_array_arg() {

@@ -4,7 +4,7 @@
 
 namespace ir::gen {
 
-auto Generator::gen(const ast::ConstInitVal* init) -> ConstexprValue {
+auto Generator::gen(const ast::ConstInitVal* init, Type target_type) -> ConstexprValue {
     return match(
         init->val,
         [&](const ast::ConstExp& val) -> ConstexprValue {
@@ -12,15 +12,19 @@ auto Generator::gen(const ast::ConstInitVal* init) -> ConstexprValue {
         },
         [&](const std::vector<ast::ConstInitVal>& subvals) -> ConstexprValue {
             auto type = this->info->type_of(init).as<adt::Array>();
-            auto buffer = std::make_unique<std::byte[]>(adt::size_of(type));
-            memset(buffer.get(), 0, adt::size_of(type));
+            if (!type.elem.is<adt::Array>() && target_type.as<adt::Array>().elem.is<adt::Array>()) {
+                // NOTE: initialize multi-dim array with flat initializer list
+                target_type = target_type.flatten();
+            }
+            auto buffer = std::make_unique<std::byte[]>(adt::size_of(target_type));
+            memset(buffer.get(), 0, adt::size_of(target_type));
 
-            auto construct = [&](auto self, const adt::Array& type,
+            auto construct = [&](auto self, const adt::Array& type, const adt::Array& target_type,
                                  const std::vector<ast::ConstInitVal>& elems,
                                  std::byte* buf) -> void {
                 // NOTE: when array is not fully initialized, elems.size() < type.size
                 auto length = elems.size();
-                auto elem_size = adt::size_of(type.elem);
+                auto elem_size = adt::size_of(target_type.elem);
                 for (size_t i = 0; i < length; i++) {
                     auto& elem = elems[i];
                     match(
@@ -32,25 +36,28 @@ auto Generator::gen(const ast::ConstInitVal* init) -> ConstexprValue {
                             });
                         },
                         [&](const std::vector<ast::ConstInitVal>& subvals) {
-                            self(self, type.elem.as<adt::Array>(), subvals, buf);
+                            self(self, type.elem.as<adt::Array>(),
+                                 target_type.elem.as<adt::Array>(), subvals, buf);
                         });
                     buf += elem_size;
                 }
             };
 
-            construct(construct, type, subvals, buffer.get());
+            construct(construct, type, target_type.as<adt::Array>(), subvals, buffer.get());
 
-            return {std::move(type).toBoxed(), std::move(buffer)};
+            return {std::move(target_type), std::move(buffer)};
         });
 }
 
 auto Generator::gen(const ast::ConstDef* def) -> Alloc {
-    return Alloc{NamedValue{this->info->type_of(def), def}, gen(&def->val)};
+    auto type = this->info->type_of(def);
+    return Alloc{NamedValue{this->info->type_of(def), def}, gen(&def->val, type)};
 }
 
 auto Generator::gen(const ast::VarDef* def) -> Alloc {
+    auto type = this->info->type_of(def);
     return Alloc{NamedValue{this->info->type_of(def), def},
-                 def->val ? std::make_optional(gen(&*def->val)) : std::nullopt};
+                 def->val ? std::make_optional(gen(&*def->val, type)) : std::nullopt};
 }
 
 auto Generator::gen(const ast::Decl* decl) -> std::vector<Alloc> {
