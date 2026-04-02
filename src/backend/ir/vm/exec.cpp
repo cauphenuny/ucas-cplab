@@ -85,8 +85,6 @@ void VirtualMachine::alloc(StackFrame& frame, const Alloc& alloc, std::byte* buf
     if (alloc.init) {
         auto init_val = view_of(*alloc.init);
         assign(alloc.var.type, frame.vars[alloc.var].data, init_val.type, init_val.data);
-    } else {
-        memset(frame.vars[alloc.var].data, 0, adt::size_of(alloc.var.type));
     }
 }
 
