@@ -84,6 +84,8 @@ private:
                 const std::byte* src) const;
     void assign(const adt::Pointer& dest_type, std::byte* dest, const adt::Pointer& src_type,
                 const std::byte* src) const;
+    void assign(const adt::Pointer& dest_type, std::byte* dest, const adt::Array& src_type,
+                const std::byte* src) const;
     void assign(const adt::Product& dest_type, std::byte* dest, const adt::Product& src_type,
                 const std::byte* src) const;
     void assign(const Type& dest_type, std::byte* dest, const Type& src_type,
@@ -233,7 +235,7 @@ public:
         binary_ops[InstOp::OR] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_binary<std::logical_or>(dest, lhs, rhs);
         };
-        binary_ops[InstOp::LOAD] = [](View& dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::LOAD] = [&](View& dest, const View& lhs, const View& rhs) {
             // NOTE: lhs: pointer, rhs: offset
             using namespace adt;
             if (!rhs.type.is<Primitive>() ||
@@ -245,10 +247,11 @@ public:
                 throw COMPILER_ERROR(
                     fmt::format("Expected pointer or array type, but got {}", lhs.type));
             }
+            auto is_pointer = lhs.type.is<Pointer>();
             auto offset = *(int*)rhs.data;
-            auto elem_type =
-                lhs.type.is<Pointer>() ? lhs.type.as<Pointer>().elem : lhs.type.as<Array>().elem;
-            dest.data = lhs.data + offset * adt::size_of(elem_type);
+            auto elem_type = is_pointer ? lhs.type.as<Pointer>().elem : lhs.type.as<Array>().elem;
+            auto base = is_pointer ? *(std::byte**)lhs.data : lhs.data;
+            assign(dest.type, dest.data, elem_type, base + offset * adt::size_of(elem_type));
         };
         binary_ops[InstOp::STORE] = [this](View& dest, const View& lhs, const View& rhs) {
             // NOTE: dest: pointer, lhs: offset, rhs: value
@@ -262,10 +265,11 @@ public:
                 throw COMPILER_ERROR(
                     fmt::format("Expected pointer or array type, but got {}", dest.type));
             }
+            auto is_pointer = dest.type.is<Pointer>();
             auto offset = *(int*)lhs.data;
-            auto elem_type =
-                dest.type.is<Pointer>() ? dest.type.as<Pointer>().elem : dest.type.as<Array>().elem;
-            assign(elem_type, dest.data + offset * adt::size_of(elem_type), rhs.type, rhs.data);
+            auto elem_type = is_pointer ? dest.type.as<Pointer>().elem : dest.type.as<Array>().elem;
+            auto base = is_pointer ? *(std::byte**)dest.data : dest.data;
+            assign(elem_type, base + offset * adt::size_of(elem_type), rhs.type, rhs.data);
         };
     }
 };

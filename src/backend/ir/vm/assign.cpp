@@ -61,6 +61,14 @@ void VirtualMachine::assign(const adt::Pointer& dest_type, std::byte* dest, cons
     memcpy(dest, src, adt::size_of(dest_type));
 }
 
+void VirtualMachine::assign(const adt::Pointer& dest_type, std::byte* dest, const adt::Array& src_type, const std::byte* src) const {
+    if (!(src_type.elem <= dest_type.elem)) {
+        throw COMPILER_ERROR(fmt::format("Cannot assign array of type {} to pointer of type {}",
+                                         src_type, dest_type));
+    }
+    memcpy(dest, (void*)&src, adt::size_of(dest_type));
+}
+
 void VirtualMachine::assign(const adt::Product& dest_type, std::byte* dest,
                             const adt::Product& src_type, const std::byte* src) const {
     if (dest_type.items().size() != src_type.items().size()) {

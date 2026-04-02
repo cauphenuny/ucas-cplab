@@ -80,7 +80,7 @@ void VirtualMachine::alloc(StackFrame& frame, const Alloc& alloc, std::byte* buf
     if (frame.vars.count(alloc.var)) {
         throw COMPILER_ERROR(fmt::format("Variable {} already defined in this scope", alloc.var));
     }
-    frame.vars[alloc.var] = View{.data = buffer, .type = alloc.var.type.decay()};
+    frame.vars[alloc.var] = View{.data = buffer, .type = alloc.var.type};
     if (alloc.init) {
         auto init_val = view_of(*alloc.init);
         assign(alloc.var.type, frame.vars[alloc.var].data, init_val.type, init_val.data);
@@ -112,9 +112,10 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
                         func.params.size(), args.size()));
     }
     for (size_t i = 0; i < func.params.size(); i++) {
-        frame.vars[func.params[i]] = View{.data = cur, .type = func.params[i].type};
-        assign(func.params[i].type, cur, args[i].type, args[i].data);
-        cur += adt::size_of(func.params[i].type);
+        auto& param = func.params[i];
+        frame.vars[param] = View{.data = cur, .type = param.type};
+        assign(param.type, cur, args[i].type, args[i].data);
+        cur += adt::size_of(param.type);
     }
     /// locals
     for (const auto& local : func.locals()) {
