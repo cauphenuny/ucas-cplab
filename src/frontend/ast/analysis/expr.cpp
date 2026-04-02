@@ -5,18 +5,18 @@ namespace ast {
 
 void SemanticAST::analysis(const LVal* lid, const Type& upperbound) {
     if (!upperbound.is<adt::Func>()) {
-        auto symdef = lookup(lid->name, vars);
+        auto symdef = lookup(lid->name);
         if (!symdef) {
             throw SemanticError(lid->loc, fmt::format("undefined variable '{}'", lid->name));
         }
         match(*symdef, [&](const auto& def) { defs[lid] = def; types[lid] = types[def]; });
     } else {
-        auto funcdef = lookup(lid->name, funcs);
-        if (!funcdef) {
+        if (!funcs.count(lid->name)) {
             throw SemanticError(lid->loc, fmt::format("undefined function '{}'", lid->name));
         }
-        defs[lid] = *funcdef;
-        types[lid] = types[*funcdef];
+        auto [funcdef, is_builtin] = funcs[lid->name];
+        defs[lid] = funcdef;
+        types[lid] = types[funcdef];
     }
     checkType(lid, upperbound);
 }

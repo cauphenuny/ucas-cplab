@@ -108,7 +108,7 @@ private:
     std::unordered_map<StmtNode, StmtType> stmt_types;
 
     using VarTable = std::unordered_map<std::string, VarDefNode>;
-    using FuncTable = std::unordered_map<std::string, FuncDefNode>;
+    using FuncTable = std::unordered_map<std::string, std::pair<FuncDefNode, bool>>;
 
     inline const static auto VOID = adt::construct<const void>();
     inline const static auto NUM = adt::construct<std::variant<int, float, double>>();
@@ -183,21 +183,20 @@ private:
     }();
 
     std::vector<VarTable> vars;
-    std::vector<FuncTable> funcs;
+    FuncTable funcs;
     void pushScope();
     void popScope();
 
-    template <typename T>
-    auto lookup(const std::string& name, const T& tables)
-        -> std::optional<typename T::value_type::mapped_type> {
-        for (auto it = tables.rbegin(); it != tables.rend(); it++) {
+    auto lookup(const std::string& name) -> std::optional<VarDefNode> {
+        for (auto it = vars.rbegin(); it != vars.rend(); it++) {
             auto found = it->find(name);
             if (found != it->end()) return found->second;
         }
         return std::nullopt;
     }
 
-    void registerSymbol(SymDefNode def);
+    void registerVariable(VarDefNode def);
+    void registerFunction(FuncDefNode def, bool is_builtin = false);
 };
 
 inline auto analysis(std::unique_ptr<CompUnit> comp_unit) -> SemanticAST {

@@ -3,7 +3,7 @@
 namespace ast {
 
 void SemanticAST::analysis(const FuncParam* param) {
-    registerSymbol(param);
+    registerVariable(param);
     types[param] = calcType(param);
 }
 
@@ -24,7 +24,7 @@ void SemanticAST::analysis(const FuncArgs* args) {
 void SemanticAST::analysis(const FuncDef* func_def, bool is_builtin) {
     auto func_type = calcType(func_def);
     types[func_def] = calcType(func_def).toBoxed();
-    registerSymbol(func_def);
+    registerFunction(func_def, is_builtin);
     if (is_builtin) return;
     pushScope();
     analysis(&func_def->params);

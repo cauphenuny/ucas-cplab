@@ -14,10 +14,10 @@ void SemanticAST::analysis(const CompUnit* comp_unit) {
         match(item, [&](const auto& subitem) { analysis(&subitem); });
     }
 
-    if (funcs.back().count("main") == 0) {
+    if (funcs.count("main") == 0) {
         throw SemanticError(comp_unit->loc, "function `main` is not defined");
     }
-    auto main = funcs.back()["main"];
+    auto [main, _] = funcs["main"];
     checkType(main, adt::construct<int()>());
 }
 
@@ -26,7 +26,7 @@ void SemanticAST::analysis(const Decl* decl) {
     match(*decl, [&](const auto& decl) {
         auto elem_type = calcType(decl.type, is_const);
         for (const auto& def : decl.defs) {
-            registerSymbol(&def);
+            registerVariable(&def);
             if (def.dims.size()) {
                 // array type
                 auto elem_type = calcType(decl.type, is_const);
