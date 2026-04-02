@@ -16,4 +16,3 @@ grammar/*.tokens
 
 out
 scripts
-test/

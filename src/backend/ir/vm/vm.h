@@ -274,8 +274,14 @@ inline const std::unordered_map<std::string, BuiltinFunc> builtin_funcs = {
      }}},
     {"get_float", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
                                  std::ostream& output) {
+         std::string str;
+         input >> str;
          float value;
-         input >> value;
+         if (str.back() == 'f' || str.back() == 'F') {
+             value = std::stof(str.substr(0, str.size() - 1));
+         } else {
+             value = std::stof(str);
+         }
          std::memcpy(ret.data, &value, sizeof(float));
      }}},
     {"get_double", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
@@ -292,12 +298,12 @@ inline const std::unordered_map<std::string, BuiltinFunc> builtin_funcs = {
     {"print_float", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
                                    std::ostream& output) {
          float value = *(float*)args[0].data;
-         output << value << '\n';
+         output << fmt::format("{:.6f}\n", value);
      }}},
     {"print_double", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
                                     std::ostream& output) {
          double value = *(double*)args[0].data;
-         output << value << '\n';
+         output << fmt::format("{:.6f}\n", value);
      }}},
     {"print_bool", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
                                   std::ostream& output) {
