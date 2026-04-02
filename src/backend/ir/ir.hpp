@@ -279,8 +279,8 @@ struct Func {
         return blocks_.front().get();
     }
 
-    void addLocal(const Alloc& alloc) {
-        locals_.push_back(alloc);
+    void addLocal(Alloc alloc) {
+        locals_.push_back(std::move(alloc));
     }
 
     void pushLoop(const Block* continue_target, const Block* break_target) {
