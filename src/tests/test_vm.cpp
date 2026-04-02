@@ -110,10 +110,41 @@ int main() {
     assert(out_stream.str() == "10\n20\n42\n");
 }
 
+void test_loop_local_decl_init() {
+    auto text = R"(
+int main() {
+    int i = 0;
+    int sum = 0;
+    while (i < 5) {
+        int j = 0;
+        while (j < 2) {
+            sum = sum + 1;
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    print_int(sum);
+    return sum;
+}
+    )";
+    auto stream = std::istringstream(text);
+    fmt::println("Code: {}", text);
+    auto code = ast::analysis(ast::parse(stream));
+    auto prog = ir::gen::generate(code);
+    fmt::println("Generated IR:\n{}", prog);
+    auto out_stream = std::ostringstream{};
+    auto env = ir::vm::VirtualMachine(std::cin, out_stream);
+    int ret = env.execute(prog);
+    fmt::println("Output: \n{}\n", out_stream.str());
+    assert(ret == 10);
+    assert(out_stream.str() == "10\n");
+}
+
 int main() {
     test_builtin();
     test_index();
     test_multidim_init();
     test_array_arg();
+    test_loop_local_decl_init();
     return 0;
 }
