@@ -29,6 +29,7 @@ void VirtualMachine::execute(const BuiltinFunc& func, const std::vector<View>& a
 
 auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) -> const Block* {
     for (const auto& inst : block.insts) {
+        // fmt::println(stderr, "-> {}", inst);
         match(
             inst,
             [&](const UnaryInst& unary) {

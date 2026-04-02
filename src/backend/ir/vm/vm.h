@@ -167,8 +167,8 @@ public:
     }
 
     VirtualMachine(std::istream& input, std::ostream& output) : input(input), output(output) {
-        unary_ops[UnaryInstOp::MOV] = [](View& dest, const View& operand) {
-            std::memcpy(dest.data, operand.data, adt::size_of(dest.type));
+        unary_ops[UnaryInstOp::MOV] = [&](View& dest, const View& operand) {
+            assign(dest.type, dest.data, operand.type, operand.data);
         };
         unary_ops[UnaryInstOp::NOT] = [this](View& dest, const View& operand) {
             eval_unary<std::logical_not>(dest, operand);

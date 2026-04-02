@@ -47,9 +47,6 @@ void VirtualMachine::assign(const adt::Array& dest_type, std::byte* dest,
     for (i = 0; i < src_type_flatten.size; i++) {
         assign(dest_type_flatten.elem, dest_view[i], src_type_flatten.elem, src_view[i]);
     }
-    for (; i < dest_type_flatten.size; i++) {
-        memset(dest_view[i], 0, adt::size_of(dest_type_flatten.elem));
-    }
 }
 
 void VirtualMachine::assign(const adt::Pointer& dest_type, std::byte* dest, const adt::Pointer& src_type,
