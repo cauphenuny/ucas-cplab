@@ -33,17 +33,17 @@ auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) -
             inst,
             [&](const UnaryInst& unary) {
                 auto operand = view_of(unary.operand, frame);
-                auto& result = container_of(unary.result, frame);
+                auto result = view_of(unary.result, frame);
                 execute(unary, operand, result);
             },
             [&](const BinaryInst& binary) {
                 auto lhs = view_of(binary.lhs, frame);
                 auto rhs = view_of(binary.rhs, frame);
-                auto& result = container_of(binary.result, frame);
+                auto result = view_of(binary.result, frame);
                 execute(binary, lhs, rhs, result);
             },
             [&](const CallInst& call) {
-                auto& result = container_of(call.result, frame);
+                auto result = view_of(call.result, frame);
                 std::vector<View> srcs;
                 srcs.reserve(call.args.size());
                 for (const auto& arg : call.args) {

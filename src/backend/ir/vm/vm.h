@@ -122,25 +122,6 @@ private:
         throw COMPILER_ERROR(fmt::format("Undefined variable: {}", lval));
     }
 
-    [[nodiscard]] auto container_of(const LeftValue& lval, StackFrame& frame) -> View& {
-        auto fn = [](const LeftValue& val, StackFrame& f) -> View* {
-            return match(
-                val,
-                [&](const NamedValue& var) -> View* {
-                    auto it = f.vars.find(var);
-                    if (it != f.vars.end()) return &it->second;
-                    return nullptr;
-                },
-                [&](const TempValue& temp) -> View* {
-                    if (temp.id < f.temps.size()) return &f.temps[temp.id];
-                    return nullptr;
-                });
-        };
-        if (auto* local = fn(lval, frame)) return *local;
-        if (auto* global = fn(lval, global_frame)) return *global;
-        throw COMPILER_ERROR(fmt::format("Undefined variable: {}", lval));
-    }
-
     [[nodiscard]] auto view_of(const ConstexprValue& c) const -> View {
         return match(
             c.val,
