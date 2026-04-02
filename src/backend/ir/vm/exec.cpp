@@ -51,11 +51,13 @@ auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) -
                 }
                 execute(call, srcs, result);
             });
+        perf_counter.num_insts++;
     }
     if (!block.exit) {
         throw COMPILER_ERROR(fmt::format("Block {} has no exit instruction", block.label));
     }
     auto& exit = block.exit.value();
+    perf_counter.num_insts++;  // count exit instruction as well
     return match(
         exit,
         [&](const BranchExit& branch) -> const Block* {
@@ -135,6 +137,7 @@ int VirtualMachine::execute(const Program& program) {
     this->ast = &program.ast;
     this->program = &program;
     this->global_frame = StackFrame();
+    this->perf_counter = {};
 
     size_t global_size = 0;
     /// global variables

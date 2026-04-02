@@ -88,7 +88,8 @@ private:
     void assign(const adt::Product& dest_type, std::byte* dest, const adt::Product& src_type,
                 const std::byte* src) const;
 
-    void assign(const Type& dest_type, std::byte* dest, const Type& src_type, const std::byte* src) const;
+    void assign(const Type& dest_type, std::byte* dest, const Type& src_type,
+                const std::byte* src) const;
 
     void assign(View& dest, const View& src) const;
 
@@ -173,8 +174,16 @@ private:
 
     StackFrame global_frame;
 
+    struct Perf {
+        size_t num_insts{0};
+    } perf_counter;
+
 public:
     int execute(const Program& program);
+
+    [[nodiscard]] auto perf() const {
+        return perf_counter;
+    }
 
     VirtualMachine(std::istream& input, std::ostream& output) : input(input), output(output) {
         unary_ops[UnaryInstOp::MOV] = [](View& dest, const View& operand) {

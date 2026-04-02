@@ -74,7 +74,7 @@ int main(int argc, const char* argv[]) {
                     fmt::println("Executing program...");
                     ir::vm::VirtualMachine env(std::cin, std::cout);
                     auto ret = env.execute(program);
-                    fmt::println("Program returned: {}", ret);
+                    fmt::println("Program returned {} after executing {} instructions", ret, env.perf().num_insts);
                 }
                 fmt::println("{}: " BOLD GREEN "OK" NONE, file);
             } catch (const SyntaxError& e) {
