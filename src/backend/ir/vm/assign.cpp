@@ -18,16 +18,16 @@ void VirtualMachine::assign(const adt::Sum& dest_type, std::byte* dest, const ir
                             const std::byte* src) const {
     if (src_type.is<adt::Sum>()) {
         auto [src_tag, src_data] = as_sumtype(src);
-        auto& src_type = dest_type.type_of(src_tag);
-        auto dest_index = dest_type.index_of(src_type);
+        auto& src_item_type = src_type.as<adt::Sum>().type_of(src_tag);
+        auto dest_index = dest_type.index_of(src_item_type);
         auto [dest_tag, dest_data] = as_sumtype(dest);
         dest_tag = dest_index;
-        assign(src_type, dest_data, src_type, src_data);
+        assign(src_item_type, dest_data, src_item_type, src_data);
     } else {
         auto index = dest_type.index_of(src_type);
         auto [tag, data] = as_sumtype(dest);
         tag = index;
-        assign(dest_type, data, src_type, src);
+        assign(src_type, data, src_type, src);
     }
 }
 
@@ -53,12 +53,13 @@ void VirtualMachine::assign(const adt::Product& dest_type, std::byte* dest, cons
     if (dest_type.items().size() != src_type.items().size()) {
         throw CompilerError(fmt::format("Cannot assign {} to {}", src_type, dest_type));
     }
-    size_t offset = 0;
+    size_t dest_offset = 0, src_offset = 0;
     for (size_t i = 0; i < dest_type.items().size(); i++) {
         auto& dest_item = dest_type.items()[i];
         auto& src_item = src_type.items()[i];
-        assign(dest_item, (std::byte*)dest + offset, src_item, (const std::byte*)src + offset);
-        offset += layout.size_of(dest_item);
+        assign(dest_item, (std::byte*)dest + dest_offset, src_item, (const std::byte*)src + src_offset);
+        dest_offset += layout.size_of(dest_item);
+        src_offset += layout.size_of(src_item);
     }
 }
 
