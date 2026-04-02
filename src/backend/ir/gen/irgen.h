@@ -38,4 +38,8 @@ private:
                 const Block* false_block) -> BranchExit;
 };
 
+inline auto generate(const ast::SemanticAST& info) -> Program {
+    return Generator().generate(info);
+}
+
 }  // namespace ir::gen

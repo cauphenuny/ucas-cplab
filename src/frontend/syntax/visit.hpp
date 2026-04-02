@@ -1,9 +1,12 @@
 #pragma once
 
-#include "CACTBaseVisitor.h"
 #include "frontend/ast/ast.hpp"
+#include "frontend/syntax/error.hpp"
 #include "utils/error.hpp"
 
+#include <CACTBaseVisitor.h>
+#include <CACTLexer.h>
+#include <CACTParser.h>
 #include <any>
 #include <memory>
 #include <string>
@@ -205,9 +208,7 @@ public:
                 }
             }
             if (sign == -1) {
-                val = match(val, [](auto&& v) -> ast::ConstExp {
-                    return -v;
-                });
+                val = match(val, [](auto&& v) -> ast::ConstExp { return -v; });
             }
             return wrap(std::move(val));
         }
@@ -222,9 +223,7 @@ public:
                 }
             }
             if (bangs % 2 == 1) {
-                val = match(val, [](bool v) -> ast::ConstExp {
-                    return !v;
-                });
+                val = match(val, [](bool v) -> ast::ConstExp { return !v; });
             }
             return wrap(std::move(val));
         }
@@ -492,3 +491,26 @@ public:
         return wrap(std::move(args));
     }
 };
+
+namespace ast {
+
+inline auto parse(std::istream& stream) -> std::unique_ptr<ast::CompUnit> {
+    using namespace antlr4;
+    ANTLRInputStream input(stream);
+    CACTLexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    CACTParser parser(&tokens);
+
+    CACTErrorListener listener;
+    lexer.removeErrorListeners();
+    lexer.addErrorListener(&listener);
+    parser.removeErrorListeners();
+    parser.addErrorListener(&listener);
+
+    ASTVisitor visitor;
+
+    return std::unique_ptr<ast::CompUnit>(
+        std::any_cast<ast::CompUnit*>(visitor.visit(parser.compUnit())));
+}
+
+}  // namespace ast

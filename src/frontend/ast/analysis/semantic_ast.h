@@ -200,4 +200,8 @@ private:
     void registerSymbol(SymDefNode def);
 };
 
+inline auto analysis(std::unique_ptr<CompUnit> comp_unit) -> SemanticAST {
+    return {std::move(comp_unit)};
+}
+
 }  // namespace ast

@@ -1,7 +1,6 @@
 #include <iostream>
 #define FMT_HEADER_ONLY
 #include "fmt/format.h"
-#include "frontend/syntax/error.hpp"
 #include "frontend/syntax/visit.hpp"
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "backend/ir/gen/irgen.h"
@@ -52,32 +51,19 @@ int main(int argc, const char* argv[]) {
                 throw std::runtime_error(fmt::format("Failed to open file {}", file));
             }
 
-            ANTLRInputStream input(stream);
-            CACTLexer lexer(&input);
-            CommonTokenStream tokens(&lexer);
-            CACTParser parser(&tokens);
-
-            CACTErrorListener listener;
-            lexer.removeErrorListeners();
-            lexer.addErrorListener(&listener);
-            parser.removeErrorListeners();
-            parser.addErrorListener(&listener);
-
-            ASTVisitor visitor;
             try {
-                std::unique_ptr<ast::CompUnit> ast(std::any_cast<ast::CompUnit*>(visitor.visit(parser.compUnit())));
+                auto code = ast::analysis(ast::parse(stream));
                 if (print_ast) {
-                    fmt::println("AST:\n{}\n", ast);
+                    fmt::println("AST:\n{}\n", code.ast());
                 }
-                auto semantic_ast = ast::SemanticAST(std::move(ast));
                 if (print_semantic) {
                     fmt::println("Semantic analysis:\n");
-                    semantic_ast.show();
+                    code.show();
                     fmt::println("\n");
                 }
-                auto program_ir = ir::gen::Generator().generate(semantic_ast);
+                auto program = ir::gen::generate(code);
                 if (print_ir) {
-                    fmt::println("IR:\n{}", program_ir);
+                    fmt::println("IR:\n{}", program);
                 }
                 fmt::println("{}: " BOLD GREEN "OK" NONE, file);
             } catch (const SyntaxError& e) {
