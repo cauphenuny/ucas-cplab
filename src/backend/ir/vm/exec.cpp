@@ -103,6 +103,7 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
     }
 
     auto buffer = std::make_unique<std::byte[]>(stack_size);
+    memset(buffer.get(), 0, stack_size);
     StackFrame frame;
     std::byte* cur = buffer.get();
     /// params
@@ -149,6 +150,7 @@ int VirtualMachine::execute(const Program& program) {
     global_size += sizeof(int);
 
     auto buffer = std::make_unique<std::byte[]>(global_size);
+    memset(buffer.get(), 0, global_size);
     std::byte* cur = buffer.get();
     for (const auto& global : program.globals) {
         alloc(global_frame, global, cur);
