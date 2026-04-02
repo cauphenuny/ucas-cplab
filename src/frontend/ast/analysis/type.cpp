@@ -34,6 +34,9 @@ adt::Product SemanticAST::calcType(const FuncArgs* args) {
 }
 
 adt::Product SemanticAST::calcType(const FuncParams* params) {
+    for (auto& param : *params) {
+        types[&param] = calcType(&param);
+    }
     auto type = adt::Product{};
     for (auto& param : *params) {
         type.append(types[&param]);
