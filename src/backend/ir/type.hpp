@@ -276,6 +276,81 @@ inline auto TypeBox::flatten() const -> TypeBox {
                         [&](const auto&) { return *this; });
 }
 
+inline size_t size_of(const Type& type);
+inline size_t size_of(const TypeBox& type_box);
+
+inline size_t size_of(const Int&) {
+    return sizeof(Int::type);
+}
+
+inline size_t size_of(const Float&) {
+    return sizeof(Float::type);
+}
+
+inline size_t size_of(const Double&) {
+    return sizeof(Double::type);
+}
+
+inline size_t size_of(const Bool&) {
+    return sizeof(Bool::type);
+}
+
+inline size_t size_of(const Primitive& prim) {
+    return Match{prim}([](const Int& t) { return size_of(t); },
+                       [](const Float& t) { return size_of(t); },
+                       [](const Double& t) { return size_of(t); },
+                       [](const Bool& t) { return size_of(t); });
+}
+
+inline size_t size_of(const Product& prod) {
+    // TODO: padding and alignment
+    size_t size = 0;
+    for (const auto& item : prod.items()) {
+        size += size_of(item);
+    }
+    return size;
+}
+
+inline size_t size_of(const Sum& sum) {
+    size_t max_size = 0;
+    for (const auto& item : sum.items()) {
+        auto item_size = size_of(item);
+        if (item_size > max_size) {
+            max_size = item_size;
+        }
+    }
+    return max_size + sizeof(int);  // tag
+}
+
+inline size_t size_of(const Func&) {
+    // Function values are represented as pointers in VM.
+    return sizeof(void*);
+}
+
+inline size_t size_of(const Array& arr) {
+    return arr.size * size_of(arr.elem);
+}
+
+inline size_t size_of(const Pointer&) {
+    return sizeof(void*);
+}
+
+inline size_t size_of(const Top&) {
+    return 0;
+}
+
+inline size_t size_of(const Bottom&) {
+    return 0;
+}
+
+inline size_t size_of(const Type& type) {
+    return Match{type}([](const auto& t) { return size_of(t); });
+}
+
+inline size_t size_of(const TypeBox& type_box) {
+    return size_of(type_box.var());
+}
+
 /************************************************************/
 
 template <typename T> TypeBox construct();

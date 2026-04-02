@@ -13,19 +13,33 @@ auto Generator::gen(const ast::ConstInitVal* init) -> ConstexprValue {
         [&](const std::vector<ast::ConstInitVal>& subvals) -> ConstexprValue {
             auto type = this->info->type_of(init).as<adt::Array>();
             auto buffer = std::make_unique<std::byte[]>(adt::size_of(type));
-            memset(buffer, 0, sizeof(buffer));
-            auto construct = [&](auto self, const ast::ConstInitVal& val, std::byte* buf) {
-                match(
-                    val.val,
-                    [&](const ast::ConstExp& exp) { *buf = match(exp, [](auto v) { return v; }); },
-                    [&](const std::vector<ast::ConstInitVal>& subval) {
-                        auto length = type.size;
-                        auto elem_size = adt::size_of(type.elem);
-                        for (size_t i = 0; i < length; i++) {
-                            self(self, subval[i], buf + i * elem_size);
-                        }
-                    });
+            memset(buffer.get(), 0, adt::size_of(type));
+
+            auto construct = [&](auto self, const adt::Array& type,
+                                 const std::vector<ast::ConstInitVal>& elems,
+                                 std::byte* buf) -> void {
+                auto length = type.size;
+                auto elem_size = adt::size_of(type.elem);
+                for (size_t i = 0; i < length; i++) {
+                    auto& elem = elems[i];
+                    match(
+                        elem.val,
+                        [&](const ast::ConstExp& val) {
+                            match(val, [&](auto v) {
+                                using type = decltype(v);
+                                *(type*)buf = v;
+                            });
+                        },
+                        [&](const std::vector<ast::ConstInitVal>& subvals) {
+                            self(self, type.elem.as<adt::Array>(), subvals, buf);
+                        });
+                    buf += elem_size;
+                }
             };
+
+            construct(construct, type, subvals, buffer.get());
+
+            return {std::move(type).toBoxed(), std::move(buffer)};
         });
 }
 
@@ -35,7 +49,7 @@ auto Generator::gen(const ast::ConstDef* def) -> Alloc {
 
 auto Generator::gen(const ast::VarDef* def) -> Alloc {
     return Alloc{NamedValue{this->info->type_of(def), def},
-                 def->val ? gen(&*def->val) : std::nullopt};
+                 def->val ? std::make_optional(gen(&*def->val)) : std::nullopt};
 }
 
 auto Generator::gen(const ast::Decl* decl) -> std::vector<Alloc> {
@@ -43,7 +57,7 @@ auto Generator::gen(const ast::Decl* decl) -> std::vector<Alloc> {
         std::vector<Alloc> allocs;
         for (const auto& def : decl.defs) {
             auto var_alloc = gen(&def);
-            allocs.push_back(var_alloc);
+            allocs.push_back(std::move(var_alloc));
         }
         return allocs;
     });

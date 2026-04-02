@@ -7,7 +7,7 @@ void VirtualMachine::assign(const adt::Primitive& dest_type, std::byte* dest,
                             const adt::Primitive& src_type, const std::byte* src) const {
     Match(dest_type, src_type)([&](auto dest_prim, auto src_prim) {
         if constexpr (std::is_same_v<decltype(dest_prim), decltype(src_prim)>) {
-            memcpy(dest, src, layout.size_of(dest_type));
+            memcpy(dest, src, adt::size_of(dest_type));
         } else {
             throw CompilerError(fmt::format("Cannot assign {} to {}", src_type, dest_type));
         }
@@ -38,13 +38,13 @@ void VirtualMachine::assign(const adt::Array& dest_type, std::byte* dest, const 
                                         src_type.size, dest_type.size));
     }
     size_t i = 0;
-    auto src_view = as_array(src, layout.size_of(src_type.elem));
-    auto dest_view = as_array(dest, layout.size_of(dest_type.elem));
+    auto src_view = as_array(src, adt::size_of(src_type.elem));
+    auto dest_view = as_array(dest, adt::size_of(dest_type.elem));
     for (i = 0; i < src_type.size; i++) {
         assign(dest_type.elem, dest_view[i], src_type.elem, src_view[i]);
     }
     for (; i < dest_type.size; i++) {
-        memset(dest_view[i], 0, layout.size_of(dest_type.elem));
+        memset(dest_view[i], 0, adt::size_of(dest_type.elem));
     }
 }
 
@@ -58,8 +58,8 @@ void VirtualMachine::assign(const adt::Product& dest_type, std::byte* dest, cons
         auto& dest_item = dest_type.items()[i];
         auto& src_item = src_type.items()[i];
         assign(dest_item, (std::byte*)dest + dest_offset, src_item, (const std::byte*)src + src_offset);
-        dest_offset += layout.size_of(dest_item);
-        src_offset += layout.size_of(src_item);
+        dest_offset += adt::size_of(dest_item);
+        src_offset += adt::size_of(src_item);
     }
 }
 

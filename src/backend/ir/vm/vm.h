@@ -2,7 +2,6 @@
 #include "backend/ir/op.hpp"
 #include "backend/ir/type.hpp"
 #include "frontend/ast/analysis/semantic_ast.h"
-#include "size.hpp"
 #include "utils/error.hpp"
 #include "view.hpp"
 
@@ -134,8 +133,6 @@ private:
 
     void alloc(StackFrame& frame, const Alloc& alloc, std::byte* buffer) const;
 
-    DataLayout layout{sizeof(int), sizeof(float), sizeof(double), sizeof(std::byte*)};
-
     using BinaryOpFunc = std::function<void(View& dest, const View& lhs, const View& rhs)>;
     std::unordered_map<InstOp, BinaryOpFunc> binary_ops;
 
@@ -154,8 +151,8 @@ public:
     int execute(const Program& program);
 
     VirtualMachine(std::istream& input, std::ostream& output) : input(input), output(output) {
-        unary_ops[UnaryInstOp::MOV] = [this](View& dest, const View& operand) {
-            std::memcpy(dest.data, operand.data, layout.size_of(dest.type));
+        unary_ops[UnaryInstOp::MOV] = [](View& dest, const View& operand) {
+            std::memcpy(dest.data, operand.data, adt::size_of(dest.type));
         };
         unary_ops[UnaryInstOp::NOT] = [this](View& dest, const View& operand) {
             eval_unary<std::logical_not>(dest, operand);
@@ -203,7 +200,7 @@ public:
         binary_ops[InstOp::OR] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_binary<std::logical_or>(dest, lhs, rhs);
         };
-        binary_ops[InstOp::LOAD] = [this](View& dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::LOAD] = [](View& dest, const View& lhs, const View& rhs) {
             // NOTE: lhs: pointer, rhs: offset
             using namespace adt;
             if (!rhs.type.is<Primitive>() ||
@@ -217,7 +214,7 @@ public:
             auto offset = *(int*)rhs.data;
             auto elem_type =
                 lhs.type.is<Pointer>() ? lhs.type.as<Pointer>().elem : lhs.type.as<Array>().elem;
-            dest.data = lhs.data + offset * layout.size_of(elem_type);
+            dest.data = lhs.data + offset * adt::size_of(elem_type);
         };
         binary_ops[InstOp::STORE] = [this](View& dest, const View& lhs, const View& rhs) {
             // NOTE: dest: pointer, lhs: offset, rhs: value
@@ -233,7 +230,7 @@ public:
             auto offset = *(int*)lhs.data;
             auto elem_type =
                 dest.type.is<Pointer>() ? dest.type.as<Pointer>().elem : dest.type.as<Array>().elem;
-            assign(elem_type, dest.data + offset * layout.size_of(elem_type), rhs.type, rhs.data);
+            assign(elem_type, dest.data + offset * adt::size_of(elem_type), rhs.type, rhs.data);
         };
     }
 };

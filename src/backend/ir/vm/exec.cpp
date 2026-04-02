@@ -86,7 +86,7 @@ void VirtualMachine::alloc(StackFrame& frame, const Alloc& alloc, std::byte* buf
         auto init_val = view_of(*alloc.init);
         assign(alloc.var.type, frame.vars[alloc.var].data, init_val.type, init_val.data);
     } else {
-        memset(frame.vars[alloc.var].data, 0, layout.size_of(alloc.var.type));
+        memset(frame.vars[alloc.var].data, 0, adt::size_of(alloc.var.type));
     }
 }
 
@@ -94,13 +94,13 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
 
     size_t stack_size = 0;
     for (const auto& local : func.locals()) {
-        stack_size += layout.size_of(local.var.type);
+        stack_size += adt::size_of(local.var.type);
     }
     for (const auto& temp : func.temps()) {
-        stack_size += layout.size_of(temp);
+        stack_size += adt::size_of(temp);
     }
     for (const auto& param : func.params) {
-        stack_size += layout.size_of(param.type);
+        stack_size += adt::size_of(param.type);
     }
 
     auto buffer = std::make_unique<std::byte[]>(stack_size);
@@ -115,17 +115,17 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
     for (size_t i = 0; i < func.params.size(); i++) {
         frame.vars[func.params[i]] = View{.data = cur, .type = func.params[i].type};
         assign(func.params[i].type, cur, args[i].type, args[i].data);
-        cur += layout.size_of(func.params[i].type);
+        cur += adt::size_of(func.params[i].type);
     }
     /// locals
     for (const auto& local : func.locals()) {
         alloc(frame, local, cur);
-        cur += layout.size_of(local.var.type);
+        cur += adt::size_of(local.var.type);
     }
     /// temps
     for (const auto& temp : func.temps()) {
         frame.temps.push_back(View{.data = cur, .type = temp});
-        cur += layout.size_of(temp);
+        cur += adt::size_of(temp);
     }
 
     const Block* cur_block = func.blocks().front().get();
@@ -142,7 +142,7 @@ int VirtualMachine::execute(const Program& program) {
     size_t global_size = 0;
     /// global variables
     for (const auto& global : program.globals) {
-        global_size += layout.size_of(global.var.type);
+        global_size += adt::size_of(global.var.type);
     }
     /// return value
     global_size += sizeof(int);
@@ -151,7 +151,7 @@ int VirtualMachine::execute(const Program& program) {
     std::byte* cur = buffer.get();
     for (const auto& global : program.globals) {
         alloc(global_frame, global, cur);
-        cur += layout.size_of(global.var.type);
+        cur += adt::size_of(global.var.type);
     }
 
     View ret{.data = cur, .type = adt::construct<int>()};

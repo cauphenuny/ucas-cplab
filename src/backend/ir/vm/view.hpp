@@ -27,19 +27,19 @@ struct SumView {
     T* data;
 };
 
-auto as_array(std::byte* data, size_t elem_size) {
+inline auto as_array(std::byte* data, size_t elem_size) {
     return ArrayView<std::byte>{elem_size, data};
 }
 
-auto as_array(const std::byte* data, size_t elem_size) {
+inline auto as_array(const std::byte* data, size_t elem_size) {
     return ArrayView<const std::byte>{elem_size, data};
 }
 
-auto as_sumtype(std::byte* data) {
+inline auto as_sumtype(std::byte* data) {
     return SumView<std::byte>{*(int*)data, data + sizeof(int)};
 }
 
-auto as_sumtype(const std::byte* data) {
+inline auto as_sumtype(const std::byte* data) {
     return SumView<const std::byte>{*(const int*)data, data + sizeof(int)};
 }
 
