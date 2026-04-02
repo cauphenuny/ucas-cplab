@@ -13,6 +13,8 @@ include_directories(grammar)
 include_directories(src)
 include_directories(deps)
 
+enable_testing()
+
 # Project sources excluding tests and main.cpp
 FILE(GLOB_RECURSE ALL_SOURCES CONFIGURE_DEPENDS
     "src/*.cpp"
@@ -54,4 +56,5 @@ foreach(TEST_SOURCE ${TEST_FILES})
     get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
     add_executable(${TEST_NAME} ${TEST_SOURCE})
     target_link_libraries(${TEST_NAME} compiler_core antlr Threads::Threads)
+    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
 endforeach()
