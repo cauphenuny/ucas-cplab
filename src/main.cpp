@@ -1,9 +1,10 @@
 #include <iostream>
 #define FMT_HEADER_ONLY
-#include "fmt/format.h"
-#include "frontend/syntax/visit.hpp"
-#include "frontend/ast/analysis/semantic_ast.h"
 #include "backend/ir/gen/irgen.h"
+#include "backend/ir/vm/vm.h"
+#include "fmt/format.h"
+#include "frontend/ast/analysis/semantic_ast.h"
+#include "frontend/syntax/visit.hpp"
 #include "utils/error.hpp"
 #include "utils/tui.h"
 
@@ -16,7 +17,7 @@ enum : uint8_t {
     SUCCESS = 0,
     INVALID_ARGUMENT = 1,
     SYNTAX_ERROR = 2,
-    SEMANTIC_ERROR = 0, // for PR1, we do not need report semantic errors.
+    SEMANTIC_ERROR = 0,  // for PR1, we do not need report semantic errors.
     RUNTIME_ERROR = 255,
 };
 
@@ -25,6 +26,7 @@ int main(int argc, const char* argv[]) {
     bool print_ast = false;
     bool print_ir = false;
     bool print_semantic = false;
+    bool execute = false;
     std::set<std::string> files;
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -34,13 +36,16 @@ int main(int argc, const char* argv[]) {
             print_ir = true;
         } else if (arg == "--sem") {
             print_semantic = true;
+        } else if (arg == "--exec") {
+            execute = true;
         } else {
             files.insert(arg);
         }
     }
     try {
-        if (argc < 2) {
-            throw std::runtime_error(fmt::format("usage: {} [--ast] [--ir] [--sem] files ...", argv[0]));
+        if (files.size() == 0) {
+            throw std::runtime_error(
+                fmt::format("usage: {} [--ast] [--sem] [--ir] [--exec] files ...", argv[0]));
         }
 
         for (const auto& file : files) {
@@ -64,6 +69,12 @@ int main(int argc, const char* argv[]) {
                 auto program = ir::gen::generate(code);
                 if (print_ir) {
                     fmt::println("IR:\n{}", program);
+                }
+                if (execute) {
+                    fmt::println("Executing program...");
+                    ir::vm::VirtualMachine env(std::cin, std::cout);
+                    auto ret = env.execute(program);
+                    fmt::println("Program returned: {}", ret);
                 }
                 fmt::println("{}: " BOLD GREEN "OK" NONE, file);
             } catch (const SyntaxError& e) {

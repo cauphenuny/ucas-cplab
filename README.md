@@ -4,6 +4,28 @@
 
 ---
 
+Build:
+
+```
+$ cd grammar
+$ java -jar ../deps/antlr-4.13.1-complete.jar -Dlanguage=Cpp CACT.g4 -visitor -no-listener
+$ cd ..
+$ cmake -Bbuild
+$ cmake --build build
+```
+
+Usage:
+
+```
+build/compiler [--ast] [--sem] [--ir] [--exec] files...
+# --ast: print abstract syntax tree
+# --sem: print semantic info
+# --ir: print intermediate representation code
+# --exec: execute IR in virtual machine
+```
+
+---
+
 Type System:
 
 ```rust
@@ -48,7 +70,7 @@ enum Exp {
     Primary(PrimaryExp),
     Unary(UnaryOp, Box<Exp>),
     Binary(BinaryOp, Box<Exp>, Box<Exp>),
-    Tuple(Vec<<Exp>),
+    Call(LVal, Vec<<Exp>),
 }
 enum Stmt {
     Exp(Exp),
@@ -98,7 +120,7 @@ enum Value {
 enum Inst {
     Unary(UnaryOp, Value, Value),
     Binary(BinaryOp, Value, Value, Value),
-    Pack(Value, Vec<Value>),
+    Call(Value, Value, Vec<Value>),
 }
 enum Exit {
     Return(Value),
