@@ -160,9 +160,9 @@ private:
 
     template <typename T> void checkType(T node, Type upperbound) {
         if (!(types[node] <= upperbound)) {
-            throw SemanticError(node->loc,
-                                fmt::format("type error (at {}): `{}` is not subtype of `{}`",
-                                            *node, types[node], upperbound));
+            throw SemanticError(node->loc, fmt::format("type error: `{}` is not subtype of `{}`" DIM
+                                                       " (at {})" NONE,
+                                                       types[node], upperbound, *node));
         }
     }
 

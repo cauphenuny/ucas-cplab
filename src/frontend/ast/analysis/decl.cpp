@@ -49,8 +49,9 @@ void SemanticAST::analysis(const ConstDecl* decl) {
         val_type = types[&def.val];
         if (!constructable(val_type, types[&def])) {
             throw SemanticError(def.loc,
-                                fmt::format("type error: cannot initialize `{}` with `{}`",
-                                            types[&def], val_type));
+                                fmt::format("type error: cannot initialize `{}` with `{}`" DIM
+                                            " (at {})" NONE,
+                                            types[&def], val_type, def));
         }
     }
 }
@@ -66,8 +67,9 @@ void SemanticAST::analysis(const VarDecl* decl) {
         }
         if (!constructable(val_type, types[&def])) {
             throw SemanticError(def.loc,
-                                fmt::format("type error: cannot initialize `{}` with `{}`",
-                                            types[&def], val_type));
+                                fmt::format("type error: cannot initialize `{}` with `{}`" DIM
+                                            " (at {})" NONE,
+                                            types[&def], val_type, def));
         }
     }
 }
@@ -83,10 +85,13 @@ void SemanticAST::analysis(const ConstInitVal* val) {
             Type elem_type = NEVER;
             for (const auto& val : vals) {
                 analysis(&val);
-                if (!adt::constructable(elem_type, types[&val]) && !adt::constructable(types[&val], elem_type)) {
-                    throw SemanticError(val.loc,
-                                        fmt::format("type error: array elements have incompatible types `{}` and `{}`",
-                                                    elem_type, types[&val]));
+                if (!adt::constructable(elem_type, types[&val]) &&
+                    !adt::constructable(types[&val], elem_type)) {
+                    throw SemanticError(
+                        val.loc,
+                        fmt::format(
+                            "type error: array elements have incompatible types `{}` and `{}`" DIM " (at {})" NONE,
+                            elem_type, types[&val], val));
                 }
                 elem_type = adt::constructable(elem_type, types[&val]) ? types[&val] : elem_type;
             }

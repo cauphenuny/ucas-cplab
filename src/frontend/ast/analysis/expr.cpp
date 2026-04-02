@@ -9,7 +9,10 @@ void SemanticAST::analysis(const LVal* lid, const Type& upperbound) {
         if (!symdef) {
             throw SemanticError(lid->loc, fmt::format("undefined variable '{}'", lid->name));
         }
-        match(*symdef, [&](const auto& def) { defs[lid] = def; types[lid] = types[def]; });
+        match(*symdef, [&](const auto& def) {
+            defs[lid] = def;
+            types[lid] = types[def];
+        });
     } else {
         if (!funcs.count(lid->name)) {
             throw SemanticError(lid->loc, fmt::format("undefined function '{}'", lid->name));
@@ -93,8 +96,9 @@ void SemanticAST::analysis(const BinaryExp* binary_exp, const Type& upperbound) 
         if (!(types[left] <= types[right]) && !(types[right] <= types[left])) {
             throw SemanticError(
                 binary_exp->loc,
-                fmt::format("type error: cannot apply operator `{}` to `{}` and `{}`",
-                            binary_exp->op, types[left], types[right]));
+                fmt::format("type error: cannot apply operator `{}` to `{}` and `{}`" DIM
+                            " (at {})" NONE,
+                            binary_exp->op, types[left], types[right], *binary_exp));
         }
     }
     switch (binary_exp->op) {
