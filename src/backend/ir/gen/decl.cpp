@@ -18,7 +18,8 @@ auto Generator::gen(const ast::ConstInitVal* init) -> ConstexprValue {
             auto construct = [&](auto self, const adt::Array& type,
                                  const std::vector<ast::ConstInitVal>& elems,
                                  std::byte* buf) -> void {
-                auto length = type.size;
+                // NOTE: when array is not fully initialized, elems.size() < type.size
+                auto length = elems.size();
                 auto elem_size = adt::size_of(type.elem);
                 for (size_t i = 0; i < length; i++) {
                     auto& elem = elems[i];
