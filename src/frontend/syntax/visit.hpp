@@ -45,8 +45,7 @@ public:
         if (a.type() == typeid(node_ptr<T>)) {
             return std::move(*std::any_cast<node_ptr<T>>(a));
         }
-        throw CompilerError(fmt::format("take failed for type {}", typeid(T).name()),
-                            "ast-gen error");
+        throw COMPILER_ERROR_T(fmt::format("take failed for type {}", typeid(T).name()), "ast-gen error");
     }
 
     std::any visitCompUnit(CACTParser::CompUnitContext* ctx) override {

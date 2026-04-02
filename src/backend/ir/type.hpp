@@ -150,14 +150,15 @@ struct Sum : mixin::ToBoxed<Sum, Type> {
             append(std::move(item));
         }
         if (items_.size() < 2) {
-            throw CompilerError("Sum type must have at least 2 items");
+            throw COMPILER_ERROR("Sum type must have at least 2 items");
         }
     }
 
     [[nodiscard]] size_t index_of(const TypeBox& item) const;
     [[nodiscard]] const TypeBox& type_of(size_t index) const {
         if (index >= items_.size()) {
-            throw CompilerError(fmt::format("Index {} out of bounds for Sum type {}", index, *this));
+            throw COMPILER_ERROR(
+                fmt::format("Index {} out of bounds for Sum type {}", index, *this));
         }
         return items_[index];
     }
@@ -631,7 +632,7 @@ inline size_t Sum::index_of(const TypeBox& item) const {
             return i;
         }
     }
-    throw CompilerError(fmt::format("Type {} not found in Sum type {}", item, *this));
+    throw COMPILER_ERROR(fmt::format("Type {} not found in Sum type {}", item, *this));
 }
 
 inline TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs) {

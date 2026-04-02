@@ -1,4 +1,6 @@
+#include "backend/ir/ir.hpp"
 #include "vm.h"
+
 #include <cstddef>
 
 namespace ir::vm {
@@ -9,7 +11,7 @@ void VirtualMachine::assign(const adt::Primitive& dest_type, std::byte* dest,
         if constexpr (std::is_same_v<decltype(dest_prim), decltype(src_prim)>) {
             memcpy(dest, src, adt::size_of(dest_type));
         } else {
-            throw CompilerError(fmt::format("Cannot assign {} to {}", src_type, dest_type));
+            throw COMPILER_ERROR(fmt::format("Cannot assign {} to {}", src_type, dest_type));
         }
     });
 }
@@ -31,11 +33,11 @@ void VirtualMachine::assign(const adt::Sum& dest_type, std::byte* dest, const ir
     }
 }
 
-void VirtualMachine::assign(const adt::Array& dest_type, std::byte* dest, const adt::Array& src_type,
-                            const std::byte* src) const {
+void VirtualMachine::assign(const adt::Array& dest_type, std::byte* dest,
+                            const adt::Array& src_type, const std::byte* src) const {
     if (dest_type.size < src_type.size) {
-        throw CompilerError(fmt::format("Cannot assign array of size {} to array of size {}",
-                                        src_type.size, dest_type.size));
+        throw COMPILER_ERROR(fmt::format("Cannot assign array of size {} to array of size {}",
+                                         src_type.size, dest_type.size));
     }
     size_t i = 0;
     auto src_view = as_array(src, adt::size_of(src_type.elem));
@@ -48,29 +50,34 @@ void VirtualMachine::assign(const adt::Array& dest_type, std::byte* dest, const 
     }
 }
 
-void VirtualMachine::assign(const adt::Product& dest_type, std::byte* dest, const adt::Product& src_type,
-                            const std::byte* src) const {
+void VirtualMachine::assign(const adt::Product& dest_type, std::byte* dest,
+                            const adt::Product& src_type, const std::byte* src) const {
     if (dest_type.items().size() != src_type.items().size()) {
-        throw CompilerError(fmt::format("Cannot assign {} to {}", src_type, dest_type));
+        throw COMPILER_ERROR(fmt::format("Cannot assign {} to {}", src_type, dest_type));
     }
     size_t dest_offset = 0, src_offset = 0;
     for (size_t i = 0; i < dest_type.items().size(); i++) {
         auto& dest_item = dest_type.items()[i];
         auto& src_item = src_type.items()[i];
-        assign(dest_item, (std::byte*)dest + dest_offset, src_item, (const std::byte*)src + src_offset);
+        assign(dest_item, (std::byte*)dest + dest_offset, src_item,
+               (const std::byte*)src + src_offset);
         dest_offset += adt::size_of(dest_item);
         src_offset += adt::size_of(src_item);
     }
 }
 
-void VirtualMachine::assign(View dest, const View& src) const {
+void VirtualMachine::assign(const Type& dest_type, std::byte* dest, const Type& src_type,
+                            const std::byte* src) const {
+    Match(dest_type.var(), src_type.var())(
+        [&](const auto& dest_var, const auto& src_var) { assign(dest_var, dest, src_var, src); });
+}
+
+void VirtualMachine::assign(View& dest, const View& src) const {
     if (dest.type.is<adt::Sum>()) {
         auto& sum_type = dest.type.as<adt::Sum>();
         assign(sum_type, dest.data, src.type, src.data);
     } else {
-        Match{dest.type.var(), src.type.var()}([&](const auto& dest_type, const auto& src_type) {
-            assign(dest_type, dest.data, src_type, src.data);
-        });
+        assign(dest.type, dest.data, src.type, src.data);
     }
 }
 

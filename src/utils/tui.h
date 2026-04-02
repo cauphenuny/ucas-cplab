@@ -8,3 +8,4 @@
 #define CYAN "\033[36m"
 #define NONE "\033[0m"
 #define BOLD "\033[1m"
+#define DIM "\033[2m"

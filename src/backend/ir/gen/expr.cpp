@@ -17,7 +17,7 @@ auto Generator::gen(const ast::LValExp* lval, Func* func, Block* scope) -> LeftV
             return match(
                 result, [&](const LeftValue& t) -> LeftValue { return t; },
                 [&](const ConstexprValue&) -> LeftValue {
-                    throw CompilerError(fmt::format("invalid expr `{}` in LValExp", exp));
+                    throw COMPILER_ERROR(fmt::format("invalid expr `{}` in LValExp", exp));
                 });
         });
 }

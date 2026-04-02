@@ -40,4 +40,11 @@ struct SemanticError : CodeError {
 struct CompilerError : std::logic_error {
     CompilerError(const std::string& desc, const std::string& type = "compiler error")
         : std::logic_error(fmt::format(RED BOLD "{} " NONE ": {}", type, desc)) {}
+    CompilerError(std::string_view file, int line, const std::string& desc,
+                  const std::string& type = "compiler error")
+        : std::logic_error(fmt::format(RED BOLD "{} " NONE ": {} " NONE DIM "(at {}:{})" NONE, type,
+                                       desc, file, line)) {}
 };
+
+#define COMPILER_ERROR(desc)         CompilerError(std::string_view(__FILE__), __LINE__, desc)
+#define COMPILER_ERROR_T(desc, type) CompilerError(std::string_view(__FILE__), __LINE__, desc, type)

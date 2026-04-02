@@ -54,7 +54,7 @@ struct SemanticAST {
         try {
             return defs.at(lval);
         } catch (const std::out_of_range&) {
-            throw CompilerError(fmt::format("can not find definition of variable '{}'", *lval));
+            throw COMPILER_ERROR(fmt::format("can not find definition of variable '{}'", *lval));
         }
     }
 
@@ -63,7 +63,7 @@ struct SemanticAST {
             return types.at(expr);
         } catch (const std::out_of_range&) {
             return match(expr, [&](auto subexpr) -> Type {
-                throw CompilerError(fmt::format("can not find type of expression '{}'", *subexpr));
+                throw COMPILER_ERROR(fmt::format("can not find type of expression '{}'", *subexpr));
             });
         }
     }
@@ -73,7 +73,7 @@ struct SemanticAST {
             return stmt_types.at(stmt);
         } catch (const std::out_of_range&) {
             return match(stmt, [&](auto substmt) -> StmtType {
-                throw CompilerError(fmt::format("can not find type of statement '{}'", *substmt));
+                throw COMPILER_ERROR(fmt::format("can not find type of statement '{}'", *substmt));
             });
         }
     }

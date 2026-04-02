@@ -28,7 +28,7 @@ private:
             using type = typename decltype(value)::type;
             if constexpr (std::is_floating_point_v<type> &&
                           std::is_same_v<Op<type>, std::modulus<type>>) {
-                throw CompilerError("Cannot apply modulus operator to floating point");
+                throw COMPILER_ERROR("Cannot apply modulus operator to floating point");
             } else {
                 *(type*)dest.data = Op<type>{}(*(type*)lhs.data, *(type*)rhs.data);
             }
@@ -55,7 +55,7 @@ private:
         if (it != binary_ops.end()) {
             it->second(dest, lhs, rhs);
         } else {
-            throw CompilerError(
+            throw COMPILER_ERROR(
                 fmt::format("Unsupported binary operation: {}", static_cast<int>(op)));
         }
     }
@@ -65,7 +65,7 @@ private:
         if (it != unary_ops.end()) {
             it->second(dest, operand);
         } else {
-            throw CompilerError(
+            throw COMPILER_ERROR(
                 fmt::format("Unsupported unary operation: {}", static_cast<int>(op)));
         }
     }
@@ -73,7 +73,7 @@ private:
     template <typename T1, typename T2>
     void assign(const T1& dest_type, std::byte* dest, const T2& src_type,
                 const std::byte* src) const {
-        throw CompilerError(fmt::format("Cannot assign {} to {}", src_type, dest_type));
+        throw COMPILER_ERROR(fmt::format("Cannot assign {} to {}", src_type, dest_type));
     }
 
     void assign(const adt::Primitive& dest_type, std::byte* dest, const adt::Primitive& src_type,
@@ -88,7 +88,9 @@ private:
     void assign(const adt::Product& dest_type, std::byte* dest, const adt::Product& src_type,
                 const std::byte* src) const;
 
-    void assign(View dest, const View& src) const;
+    void assign(const Type& dest_type, std::byte* dest, const Type& src_type, const std::byte* src) const;
+
+    void assign(View& dest, const View& src) const;
 
     void execute(const BinaryInst& inst, const View& lhs, const View& rhs, View& ret) const;
     void execute(const UnaryInst& inst, const View& operand, View& ret) const;
@@ -116,7 +118,7 @@ private:
         if (local) return *local;
         auto global = fn(lval, global_frame);
         if (global) return *global;
-        throw CompilerError(fmt::format("Undefined variable: {}", lval));
+        throw COMPILER_ERROR(fmt::format("Undefined variable: {}", lval));
     }
 
     [[nodiscard]] auto view_of(const ConstexprValue& c) const -> View {
@@ -205,10 +207,11 @@ public:
             using namespace adt;
             if (!rhs.type.is<Primitive>() ||
                 !std::holds_alternative<Int>(rhs.type.as<Primitive>())) {
-                throw CompilerError(fmt::format("Offset must be an integer, but got {}", rhs.type));
+                throw COMPILER_ERROR(
+                    fmt::format("Offset must be an integer, but got {}", rhs.type));
             }
             if (!lhs.type.is<Pointer>() && !lhs.type.is<Array>()) {
-                throw CompilerError(
+                throw COMPILER_ERROR(
                     fmt::format("Expected pointer or array type, but got {}", lhs.type));
             }
             auto offset = *(int*)rhs.data;
@@ -221,10 +224,11 @@ public:
             using namespace adt;
             if (!lhs.type.is<Primitive>() ||
                 !std::holds_alternative<Int>(lhs.type.as<Primitive>())) {
-                throw CompilerError(fmt::format("Offset must be an integer, but got {}", lhs.type));
+                throw COMPILER_ERROR(
+                    fmt::format("Offset must be an integer, but got {}", lhs.type));
             }
             if (!dest.type.is<Pointer>() && !dest.type.is<Array>()) {
-                throw CompilerError(
+                throw COMPILER_ERROR(
                     fmt::format("Expected pointer or array type, but got {}", dest.type));
             }
             auto offset = *(int*)lhs.data;

@@ -92,7 +92,7 @@ inline LeftValue as_lvalue(const Value& value) {
     return match(
         value, [&](const LeftValue& val) -> LeftValue { return val; },
         [&](const ConstexprValue& c) -> LeftValue {
-            throw CompilerError(fmt::format("expected LeftValue, got {}", c));
+            throw COMPILER_ERROR(fmt::format("expected LeftValue, got {}", c));
         });
 }
 
@@ -161,7 +161,7 @@ struct JumpExit {
     const Block* target;
     JumpExit(const Block* target) : target(target) {
         if (!target) {
-            throw CompilerError("target block cannot be null");
+            throw COMPILER_ERROR("target block cannot be null");
         }
     }
     [[nodiscard]] auto toString() const -> std::string;
@@ -291,7 +291,7 @@ struct Func {
     }
     [[nodiscard]] auto& currentLoop() const {
         if (loops.empty()) {
-            throw CompilerError("No loop context available");
+            throw COMPILER_ERROR("No loop context available");
         }
         return loops.back();
     }
@@ -339,7 +339,7 @@ struct Program {
                 return func;
             }
         }
-        throw CompilerError(fmt::format("function '{}' not found", name));
+        throw COMPILER_ERROR(fmt::format("function '{}' not found", name));
     }
 
     friend struct vm::VirtualMachine;

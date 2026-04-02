@@ -56,7 +56,7 @@ auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) c
             });
     }
     if (!block.exit) {
-        throw CompilerError(fmt::format("Block {} has no exit instruction", block.label));
+        throw COMPILER_ERROR(fmt::format("Block {} has no exit instruction", block.label));
     }
     auto& exit = block.exit.value();
     return match(
@@ -79,7 +79,7 @@ auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) c
 
 void VirtualMachine::alloc(StackFrame& frame, const Alloc& alloc, std::byte* buffer) const {
     if (frame.vars.count(alloc.var)) {
-        throw CompilerError(fmt::format("Variable {} already defined in this scope", alloc.var));
+        throw COMPILER_ERROR(fmt::format("Variable {} already defined in this scope", alloc.var));
     }
     frame.vars[alloc.var] = View{.data = buffer, .type = alloc.var.type};
     if (alloc.init) {
@@ -108,7 +108,7 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
     std::byte* cur = buffer.get();
     /// params
     if (func.params.size() != args.size()) {
-        throw CompilerError(
+        throw COMPILER_ERROR(
             fmt::format("Argument count mismatch in call to {}: expected {}, got {}", func.name,
                         func.params.size(), args.size()));
     }
