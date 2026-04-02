@@ -5,8 +5,8 @@
 
 namespace ir::gen {
 
-auto Generator::gen(const ast::LVal* lval) -> LeftValue {
-    return NamedValue{this->info->type_of(lval).decay(), this->info->definition_of(lval)};
+auto Generator::gen(const ast::LVal* lval) -> NamedValue {
+    return {this->info->type_of(lval).decay(), this->info->definition_of(lval)};
 }
 
 auto Generator::gen(const ast::LValExp* lval, Func* func, Block* scope) -> LeftValue {

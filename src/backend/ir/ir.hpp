@@ -4,6 +4,7 @@
 #include "op.hpp"
 #include "type.hpp"
 
+#include <functional>
 #include <string>
 #include <utility>
 #include <variant>
@@ -17,10 +18,17 @@ struct Func;
 namespace gen {
 struct Generator;
 }
+namespace vm {
+struct VirtualMachine;
+}
 
 struct NamedValue {
     Type type;
     ast::SymDefNode def;
+
+    friend bool operator==(const NamedValue& lhs, const NamedValue& rhs) {
+        return lhs.def == rhs.def;
+    }
 
     SIMPLE_TO_STRING(match(
         def, [&](const ast::FuncDef* f) { return f->name; },
@@ -90,7 +98,8 @@ struct BinaryInst {
 };
 
 struct CallInst {
-    LeftValue result, func;
+    LeftValue result;
+    NamedValue func;
     std::vector<Value> args;
 
     [[nodiscard]] auto toString() const {
@@ -149,6 +158,7 @@ struct Block {
 
     friend struct gen::Generator;
     friend struct Func;
+    friend struct vm::VirtualMachine;
 
     Block(std::string label, std::vector<Inst> insts, Exit exit)
         : label(std::move(label)), insts(std::move(insts)), exit(std::move(exit)) {}
@@ -207,15 +217,15 @@ struct Func {
         return str;
     }
 
-    const auto& locals() {
+    [[nodiscard]] const auto& locals() const {
         return locals_;
     }
 
-    const auto& blocks() {
+    [[nodiscard]] const auto& blocks() const {
         return blocks_;
     }
 
-    const auto& temps() {
+    [[nodiscard]] const auto& temps() const {
         return temps_;
     }
 
@@ -307,3 +317,9 @@ private:
 };
 
 }  // namespace ir
+
+template <> struct std::hash<ir::NamedValue> : std::hash<ast::SymDefNode> {
+    auto operator()(const ir::NamedValue& v) const noexcept -> std::size_t {
+        return std::hash<ast::SymDefNode>{}(v.def);
+    }
+};

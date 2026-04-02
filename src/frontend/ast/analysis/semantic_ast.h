@@ -82,6 +82,11 @@ struct SemanticAST {
         return *tree;
     }
 
+    using VarTable = std::unordered_map<std::string, VarDefNode>;
+    using FuncTable = std::unordered_map<std::string, std::pair<FuncDefNode, bool>>;
+
+    FuncTable funcs;
+
 private:
     const std::unique_ptr<const CompUnit> tree;
 
@@ -106,9 +111,6 @@ private:
         TO_STRING(StmtType, ret_type, always_return);
     };
     std::unordered_map<StmtNode, StmtType> stmt_types;
-
-    using VarTable = std::unordered_map<std::string, VarDefNode>;
-    using FuncTable = std::unordered_map<std::string, std::pair<FuncDefNode, bool>>;
 
     inline const static auto VOID = adt::construct<const void>();
     inline const static auto NUM = adt::construct<std::variant<int, float, double>>();
@@ -183,7 +185,6 @@ private:
     }();
 
     std::vector<VarTable> vars;
-    FuncTable funcs;
     void pushScope();
     void popScope();
 

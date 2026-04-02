@@ -14,8 +14,15 @@
 
 namespace ir::vm {
 
-class VirtualMachine {
+struct BuiltinFunc;
 
+struct StackFrame {
+    std::unordered_map<NamedValue, View> vars;  // NOTE: args is stored in vars
+    std::vector<View> temps;
+};
+
+struct VirtualMachine {
+private:
     template <template <typename> class Op>
     void eval_binary(View& dest, const View& lhs, const View& rhs) const {
         match(dest.type.as<adt::Primitive>(), [&](auto value) {
@@ -29,8 +36,7 @@ class VirtualMachine {
         });
     }
 
-    template <template <typename> class Op>
-    void eval_unary(View& dest, const View& operand) const {
+    template <template <typename> class Op> void eval_unary(View& dest, const View& operand) const {
         match(dest.type.as<adt::Primitive>(), [&](auto value) {
             using type = typename decltype(value)::type;
             *(type*)dest.data = Op<type>{}(*(type*)operand.data);
@@ -88,7 +94,41 @@ class VirtualMachine {
     void execute(const BinaryInst& inst, const View& lhs, const View& rhs, View& ret) const;
     void execute(const UnaryInst& inst, const View& operand, View& ret) const;
     void execute(const CallInst& inst, const std::vector<View>& srcs, View& ret) const;
-    void execute(const Func& func, const View& args, View& ret) const;
+
+    auto execute(const Block& block, StackFrame& frame, View& ret) const -> const Block*;
+    void execute(const Func& func, const std::vector<View>& args, View& ret) const;
+    void execute(const BuiltinFunc& func, const std::vector<View>& args, View& ret) const;
+
+    [[nodiscard]] auto lookup(const LeftValue& lval, const StackFrame& frame) const -> View {
+        auto fn = [](const LeftValue& val, const StackFrame& frame) -> std::optional<View> {
+            return match(
+                val,
+                [&](const NamedValue& var) -> std::optional<View> {
+                    auto it = frame.vars.find(var);
+                    if (it != frame.vars.end()) return it->second;
+                    return std::nullopt;
+                },
+                [&](const TempValue& temp) -> std::optional<View> {
+                    if (temp.id < frame.temps.size()) return frame.temps[temp.id];
+                    return std::nullopt;
+                });
+        };
+        auto local = fn(lval, frame);
+        if (local) return *local;
+        auto global = fn(lval, global_frame);
+        if (global) return *global;
+        throw CompilerError(fmt::format("Undefined variable: {}", lval));
+    }
+
+    [[nodiscard]] auto lookup(const ConstexprValue& c) const -> View {
+        return match(c.val, [&](const auto& val) -> const View {
+            return View{.data = (std::byte*)&val, .type = c.type};
+        });
+    }
+
+    [[nodiscard]] auto lookup(const Value& value, const StackFrame& frame) const -> View {
+        return match(value, [&](const auto& lval) { return lookup(lval, frame); });
+    }
 
     DataLayout layout{sizeof(int), sizeof(float), sizeof(double), sizeof(std::byte*)};
 
@@ -103,6 +143,8 @@ class VirtualMachine {
 
     std::istream& input;
     std::ostream& output;
+
+    StackFrame global_frame;
 
 public:
     void execute(const Program& program);
@@ -190,6 +232,57 @@ public:
             assign(elem_type, dest.data + offset * layout.size_of(elem_type), rhs.type, rhs.data);
         };
     }
+};
+
+struct BuiltinFunc {
+    std::function<void(View& ret, const std::vector<View>& args, std::istream& input,
+                       std::ostream& output)>
+        apply;
+    BuiltinFunc(std::function<void(View& ret, const std::vector<View>& args, std::istream& input,
+                                   std::ostream& output)>
+                    apply)
+        : apply(std::move(apply)) {}
+};
+
+inline const std::unordered_map<std::string, BuiltinFunc> builtin_funcs = {
+    {"get_int", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
+                               std::ostream& output) {
+         int value;
+         input >> value;
+         std::memcpy(ret.data, &value, sizeof(int));
+     }}},
+    {"get_float", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
+                                 std::ostream& output) {
+         float value;
+         input >> value;
+         std::memcpy(ret.data, &value, sizeof(float));
+     }}},
+    {"get_double", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
+                                  std::ostream& output) {
+         double value;
+         input >> value;
+         std::memcpy(ret.data, &value, sizeof(double));
+     }}},
+    {"print_int", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
+                                 std::ostream& output) {
+         int value = *(int*)args[0].data;
+         output << value << '\n';
+     }}},
+    {"print_float", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
+                                   std::ostream& output) {
+         float value = *(float*)args[0].data;
+         output << value << '\n';
+     }}},
+    {"print_double", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
+                                    std::ostream& output) {
+         double value = *(double*)args[0].data;
+         output << value << '\n';
+     }}},
+    {"print_bool", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
+                                  std::ostream& output) {
+         bool value = *(bool*)args[0].data;
+         output << (value ? "true" : "false") << '\n';
+     }}},
 };
 
 }  // namespace ir::vm
