@@ -114,7 +114,7 @@ struct UnaryInst {
     LeftValue result;
     Value operand;
 
-    SIMPLE_TO_STRING(fmt::format("{}: {} = {}{}", result, type(result), op, operand))
+    SIMPLE_TO_STRING(fmt::format("{}: {} = {}{};", result, type(result), op, operand))
 };
 
 struct BinaryInst {
@@ -123,10 +123,10 @@ struct BinaryInst {
     Value lhs, rhs;
 
     SIMPLE_TO_STRING(op == InstOp::LOAD
-                         ? fmt::format("{}: {} = {}[{}]", result, type(result), lhs, rhs)
+                         ? fmt::format("{}: {} = {}[{}];", result, type(result), lhs, rhs)
                      : op == InstOp::STORE
-                         ? fmt::format("{}[{}] = {}", result, lhs, rhs)
-                         : fmt::format("{}: {} = {} {} {}", result, type(result), lhs, op, rhs))
+                         ? fmt::format("{}[{}] = {};", result, lhs, rhs)
+                         : fmt::format("{}: {} = {} {} {};", result, type(result), lhs, op, rhs))
 };
 
 struct CallInst {
@@ -140,7 +140,7 @@ struct CallInst {
             arg_str += fmt::format("{}, ", arg);
         }
         if (!arg_str.empty()) arg_str.pop_back(), arg_str.pop_back();
-        return fmt::format("{}: {} = {}({})", result, type(result), func, arg_str);
+        return fmt::format("{}: {} = {}({});", result, type(result), func, arg_str);
     }
 };
 
@@ -149,7 +149,7 @@ using Inst = std::variant<UnaryInst, BinaryInst, CallInst>;
 struct ReturnExit {
     Value exp;
 
-    SIMPLE_TO_STRING(fmt::format("return {}", exp));
+    SIMPLE_TO_STRING(fmt::format("return {};", exp));
 };
 
 struct BranchExit {
@@ -202,19 +202,19 @@ private:
 };
 
 inline auto BranchExit::toString() const -> std::string {
-    return fmt::format("branch {} ? {} : {}", cond, true_target ? true_target->label : "<unknown>",
+    return fmt::format("branch {} ? {} : {};", cond, true_target ? true_target->label : "<unknown>",
                        false_target ? false_target->label : "<unknown>");
 }
 
 inline auto JumpExit::toString() const -> std::string {
-    return fmt::format("jump {}", target ? target->label : "<unknown>");
+    return fmt::format("jump {};", target ? target->label : "<unknown>");
 }
 
 struct Alloc {
     NamedValue var;
     std::optional<ConstexprValue> init;
-    SIMPLE_TO_STRING(init ? fmt::format("let {}: {} = {}", var, var.type, init)
-                          : fmt::format("let {}: {}", var, var.type));
+    SIMPLE_TO_STRING(init ? fmt::format("let {}: {} = {};", var, var.type, init)
+                          : fmt::format("let {}: {};", var, var.type));
 };
 
 struct Func {

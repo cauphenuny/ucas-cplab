@@ -89,20 +89,20 @@ int main() {
 ```rust
 fn foo(x_1_11: [f64; *], y_1_24: [f64; *]) -> f64 {
 .entry:
-  $0: f64 = x_1_11[0]
-  $1: f64 = y_1_24[0]
-  $2: f64 = $0 + $1
-  return $2
+  $0: f64 = x_1_11[0];
+  $1: f64 = y_1_24[0];
+  $2: f64 = $0 + $1;
+  return $2;
 }
 
 fn main() -> i32 {
-  let a_6_11: [[f64; 2]; 2]
+  let a_6_11: [[f64; 2]; 2];
 .entry:
-  a_6_11: [[f64; 2]; 2] = {{1, 2}, {0.045, 0}}
-  $1: [f64; *] = a_6_11[0]
-  $2: [f64; *] = a_6_11[1]
-  $0: f64 = foo($1, $2)
-  return 0
+  a_6_11: [[f64; 2]; 2] = {{1, 2}, {0.045, 0}};
+  $1: [f64; *] = a_6_11[0];
+  $2: [f64; *] = a_6_11[1];
+  $0: f64 = foo($1, $2);
+  return 0;
 }
 ```
 
@@ -126,27 +126,27 @@ int main() {
 ```
 
 ```rust
-let a_1_4: i32 = 0
+let a_1_4: i32 = 0;
 
 fn main() -> i32 {
-  let i_3_8: i32
-  let b_4_8: i32
-  let b_6_12: i32
-  let b_11_18: i32 const
+  let i_3_8: i32;
+  let b_4_8: i32;
+  let b_6_12: i32;
+  let b_11_18: i32 const;
 .entry:
-  i_3_8: i32 = 0
-  b_4_8: i32 = 0
-  jump .while_cond_5_4
+  i_3_8: i32 = 0;
+  b_4_8: i32 = 0;
+  jump .while_cond_5_4;
 .while_cond_5_4:
-  $0: bool = i_3_8 < 3
-  branch $0 ? .while_body_5_4 : .while_exit_5_4
+  $0: bool = i_3_8 < 3;
+  branch $0 ? .while_body_5_4 : .while_exit_5_4;
 .while_body_5_4:
-  b_6_12: i32 = 1
-  $1: i32 = i_3_8 + b_6_12
-  i_3_8: i32 = $1
-  jump .while_cond_5_4
+  b_6_12: i32 = 1;
+  $1: i32 = i_3_8 + b_6_12;
+  i_3_8: i32 = $1;
+  jump .while_cond_5_4;
 .while_exit_5_4:
-  b_11_18: i32 const = 2
-  return b_4_8
+  b_11_18: i32 const = 2;
+  return b_4_8;
 }
 ```
