@@ -17,18 +17,20 @@ A 是 B 的子类型，代表 A 的所有取值都可以在 B 中表示，即 A 
     TODO: 把 immutable 规则去掉？因为 immutable 变量是可以从 mutable 变量赋值的，只是只能赋值一次
 
 - 其他规则：
-    1. `{from, to} is primitive_type`: 类型相同则是子类型
-    2. `to is sum_type`: `∃ type in to, from <: type`
-    3. `from is sum_type`:  `∀ type in from, type <: to`
-    4. `{from, to} is sum_type`: `∀ f in from, ∃ t in to, f <: t`
-    5. `{from, to} is func_type`: `(to.params <: from.params) and (from.ret <: to.ret)` # 参数协变，返回值逆变
-    6. `{from, to} is pointer_type`:
+    1. `from is ⊥`: `true`
+    2. `to is ⊤`: `false`
+    3. `{from, to} is primitive_type`: 类型相同则是子类型
+    4. `to is sum_type`: `∃ type in to, from <: type`
+    5. `from is sum_type`:  `∀ type in from, type <: to`
+    6. `{from, to} is sum_type`: `∀ f in from, ∃ t in to, f <: t`
+    7. `{from, to} is func_type`: `(to.params <: from.params) and (from.ret <: to.ret)` # 参数协变，返回值逆变
+    8. `{from, to} is pointer_type`:
         `if to.elem.immutable => (from.elem <: to.elem)` # 目标元素是const的则协变
         `else => (from.elem <: to.elem) and (to.elem <: from.elem)` # 目标元素不是 const 则不变 （因为可能通过目标指针修改原指针指向的内容）
-    7. `{from, to} is array_type`:
+    9. `{from, to} is array_type`:
         `if to.size != from.size => false`
         `else => from.decay <: to.decay`
-    8. `from is array_type, to is pointer_type`: `from.decay <: to`
+    10. `from is array_type, to is pointer_type`: `from.decay <: to`
 
 ---
 
@@ -41,6 +43,8 @@ A 是 B 的子类型，代表 A 的所有取值都可以在 B 中表示，即 A 
 - 对于多维初始化数组，为了让 VM 好写，ConstexprValue维护的是一整块连续的内存。
 
 - TempValue 的编号作用域是函数，因此 VM 中可以和局部变量一起预先分配
+
+从 AST LVal 转换成 IR Value 时，继承 LVal 的 type (对于数组类型，自动 decay 成指针)
 
 ---
 
