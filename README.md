@@ -1,9 +1,5 @@
 # Code of Compiler Lab of UCAS, 2026
 
-[Tutorial](assets/tutorial.md)
-
----
-
 Build:
 
 ```
@@ -33,6 +29,14 @@ Examples:
 - output IR to file: `build/compiler --ir source.cact --output ir_code.rs`
 - simulate program: `build/compiler --exec source.cact`
 - simulate program, sliently (without any output except program IO and return code): `build/compiler --exec --silent source.cact`
+
+---
+
+Design Notes:
+
+- [IR](docs/ir.md)
+
+- [IR Virtual Machine](docs/vm.md)
 
 ---
 
@@ -143,3 +147,7 @@ struct Alloc(Value, Option<Value>)
 struct Func(Type, String, Vec<(Type, String)>, Vec<Alloc>, Vec<Block>)
 struct Program(Vec<Alloc>, Vec<Func>)
 ```
+
+---
+
+[Tutorial](assets/tutorial.md)
