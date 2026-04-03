@@ -176,12 +176,12 @@ struct Func : mixin::ToBoxed<Func, Type> {
                                  immutable ? ") const" : ""))
 };
 
-/// Unsized array / pointer type: [elem; *]
+/// Unsized array / pointer type: &[elem]
 struct Pointer : mixin::ToBoxed<Pointer, Type> {
     bool immutable{false};
     TypeBox elem;
     Pointer(TypeBox elem) : elem(std::move(elem)) {}
-    SIMPLE_TO_STRING(fmt::format("[{}; *]{}", elem, immutable ? " const" : ""));
+    SIMPLE_TO_STRING(fmt::format("&[{}]{}", elem, immutable ? " const" : ""));
 };
 
 /// Sized array type: [elem; size]
