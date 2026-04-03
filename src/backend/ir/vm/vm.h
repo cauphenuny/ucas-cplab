@@ -1,23 +1,22 @@
 #include "../ir.hpp"
 #include "backend/ir/op.hpp"
 #include "backend/ir/type.hpp"
-#include "frontend/ast/analysis/semantic_ast.h"
 #include "utils/error.hpp"
 #include "view.hpp"
 
 #include <cstddef>
+#include <cstring>
 #include <functional>
 #include <type_traits>
 #include <unordered_map>
 #include <variant>
-#include <cstring>
 
 namespace ir::vm {
 
 struct BuiltinFunc;
 
 struct StackFrame {
-    std::unordered_map<NamedValue, View> vars;  // NOTE: args is stored in vars
+    std::unordered_map<NameDef, View> vars;  // NOTE: args is stored in vars
     std::vector<View> temps;
 };
 
@@ -100,14 +99,14 @@ private:
 
     auto execute(const Block& block, StackFrame& frame, View& ret) -> const Block*;
     void execute(const Func& func, const std::vector<View>& args, View& ret);
-    void execute(const BuiltinFunc& func, const std::vector<View>& args, View& ret);
+    void execute(const vm::BuiltinFunc& func, const std::vector<View>& args, View& ret);
 
     [[nodiscard]] auto view_of(const LeftValue& lval, const StackFrame& frame) const -> View {
         auto fn = [](const LeftValue& val, const StackFrame& frame) -> std::optional<View> {
             return match(
                 val,
                 [&](const NamedValue& var) -> std::optional<View> {
-                    auto it = frame.vars.find(var);
+                    auto it = frame.vars.find(var.def);
                     if (it != frame.vars.end()) return it->second;
                     return std::nullopt;
                 },
@@ -140,7 +139,9 @@ private:
             [&](const ConstexprValue& c) { return view_of(c); });
     }
 
-    void alloc(StackFrame& frame, const Alloc& alloc, std::byte* buffer) const;
+    void alloc(StackFrame& frame, Alloc* alloc, std::byte* buffer) const;
+    void alloc(StackFrame& frame, Alloc* alloc, std::byte* buffer, const Type& src_type,
+               const std::byte* src_data) const;
 
     using BinaryOpFunc = std::function<void(View& dest, const View& lhs, const View& rhs)>;
     std::unordered_map<InstOp, BinaryOpFunc> binary_ops;
@@ -148,7 +149,6 @@ private:
     using UnaryOpFunc = std::function<void(View& dest, const View& operand)>;
     std::unordered_map<UnaryInstOp, UnaryOpFunc> unary_ops;
 
-    const ast::SemanticAST* ast;
     const Program* program;
 
     std::istream& input;

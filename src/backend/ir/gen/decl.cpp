@@ -49,20 +49,32 @@ auto Generator::gen(const ast::ConstInitVal* init, Type target_type) -> Constexp
         });
 }
 
-auto Generator::gen(const ast::ConstDef* def) -> Alloc {
+auto Generator::gen(const ast::ConstDef* def) -> std::unique_ptr<Alloc> {
     auto type = this->info->type_of(def);
-    return Alloc{NamedValue{this->info->type_of(def), def}, gen(&def->val, type)};
+    auto alloc = std::make_unique<Alloc>(this->name_of(def), type, gen(&def->val, type));
+    this->ir_defs[def] = alloc.get();
+    return alloc;
 }
 
-auto Generator::gen(const ast::VarDef* def) -> Alloc {
+auto Generator::gen(const ast::VarDef* def) -> std::unique_ptr<Alloc> {
     auto type = this->info->type_of(def);
-    return Alloc{NamedValue{this->info->type_of(def), def},
-                 def->val ? std::make_optional(gen(&*def->val, type)) : std::nullopt};
+    auto alloc = std::make_unique<Alloc>(this->name_of(def), type,
+                                         def->val ? std::make_optional(gen(&*def->val, type))
+                                                  : std::nullopt);
+    this->ir_defs[def] = alloc.get();
+    return alloc;
 }
 
-auto Generator::gen(const ast::Decl* decl) -> std::vector<Alloc> {
+auto Generator::gen(const ast::FuncParam* param) -> std::unique_ptr<Alloc> {
+    auto type = this->info->type_of(param);
+    auto alloc = std::make_unique<Alloc>(this->name_of(param), type);
+    this->ir_defs[param] = alloc.get();
+    return alloc;
+}
+
+auto Generator::gen(const ast::Decl* decl) -> std::vector<std::unique_ptr<Alloc>> {
     return match(*decl, [&](const auto& decl) {
-        std::vector<Alloc> allocs;
+        std::vector<std::unique_ptr<Alloc>> allocs;
         for (const auto& def : decl.defs) {
             auto var_alloc = gen(&def);
             allocs.push_back(std::move(var_alloc));
@@ -71,15 +83,15 @@ auto Generator::gen(const ast::Decl* decl) -> std::vector<Alloc> {
     });
 }
 
-auto Generator::gen(const ast::FuncDef* func) -> Func {
+auto Generator::gen(const ast::FuncDef* func) -> std::unique_ptr<Func> {
     auto type = this->info->type_of(func).as<adt::Func>();
-    auto params = std::vector<NamedValue>{};
+    auto params = std::vector<std::unique_ptr<Alloc>>{};
     for (const auto& param : func->params) {
-        auto param_type = this->info->type_of(&param);
-        params.emplace_back(NamedValue{param_type, &param});
+        auto alloc = gen(&param);
+        params.push_back(std::move(alloc));
     }
-    auto ir_func = Func(type.ret, func->name, std::move(params));
-    auto end = gen(&func->block, &ir_func, ir_func.entrance());
+    auto ir_func = std::make_unique<Func>(type.ret, this->name_of(func), std::move(params));
+    auto end = gen(&func->block, ir_func.get(), ir_func->entrance());
     if (end) {
         if (!(type.ret <= adt::construct<void>())) {
             throw COMPILER_ERROR(fmt::format("control may reach end of function '{}'", func->name));
@@ -93,7 +105,8 @@ auto Generator::gen(const ast::FuncDef* func) -> Func {
 auto Generator::generate(const ast::SemanticAST& info) -> Program {
     this->info = &info;
     this->ast = &info.ast();
-    auto prog = Program(info);
+    this->ir_defs = std::unordered_map<ast::SymDefNode, ir::NameDef>{};
+    auto prog = Program();
     for (const auto& item : ast->items) {
         match(
             item,

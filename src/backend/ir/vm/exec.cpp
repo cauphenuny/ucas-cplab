@@ -14,13 +14,19 @@ void VirtualMachine::execute(const UnaryInst& inst, const View& operand, View& r
 void VirtualMachine::execute(const CallInst& inst, const std::vector<View>& srcs, View& ret) {
     auto func = inst.func;
     auto def = func.def;
-    auto name = match(def, [&](const auto* d) { return d->name; });
-    auto [_, is_builtin] = this->ast->funcs.at(name);
-    if (is_builtin) {
-        return execute(builtin_funcs.at(name), srcs, ret);
-    } else {
-        return execute(this->program->findFunc(name), srcs, ret);
-    }
+    match(
+        def, [&](const ir::Func* func) { return execute(*func, srcs, ret); },
+        [&](const ir::BuiltinFunc* builtin_func) {
+            auto vm_func = builtin_funcs.find(builtin_func->name);
+            if (vm_func == builtin_funcs.end()) {
+                throw COMPILER_ERROR(
+                    fmt::format("Builtin function '{}' not found", builtin_func->name));
+            }
+            return execute(vm_func->second, srcs, ret);
+        },
+        [&](const ir::Alloc*) {
+            throw COMPILER_ERROR(fmt::format("Cannot call variable {}", func));
+        });
 }
 
 void VirtualMachine::execute(const BuiltinFunc& func, const std::vector<View>& args, View& ret) {
@@ -77,28 +83,31 @@ auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) -
         });
 }
 
-void VirtualMachine::alloc(StackFrame& frame, const Alloc& alloc, std::byte* buffer) const {
-    if (frame.vars.count(alloc.var)) {
-        throw COMPILER_ERROR(fmt::format("Variable {} already defined in this scope", alloc.var));
+void VirtualMachine::alloc(StackFrame& frame, Alloc* alloc, std::byte* buffer) const {
+    frame.vars[alloc] = View{.data = buffer, .type = alloc->type};
+    if (alloc->init) {
+        auto init_val = view_of(*alloc->init);
+        assign(alloc->type, frame.vars[alloc].data, init_val.type, init_val.data);
     }
-    frame.vars[alloc.var] = View{.data = buffer, .type = alloc.var.type};
-    if (alloc.init) {
-        auto init_val = view_of(*alloc.init);
-        assign(alloc.var.type, frame.vars[alloc.var].data, init_val.type, init_val.data);
-    }
+}
+
+void VirtualMachine::alloc(StackFrame& frame, Alloc* alloc, std::byte* buffer, const Type& src_type,
+                           const std::byte* src_data) const {
+    frame.vars[alloc] = View{.data = buffer, .type = alloc->type};
+    assign(alloc->type, frame.vars[alloc].data, src_type, src_data);
 }
 
 void VirtualMachine::execute(const Func& func, const std::vector<View>& args, View& ret) {
 
     size_t stack_size = 0;
     for (const auto& local : func.locals()) {
-        stack_size += adt::size_of(local.var.type);
+        stack_size += adt::size_of(local->type);
     }
     for (const auto& temp : func.temps()) {
         stack_size += adt::size_of(temp);
     }
     for (const auto& param : func.params) {
-        stack_size += adt::size_of(param.type);
+        stack_size += adt::size_of(param->type);
     }
 
     auto buffer = std::make_unique<std::byte[]>(stack_size);
@@ -113,14 +122,14 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
     }
     for (size_t i = 0; i < func.params.size(); i++) {
         auto& param = func.params[i];
-        frame.vars[param] = View{.data = cur, .type = param.type};
-        assign(param.type, cur, args[i].type, args[i].data);
-        cur += adt::size_of(param.type);
+        frame.vars[param.get()] = View{.data = cur, .type = param->type};
+        assign(param->type, cur, args[i].type, args[i].data);
+        cur += adt::size_of(param->type);
     }
     /// locals
     for (const auto& local : func.locals()) {
-        alloc(frame, local, cur);
-        cur += adt::size_of(local.var.type);
+        alloc(frame, local.get(), cur);
+        cur += adt::size_of(local->type);
     }
     /// temps
     for (const auto& temp : func.temps()) {
@@ -135,7 +144,6 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
 }
 
 int VirtualMachine::execute(const Program& program) {
-    this->ast = &program.ast;
     this->program = &program;
     this->global_frame = StackFrame();
     this->perf_counter = {};
@@ -143,7 +151,7 @@ int VirtualMachine::execute(const Program& program) {
     size_t global_size = 0;
     /// global variables
     for (const auto& global : program.globals) {
-        global_size += adt::size_of(global.var.type);
+        global_size += adt::size_of(global->type);
     }
     /// return value
     global_size += sizeof(int);
@@ -152,8 +160,8 @@ int VirtualMachine::execute(const Program& program) {
     memset(buffer.get(), 0, global_size);
     std::byte* cur = buffer.get();
     for (const auto& global : program.globals) {
-        alloc(global_frame, global, cur);
-        cur += adt::size_of(global.var.type);
+        alloc(global_frame, global.get(), cur);
+        cur += adt::size_of(global->type);
     }
 
     View ret{.data = cur, .type = adt::construct<int>()};

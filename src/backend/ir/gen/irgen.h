@@ -12,13 +12,21 @@ struct Generator {
 private:
     const ast::SemanticAST* info;
     const ast::CompUnit* ast;
+    std::unordered_map<ast::SymDefNode, ir::NameDef> ir_defs;
+
+    [[nodiscard]] auto name_of(ast::SymDefNode def) -> std::string {
+        return match(
+            def, [&](const ast::FuncDef* func) { return func->name; },
+            [&](const auto* var) { return fmt::format("{}_{}", var->name, var->loc); });
+    }
 
     [[nodiscard]] auto gen(const ast::ConstInitVal* init, Type target_type) -> ConstexprValue;
-    [[nodiscard]] auto gen(const ast::VarDef* def) -> Alloc;
-    [[nodiscard]] auto gen(const ast::ConstDef* def) -> Alloc;
-    [[nodiscard]] auto gen(const ast::Decl* decl) -> std::vector<Alloc>;
+    [[nodiscard]] auto gen(const ast::VarDef* def) -> std::unique_ptr<Alloc>;
+    [[nodiscard]] auto gen(const ast::ConstDef* def) -> std::unique_ptr<Alloc>;
+    [[nodiscard]] auto gen(const ast::FuncParam* param) -> std::unique_ptr<Alloc>;
+    [[nodiscard]] auto gen(const ast::Decl* decl) -> std::vector<std::unique_ptr<Alloc>>;
 
-    [[nodiscard]] auto gen(const ast::FuncDef* func) -> Func;
+    [[nodiscard]] auto gen(const ast::FuncDef* func) -> std::unique_ptr<Func>;
 
     [[nodiscard]] auto gen(const ast::BlockStmt* block_stmt, Func* func, Block* scope) -> Block*;
     [[nodiscard]] auto gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block*;
@@ -35,8 +43,8 @@ private:
         return gen(exp_box->exp.get(), func, scope);
     }
 
-    [[nodiscard]] auto branch(const ast::Exp* cond, Func* func, Block* scope, const Block* true_block,
-                const Block* false_block) -> BranchExit;
+    [[nodiscard]] auto branch(const ast::Exp* cond, Func* func, Block* scope,
+                              const Block* true_block, const Block* false_block) -> BranchExit;
 };
 
 inline auto generate(const ast::SemanticAST& info) -> Program {

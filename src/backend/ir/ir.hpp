@@ -1,6 +1,5 @@
 #pragma once
 
-#include "frontend/ast/analysis/semantic_ast.h"
 #include "op.hpp"
 #include "type.hpp"
 
@@ -15,7 +14,10 @@ namespace ir {
 using Type = adt::TypeBox;
 
 struct Block;
+struct Alloc;
 struct Func;
+struct BuiltinFunc;
+
 namespace gen {
 struct Generator;
 }
@@ -23,17 +25,17 @@ namespace vm {
 struct VirtualMachine;
 }
 
+using NameDef = std::variant<const Alloc*, const Func*, const BuiltinFunc*>;
+
 struct NamedValue {
     Type type;
-    ast::SymDefNode def;
+    NameDef def;
 
     friend bool operator==(const NamedValue& lhs, const NamedValue& rhs) {
         return lhs.def == rhs.def;
     }
 
-    SIMPLE_TO_STRING(match(
-        def, [&](const ast::FuncDef* f) { return f->name; },
-        [&](auto v) { return fmt::format("{}_{}", v->name, v->loc); }));
+    [[nodiscard]] auto toString() const -> std::string;
 };
 
 struct TempValue {
@@ -51,21 +53,24 @@ inline auto serializeArray(const Type& type, std::byte* buffer) -> std::string {
     auto size = type.as<adt::Array>().size;
     for (size_t i = 0; i < size; i++) {
         result += match(
-            elem_type.var(),
-            [&](const adt::Primitive& prim) -> std::string {
-                return match(prim, [&](auto v) {
-                    using type = typename decltype(v)::type;
-                    return fmt::format("{}", *(type*)buffer);
-                });
-            },
-            [&](const adt::Array& arr) -> std::string { return serializeArray(elem_type, buffer); },
-            [&](const auto&) -> std::string {
-                throw COMPILER_ERROR(
-                    fmt::format("Unsupported type in ConstexprValue array: {}", elem_type));
-            }) + ", ";
+                      elem_type.var(),
+                      [&](const adt::Primitive& prim) -> std::string {
+                          return match(prim, [&](auto v) {
+                              using type = typename decltype(v)::type;
+                              return fmt::format("{}", *(type*)buffer);
+                          });
+                      },
+                      [&](const adt::Array& arr) -> std::string {
+                          return serializeArray(elem_type, buffer);
+                      },
+                      [&](const auto&) -> std::string {
+                          throw COMPILER_ERROR(fmt::format(
+                              "Unsupported type in ConstexprValue array: {}", elem_type));
+                      }) +
+                  ", ";
         buffer += adt::size_of(elem_type);
     }
-    if (result.size())        result.pop_back(), result.pop_back();
+    if (result.size()) result.pop_back(), result.pop_back();
     return "{" + result + "}";
 }
 
@@ -211,26 +216,31 @@ inline auto JumpExit::toString() const -> std::string {
 }
 
 struct Alloc {
-    NamedValue var;
+    std::string name;
+    Type type;
     std::optional<ConstexprValue> init;
-    SIMPLE_TO_STRING(init ? fmt::format("let {}: {} = {};", var, var.type, init)
-                          : fmt::format("let {}: {};", var, var.type));
+    SIMPLE_TO_STRING(init ? fmt::format("let {}: {} = {};", name, type, init)
+                          : fmt::format("let {}: {};", name, type));
+    Alloc(Alloc&&) = delete;
+    Alloc(std::string name, Type type, std::optional<ConstexprValue> init = std::nullopt)
+        : name(std::move(name)), type(std::move(type)), init(std::move(init)) {}
 };
 
 struct Func {
     const Type ret_type;
     const std::string name;
-    const std::vector<NamedValue> params;
+    const std::vector<std::unique_ptr<Alloc>> params;
 
-    Func(Type ret_type, std::string name, std::vector<NamedValue> params = {})
+    Func(Type ret_type, std::string name, std::vector<std::unique_ptr<Alloc>> params = {})
         : ret_type(std::move(ret_type)), name(std::move(name)), params(std::move(params)) {
         newBlock(".entry");
     }
+    Func(Func&&) = delete;
 
     [[nodiscard]] auto toString() const {
         std::string params = "";
         for (const auto& param : this->params) {
-            params += fmt::format("{}: {}, ", param, param.type);
+            params += fmt::format("{}: {}, ", param->name, param->type);
         }
         if (!params.empty()) params.pop_back(), params.pop_back();
 
@@ -281,7 +291,7 @@ struct Func {
         return blocks_.front().get();
     }
 
-    void addLocal(Alloc alloc) {
+    void addLocal(std::unique_ptr<Alloc> alloc) {
         locals_.push_back(std::move(alloc));
     }
 
@@ -298,10 +308,8 @@ struct Func {
         return loops.back();
     }
 
-    Func(Func&&) = default;
-
 private:
-    std::vector<Alloc> locals_;
+    std::vector<std::unique_ptr<Alloc>> locals_;
     std::vector<Type> temps_;
     std::vector<std::unique_ptr<Block>> blocks_;
     struct LoopContext {
@@ -311,6 +319,15 @@ private:
     std::vector<LoopContext> loops;  // for break/continue target
     size_t temp_label_count{0};
 };
+
+struct BuiltinFunc {
+    std::string name;
+    BuiltinFunc(BuiltinFunc&&) = delete;
+};
+
+inline auto NamedValue::toString() const -> std::string {
+    return match(def, [&](const auto* alloc) { return alloc->name; });
+}
 
 struct Program {
     [[nodiscard]] auto toString() const {
@@ -326,20 +343,17 @@ struct Program {
         return str;
     }
 
-    Program(const ast::SemanticAST& ast) : ast(ast) {}
-    const ast::SemanticAST& ast;
-
-    void addFunc(Func func) {
+    void addFunc(std::unique_ptr<Func> func) {
         funcs.push_back(std::move(func));
     }
-    void addGlobal(Alloc alloc) {
+    void addGlobal(std::unique_ptr<Alloc> alloc) {
         globals.push_back(std::move(alloc));
     }
 
     [[nodiscard]] const Func& findFunc(const std::string& name) const {
         for (const auto& func : funcs) {
-            if (func.name == name) {
-                return func;
+            if (func->name == name) {
+                return *func;
             }
         }
         throw COMPILER_ERROR(fmt::format("function '{}' not found", name));
@@ -348,14 +362,14 @@ struct Program {
     friend struct vm::VirtualMachine;
 
 private:
-    std::vector<Alloc> globals;
-    std::vector<Func> funcs;
+    std::vector<std::unique_ptr<Alloc>> globals;
+    std::vector<std::unique_ptr<Func>> funcs;
 };
 
 }  // namespace ir
 
-template <> struct std::hash<ir::NamedValue> : std::hash<ast::SymDefNode> {
+template <> struct std::hash<ir::NamedValue> : std::hash<ir::NameDef> {
     auto operator()(const ir::NamedValue& v) const noexcept -> std::size_t {
-        return std::hash<ast::SymDefNode>{}(v.def);
+        return std::hash<ir::NameDef>{}(v.def);
     }
 };
