@@ -26,7 +26,7 @@ build/compiler [--ast] [--sem] [--ir] [--exec] files...
 
 ---
 
-Type System:
+IR Type System:
 
 ```rust
 enum PrimitiveType {
@@ -41,7 +41,8 @@ enum Type {
     Sum(Vec<Type>),
     Product(Vec<Type>),
     Func(Product, Box<Type>),
-    Slice(Box<Type>, Option<usize>),
+    Array(Box<Type>, usize),
+    Pointer(Box<Type>),
     Primitive(PrimitiveType),
 }
 ```
