@@ -10,6 +10,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <variant>
+#include <cstring>
 
 namespace ir::vm {
 
@@ -270,7 +271,7 @@ inline const std::unordered_map<std::string, BuiltinFunc> builtin_funcs = {
                                std::ostream& output) {
          int value;
          input >> value;
-         std::memcpy(ret.data, &value, sizeof(int));
+         memcpy(ret.data, &value, sizeof(int));
      }}},
     {"get_float", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
                                  std::ostream& output) {
@@ -282,13 +283,13 @@ inline const std::unordered_map<std::string, BuiltinFunc> builtin_funcs = {
          } else {
              value = std::stof(str);
          }
-         std::memcpy(ret.data, &value, sizeof(float));
+         memcpy(ret.data, &value, sizeof(float));
      }}},
     {"get_double", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
                                   std::ostream& output) {
          double value;
          input >> value;
-         std::memcpy(ret.data, &value, sizeof(double));
+         memcpy(ret.data, &value, sizeof(double));
      }}},
     {"print_int", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
                                  std::ostream& output) {
