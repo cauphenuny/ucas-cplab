@@ -64,7 +64,7 @@ A 是 B 的子类型，代表 A 的所有取值都可以在 B 中表示，即 A 
 生成 IR 时，维护一个 `Func* func` 用于产生新的基本块，维护一个 `Block* scope` 表示当前在这个基本块中产生指令
 
 对于 expression，生成函数 `gen` 的返回值是 `Value` \
-对于 instrument，返回值是 `Block*`，表示当前指令执行完之后，会进入哪个基本块，之后在这个基本块添加指令，若返回的是 `nullptr`，则当前指令一定会 `return`，不存在下一个执行的指令
+对于 instruction，返回值是 `Block*`，表示当前指令执行完之后，会进入哪个基本块，之后在这个基本块添加指令，若返回的是 `nullptr`，则当前指令一定会 `return`，不存在下一个执行的指令
 
 if-stmt / while-stmt / branch (为了短路) 在需要时产生新的基本块，具体见 `ir/gen/stmt.cpp`
 

@@ -97,7 +97,7 @@ auto Generator::gen(const ast::FuncDef* func) -> std::unique_ptr<Func> {
         if (!(type.ret <= adt::construct<void>())) {
             throw COMPILER_ERROR(fmt::format("control may reach end of function '{}'", func->name));
         } else {
-            end->exit = ReturnExit{};
+            end->setExit(ReturnExit{});
         }
     }
     return ir_func;

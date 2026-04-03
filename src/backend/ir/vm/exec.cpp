@@ -34,7 +34,7 @@ void VirtualMachine::execute(const BuiltinFunc& func, const std::vector<View>& a
 }
 
 auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) -> const Block* {
-    for (const auto& inst : block.insts) {
+    for (const auto& inst : block.insts()) {
         // fmt::println(stderr, "-> {}", inst);
         match(
             inst,
@@ -60,10 +60,10 @@ auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) -
             });
         perf_counter.num_insts++;
     }
-    if (!block.exit) {
+    if (!block.exit()) {
         throw COMPILER_ERROR(fmt::format("Block {} has no exit instruction", block.label));
     }
-    auto& exit = block.exit.value();
+    auto& exit = block.exit().value();
     perf_counter.num_insts++;  // count exit instruction as well
     return match(
         exit,

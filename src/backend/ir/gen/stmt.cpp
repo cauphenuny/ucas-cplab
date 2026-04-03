@@ -15,16 +15,16 @@ auto Generator::branch(const ast::Exp* cond, Func* func, Block* scope, const Blo
                     auto right_block = func->newBlock();
                     auto left_exit =
                         branch(binary_exp.left.exp.get(), func, scope, right_block, false_block);
-                    right_block->exit = branch(binary_exp.right.exp.get(), func, right_block,
-                                               true_block, false_block);
+                    right_block->setExit(branch(binary_exp.right.exp.get(), func, right_block,
+                                               true_block, false_block));
                     return left_exit;
                 }
                 case ast::BinaryOp::OR: {
                     auto right_block = func->newBlock();
                     auto left_exit =
                         branch(binary_exp.left.exp.get(), func, scope, true_block, right_block);
-                    right_block->exit = branch(binary_exp.right.exp.get(), func, right_block,
-                                               true_block, false_block);
+                    right_block->setExit(branch(binary_exp.right.exp.get(), func, right_block,
+                                               true_block, false_block));
                     return left_exit;
                 }
                 default: {
@@ -73,16 +73,16 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
                 always_return ? nullptr : func->newBlock(fmt::format("if_exit_{}", if_stmt.loc));
             if (if_stmt.else_stmt) {
                 auto false_block = func->newBlock(fmt::format("if_false_{}", if_stmt.loc));
-                scope->exit = branch(&if_stmt.cond, func, scope, true_block, false_block);
+                scope->setExit(branch(&if_stmt.cond, func, scope, true_block, false_block));
                 true_block = gen(&if_stmt.stmt, func, true_block);
-                if (true_block) true_block->exit = JumpExit{exit_block};  // not return
+                if (true_block) true_block->setExit(JumpExit{exit_block});  // not return
                 false_block = gen(&*if_stmt.else_stmt, func, false_block);
-                if (false_block) false_block->exit = JumpExit{exit_block};
+                if (false_block) false_block->setExit(JumpExit{exit_block});
                 return exit_block;
             } else {
-                scope->exit = branch(&if_stmt.cond, func, scope, true_block, exit_block);
+                scope->setExit(branch(&if_stmt.cond, func, scope, true_block, exit_block));
                 true_block = gen(&if_stmt.stmt, func, true_block);
-                if (true_block) true_block->exit = JumpExit{exit_block};  // not return
+                if (true_block) true_block->setExit(JumpExit{exit_block});  // not return
                 return exit_block;
             }
         },
@@ -91,10 +91,10 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
             auto body_block = func->newBlock(fmt::format("while_body_{}", while_stmt.loc));
             auto exit_block = func->newBlock(fmt::format("while_exit_{}", while_stmt.loc));
             func->pushLoop(cond_block, exit_block);
-            scope->exit = JumpExit{cond_block};
-            cond_block->exit = branch(&while_stmt.cond, func, cond_block, body_block, exit_block);
+            scope->setExit(JumpExit{cond_block});
+            cond_block->setExit(branch(&while_stmt.cond, func, cond_block, body_block, exit_block));
             body_block = gen(&while_stmt.stmt, func, body_block);
-            body_block->exit = JumpExit{cond_block};
+            body_block->setExit(JumpExit{cond_block});
             func->popLoop();
             return exit_block;
         },
@@ -122,16 +122,16 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
             return scope;
         },
         [&](const ast::ReturnStmt& return_stmt) -> Block* {
-            scope->exit = ReturnExit{return_stmt.exp ? gen(&*return_stmt.exp, func, scope)
-                                                     : Value{ConstexprValue{}}};
+            scope->setExit(ReturnExit{return_stmt.exp ? gen(&*return_stmt.exp, func, scope)
+                                                     : Value{ConstexprValue{}}});
             return nullptr;
         },
         [&](const ast::ContinueStmt&) -> Block* {
-            scope->exit = JumpExit{func->currentLoop().continue_target};
+            scope->setExit(JumpExit{func->currentLoop().continue_target});
             return nullptr;
         },
         [&](const ast::BreakStmt&) -> Block* {
-            scope->exit = JumpExit{func->currentLoop().break_target};
+            scope->setExit(JumpExit{func->currentLoop().break_target});
             return nullptr;
         });
 }

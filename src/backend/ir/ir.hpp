@@ -196,27 +196,35 @@ struct Block {
     [[nodiscard]] auto toString() const {
         std::string str;
         str += fmt::format(".{}:\n", label);
-        for (const auto& inst : insts) {
+        for (const auto& inst : insts_) {
             str += fmt::format("  {}\n", inst);
         }
-        str += exit ? fmt::format("  {}\n", *exit) : fmt::format("  <noexit>\n");
+        str += exit_ ? fmt::format("  {}\n", *exit_) : fmt::format("  <noexit>\n");
         return str;
     }
     void add(Inst inst) {
-        insts.push_back(std::move(inst));
+        insts_.push_back(std::move(inst));
+    }
+    void setExit(Exit exit) {
+        if (this->exit_) {
+            throw COMPILER_ERROR(fmt::format("Block {} already has an exit instruction", label));
+        }
+        this->exit_ = std::move(exit);
+    }
+    [[nodiscard]] const auto& insts() const {
+        return insts_;
+    }
+    [[nodiscard]] const auto& exit() const {
+        return exit_;
     }
 
-    friend struct gen::Generator;
-    friend struct Func;
-    friend struct vm::VirtualMachine;
-
     Block(std::string label, std::vector<Inst> insts, Exit exit)
-        : label(std::move(label)), insts(std::move(insts)), exit(std::move(exit)) {}
+        : label(std::move(label)), insts_(std::move(insts)), exit_(std::move(exit)) {}
     explicit Block(std::string label) : label(std::move(label)) {}
 
 private:
-    std::vector<Inst> insts;
-    std::optional<Exit> exit;  // construct Block first, then assign exit instrument.
+    std::vector<Inst> insts_;
+    std::optional<Exit> exit_;  // construct Block first, then assign exit instruction.
 };
 
 inline auto BranchExit::toString() const -> std::string {
