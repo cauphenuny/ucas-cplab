@@ -50,16 +50,16 @@ param: ID ':' type;
 localDecl: LET ID ':' type ( '=' constexpr)? ';';
 
 temp: '$' INT_LITERAL;
-label: '.' ID;
 var: temp | ID;
 value: var | constexpr;
+label: ID;
 
 exit:
 	RETURN value? ';'
 	| BRANCH value '?' label ':' label ';'
 	| JUMP label ';';
 
-block: label ':' inst* exit;
+block: '.' label ':' inst* exit;
 
 inst:
 	var '[' value ']' '=' value ';' // store

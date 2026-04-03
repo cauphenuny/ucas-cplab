@@ -228,13 +228,12 @@ private:
 };
 
 inline auto BranchExit::toString() const -> std::string {
-    return fmt::format("branch {} ? .{} : .{};", cond,
-                       true_target ? true_target->label : "<unknown>",
+    return fmt::format("branch {} ? {} : {};", cond, true_target ? true_target->label : "<unknown>",
                        false_target ? false_target->label : "<unknown>");
 }
 
 inline auto JumpExit::toString() const -> std::string {
-    return fmt::format("jump .{};", target ? target->label : "<unknown>");
+    return fmt::format("jump {};", target ? target->label : "<unknown>");
 }
 
 struct Alloc {
