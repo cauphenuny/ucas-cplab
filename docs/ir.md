@@ -18,7 +18,7 @@ A 是 B 的子类型，代表 A 的所有取值都可以在 B 中表示，即 A 
 
 - 其他规则：
     1. `from is ⊥`: `true`
-    2. `to is ⊤`: `false`
+    2. `to is ⊤`: `true`
     3. `{from, to} is primitive_type`: 类型相同则是子类型
     4. `to is sum_type`: `∃ type in to, from <: type`
     5. `from is sum_type`:  `∀ type in from, type <: to`
