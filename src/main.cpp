@@ -21,6 +21,21 @@ enum : uint8_t {
     RUNTIME_ERROR = 255,
 };
 
+auto usage(const char* prog_name, int ret = 0) -> std::string {
+    fmt::print(
+        R"({} [--ast] [--sem] [--ir] [--exec] [--silent] files ... [--output <output file>] [--help]
+    --ast       Print the AST of the input files
+    --sem       Print the semantic analysis result of the input files
+    --ir        Print the generated IR of the input files
+    --exec      Execute the generated IR
+    --silent    Suppress all compiler output except the return value when executing
+    --output    Write the generated IR also to the specified file
+    --help      Show this help message
+)",
+        prog_name);
+    exit(ret);
+}
+
 int main(int argc, const char* argv[]) {
     int ret = SUCCESS;
 
@@ -29,6 +44,7 @@ int main(int argc, const char* argv[]) {
     bool print_semantic = false;
     bool execute = false;
     bool silent = false;
+    FILE* output_file = nullptr;
     std::set<std::string> files;
 
     for (int i = 1; i < argc; i++) {
@@ -43,15 +59,27 @@ int main(int argc, const char* argv[]) {
             execute = true;
         } else if (arg == "--silent") {
             silent = true;
+        } else if (arg == "--output") {
+            if (i + 1 >= argc) {
+                usage(argv[0], INVALID_ARGUMENT);
+            }
+            output_file = fopen(argv[++i], "w");
+        } else if (arg == "--help") {
+            usage(argv[0]);
+        } else if (arg.length() > 1 && arg[0] == '-' && arg[1] == '-') {
+            usage(argv[0], INVALID_ARGUMENT);
         } else {
             files.insert(arg);
         }
     }
 
+    if (output_file && files.size() > 1) {
+        fmt::println(stderr, "Warning: multiple input files, but only one output file specified. Output will be overwritten.");
+    }
+
     try {
         if (files.size() == 0) {
-            throw std::runtime_error(fmt::format(
-                "usage: {} [--ast] [--sem] [--ir] [--exec] [--silent] files ...", argv[0]));
+            usage(argv[0], INVALID_ARGUMENT);
         }
 
         for (const auto& file : files) {
@@ -76,6 +104,9 @@ int main(int argc, const char* argv[]) {
                 auto program = ir::gen::generate(code);
                 if (print_ir) {
                     fmt::println("IR:\n{}", program);
+                    if (output_file) {
+                        fmt::println(output_file, "{}", program);
+                    }
                 }
 
                 if (execute) {

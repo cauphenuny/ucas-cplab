@@ -17,12 +17,22 @@ $ cmake --build build
 Usage:
 
 ```
-build/compiler [--ast] [--sem] [--ir] [--exec] files...
-# --ast: print abstract syntax tree
-# --sem: print semantic info
-# --ir: print intermediate representation code
-# --exec: execute IR in virtual machine
+build/compiler [--ast] [--sem] [--ir] [--exec] [--silent] files ... [--output <output file>] [--help]
+    --ast       Print the AST of the input files
+    --sem       Print the semantic analysis result of the input files
+    --ir        Print the generated IR of the input files
+    --exec      Execute the generated IR in virtual machine
+    --silent    Suppress all compiler output except the return value when executing
+    --output    Write the generated IR also to the specified file
+    --help      Show this help message
 ```
+
+Examples:
+
+- print IR: `build/compiler --ir source.cact`
+- output IR to file: `build/compiler --ir source.cact --output ir_code.rs`
+- simulate program: `build/compiler --exec source.cact`
+- simulate program, sliently (without any output except program IO and return code): `build/compiler --exec --silent source.cact`
 
 ---
 
