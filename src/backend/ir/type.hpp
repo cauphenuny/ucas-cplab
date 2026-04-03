@@ -65,19 +65,19 @@ struct TypeBox {
 struct Int : mixin::ToBoxed<Int, Type> {
     using type = int;
     bool immutable{false};
-    SIMPLE_TO_STRING(immutable ? "int const" : "int");
+    SIMPLE_TO_STRING(immutable ? "i32 const" : "i32");
 };
 
 struct Float : mixin::ToBoxed<Float, Type> {
     using type = float;
     bool immutable{false};
-    SIMPLE_TO_STRING(immutable ? "float const" : "float");
+    SIMPLE_TO_STRING(immutable ? "f32 const" : "f32");
 };
 
 struct Double : mixin::ToBoxed<Double, Type> {
     using type = double;
     bool immutable{false};
-    SIMPLE_TO_STRING(immutable ? "double const" : "double");
+    SIMPLE_TO_STRING(immutable ? "f64 const" : "f64");
 };
 
 struct Bool : mixin::ToBoxed<Bool, Type> {
@@ -550,21 +550,18 @@ inline bool operator<=(const Func& from, const Func& to) {
 }
 
 inline bool operator<=(const Array& from, const Array& to) {
-    if (from.immutable && !to.immutable) return false;
     if (!(from.elem <= to.elem)) return false;
     if (!to.elem.immutable() && !(to.elem <= from.elem)) return false;
-    return from.size >= to.size;
+    return from.size == to.size;
 }
 
 inline bool operator<=(const Array& from, const Pointer& to) {
-    if (from.immutable && !to.immutable) return false;
     if (!(from.elem <= to.elem)) return false;
     if (!to.elem.immutable() && !(to.elem <= from.elem)) return false;
     return true;
 }
 
 inline bool operator<=(const Pointer& from, const Pointer& to) {
-    if (from.immutable && !to.immutable) return false;
     if (!(from.elem <= to.elem)) return false;
     if (!to.elem.immutable() && !(to.elem <= from.elem)) return false;
     return true;
