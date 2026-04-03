@@ -91,6 +91,7 @@ auto Generator::gen(const ast::FuncDef* func) -> std::unique_ptr<Func> {
         params.push_back(std::move(alloc));
     }
     auto ir_func = std::make_unique<Func>(type.ret, this->name_of(func), std::move(params));
+    this->ir_defs[func] = ir_func.get();
     auto end = gen(&func->block, ir_func.get(), ir_func->entrance());
     if (end) {
         if (!(type.ret <= adt::construct<void>())) {
@@ -105,8 +106,17 @@ auto Generator::gen(const ast::FuncDef* func) -> std::unique_ptr<Func> {
 auto Generator::generate(const ast::SemanticAST& info) -> Program {
     this->info = &info;
     this->ast = &info.ast();
-    this->ir_defs = std::unordered_map<ast::SymDefNode, ir::NameDef>{};
+
     auto prog = Program();
+
+    this->ir_defs = std::unordered_map<ast::SymDefNode, ir::NameDef>{};
+    for (const auto& func : info.builtin_funcs) {
+        auto type = info.type_of(&func);
+        auto ir_func = std::make_unique<BuiltinFunc>(this->name_of(&func), type);
+        this->ir_defs[&func] = ir_func.get();
+        prog.addBuiltinFunc(std::move(ir_func));
+    }
+
     for (const auto& item : ast->items) {
         match(
             item,

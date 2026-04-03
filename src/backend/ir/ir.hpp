@@ -322,11 +322,13 @@ private:
 
 struct BuiltinFunc {
     std::string name;
+    Type type;
     BuiltinFunc(BuiltinFunc&&) = delete;
+    BuiltinFunc(std::string name, Type type) : name(std::move(name)), type(std::move(type)) {}
 };
 
 inline auto NamedValue::toString() const -> std::string {
-    return match(def, [&](const auto* alloc) { return alloc->name; });
+    return match(def, [&](const auto* def) { return def->name; });
 }
 
 struct Program {
@@ -349,6 +351,9 @@ struct Program {
     void addGlobal(std::unique_ptr<Alloc> alloc) {
         globals.push_back(std::move(alloc));
     }
+    void addBuiltinFunc(std::unique_ptr<BuiltinFunc> func) {
+        builtin_funcs.push_back(std::move(func));
+    }
 
     [[nodiscard]] const Func& findFunc(const std::string& name) const {
         for (const auto& func : funcs) {
@@ -364,6 +369,7 @@ struct Program {
 private:
     std::vector<std::unique_ptr<Alloc>> globals;
     std::vector<std::unique_ptr<Func>> funcs;
+    std::vector<std::unique_ptr<BuiltinFunc>> builtin_funcs;
 };
 
 }  // namespace ir
