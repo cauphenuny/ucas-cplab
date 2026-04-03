@@ -253,9 +253,7 @@ struct Func {
     const std::vector<std::unique_ptr<Alloc>> params;
 
     Func(Type ret_type, std::string name, std::vector<std::unique_ptr<Alloc>> params = {})
-        : ret_type(std::move(ret_type)), name(std::move(name)), params(std::move(params)) {
-        newBlock("entry");
-    }
+        : ret_type(std::move(ret_type)), name(std::move(name)), params(std::move(params)) {}
     Func(Func&&) = delete;
 
     [[nodiscard]] auto toString() const {

@@ -91,6 +91,7 @@ auto Generator::gen(const ast::FuncDef* func) -> std::unique_ptr<Func> {
         params.push_back(std::move(alloc));
     }
     auto ir_func = std::make_unique<Func>(type.ret, this->name_of(func), std::move(params));
+    ir_func->newBlock("entry");
     this->ir_defs[func] = ir_func.get();
     auto end = gen(&func->block, ir_func.get(), ir_func->entrance());
     if (end) {
