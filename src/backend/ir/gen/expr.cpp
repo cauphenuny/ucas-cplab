@@ -49,16 +49,12 @@ auto Generator::gen(const ast::Exp* exp, Func* func, Block* scope) -> Value {
         },
         [&](const ast::BinaryExp& binary_exp) -> Value { return gen(&binary_exp, func, scope); },
         [&](const ast::CallExp& call_exp) -> Value {
-            auto result = func->newTemp(this->info->type_of(&call_exp).decay());
-            auto inst = CallInst{
-                .result = result,
-                .func = gen(&call_exp.func),
-                .args = {},
-            };
+            auto args = std::vector<Value>{};
             for (auto& arg : call_exp.args) {
-                inst.args.push_back(gen(&arg, func, scope));
+                args.push_back(gen(&arg, func, scope));
             }
-            scope->add(std::move(inst));
+            auto result = func->newTemp(this->info->type_of(&call_exp).decay());
+            scope->add(CallInst{.result = result, .func = gen(&call_exp.func), .args = std::move(args)});
             return LeftValue{result};
         });
 }
