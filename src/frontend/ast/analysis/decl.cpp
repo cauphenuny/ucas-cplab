@@ -5,7 +5,7 @@ namespace ast {
 
 void SemanticAST::analysis(const CompUnit* comp_unit) {
     pushScope();  // builtin
-    for (auto& func : builtin_funcs) {
+    for (auto& func : BUILTIN_FUNCS) {
         analysis(&func, true);
     }
     pushScope();  // global

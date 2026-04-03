@@ -87,24 +87,6 @@ struct SemanticAST {
 
     FuncTable funcs;
 
-    inline static const auto builtin_funcs = [] {
-        std::vector<FuncDef> v;
-        v.emplace_back(FuncDef{.type = ast::Type::INT, .name = "get_int"});
-        v.emplace_back(FuncDef{.type = ast::Type::FLOAT, .name = "get_float"});
-        v.emplace_back(FuncDef{.type = ast::Type::DOUBLE, .name = "get_double"});
-        v.emplace_back(FuncDef{
-            .type = ast::Type::VOID, .name = "print_int", .params = {{.type = ast::Type::INT}}});
-        v.emplace_back(FuncDef{.type = ast::Type::VOID,
-                               .name = "print_float",
-                               .params = {{.type = ast::Type::FLOAT}}});
-        v.emplace_back(FuncDef{.type = ast::Type::VOID,
-                               .name = "print_double",
-                               .params = {{.type = ast::Type::DOUBLE}}});
-        v.emplace_back(FuncDef{
-            .type = ast::Type::VOID, .name = "print_bool", .params = {{.type = ast::Type::BOOL}}});
-        return v;
-    }();
-
 private:
     const std::unique_ptr<const CompUnit> tree;
 
@@ -203,5 +185,21 @@ private:
 inline auto analysis(std::unique_ptr<CompUnit> comp_unit) -> SemanticAST {
     return {std::move(comp_unit)};
 }
+
+inline const auto BUILTIN_FUNCS = [] {
+    std::vector<FuncDef> v;
+    v.emplace_back(FuncDef{.type = ast::Type::INT, .name = "get_int"});
+    v.emplace_back(FuncDef{.type = ast::Type::FLOAT, .name = "get_float"});
+    v.emplace_back(FuncDef{.type = ast::Type::DOUBLE, .name = "get_double"});
+    v.emplace_back(FuncDef{
+        .type = ast::Type::VOID, .name = "print_int", .params = {{.type = ast::Type::INT}}});
+    v.emplace_back(FuncDef{
+        .type = ast::Type::VOID, .name = "print_float", .params = {{.type = ast::Type::FLOAT}}});
+    v.emplace_back(FuncDef{
+        .type = ast::Type::VOID, .name = "print_double", .params = {{.type = ast::Type::DOUBLE}}});
+    v.emplace_back(FuncDef{
+        .type = ast::Type::VOID, .name = "print_bool", .params = {{.type = ast::Type::BOOL}}});
+    return v;
+}();
 
 }  // namespace ast

@@ -110,7 +110,7 @@ auto Generator::generate(const ast::SemanticAST& info) -> Program {
     auto prog = Program();
 
     this->ir_defs = std::unordered_map<ast::SymDefNode, ir::NameDef>{};
-    for (const auto& func : info.builtin_funcs) {
+    for (const auto& func : ast::BUILTIN_FUNCS) {
         auto type = info.type_of(&func);
         auto ir_func = std::make_unique<BuiltinFunc>(this->name_of(&func), type);
         this->ir_defs[&func] = ir_func.get();

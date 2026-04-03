@@ -17,8 +17,8 @@ void VirtualMachine::execute(const CallInst& inst, const std::vector<View>& srcs
     match(
         def, [&](const ir::Func* func) { return execute(*func, srcs, ret); },
         [&](const ir::BuiltinFunc* builtin_func) {
-            auto vm_func = builtin_funcs.find(builtin_func->name);
-            if (vm_func == builtin_funcs.end()) {
+            auto vm_func = BUILTIN_FUNCS.find(builtin_func->name);
+            if (vm_func == BUILTIN_FUNCS.end()) {
                 throw COMPILER_ERROR(
                     fmt::format("Builtin function '{}' not found", builtin_func->name));
             }

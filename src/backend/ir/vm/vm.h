@@ -266,7 +266,7 @@ struct BuiltinFunc {
         : apply(std::move(apply)) {}
 };
 
-inline const std::unordered_map<std::string, BuiltinFunc> builtin_funcs = {
+inline const std::unordered_map<std::string, BuiltinFunc> BUILTIN_FUNCS = {
     {"get_int", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
                                std::ostream& output) {
          int value;
