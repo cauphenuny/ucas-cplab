@@ -1,10 +1,10 @@
 # Note of Intermediate Representation
 
-type.hpp: 含有 immutable 属性的 ADT。
+type.hpp: 含有 `immutable` 属性的 ADT。
 
 - 支持子类型判断
 - 支持 constructable 判断
-- 支持计算类型大小，这里的大小是host而不是target机器上的，用于解释器中分配变量内存。
+- 支持计算类型大小，这里的大小是 host 而不是 target 机器上的，用于解释器中分配变量内存。
 - 支持多维数组展平 `flatten` 和数组转指针 `decay`
 
 A 是 B 的子类型，代表 A 的所有取值都可以在 B 中表示，即 A 可以安全地被赋值给 B
@@ -14,7 +14,7 @@ A 是 B 的子类型，代表 A 的所有取值都可以在 B 中表示，即 A 
 - immutable 规则：
     - `to.immutable and (not from.immutable) => false`
 
-    TODO: 把 immutable 规则去掉？因为 immutable 变量是可以从 mutable 变量赋值的，只是只能赋值一次
+    TODO: 把 immutable 规则去掉？因为 immutable 变量是可以从 mutable 变量赋值的，只是只能赋值一次，现在的 immutable 更像是编译器常量类型，而不是不可变类型
 
 - 其他规则：
     1. `from is ⊥`: `true`
@@ -34,25 +34,27 @@ A 是 B 的子类型，代表 A 的所有取值都可以在 B 中表示，即 A 
 
 ---
 
-三种值：NamedValue/TempValue/ConstexprValue
+三种值：`NamedValue`/`TempValue`/`ConstexprValue`
 
 分别对应变量，临时值和编译期常量，都带有类型信息
 
-- ConstexprValue 由于需要持有内存（不然 initializer_list 的内存由谁管理？），不能拷贝，只能移动。而这个不能拷贝的特性正好阻止了编译期常量同时作为一个指令的结果操作数和另一个指令的输入操作数。
+- `ConstexprValue` 由于需要持有内存（不然 initializer_list 的内存由谁管理？），不能拷贝，只能移动。而这个不能拷贝的特性正好阻止了编译期常量同时作为一个指令的结果操作数和另一个指令的输入操作数。
 
-- 对于多维初始化数组，为了让 VM 好写，ConstexprValue维护的是一整块连续的内存。
+- 对于多维初始化数组，为了让 VM 好写，`ConstexprValue` 维护的是一整块连续的内存。
 
-- TempValue 的编号作用域是函数，因此 VM 中可以和局部变量一起预先分配
+- `TempValue` 的编号作用域是函数，因此 VM 中可以和局部变量一起预先分配
 
-从 AST LVal 转换成 IR Value 时，继承 LVal 的 type (对于数组类型，自动 decay 成指针)
+从 AST `LVal` 转换成 IR `Value` 时，继承 `LVal` 的类型 (对于数组类型，自动 decay 成指针)
 
 ---
 
-函数由局部变量列表 `vector<Alloc>` 和 基本块列表 `vector<Block>` 构成，入口是第一个基本块 (`.entry`)。
+程序 `Program` 由全局变量列表 `vector<Alloc>` 和 函数列表 `vector<Func>` 构成，入口是名字为 `main` 的函数
+
+函数 `Func` 由局部变量列表 `vector<Alloc>` 和 基本块列表 `vector<Block>` 构成，入口是第一个基本块 (`.entry`)。
 
 `Block` 由指令列表 `vector<Inst>` 和唯一的一个出口 `Exit` 构成。
 
-- 指令有三种，分别是双地址指令、三地址指令、函数调用指令
+- 指令有三种，分别是双地址指令、三地址指令、函数调用指令。其中地址是 `Value`
 - 出口有三种，分别是 jump, branch或者return。对于跳转类的出口，使用 `const Block*` 索引目标。
 
 `Alloc` 包含一个 `NamedValue` 和可选的初始值
