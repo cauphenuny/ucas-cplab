@@ -47,6 +47,19 @@ struct TempValue {
 
 struct ConstexprValue;
 
+inline auto toString(int val) -> std::string {
+    return fmt::format("{}", val);
+}
+inline auto toString(float val) -> std::string {
+    return fmt::format("{:#g}f", val);
+}
+inline auto toString(double val) -> std::string {
+    return fmt::format("{:#g}", val);
+}
+inline auto toString(bool val) -> std::string {
+    return val ? "true" : "false";
+}
+
 inline auto serializeArray(const Type& type, std::byte* buffer) -> std::string {
     std::string result;
     auto elem_type = type.as<adt::Array>().elem;
@@ -57,7 +70,7 @@ inline auto serializeArray(const Type& type, std::byte* buffer) -> std::string {
                       [&](const adt::Primitive& prim) -> std::string {
                           return match(prim, [&](auto v) {
                               using type = typename decltype(v)::type;
-                              return fmt::format("{}", *(type*)buffer);
+                              return toString(*(type*)buffer);
                           });
                       },
                       [&](const adt::Array& arr) -> std::string {
@@ -83,7 +96,7 @@ struct ConstexprValue {
                          [&](const std::unique_ptr<std::byte[]>& vec) -> std::string {
                              return serializeArray(type, vec.get());
                          },
-                         [&](auto v) { return fmt::format("{}", v); }););
+                         [&](auto v) { return ir::toString(v); }););
 
     ConstexprValue() : type(adt::construct<void>()), val(std::monostate{}) {}
     template <typename T> ConstexprValue(T v) : type(adt::construct<T>()), val(v) {}
@@ -182,7 +195,7 @@ struct Block {
 
     [[nodiscard]] auto toString() const {
         std::string str;
-        str += fmt::format("{}:\n", label);
+        str += fmt::format(".{}:\n", label);
         for (const auto& inst : insts) {
             str += fmt::format("  {}\n", inst);
         }
@@ -207,12 +220,13 @@ private:
 };
 
 inline auto BranchExit::toString() const -> std::string {
-    return fmt::format("branch {} ? {} : {};", cond, true_target ? true_target->label : "<unknown>",
+    return fmt::format("branch {} ? .{} : .{};", cond,
+                       true_target ? true_target->label : "<unknown>",
                        false_target ? false_target->label : "<unknown>");
 }
 
 inline auto JumpExit::toString() const -> std::string {
-    return fmt::format("jump {};", target ? target->label : "<unknown>");
+    return fmt::format("jump .{};", target ? target->label : "<unknown>");
 }
 
 struct Alloc {
@@ -233,7 +247,7 @@ struct Func {
 
     Func(Type ret_type, std::string name, std::vector<std::unique_ptr<Alloc>> params = {})
         : ret_type(std::move(ret_type)), name(std::move(name)), params(std::move(params)) {
-        newBlock(".entry");
+        newBlock("entry");
     }
     Func(Func&&) = delete;
 
@@ -284,7 +298,7 @@ struct Func {
     }
 
     auto newBlock() -> Block* {
-        return newBlock(fmt::format(".L{}", temp_label_count++));
+        return newBlock(fmt::format("L{}", temp_label_count++));
     }
 
     auto entrance() -> Block* {

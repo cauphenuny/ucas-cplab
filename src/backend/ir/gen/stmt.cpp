@@ -67,12 +67,12 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
     return match(
         *stmt,
         [&](const ast::IfStmt& if_stmt) {
-            auto true_block = func->newBlock(fmt::format(".if_true_{}", if_stmt.loc));
+            auto true_block = func->newBlock(fmt::format("if_true_{}", if_stmt.loc));
             auto always_return = this->info->type_of(&if_stmt).always_return;
             auto exit_block =
-                always_return ? nullptr : func->newBlock(fmt::format(".if_exit_{}", if_stmt.loc));
+                always_return ? nullptr : func->newBlock(fmt::format("if_exit_{}", if_stmt.loc));
             if (if_stmt.else_stmt) {
-                auto false_block = func->newBlock(fmt::format(".if_false_{}", if_stmt.loc));
+                auto false_block = func->newBlock(fmt::format("if_false_{}", if_stmt.loc));
                 scope->exit = branch(&if_stmt.cond, func, scope, true_block, false_block);
                 true_block = gen(&if_stmt.stmt, func, true_block);
                 if (true_block) true_block->exit = JumpExit{exit_block};  // not return
@@ -87,9 +87,9 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
             }
         },
         [&](const ast::WhileStmt& while_stmt) {
-            auto cond_block = func->newBlock(fmt::format(".while_cond_{}", while_stmt.loc));
-            auto body_block = func->newBlock(fmt::format(".while_body_{}", while_stmt.loc));
-            auto exit_block = func->newBlock(fmt::format(".while_exit_{}", while_stmt.loc));
+            auto cond_block = func->newBlock(fmt::format("while_cond_{}", while_stmt.loc));
+            auto body_block = func->newBlock(fmt::format("while_body_{}", while_stmt.loc));
+            auto exit_block = func->newBlock(fmt::format("while_exit_{}", while_stmt.loc));
             func->pushLoop(cond_block, exit_block);
             scope->exit = JumpExit{cond_block};
             cond_block->exit = branch(&while_stmt.cond, func, cond_block, body_block, exit_block);
