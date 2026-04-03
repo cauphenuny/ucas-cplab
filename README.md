@@ -5,6 +5,7 @@ Build:
 ```
 $ cd grammar
 $ java -jar ../deps/antlr-4.13.1-complete.jar -Dlanguage=Cpp CACT.g4 -visitor -no-listener
+$ java -jar ../deps/antlr-4.13.1-complete.jar -Dlanguage=Cpp IR.g4 -visitor -no-listener
 $ cd ..
 $ cmake -Bbuild
 $ cmake --build build

@@ -103,7 +103,10 @@ int main(int argc, const char* argv[]) {
 
                 auto program = ir::gen::generate(code);
                 if (print_ir) {
-                    fmt::println("IR:\n{}", program);
+                    if (!silent) {
+                        fmt::println("Generated IR:\n");
+                    }
+                    fmt::println("{}", program);
                     if (output_file) {
                         fmt::println(output_file, "{}", program);
                     }
