@@ -87,14 +87,15 @@ int main() {
 ```
 
 ```rust
-fn foo(x_1_11: [f64; *], y_1_24: [f64; *]) -> f64:
+fn foo(x_1_11: [f64; *], y_1_24: [f64; *]) -> f64 {
 .entry:
   $0: f64 = x_1_11[0]
   $1: f64 = y_1_24[0]
   $2: f64 = $0 + $1
   return $2
+}
 
-fn main() -> i32:
+fn main() -> i32 {
   let a_6_11: [[f64; 2]; 2]
 .entry:
   a_6_11: [[f64; 2]; 2] = {{1, 2}, {0.045, 0}}
@@ -102,6 +103,7 @@ fn main() -> i32:
   $2: [f64; *] = a_6_11[1]
   $0: f64 = foo($1, $2)
   return 0
+}
 ```
 
 ---
@@ -126,7 +128,7 @@ int main() {
 ```rust
 let a_1_4: i32 = 0
 
-fn main() -> i32:
+fn main() -> i32 {
   let i_3_8: i32
   let b_4_8: i32
   let b_6_12: i32
@@ -146,4 +148,5 @@ fn main() -> i32:
 .while_exit_5_4:
   b_11_18: i32 const = 2
   return b_4_8
+}
 ```

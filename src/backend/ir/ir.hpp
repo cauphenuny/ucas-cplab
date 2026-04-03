@@ -236,9 +236,9 @@ struct Func {
 
         std::string str;
         if (ret_type == adt::construct<void>()) {
-            str += fmt::format("fn {}({}):\n", name, params);
+            str += fmt::format("fn {}({}) {{\n", name, params);
         } else {
-            str += fmt::format("fn {}({}) -> {}:\n", name, params, ret_type);
+            str += fmt::format("fn {}({}) -> {} {{\n", name, params, ret_type);
         }
         for (const auto& def : locals_) {
             str += fmt::format("  {}\n", def);
@@ -246,6 +246,7 @@ struct Func {
         for (const auto& block : blocks_) {
             str += fmt::format("{}", *block);
         }
+        str += "}\n";
         return str;
     }
 
