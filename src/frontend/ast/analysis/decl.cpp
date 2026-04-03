@@ -18,7 +18,12 @@ void SemanticAST::analysis(const CompUnit* comp_unit) {
         throw SemanticError(comp_unit->loc, "function `main` is not defined");
     }
     auto [main, _] = funcs["main"];
-    checkType(main, adt::construct<int()>());
+    auto expected_type = adt::construct<int()>();
+    if (!(types[main] == expected_type)) {
+        throw SemanticError(main->loc,
+                            fmt::format("function `main` must have type `{}`, but got `{}`",
+                                        expected_type, types[main]));
+    }
 }
 
 void SemanticAST::analysis(const Decl* decl) {
@@ -90,7 +95,8 @@ void SemanticAST::analysis(const ConstInitVal* val) {
                     throw SemanticError(
                         val.loc,
                         fmt::format(
-                            "type error: array elements have incompatible types `{}` and `{}`" DIM " (at {})" NONE,
+                            "type error: array elements have incompatible types `{}` and `{}`" DIM
+                            " (at {})" NONE,
                             elem_type, types[&val], val));
                 }
                 elem_type = adt::constructable(elem_type, types[&val]) ? types[&val] : elem_type;
