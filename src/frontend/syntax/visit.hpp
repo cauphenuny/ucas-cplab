@@ -261,9 +261,11 @@ public:
                         .right = std::make_unique<ast::Exp>(take<ast::Exp>(visit(expCtx)))};
                     result->loc = expCtx->start ? get_loc(expCtx) : loc;
                 } else {
+                    auto left = ast::PrimaryExp{std::move(lval)};
+                    left.loc = lval.loc;
                     result = ast::BinaryExp{
                         .op = ast::BinaryOp::INDEX,
-                        .left = ast::PrimaryExp{std::move(lval)}.toBoxed(),
+                        .left = std::move(left).toBoxed(),
                         .right = std::make_unique<ast::Exp>(take<ast::Exp>(visit(expCtx)))};
                     result->loc = expCtx->start ? get_loc(expCtx) : loc;
                 }
