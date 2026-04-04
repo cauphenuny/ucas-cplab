@@ -87,7 +87,7 @@ binop:
 
 type:
 	(
-		'&' '[' type ']' // pointer
+		'&' MUT? '[' type ']' // pointer
 		| '[' type ';' INT_LITERAL ']' // array
 		| INT
 		| FLOAT

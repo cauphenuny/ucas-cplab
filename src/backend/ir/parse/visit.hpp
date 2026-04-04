@@ -100,9 +100,9 @@ public:
         auto name = ctx->ID()->getText();
         auto type = take<adt::TypeBox>(visit(ctx->type()));
         auto init = take<ir::ConstexprValue>(visit(ctx->constexpr_()));
-        auto alloc = std::make_unique<ir::Alloc>(name, std::move(type),
-                                                  /*immutable=*/true, /*comptime=*/true,
-                                                  std::move(init));
+        auto alloc =
+            std::make_unique<ir::Alloc>(name, std::move(type),
+                                        /*immutable=*/true, /*comptime=*/true, std::move(init));
         if (current_func_) {
             local_symbol_map_[name] = alloc.get();
             current_func_->addLocal(std::move(alloc));
@@ -122,8 +122,8 @@ public:
             init = take<ir::ConstexprValue>(visit(ctx->constexpr_()));
         }
         auto alloc = std::make_unique<ir::Alloc>(name, std::move(type),
-                                                  /*immutable=*/!is_mutable, /*comptime=*/false,
-                                                  std::move(init));
+                                                 /*immutable=*/!is_mutable, /*comptime=*/false,
+                                                 std::move(init));
         if (current_func_) {
             local_symbol_map_[name] = alloc.get();
             current_func_->addLocal(std::move(alloc));
@@ -212,7 +212,6 @@ public:
         auto type = take<adt::TypeBox>(visit(ctx->type()));
         return wrap_ptr(std::make_unique<ir::Alloc>(name, std::move(type)));
     }
-
 
     std::any visitBlock(IRParser::BlockContext* ctx) override {
         auto label = ctx->label()->getText();
@@ -361,7 +360,11 @@ public:
             type = adt::construct<bool>();
         else if (ctx->children.size() >= 4 && ctx->children[0]->getText() == "&") {
             // pointer: '&' '[' type ']'
-            type = std::move(adt::Pointer(take<adt::TypeBox>(visit(ctx->type(0))))).toBoxed();
+            if (ctx->MUT()) {
+                type = std::move(adt::Pointer(take<adt::TypeBox>(visit(ctx->type(0))), false)).toBoxed();
+            } else {
+                type = std::move(adt::Pointer(take<adt::TypeBox>(visit(ctx->type(0))), true)).toBoxed();
+            }
         } else if (ctx->children.size() >= 5 && ctx->children[0]->getText() == "[") {
             // array: '[' type ';' INT_LITERAL ']'
             auto elem = take<adt::TypeBox>(visit(ctx->type(0)));
@@ -533,7 +536,8 @@ private:
             auto params = adt::Product();
             for (const auto& p : func.params) params.append(p->type);
             return std::make_optional<T>(
-                {adt::Func(std::move(params).toBoxed(), func.ret_type).toBoxed(), (const ir::Func*)&func});
+                {adt::Func(std::move(params).toBoxed(), func.ret_type).toBoxed(),
+                 (const ir::Func*)&func});
         } catch (...) {
             // Check builtins in our program
             for (const auto& bf : program_.getBuiltinFuncs()) {
