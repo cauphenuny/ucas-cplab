@@ -118,6 +118,9 @@ auto Generator::generate(const ast::SemanticAST& info) -> Program {
         prog.addBuiltinFunc(std::move(ir_func));
     }
 
+    this->var_name_count = std::unordered_map<std::string, size_t>{};
+    this->var_names = std::unordered_map<ast::VarDefNode, std::string>{};
+
     for (const auto& item : ast->items) {
         match(
             item,

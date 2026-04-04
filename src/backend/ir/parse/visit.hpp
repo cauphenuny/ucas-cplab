@@ -83,7 +83,8 @@ public:
         // First pass: pre-declare all functions to support mutual recursion and forward references
         for (auto* func_ctx : ctx->funcDecl()) {
             auto [name, ret_type, params] = extractFuncSignature(func_ctx);
-            program_.addFunc(std::make_unique<ir::Func>(std::move(ret_type), name, std::move(params)));
+            program_.addFunc(
+                std::make_unique<ir::Func>(std::move(ret_type), name, std::move(params)));
         }
         // Second pass: define function bodies
         for (auto* func_ctx : ctx->funcDecl()) {
@@ -242,7 +243,8 @@ public:
             auto result = resolveDef(ctx->var(0), take<adt::TypeBox>(visit(ctx->type())));
             auto func_name = ctx->ID()->getText();
             auto func_def = resolveFunc(func_name);
-            if (!func_def) throw SemanticError(get_loc(ctx), fmt::format("Function {} not found", func_name));
+            if (!func_def)
+                throw SemanticError(get_loc(ctx), fmt::format("Function {} not found", func_name));
             std::vector<ir::Value> args;
             if (ctx->argList()) {
                 args = take<std::vector<ir::Value>>(visit(ctx->argList()));
@@ -280,20 +282,20 @@ public:
                 if (op_text == "!") {
                     auto val = take<ir::Value>(visit(ctx->value(0)));
                     current_block_->add(ir::UnaryInst{.op = ir::UnaryInstOp::NOT,
-                                                       .result = std::move(result),
-                                                       .operand = std::move(val)});
+                                                      .result = std::move(result),
+                                                      .operand = std::move(val)});
                 } else if (op_text == "-") {
                     auto operand = resolveLValue(ctx->var(1));  // grammar says '-' var
                     current_block_->add(ir::UnaryInst{.op = ir::UnaryInstOp::NEG,
-                                                       .result = std::move(result),
-                                                       .operand = ir::Value(std::move(operand))});
+                                                      .result = std::move(result),
+                                                      .operand = ir::Value(std::move(operand))});
                 }
             } else {
                 // simple assign
                 auto val = take<ir::Value>(visit(ctx->value(0)));
                 current_block_->add(ir::UnaryInst{.op = ir::UnaryInstOp::MOV,
-                                                   .result = std::move(result),
-                                                   .operand = std::move(val)});
+                                                  .result = std::move(result),
+                                                  .operand = std::move(val)});
             }
         }
         return {};
@@ -475,7 +477,7 @@ private:
                                      .id = internal_id};
             }
             throw SemanticError(get_loc(ctx),
-                                 fmt::format("Temporary ${} used before definition", id));
+                                fmt::format("Temporary ${} used before definition", id));
         } else {
             auto name = ctx->ID()->getText();
             if (local_symbol_map_.count(name)) {
@@ -518,13 +520,15 @@ private:
         }
     }
 
-    auto resolveFunc(const std::string& name) -> std::optional<std::pair<adt::TypeBox, ir::NameDef>> {
+    auto resolveFunc(const std::string& name)
+        -> std::optional<std::pair<adt::TypeBox, ir::NameDef>> {
         using T = std::pair<adt::TypeBox, ir::NameDef>;
         try {
             const auto& func = program_.findFunc(name);
             auto params = adt::Product();
             for (const auto& p : func.params) params.append(p->type);
-            return std::make_optional<T>({adt::Func(params, func.ret_type).toBoxed(), (const ir::Func*)&func});
+            return std::make_optional<T>(
+                {adt::Func(params, func.ret_type).toBoxed(), (const ir::Func*)&func});
         } catch (...) {
             // Check builtins in our program
             for (const auto& bf : program_.getBuiltinFuncs()) {
@@ -555,12 +559,30 @@ private:
     }
 };
 
+class IRErrorListener : public antlr4::BaseErrorListener {
+public:
+    void syntaxError(antlr4::Recognizer* recognizer, antlr4::Token* offendingSymbol, size_t line,
+                     size_t charPositionInLine, const std::string& msg,
+                     std::exception_ptr e) override {
+        if (dynamic_cast<antlr4::Lexer*>(recognizer)) {
+            throw LexicalError(Location{(int)line, (int)charPositionInLine}, msg);
+        } else {
+            throw SyntacticError(Location{(int)line, (int)charPositionInLine}, msg);
+        }
+    }
+};
+
 auto parse(std::istream& input) -> ir::Program {
     using namespace antlr4;
     ANTLRInputStream input_stream(input);
     IRLexer lexer(&input_stream);
     CommonTokenStream tokens(&lexer);
     IRParser parser(&tokens);
+    IRErrorListener error_listener;
+    lexer.removeErrorListeners();
+    lexer.addErrorListener(&error_listener);
+    parser.removeErrorListeners();
+    parser.addErrorListener(&error_listener);
     auto tree = parser.program();
     IRConstructVisitor visitor;
     visitor.visit(tree);

@@ -4,6 +4,8 @@
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/ast/ast.hpp"
 
+#include <string>
+
 namespace ir::gen {
 
 struct Generator {
@@ -14,10 +16,18 @@ private:
     const ast::CompUnit* ast;
     std::unordered_map<ast::SymDefNode, ir::NameDef> ir_defs;
 
+    std::unordered_map<std::string, size_t> var_name_count;
+    std::unordered_map<ast::VarDefNode, std::string> var_names;
     [[nodiscard]] auto name_of(ast::SymDefNode def) -> std::string {
         return match(
             def, [&](const ast::FuncDef* func) { return func->name; },
-            [&](const auto* var) { return fmt::format("{}_{}", var->name, var->loc); });
+            [&](const auto* var) {
+                if (!var_names.count(var)) {
+                    size_t& count = var_name_count[var->name];
+                    var_names[var] = fmt::format("{}_{}", var->name, count++);
+                }
+                return var_names[var];
+            });
     }
 
     [[nodiscard]] auto gen(const ast::ConstInitVal* init, Type target_type) -> ConstexprValue;

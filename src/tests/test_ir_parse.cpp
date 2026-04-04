@@ -1,7 +1,8 @@
-#include "backend/ir/gen/irgen.h"
+#include "backend/ir/ir.hpp"
 #include "backend/ir/parse/visit.hpp"
-#include "frontend/ast/analysis/semantic_ast.h"
-#include "frontend/syntax/visit.hpp"
+#include "backend/ir/vm/vm.h"
+
+#include <cassert>
 
 int main() {
     {
@@ -33,10 +34,32 @@ fn main() -> i32 {
         auto ir_stream = std::istringstream(text);
         try {
             auto ir_code = ir::parse(ir_stream);
-            exit(1); // expect to fail
+            exit(1);  // expect to fail
         } catch (const std::exception& e) {
             fmt::println("Exception: {}", e.what());
         }
+    }
+    {
+        /// NOTE: test same name
+        auto text = R"(
+fn a_1_2() -> i32 {
+.entry:
+  $0: i32 = 1;
+  return $0;
+}
+fn main() -> i32 {
+  let a_1_2: i32 = 3;
+.entry:
+  $0: i32 = a_1_2();
+  return $0;
+}
+)";
+        auto ir_stream = std::istringstream(text);
+        auto ir_code = ir::parse(ir_stream);
+        fmt::println("Reconstructed IR: \n{}", ir_code);
+        ir::vm::VirtualMachine env(std::cin, std::cout);
+        auto ret = env.execute(std::move(ir_code));
+        assert(ret == 1);
     }
     return 0;
 }
