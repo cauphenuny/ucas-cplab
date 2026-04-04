@@ -1,3 +1,24 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:fd80dfdddb59b88370b6ffb6f699ea611d9a3cecff81020c8e2ed671d1d92fc4
-size 484
+let k_1_4: i32;
+let n_2_10: i32 const = 10;
+
+fn main() -> i32 {
+  let i_4_5: i32;
+.entry:
+  i_4_5: i32 = 0;
+  k_1_4: i32 = 1;
+  jump while_cond_6_1;
+.while_cond_6_1:
+  $0: i32 const = n_2_10 - 1;
+  $1: bool = i_4_5 <= $0;
+  branch $1 ? while_body_6_1 : while_exit_6_1;
+.while_body_6_1:
+  $2: i32 = i_4_5 + 1;
+  i_4_5: i32 = $2;
+  $3: i32 = k_1_4 + 1;
+  $4: i32 = k_1_4 + k_1_4;
+  k_1_4: i32 = $4;
+  jump while_cond_6_1;
+.while_exit_6_1:
+  $5: () = print_int(k_1_4);
+  return k_1_4;
+}

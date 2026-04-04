@@ -1,3 +1,15 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:7ef7876e4841c0d55e745b2656033eaacf7c9a3446602c149666633e27286b50
-size 271
+fn main() -> i32 {
+  let a_3_8: i32;
+  let b_3_11: i32;
+  let c_3_14: i32;
+  let d_3_17: i32;
+.entry:
+  a_3_8: i32 = 10;
+  b_3_11: i32 = 4;
+  c_3_14: i32 = 2;
+  d_3_17: i32 = 2;
+  $0: i32 = c_3_14 + a_3_8;
+  $1: i32 = b_3_11 - d_3_17;
+  $2: i32 = $0 * $1;
+  return $2;
+}

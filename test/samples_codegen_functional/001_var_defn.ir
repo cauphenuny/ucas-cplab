@@ -1,3 +1,12 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:e7f15b2e39f097bd9c637fa55ee48a25c9138fb90249b7f3bdc3e9859e54e298
-size 209
+let a_2_4: i32 = 3;
+let b_3_4: i32 = 5;
+let c_4_4: i32;
+let A_5_4: [i32; 4] = {1, -1, 0, 0};
+
+fn main() -> i32 {
+.entry:
+  $0: i32 = a_2_4 + b_3_4;
+  c_4_4: i32 = $0;
+  $1: i32 = a_2_4 + b_3_4;
+  return $1;
+}

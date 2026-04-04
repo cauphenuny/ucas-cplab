@@ -1,3 +1,6 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:e4791e1c6a22b5cece68aba640458fde76707d20857b93d84b030f665b098d21
-size 82
+fn main() -> i32 {
+  let a_3_8: i32;
+.entry:
+  a_3_8: i32 = 15;
+  return a_3_8;
+}

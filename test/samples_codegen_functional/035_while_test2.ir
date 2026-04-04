@@ -1,3 +1,63 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:9d845a842162963e647b7004296f32e378e8afd17d1879df1d0dbec17493774c
-size 1341
+fn FourWhile() -> i32 {
+  let a_2_6: i32;
+  let b_4_6: i32;
+  let c_5_6: i32;
+  let d_8_6: i32;
+.entry:
+  a_2_6: i32 = 5;
+  b_4_6: i32 = 6;
+  c_5_6: i32 = 7;
+  d_8_6: i32 = 10;
+  jump while_cond_10_2;
+.while_cond_10_2:
+  $0: bool = a_2_6 < 20;
+  branch $0 ? while_body_10_2 : while_exit_10_2;
+.while_body_10_2:
+  $1: i32 = a_2_6 + 3;
+  a_2_6: i32 = $1;
+  jump while_cond_12_4;
+.while_exit_10_2:
+  $11: i32 = b_4_6 + d_8_6;
+  $12: i32 = a_2_6 + $11;
+  $13: i32 = $12 + c_5_6;
+  return $13;
+.while_cond_12_4:
+  $2: bool = b_4_6 < 10;
+  branch $2 ? while_body_12_4 : while_exit_12_4;
+.while_body_12_4:
+  $3: i32 = b_4_6 + 1;
+  b_4_6: i32 = $3;
+  jump while_cond_14_6;
+.while_exit_12_4:
+  $10: i32 = b_4_6 - 2;
+  b_4_6: i32 = $10;
+  jump while_cond_10_2;
+.while_cond_14_6:
+  $4: bool = c_5_6 == 7;
+  branch $4 ? while_body_14_6 : while_exit_14_6;
+.while_body_14_6:
+  $5: i32 = c_5_6 - 1;
+  c_5_6: i32 = $5;
+  jump while_cond_16_8;
+.while_exit_14_6:
+  $9: i32 = c_5_6 + 1;
+  c_5_6: i32 = $9;
+  jump while_cond_12_4;
+.while_cond_16_8:
+  $6: bool = d_8_6 < 20;
+  branch $6 ? while_body_16_8 : while_exit_16_8;
+.while_body_16_8:
+  $7: i32 = d_8_6 + 3;
+  d_8_6: i32 = $7;
+  jump while_cond_16_8;
+.while_exit_16_8:
+  $8: i32 = d_8_6 - 1;
+  d_8_6: i32 = $8;
+  jump while_cond_14_6;
+}
+
+fn main() -> i32 {
+.entry:
+  $0: i32 = FourWhile();
+  return $0;
+}

@@ -1,3 +1,31 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:f288b8a82fce1c26a1554b3df8f98168317d5ceca79b45359e562c0519a6b300
-size 627
+fn fun(m_1_8: i32, n_1_14: i32) -> i32 {
+  let rem_2_5: i32;
+.entry:
+  jump while_cond_3_1;
+.while_cond_3_1:
+  $0: bool = n_1_14 > 0;
+  branch $0 ? while_body_3_1 : while_exit_3_1;
+.while_body_3_1:
+  $1: i32 = m_1_8 % n_1_14;
+  rem_2_5: i32 = $1;
+  m_1_8: i32 = n_1_14;
+  n_1_14: i32 = rem_2_5;
+  jump while_cond_3_1;
+.while_exit_3_1:
+  return m_1_8;
+}
+
+fn main() -> i32 {
+  let n_11_5: i32;
+  let m_11_7: i32;
+  let num_12_5: i32;
+.entry:
+  $0: i32 = get_int();
+  m_11_7: i32 = $0;
+  $1: i32 = get_int();
+  n_11_5: i32 = $1;
+  $2: i32 = fun(m_11_7, n_11_5);
+  num_12_5: i32 = $2;
+  $3: () = print_int(num_12_5);
+  return 0;
+}

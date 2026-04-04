@@ -1,3 +1,7 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:99b705c93e350f9c1cd8e7803ded6571fe82c143ec1755e33eecb4e44b301d84
-size 101
+let a_2_10: i32 const = 10;
+
+fn main() -> i32 {
+.entry:
+  $0: i32 const = a_2_10 / 5;
+  return $0;
+}

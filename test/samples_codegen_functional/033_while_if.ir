@@ -1,3 +1,54 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:91c4120408ad28c6a9e251b7312efc8fd701c0cdeb889ca25d5b733017fb94c4
-size 1108
+fn get_one(a_1_12: i32) -> i32 {
+.entry:
+  return 1;
+}
+
+fn deepWhileBr(a_5_16: i32, b_5_23: i32) -> i32 {
+  let c_6_6: i32;
+  let d_9_8: i32;
+  let e_14_12: i32;
+.entry:
+  $0: i32 = a_5_16 + b_5_23;
+  c_6_6: i32 = $0;
+  jump while_cond_8_2;
+.while_cond_8_2:
+  $1: bool = c_6_6 < 75;
+  branch $1 ? while_body_8_2 : while_exit_8_2;
+.while_body_8_2:
+  d_9_8: i32 = 42;
+  $2: bool = c_6_6 < 100;
+  branch $2 ? if_true_11_4 : if_exit_11_4;
+.while_exit_8_2:
+  return c_6_6;
+.if_true_11_4:
+  $3: i32 = c_6_6 + d_9_8;
+  c_6_6: i32 = $3;
+  $4: bool = c_6_6 > 99;
+  branch $4 ? if_true_13_6 : if_exit_13_6;
+.if_exit_11_4:
+  jump while_cond_8_2;
+.if_true_13_6:
+  $5: i32 = d_9_8 * 2;
+  e_14_12: i32 = $5;
+  $6: i32 = get_one(0);
+  $7: bool = $6 == 1;
+  branch $7 ? if_true_16_8 : if_exit_16_8;
+.if_exit_13_6:
+  jump if_exit_11_4;
+.if_true_16_8:
+  $8: i32 = e_14_12 * 2;
+  c_6_6: i32 = $8;
+  jump if_exit_16_8;
+.if_exit_16_8:
+  jump if_exit_13_6;
+}
+
+fn main() -> i32 {
+  let p_26_6: i32;
+.entry:
+  p_26_6: i32 = 2;
+  $0: i32 = deepWhileBr(p_26_6, p_26_6);
+  p_26_6: i32 = $0;
+  $1: () = print_int(p_26_6);
+  return 0;
+}

@@ -1,3 +1,31 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:5ec1b24b0e878be236cf0de77d92eeba2d4e1303eb658d8bc04b50aba7001415
-size 716
+let A_1_5: [[bool; 2]; 4] = {true, true, true, false, true, true, false, false};
+
+fn main() -> i32 {
+  let i_8_8: i32;
+  let j_8_11: i32;
+.entry:
+  i_8_8: i32 = 0;
+  jump while_cond_10_4;
+.while_cond_10_4:
+  $0: bool = i_8_8 < 4;
+  branch $0 ? while_body_10_4 : while_exit_10_4;
+.while_body_10_4:
+  j_8_11: i32 = 0;
+  jump while_cond_12_8;
+.while_exit_10_4:
+  return 0;
+.while_cond_12_8:
+  $1: bool = j_8_11 < 2;
+  branch $1 ? while_body_12_8 : while_exit_12_8;
+.while_body_12_8:
+  $2: &[bool] = A_1_5[i_8_8];
+  $3: bool = $2[j_8_11];
+  $4: () = print_bool($3);
+  $5: i32 = j_8_11 + 1;
+  j_8_11: i32 = $5;
+  jump while_cond_12_8;
+.while_exit_12_8:
+  $6: i32 = i_8_8 + 1;
+  i_8_8: i32 = $6;
+  jump while_cond_10_4;
+}

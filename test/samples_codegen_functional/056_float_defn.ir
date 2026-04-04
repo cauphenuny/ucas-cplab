@@ -1,3 +1,10 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:ec558d8abf555dc9010d498d9766727def71795426fca43cf0ddc5f00d91f94e
-size 211
+fn main() -> i32 {
+  let x_2_10: f32;
+  let y_5_16: f32 const;
+.entry:
+  x_2_10: f32 = 13.0000f;
+  $0: () = print_float(x_2_10);
+  y_5_16: f32 const = 2.00000e-05f;
+  $1: () = print_float(y_5_16);
+  return 0;
+}

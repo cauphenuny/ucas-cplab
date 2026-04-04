@@ -1,3 +1,6 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:0a83a1ae331ffa97954e3622d3ce112eaa77600cbfa371737e4d9e5ed9c52173
-size 96
+fn main() -> i32 {
+.entry:
+  $0: f64 = get_double();
+  $1: () = print_double($0);
+  return 0;
+}

@@ -1,3 +1,11 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:ff4cb351bdf58522139ad8e1394ba88d00c601091e51e17415107dc464976ba2
-size 234
+fn main() -> i32 {
+  let x_2_11: f64;
+  let y_5_17: f64 const;
+.entry:
+  $0: f64 const = -13.0000;
+  x_2_11: f64 = $0;
+  $1: () = print_double(x_2_11);
+  y_5_17: f64 const = 2.00000e-05;
+  $2: () = print_double(y_5_17);
+  return 0;
+}

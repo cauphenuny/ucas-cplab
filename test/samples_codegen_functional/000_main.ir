@@ -1,3 +1,4 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:ef4e244145aa469878e52282aeda6bb8d10579c64b42fdcf0d9e98927641c931
-size 41
+fn main() -> i32 {
+.entry:
+  return 3;
+}
