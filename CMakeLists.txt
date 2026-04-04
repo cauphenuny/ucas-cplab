@@ -15,16 +15,16 @@ include_directories(deps)
 
 enable_testing()
 
-# Project sources excluding tests and main.cpp
+# Project sources excluding tests and src/*.cpp (directly in src/)
 FILE(GLOB_RECURSE ALL_SOURCES CONFIGURE_DEPENDS
     "src/*.cpp"
     "grammar/*.cpp"
 )
 
-# Filter out tests and main.cpp from the core library sources
+# Filter out tests and .cpp files directly in src/ from the core library sources
 set(LIB_SOURCES ${ALL_SOURCES})
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/tests/.*\\.cpp")
-list(FILTER LIB_SOURCES EXCLUDE REGEX "src/main\\.cpp$") # Match end of string
+list(FILTER LIB_SOURCES EXCLUDE REGEX "src/[^/]*\\.cpp$") # Exclude .cpp files directly in src/ (they are executables)
 
 # ANTLR Lib
 FILE(GLOB_RECURSE ANTLR_LIB_FILES "deps/antlr4-runtime/*.cpp")
@@ -45,10 +45,7 @@ else()
     add_library(compiler_core STATIC ${CMAKE_CURRENT_BINARY_DIR}/empty_compiler_core.cpp)
 endif()
 
-# Main executable
-add_executable(compiler src/main.cpp)
 find_package(Threads REQUIRED)
-target_link_libraries(compiler compiler_core antlr Threads::Threads)
 
 # Add targets for each test in src/tests
 FILE(GLOB TEST_FILES "src/tests/*.cpp")
@@ -57,4 +54,12 @@ foreach(TEST_SOURCE ${TEST_FILES})
     add_executable(${TEST_NAME} ${TEST_SOURCE})
     target_link_libraries(${TEST_NAME} compiler_core antlr Threads::Threads)
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+endforeach()
+
+# Add targets for each .cpp file directly in src/
+FILE(GLOB SRC_EXECUTABLES "src/*.cpp")
+foreach(EXEC_SOURCE ${SRC_EXECUTABLES})
+    get_filename_component(EXEC_NAME ${EXEC_SOURCE} NAME_WE)
+    add_executable(${EXEC_NAME} ${EXEC_SOURCE})
+    target_link_libraries(${EXEC_NAME} compiler_core antlr Threads::Threads)
 endforeach()

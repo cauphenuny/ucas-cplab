@@ -22,14 +22,22 @@ build/compiler [--ast] [--sem] [--ir] [--exec] [--silent] files ... [--output <o
     --silent    Suppress all compiler output except the return value when executing
     --output    Write the generated IR also to the specified file
     --help      Show this help message
+
+
+build/interpreter [--help] [--silent] IR-file
+    --help      Show this help message
+    --print     Show reconstructed IR, without executing
+    --silent    Suppress all compiler output except the return value when executing
 ```
 
 Examples:
 
 - print IR: `build/compiler --ir source.cact`
 - output IR to file: `build/compiler --ir source.cact --output ir_code.rs`
-- simulate program: `build/compiler --exec source.cact`
-- simulate program, sliently (without any output except program IO and return code): `build/compiler --exec --silent source.cact`
+- execute source program: `build/compiler --exec source.cact`
+- execute source program, sliently (without any output except program IO and return code): `build/compiler --exec --silent source.cact`
+- execute IR program: `build/interpreter ir_code.rs`
+- execute IR program, silently: `build/interpreter ir_code.rs --silent`
 
 ---
 
