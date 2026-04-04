@@ -97,10 +97,15 @@ type:
 		| '(' type ('|' type)+ ')' // sum
 	) (CONST)?;
 
-constexpr:
+basicConstexpr:
 	'-'? INT_LITERAL
 	| '-'? FLOAT_LITERAL
 	| '-'? DOUBLE_LITERAL
 	| TRUE
 	| FALSE
-	| '{' (constexpr (',' constexpr)*)? '}';
+	;
+
+constexpr:
+	basicConstexpr
+	| '{' basicConstexpr (',' basicConstexpr)* '}' // array literal
+	;

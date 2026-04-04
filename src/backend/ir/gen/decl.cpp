@@ -45,7 +45,7 @@ auto Generator::gen(const ast::ConstInitVal* init, Type target_type) -> Constexp
 
             construct(construct, type, target_type.as<adt::Array>(), subvals, buffer.get());
 
-            return {std::move(target_type), std::move(buffer)};
+            return {target_type.flatten(), std::move(buffer)};
         });
 }
 
