@@ -55,7 +55,7 @@ void test_subtype() {
     auto a5 = construct<int[5]>();
     auto af10 = construct<float[10]>();
     assert(a10 <= a10);
-    assert(a10 <= a5); // a[10] can be used as a[5] (if we follow C/C++ or similar rules)
+    assert(!(a10 <= a5));
     assert(!(a5 <= a10));
     assert(!(a10 <= af10));
     assert(a10 <= pi);

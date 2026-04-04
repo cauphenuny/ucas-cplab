@@ -49,7 +49,6 @@ struct TypeBox {
 
     [[nodiscard]] auto toString() const -> std::string;
     [[nodiscard]] auto var() const -> const Type&;
-    [[nodiscard]] auto comptime() const -> bool;
     template <typename T> [[nodiscard]] auto is() const -> bool;
     template <typename T> [[nodiscard]] auto as() const -> const T&;
 
@@ -64,40 +63,33 @@ struct TypeBox {
 
 struct Int : mixin::ToBoxed<Int, Type> {
     using type = int;
-    bool comptime{false};
-    SIMPLE_TO_STRING(comptime ? "i32 const" : "i32");
+    SIMPLE_TO_STRING("i32");
 };
 
 struct Float : mixin::ToBoxed<Float, Type> {
     using type = float;
-    bool comptime{false};
-    SIMPLE_TO_STRING(comptime ? "f32 const" : "f32");
+    SIMPLE_TO_STRING("f32");
 };
 
 struct Double : mixin::ToBoxed<Double, Type> {
     using type = double;
-    bool comptime{false};
-    SIMPLE_TO_STRING(comptime ? "f64 const" : "f64");
+    SIMPLE_TO_STRING("f64");
 };
 
 struct Bool : mixin::ToBoxed<Bool, Type> {
     using type = bool;
-    bool comptime{false};
-    SIMPLE_TO_STRING(comptime ? "bool const" : "bool");
+    SIMPLE_TO_STRING("bool");
 };
 
 struct Bottom : mixin::ToBoxed<Bottom, Type> {
-    inline constexpr static bool comptime{true};
     SIMPLE_TO_STRING("⊥");
 };
 
 struct Top : mixin::ToBoxed<Top, Type> {
-    inline constexpr static bool comptime{true};
     SIMPLE_TO_STRING("⊤");
 };
 
 struct Product : mixin::ToBoxed<Product, Type> {
-    bool comptime{false};
     [[nodiscard]] std::string toString() const {
         switch (items_.size()) {
             case 0: return "()";
@@ -107,7 +99,7 @@ struct Product : mixin::ToBoxed<Product, Type> {
                 for (size_t i = 0; i < items_.size(); i++) {
                     result += fmt::format("{}{}", items_[i], i == items_.size() - 1 ? "" : ", ");
                 }
-                return fmt::format("({}){}", result, comptime ? " const" : "");
+                return fmt::format("({})", result);
         }
     }
     void append(TypeBox item);
@@ -121,13 +113,12 @@ private:
 };
 
 struct Sum : mixin::ToBoxed<Sum, Type> {
-    bool comptime{false};
     [[nodiscard]] std::string toString() const {
         std::string result;
         for (size_t i = 0; i < items_.size(); i++) {
             result += fmt::format("{}{}", items_[i], i == items_.size() - 1 ? "" : " | ");
         }
-        return fmt::format("({}){}", result, comptime ? " const" : "");
+        return fmt::format("({})", result);
     }
     void append(TypeBox item);
     [[nodiscard]] const auto& items() const {
@@ -168,30 +159,26 @@ private:
 };
 
 struct Func : mixin::ToBoxed<Func, Type> {
-    bool comptime{false};
     TypeBox params;
     TypeBox ret;
     Func(TypeBox params, TypeBox ret) : params(std::move(params)), ret(std::move(ret)) {}
-    SIMPLE_TO_STRING(fmt::format("{}{} -> {}{}", comptime ? "(" : "", params, ret,
-                                 comptime ? ") const" : ""))
+    SIMPLE_TO_STRING(fmt::format("{} -> {}", params, ret))
 };
 
 /// Unsized array / pointer type: &[elem]
 struct Pointer : mixin::ToBoxed<Pointer, Type> {
     TypeBox elem;
     bool readonly;
-    bool comptime{false};
     Pointer(TypeBox elem, bool readonly = false) : elem(std::move(elem)), readonly(readonly) {}
-    SIMPLE_TO_STRING(fmt::format("&{}[{}]{}", readonly ? "" : "mut", elem, comptime ? " const" : ""));
+    SIMPLE_TO_STRING(fmt::format("&{}[{}]", readonly ? "" : "mut ", elem));
 };
 
 /// Sized array type: [elem; size]
 struct Array : mixin::ToBoxed<Array, Type> {
-    bool comptime{false};
     TypeBox elem;
     size_t size;
     Array(TypeBox elem, size_t size) : elem(std::move(elem)), size(size) {}
-    SIMPLE_TO_STRING(fmt::format("[{}; {}]{}", elem, size, comptime ? " const" : ""));
+    SIMPLE_TO_STRING(fmt::format("[{}; {}]", elem, size));
     [[nodiscard]] auto flatten() const -> Array;
     [[nodiscard]] auto decay(bool readonly = false) const -> Pointer;
 };
@@ -202,21 +189,6 @@ inline std::string TypeBox::toString() const {
 
 inline const Type& TypeBox::var() const {
     return *item;
-}
-
-inline bool TypeBox::comptime() const {
-    return Match{*item}([](const auto& t) -> bool {
-        using T = std::decay_t<decltype(t)>;
-        if constexpr (std::is_same_v<T, Product> || std::is_same_v<T, Sum> ||
-                      std::is_same_v<T, Func> || std::is_same_v<T, Array> ||
-                      std::is_same_v<T, Pointer>) {
-            return t.comptime;
-        } else if constexpr (std::is_same_v<T, Primitive>) {
-            return Match{t}([](const auto& prim) -> bool { return prim.comptime; });
-        } else {
-            return true;  // Top and Bottom are always comptime
-        }
-    });
 }
 
 template <typename T> bool TypeBox::is() const {
@@ -263,9 +235,7 @@ inline auto Array::flatten() const -> Array {
 }
 
 inline auto Array::decay(bool readonly) const -> Pointer {
-    auto p = Pointer(elem, readonly);
-    p.comptime = comptime;
-    return p;
+    return Pointer(elem, readonly);
 }
 
 inline auto TypeBox::decay(bool readonly) const -> TypeBox {
@@ -367,32 +337,23 @@ template <typename... Args> struct is_tuple<std::tuple<Args...>> : std::true_typ
 template <typename T> struct is_variant : std::false_type {};
 template <typename... Args> struct is_variant<std::variant<Args...>> : std::true_type {};
 
-template <typename T> T mark_comptime(bool comptime) {
-    auto t = T{};
-    t.comptime = comptime;
-    return t;
-}
-
 template <typename T> struct construct_func;
 
 template <typename R, typename... Args> struct construct_func<R(Args...)> {
-    static TypeBox apply(bool comptime = false) {
+    static TypeBox apply() {
         auto params = Product{};
         (params.append(construct<Args>()), ...);
         auto ret = construct<R>();
-        auto func = Func(std::move(params).toBoxed(), std::move(ret));
-        func.comptime = comptime;
-        return std::move(func).toBoxed();
+        return Func(std::move(params).toBoxed(), std::move(ret)).toBoxed();
     }
 };
 
 template <typename T> struct construct_product;
 
 template <typename... Args> struct construct_product<std::tuple<Args...>> {
-    static TypeBox apply(bool comptime = false) {
+    static TypeBox apply() {
         auto params = Product{};
         (params.append(construct<Args>()), ...);
-        params.comptime = comptime;
         return std::move(params).toBoxed();
     }
 };
@@ -400,11 +361,9 @@ template <typename... Args> struct construct_product<std::tuple<Args...>> {
 template <typename T> struct construct_sum;
 
 template <typename... Args> struct construct_sum<std::variant<Args...>> {
-    static TypeBox apply(bool comptime = false) {
+    static TypeBox apply() {
         auto items = std::vector<TypeBox>{construct<Args>()...};
-        auto sum = Sum(std::move(items));
-        sum.comptime = comptime;
-        return std::move(sum).toBoxed();
+        return Sum(std::move(items)).toBoxed();
     }
 };
 
@@ -427,36 +386,29 @@ template <typename... Args> struct construct_sum<std::variant<Args...>> {
 template <typename T> TypeBox construct() {
     using Raw = std::remove_reference_t<T>;
     using U = std::remove_cv_t<Raw>;
-    constexpr bool comptime = std::is_const_v<Raw>;
 
     if constexpr (std::is_same_v<U, int>) {
-        return mark_comptime<Int>(comptime).toBoxed();
+        return Int{}.toBoxed();
     } else if constexpr (std::is_same_v<U, float>) {
-        return mark_comptime<Float>(comptime).toBoxed();
+        return Float{}.toBoxed();
     } else if constexpr (std::is_same_v<U, double>) {
-        return mark_comptime<Double>(comptime).toBoxed();
+        return Double{}.toBoxed();
     } else if constexpr (std::is_same_v<U, bool>) {
-        return mark_comptime<Bool>(comptime).toBoxed();
+        return Bool{}.toBoxed();
     } else if constexpr (std::is_same_v<U, std::any>) {
         return Top{}.toBoxed();
     } else if constexpr (std::is_pointer_v<U>) {
-        auto t = Pointer(construct<std::remove_pointer_t<Raw>>());
-        t.comptime = comptime;
-        return std::move(t).toBoxed();
+        return Pointer(construct<std::remove_pointer_t<Raw>>()).toBoxed();
     } else if constexpr (std::is_array_v<U>) {
-        auto t = Array(construct<std::remove_extent_t<Raw>>(), std::extent_v<U>);
-        t.comptime = comptime;
-        return std::move(t).toBoxed();
+        return Array(construct<std::remove_extent_t<Raw>>(), std::extent_v<U>).toBoxed();
     } else if constexpr (std::is_void_v<U>) {
-        auto t = Product{};
-        t.comptime = comptime;
-        return std::move(t).toBoxed();
+        return Product{}.toBoxed();
     } else if constexpr (std::is_function_v<U>) {
-        return construct_func<U>::apply(comptime);
+        return construct_func<U>::apply();
     } else if constexpr (is_tuple<U>::value) {
-        return construct_product<U>::apply(comptime);
+        return construct_product<U>::apply();
     } else if constexpr (is_variant<U>::value) {
-        return construct_sum<U>::apply(comptime);
+        return construct_sum<U>::apply();
     } else {
         static_assert(false_v<U>::value, "Unsupported type for ir::construct<T>");
     }
@@ -483,8 +435,8 @@ template <typename T1, typename T2> bool operator<=(const T1& from, const T2& to
 template <typename T, typename = std::enable_if_t<std::disjunction_v<
                           std::is_same<T, Int>, std::is_same<T, Float>, std::is_same<T, Bool>,
                           std::is_same<T, Double>, std::is_same<T, Top>, std::is_same<T, Bottom>>>>
-bool operator<=(const T& from, const T& to) {
-    return !to.comptime || from.comptime;  // if to is comptime, from must also be comptime
+bool operator<=(const T&, const T&) {
+    return true;  // same type is always a subtype
 }
 
 template <typename T, typename = std::enable_if_t<
@@ -543,9 +495,6 @@ inline bool operator<=(const Sum& from, const Sum& to) {  // forall T in from s.
 }
 
 inline bool operator<=(const Func& from, const Func& to) {
-    if (from.comptime && !to.comptime) {
-        return false;
-    }
     return (to.params <= from.params) &&  // contravariance
            (from.ret <= to.ret);          // covariance
 }

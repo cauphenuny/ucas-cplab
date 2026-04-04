@@ -45,7 +45,7 @@ auto Generator::gen(const ast::BlockStmt* block_stmt, Func* func, Block* scope) 
             stmt,
             [&](const ast::Decl& decl) {
                 for (auto& alloc : gen(&decl)) {
-                    if (alloc->type.comptime()) {
+                    if (alloc->comptime) {
                         func->addLocal(std::move(alloc));
                     } else {
                         auto init = std::move(alloc->init);

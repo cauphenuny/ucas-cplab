@@ -51,7 +51,9 @@ auto Generator::gen(const ast::ConstInitVal* init, Type target_type) -> Constexp
 
 auto Generator::gen(const ast::ConstDef* def) -> std::unique_ptr<Alloc> {
     auto type = this->info->type_of(def);
-    auto alloc = std::make_unique<Alloc>(this->name_of(def), type, gen(&def->val, type));
+    auto alloc = std::make_unique<Alloc>(this->name_of(def), type,
+                                         /*immutable=*/true, /*comptime=*/true,
+                                         gen(&def->val, type));
     this->ir_defs[def] = alloc.get();
     return alloc;
 }
@@ -59,6 +61,7 @@ auto Generator::gen(const ast::ConstDef* def) -> std::unique_ptr<Alloc> {
 auto Generator::gen(const ast::VarDef* def) -> std::unique_ptr<Alloc> {
     auto type = this->info->type_of(def);
     auto alloc = std::make_unique<Alloc>(this->name_of(def), type,
+                                         /*immutable=*/false, /*comptime=*/false,
                                          def->val ? std::make_optional(gen(&*def->val, type))
                                                   : std::nullopt);
     this->ir_defs[def] = alloc.get();

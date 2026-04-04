@@ -112,7 +112,7 @@ private:
     };
     std::unordered_map<StmtNode, StmtType> stmt_types;
 
-    inline const static auto VOID = adt::construct<const void>();
+    inline const static auto VOID = adt::construct<void>();
     inline const static auto NUM = adt::construct<std::variant<int, float, double>>();
     inline const static auto BOOL = adt::construct<bool>();
     inline const static auto INT = adt::construct<int>();
@@ -152,7 +152,7 @@ private:
     void analysis(const BinaryExp* binary_exp, const Type& upperbound = ANY, bool immutable = true);
     void analysis(const ExpBox* exp_box, const Type& upperbound = ANY, bool immutable = true);
 
-    auto calcType(ast::Type type, bool comptime = false) -> adt::TypeBox;
+    auto calcType(ast::Type type) -> adt::TypeBox;
     auto calcType(const FuncParam* param) -> adt::TypeBox;
     auto calcType(const FuncArgs* args) -> adt::Product;
     auto calcType(const FuncParams* params) -> adt::Product;

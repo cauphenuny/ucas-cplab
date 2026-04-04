@@ -77,8 +77,11 @@ public:
     }
 
     std::any visitProgram(IRParser::ProgramContext* ctx) override {
-        for (auto* global : ctx->globalDecl()) {
-            visit(global);
+        for (auto* cd : ctx->constDecl()) {
+            visitConstDecl(cd);
+        }
+        for (auto* ld : ctx->letDecl()) {
+            visitLetDecl(ld);
         }
         // First pass: pre-declare all functions to support mutual recursion and forward references
         for (auto* func_ctx : ctx->funcDecl()) {
@@ -93,16 +96,41 @@ public:
         return {};
     }
 
-    std::any visitGlobalDecl(IRParser::GlobalDeclContext* ctx) override {
+    std::any visitConstDecl(IRParser::ConstDeclContext* ctx) override {
         auto name = ctx->ID()->getText();
         auto type = take<adt::TypeBox>(visit(ctx->type()));
+        auto init = take<ir::ConstexprValue>(visit(ctx->constexpr_()));
+        auto alloc = std::make_unique<ir::Alloc>(name, std::move(type),
+                                                  /*immutable=*/true, /*comptime=*/true,
+                                                  std::move(init));
+        if (current_func_) {
+            local_symbol_map_[name] = alloc.get();
+            current_func_->addLocal(std::move(alloc));
+        } else {
+            symbol_map_[name] = alloc.get();
+            program_.addGlobal(std::move(alloc));
+        }
+        return {};
+    }
+
+    std::any visitLetDecl(IRParser::LetDeclContext* ctx) override {
+        auto name = ctx->ID()->getText();
+        auto type = take<adt::TypeBox>(visit(ctx->type()));
+        bool is_mutable = ctx->MUT() != nullptr;
         std::optional<ir::ConstexprValue> init;
         if (ctx->constexpr_()) {
             init = take<ir::ConstexprValue>(visit(ctx->constexpr_()));
         }
-        auto alloc = std::make_unique<ir::Alloc>(name, std::move(type), std::move(init));
-        symbol_map_[name] = alloc.get();
-        program_.addGlobal(std::move(alloc));
+        auto alloc = std::make_unique<ir::Alloc>(name, std::move(type),
+                                                  /*immutable=*/!is_mutable, /*comptime=*/false,
+                                                  std::move(init));
+        if (current_func_) {
+            local_symbol_map_[name] = alloc.get();
+            current_func_->addLocal(std::move(alloc));
+        } else {
+            symbol_map_[name] = alloc.get();
+            program_.addGlobal(std::move(alloc));
+        }
         return {};
     }
 
@@ -136,8 +164,11 @@ public:
             local_symbol_map_[param->name] = param.get();
         }
 
-        for (auto* local : ctx->localDecl()) {
-            visit(local);
+        for (auto* cd : ctx->constDecl()) {
+            visitConstDecl(cd);
+        }
+        for (auto* ld : ctx->letDecl()) {
+            visit(ld);
         }
 
         // Pre-create blocks to allow forward jumps
@@ -182,18 +213,6 @@ public:
         return wrap_ptr(std::make_unique<ir::Alloc>(name, std::move(type)));
     }
 
-    std::any visitLocalDecl(IRParser::LocalDeclContext* ctx) override {
-        auto name = ctx->ID()->getText();
-        auto type = take<adt::TypeBox>(visit(ctx->type()));
-        std::optional<ir::ConstexprValue> init;
-        if (ctx->constexpr_()) {
-            init = take<ir::ConstexprValue>(visit(ctx->constexpr_()));
-        }
-        auto alloc = std::make_unique<ir::Alloc>(name, std::move(type), std::move(init));
-        local_symbol_map_[name] = alloc.get();
-        current_func_->addLocal(std::move(alloc));
-        return {};
-    }
 
     std::any visitBlock(IRParser::BlockContext* ctx) override {
         auto label = ctx->label()->getText();
@@ -364,20 +383,6 @@ public:
             type = std::move(prod).toBoxed();
         }
 
-        if (ctx->CONST()) {
-            match(*type.item, [](auto& t) {
-                using T = std::decay_t<decltype(t)>;
-                if constexpr (std::is_same_v<T, adt::Int> || std::is_same_v<T, adt::Float> ||
-                              std::is_same_v<T, adt::Double> || std::is_same_v<T, adt::Bool> ||
-                              std::is_same_v<T, adt::Array> || std::is_same_v<T, adt::Pointer> ||
-                              std::is_same_v<T, adt::Product> || std::is_same_v<T, adt::Sum> ||
-                              std::is_same_v<T, adt::Func>) {
-                    t.comptime = true;
-                } else if constexpr (std::is_same_v<T, adt::Primitive>) {
-                    match(t, [](auto& prim) { prim.comptime = true; });
-                }
-            });
-        }
         return wrap(std::move(type));
     }
 

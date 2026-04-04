@@ -263,13 +263,26 @@ inline auto JumpExit::toString() const -> std::string {
 struct Alloc {
     std::string name;
     Type type;
+    bool immutable{false};  // can only be assigned once
+    bool comptime{false};   // value known at compile time
     std::optional<ConstexprValue> init;
-    bool immutable{false};
-    SIMPLE_TO_STRING(init ? fmt::format("const {}: {} = {};", name, type, init)
-                          : fmt::format("let {}{}: {};", immutable ? "" : "mut ", name, type));
+
+    [[nodiscard]] std::string toString() const {
+        if (comptime) {
+            return fmt::format("const {}: {} = {};", name, type, init);
+        }
+        auto keyword = immutable ? "let" : "let mut";
+        if (init) {
+            return fmt::format("{} {}: {} = {};", keyword, name, type, init);
+        }
+        return fmt::format("{} {}: {};", keyword, name, type);
+    }
+
     Alloc(Alloc&&) = delete;
-    Alloc(std::string name, Type type, std::optional<ConstexprValue> init = std::nullopt)
-        : name(std::move(name)), type(std::move(type)), init(std::move(init)) {}
+    Alloc(std::string name, Type type, bool immutable = false, bool comptime = false,
+          std::optional<ConstexprValue> init = std::nullopt)
+        : name(std::move(name)), type(std::move(type)), immutable(immutable), comptime(comptime),
+          init(std::move(init)) {}
 };
 
 struct Func {

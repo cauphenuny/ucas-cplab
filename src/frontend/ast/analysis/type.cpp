@@ -2,13 +2,13 @@
 
 namespace ast {
 
-adt::TypeBox SemanticAST::calcType(ast::Type type, bool comptime) {
+adt::TypeBox SemanticAST::calcType(ast::Type type) {
     switch (type) {
-        case ast::Type::INT: return adt::Int{.comptime = comptime}.toBoxed();
-        case ast::Type::FLOAT: return adt::Float{.comptime = comptime}.toBoxed();
-        case ast::Type::BOOL: return adt::Bool{.comptime = comptime}.toBoxed();
-        case ast::Type::DOUBLE: return adt::Double{.comptime = comptime}.toBoxed();
-        case ast::Type::VOID: return adt::construct<const void>();
+        case ast::Type::INT: return adt::construct<int>();
+        case ast::Type::FLOAT: return adt::construct<float>();
+        case ast::Type::BOOL: return adt::construct<bool>();
+        case ast::Type::DOUBLE: return adt::construct<double>();
+        case ast::Type::VOID: return adt::construct<void>();
     }
 }
 

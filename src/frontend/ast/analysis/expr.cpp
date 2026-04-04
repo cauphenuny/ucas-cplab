@@ -55,7 +55,7 @@ void SemanticAST::analysis(const CallExp* call, const Type& upperbound, bool imm
 
 void SemanticAST::analysis(const ConstExp* const_exp, const Type& upperbound, bool immutable) {
     types[const_exp] =
-        match(*const_exp, [&](auto val) { return adt::construct<const decltype(val)>(); });
+        match(*const_exp, [&](auto val) { return adt::construct<decltype(val)>(); });
 }
 
 void SemanticAST::analysis(const PrimaryExp* primary, const Type& upperbound, bool immutable) {

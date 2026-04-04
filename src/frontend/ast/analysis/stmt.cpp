@@ -51,7 +51,7 @@ void SemanticAST::analysis(const WhileStmt* while_stmt) {
 void SemanticAST::analysis(const ReturnStmt* return_stmt) {
     if (return_stmt->exp) {
         auto exp = &*return_stmt->exp;
-        analysis(exp);
+        analysis(exp, ANY, true);
         stmt_types[return_stmt] = StmtType{.ret_type = types[exp], .always_return = true};
     } else {
         stmt_types[return_stmt] = StmtType{.ret_type = VOID, .always_return = true};

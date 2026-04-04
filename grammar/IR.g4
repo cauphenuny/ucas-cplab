@@ -10,6 +10,7 @@ FLOAT: 'f32';
 DOUBLE: 'f64';
 BOOL: 'bool';
 CONST: 'const';
+MUT: 'mut';
 TRUE: 'true';
 FALSE: 'false';
 RETURN: 'return';
@@ -37,17 +38,16 @@ WS: [ \t\r\n]+ -> skip;
 
 /****** parser ******/
 
-program: (globalDecl | funcDecl)* EOF;
+program: (constDecl | letDecl | funcDecl)* EOF;
 
-globalDecl: LET ID ':' type ( '=' constexpr)? ';';
+constDecl: CONST ID ':' type '=' constexpr ';';
+letDecl: LET (MUT)? ID ':' type ('=' constexpr)? ';';
 
 funcDecl:
-	FN ID '(' paramList? ')' ('->' type)? '{' localDecl* block* '}';
+	FN ID '(' paramList? ')' ('->' type)? '{' (constDecl | letDecl)* block* '}';
 
 paramList: param (',' param)*;
 param: ID ':' type;
-
-localDecl: LET ID ':' type ( '=' constexpr)? ';';
 
 temp: '$' INT_LITERAL;
 var: temp | ID;
@@ -95,7 +95,7 @@ type:
 		| BOOL
 		| '(' (type ',')* ')' // product
 		| '(' type ('|' type)+ ')' // sum
-	) (CONST)?;
+	);
 
 basicConstexpr:
 	'-'? INT_LITERAL

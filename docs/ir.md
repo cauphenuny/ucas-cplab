@@ -1,6 +1,6 @@
 # Note of Intermediate Representation
 
-type.hpp: 含有 `immutable` 属性的 ADT。
+type.hpp: 纯结构化的 ADT（类型不含 comptime/immutable 属性，这些属性在变量绑定 `Alloc` 上）。
 
 - 支持子类型判断
 - 支持 constructable 判断
@@ -11,26 +11,29 @@ A 是 B 的子类型，代表 A 的所有取值都可以在 B 中表示，即 A 
 
 子类型规则 ( `from <: to ?` )：
 
-- immutable 规则：
-    - `to.immutable and (not from.immutable) => false`
+1. `from is ⊥`: `true`
+2. `to is ⊤`: `true`
+3. `{from, to} is primitive_type`: 类型相同则是子类型
+4. `to is sum_type`: `∃ type in to, from <: type`
+5. `from is sum_type`:  `∀ type in from, type <: to`
+6. `{from, to} is sum_type`: `∀ f in from, ∃ t in to, f <: t`
+7. `{from, to} is func_type`: `(to.params <: from.params) and (from.ret <: to.ret)` # 参数逆变，返回值协变
+8. `{from, to} is pointer_type`:
+    `if to.readonly => (from.elem <: to.elem)` # 目标是只读指针则协变
+    `else => (from.elem <: to.elem) and (to.elem <: from.elem)` # 目标不是只读则不变
+9. `{from, to} is array_type`:
+    `if to.size != from.size => false`
+    `else => (from.elem <: to.elem) and (to.elem <: from.elem)` # 数组元素不变
+10. `from is array_type, to is pointer_type`: `from.decay <: to`
 
-    TODO: 把 immutable 规则去掉？因为 immutable 变量是可以从 mutable 变量赋值的，只是只能赋值一次，现在的 immutable 更像是编译器常量类型，而不是不可变类型
+变量绑定 `Alloc` 有两个正交属性：
+- `comptime`: 值在编译期已知（决定是否可以内联初始值）
+- `immutable`: 变量只能赋值一次
 
-- 其他规则：
-    1. `from is ⊥`: `true`
-    2. `to is ⊤`: `true`
-    3. `{from, to} is primitive_type`: 类型相同则是子类型
-    4. `to is sum_type`: `∃ type in to, from <: type`
-    5. `from is sum_type`:  `∀ type in from, type <: to`
-    6. `{from, to} is sum_type`: `∀ f in from, ∃ t in to, f <: t`
-    7. `{from, to} is func_type`: `(to.params <: from.params) and (from.ret <: to.ret)` # 参数协变，返回值逆变
-    8. `{from, to} is pointer_type`:
-        `if to.elem.immutable => (from.elem <: to.elem)` # 目标元素是const的则协变
-        `else => (from.elem <: to.elem) and (to.elem <: from.elem)` # 目标元素不是 const 则不变 （因为可能通过目标指针修改原指针指向的内容）
-    9. `{from, to} is array_type`:
-        `if to.size != from.size => false`
-        `else => from.decay <: to.decay`
-    10. `from is array_type, to is pointer_type`: `from.decay <: to`
+三种声明形式：
+- `const x: type = val;` → comptime + immutable，一定有 `= constexpr`
+- `let x: type;` → immutable（运行时不可变），可选 `= constexpr`
+- `let mut x: type;` → mutable，可选 `= constexpr`
 
 ---
 
@@ -80,7 +83,7 @@ IR print:
 - 即使打印存在重名，逻辑也不会受到影响，因为代码中是通过 IR Node 而不是名字来索引变量/函数的
 
 - 临时值的格式是 `$<id>`
-- 变量定义：`let`，函数定义：`fn`，一般语句：`{result}: {type} = {expression}`
+- 变量定义：`const`/`let`/`let mut`，函数定义：`fn`，一般语句：`{result}: {type} = {expression}`
 
 示例：
 
@@ -136,27 +139,26 @@ int main() {
 ```
 
 ```rust
-let a_1_4: i32 = 0;
+const a_0: i32 = 0;
 
 fn main() -> i32 {
-  let i_3_8: i32;
-  let b_4_8: i32;
-  let b_6_12: i32;
-  let b_11_18: i32 const;
+  let mut i_0: i32;
+  let mut b_0: i32;
+  let mut b_1: i32;
+  const b_2: i32 = 2;
 .entry:
-  i_3_8: i32 = 0;
-  b_4_8: i32 = 0;
+  i_0: i32 = 0;
+  b_0: i32 = 0;
   jump while_cond_5_4;
 .while_cond_5_4:
-  $0: bool = i_3_8 < 3;
+  $0: bool = i_0 < 3;
   branch $0 ? while_body_5_4 : while_exit_5_4;
 .while_body_5_4:
-  b_6_12: i32 = 1;
-  $1: i32 = i_3_8 + b_6_12;
-  i_3_8: i32 = $1;
+  b_1: i32 = 1;
+  $1: i32 = i_0 + b_1;
+  i_0: i32 = $1;
   jump while_cond_5_4;
 .while_exit_5_4:
-  b_11_18: i32 const = 2;
-  return b_4_8;
+  return b_0;
 }
 ```

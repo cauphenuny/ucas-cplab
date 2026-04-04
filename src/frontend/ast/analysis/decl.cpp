@@ -27,14 +27,13 @@ void SemanticAST::analysis(const CompUnit* comp_unit) {
 }
 
 void SemanticAST::analysis(const Decl* decl) {
-    bool is_const = std::holds_alternative<ConstDecl>(*decl);
     match(*decl, [&](const auto& decl) {
-        auto elem_type = calcType(decl.type, is_const);
+        auto elem_type = calcType(decl.type);
         for (const auto& def : decl.defs) {
             registerVariable(&def);
             if (def.dims.size()) {
                 // array type
-                auto elem_type = calcType(decl.type, is_const);
+                auto elem_type = calcType(decl.type);
                 for (size_t i = def.dims.size(); i > 0; i--) {
                     elem_type = adt::Array(std::move(elem_type), def.dims[i - 1].value()).toBoxed();
                 }
