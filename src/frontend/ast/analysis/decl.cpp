@@ -57,7 +57,7 @@ void SemanticAST::analysis(const ConstDecl* decl) {
                                             " (at {})" NONE,
                                             types[&def], val_type, def));
         }
-        this->immutable_defs.insert(&def);
+        this->readonly_defs.insert(&def);
     }
 }
 
