@@ -9,6 +9,9 @@ void SemanticAST::analysis(const LVal* lid, const Type& upperbound, bool immutab
         if (!symdef) {
             throw SemanticError(lid->loc, fmt::format("undefined variable '{}'", lid->name));
         }
+        if (this->immutable_defs.count(*symdef) && !immutable) {
+            throw SemanticError(lid->loc, fmt::format("can not use constant '{}' as left val", lid->name));
+        }
         match(*symdef, [&](const auto& def) {
             defs[lid] = def;
             // const defs always decay to readonly pointers regardless of caller's immutable request
