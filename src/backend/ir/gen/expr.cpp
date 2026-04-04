@@ -6,7 +6,7 @@
 namespace ir::gen {
 
 auto Generator::gen(const ast::LVal* lval) -> NamedValue {
-    return {this->info->type_of(lval).decay(), this->ir_defs.at(this->info->definition_of(lval))};
+    return {this->info->type_of(lval), this->ir_defs.at(this->info->definition_of(lval))};
 }
 
 auto Generator::gen(const ast::LValExp* lval, Func* func, Block* scope) -> LeftValue {
@@ -25,7 +25,7 @@ auto Generator::gen(const ast::LValExp* lval, Func* func, Block* scope) -> LeftV
 auto Generator::gen(const ast::BinaryExp* exp, Func* func, Block* scope) -> Value {
     auto left = gen(&exp->left, func, scope);
     auto right = gen(&exp->right, func, scope);
-    auto result = func->newTemp(this->info->type_of(exp).decay());
+    auto result = func->newTemp(this->info->type_of(exp));
     scope->add(BinaryInst{convert_op(exp->op), result, std::move(left), std::move(right)});
     return LeftValue{result};
 }
@@ -43,7 +43,7 @@ auto Generator::gen(const ast::Exp* exp, Func* func, Block* scope) -> Value {
         },
         [&](const ast::UnaryExp& unary_exp) -> Value {
             auto operand = gen(&unary_exp.exp, func, scope);
-            auto result = func->newTemp(this->info->type_of(&unary_exp).decay());
+            auto result = func->newTemp(this->info->type_of(&unary_exp));
             scope->add(UnaryInst{convert_op(unary_exp.op), result, std::move(operand)});
             return LeftValue{result};
         },
@@ -53,7 +53,7 @@ auto Generator::gen(const ast::Exp* exp, Func* func, Block* scope) -> Value {
             for (auto& arg : call_exp.args) {
                 args.push_back(gen(&arg, func, scope));
             }
-            auto result = func->newTemp(this->info->type_of(&call_exp).decay());
+            auto result = func->newTemp(this->info->type_of(&call_exp));
             scope->add(CallInst{.result = result, .func = gen(&call_exp.func), .args = std::move(args)});
             return LeftValue{result};
         });

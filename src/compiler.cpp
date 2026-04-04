@@ -91,10 +91,12 @@ int main(int argc, const char* argv[]) {
             }
 
             try {
-                auto code = ast::analysis(ast::parse(stream));
+                auto ast = ast::parse(stream);
                 if (print_ast) {
-                    fmt::println("AST:\n{}\n", code.ast());
+                    fmt::println("AST:\n{}\n", ast);
                 }
+
+                auto code = ast::analysis(std::move(ast));
                 if (print_semantic) {
                     fmt::println("Semantic analysis:\n");
                     code.show();

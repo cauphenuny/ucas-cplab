@@ -264,8 +264,9 @@ struct Alloc {
     std::string name;
     Type type;
     std::optional<ConstexprValue> init;
+    bool immutable{false};
     SIMPLE_TO_STRING(init ? fmt::format("const {}: {} = {};", name, type, init)
-                          : fmt::format("let {}: {};", name, type));
+                          : fmt::format("let {}{}: {};", immutable ? "" : "mut ", name, type));
     Alloc(Alloc&&) = delete;
     Alloc(std::string name, Type type, std::optional<ConstexprValue> init = std::nullopt)
         : name(std::move(name)), type(std::move(type)), init(std::move(init)) {}

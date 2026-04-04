@@ -58,7 +58,7 @@ struct TypeBox {
     template <typename T, typename... Rest>
     static auto match(T&& box, Rest&&... rest) -> decltype(auto);
 
-    [[nodiscard]] auto decay() const -> TypeBox;
+    [[nodiscard]] auto decay(bool readonly = false) const -> TypeBox;
     [[nodiscard]] auto flatten() const -> TypeBox;
 };
 
@@ -169,9 +169,9 @@ private:
 
 struct Func : mixin::ToBoxed<Func, Type> {
     bool comptime{false};
-    Product params;
+    TypeBox params;
     TypeBox ret;
-    Func(Product params, TypeBox ret) : params(std::move(params)), ret(std::move(ret)) {}
+    Func(TypeBox params, TypeBox ret) : params(std::move(params)), ret(std::move(ret)) {}
     SIMPLE_TO_STRING(fmt::format("{}{} -> {}{}", comptime ? "(" : "", params, ret,
                                  comptime ? ") const" : ""))
 };
@@ -268,8 +268,8 @@ inline auto Array::decay(bool readonly) const -> Pointer {
     return p;
 }
 
-inline auto TypeBox::decay() const -> TypeBox {
-    return Match{*item}([&](const Array& arr) -> TypeBox { return arr.decay().toBoxed(); },
+inline auto TypeBox::decay(bool readonly) const -> TypeBox {
+    return Match{*item}([&](const Array& arr) -> TypeBox { return arr.decay(readonly).toBoxed(); },
                         [&](const auto&) { return *this; });
 }
 
@@ -380,7 +380,7 @@ template <typename R, typename... Args> struct construct_func<R(Args...)> {
         auto params = Product{};
         (params.append(construct<Args>()), ...);
         auto ret = construct<R>();
-        auto func = Func(std::move(params), std::move(ret));
+        auto func = Func(std::move(params).toBoxed(), std::move(ret));
         func.comptime = comptime;
         return std::move(func).toBoxed();
     }
@@ -557,14 +557,19 @@ inline bool operator<=(const Array& from, const Array& to) {
 }
 
 inline bool operator<=(const Array& from, const Pointer& to) {
-    if (!(from.elem <= to.elem)) return false;
-    if (!to.readonly && !(to.elem <= from.elem)) return false;
+    auto from_elem = from.elem.decay(true);  // array can decay to mutable pointer
+    auto to_elem = to.elem.decay(to.readonly);
+    if (!(from_elem <= to_elem)) return false;
+    if (!to.readonly && !(to_elem <= from_elem)) return false;
     return true;
 }
 
 inline bool operator<=(const Pointer& from, const Pointer& to) {
-    if (!(from.elem <= to.elem)) return false;
-    if (!to.readonly && !(to.elem <= from.elem)) return false;
+    auto from_elem = from.elem.decay(from.readonly);
+    auto to_elem = to.elem.decay(to.readonly);
+    if (!(from_elem <= to_elem)) return false;
+    if (from.readonly && !to.readonly) return false;
+    if (!to.readonly && !(to_elem <= from_elem)) return false;
     return true;
 }
 

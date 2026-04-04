@@ -28,7 +28,7 @@ public:
     IRConstructVisitor() {
         // Populate standard builtins to allow resolution during parsing
         auto addBuiltin = [&](const std::string& name, adt::Product params, adt::TypeBox ret) {
-            auto type = adt::Func(std::move(params), std::move(ret)).toBoxed();
+            auto type = adt::Func(std::move(params).toBoxed(), std::move(ret)).toBoxed();
             program_.addBuiltinFunc(std::make_unique<ir::BuiltinFunc>(name, std::move(type)));
         };
 
@@ -528,7 +528,7 @@ private:
             auto params = adt::Product();
             for (const auto& p : func.params) params.append(p->type);
             return std::make_optional<T>(
-                {adt::Func(params, func.ret_type).toBoxed(), (const ir::Func*)&func});
+                {adt::Func(std::move(params).toBoxed(), func.ret_type).toBoxed(), (const ir::Func*)&func});
         } catch (...) {
             // Check builtins in our program
             for (const auto& bf : program_.getBuiltinFuncs()) {

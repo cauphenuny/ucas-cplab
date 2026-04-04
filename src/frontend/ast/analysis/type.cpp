@@ -47,7 +47,7 @@ adt::Product SemanticAST::calcType(const FuncParams* params) {
 adt::Func SemanticAST::calcType(const FuncDef* func_def) {
     auto param_types = calcType(&func_def->params);
     auto ret_type = calcType(func_def->type);
-    return {std::move(param_types), std::move(ret_type)};
+    return {std::move(param_types).toBoxed(), std::move(ret_type)};
 }
 
 }  // namespace ast

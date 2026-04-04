@@ -130,7 +130,7 @@ private:
 
     void analysis(const FuncParam* param);
     void analysis(const FuncParams* params);
-    void analysis(const FuncArgs* args);
+    void analysis(const FuncArgs* args, const adt::Product& param_types);
     void analysis(const FuncDef* func_def, bool is_builtin = false);
 
     void analysis(const Stmt* stmt);

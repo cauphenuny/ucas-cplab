@@ -1,5 +1,7 @@
 #include "semantic_ast.h"
 
+#include <cassert>
+
 namespace ast {
 
 void SemanticAST::analysis(const FuncParam* param) {
@@ -14,9 +16,10 @@ void SemanticAST::analysis(const FuncParams* params) {
     types[params] = calcType(params).toBoxed();
 }
 
-void SemanticAST::analysis(const FuncArgs* args) {
-    for (const auto& arg : *args) {
-        analysis(&arg);
+void SemanticAST::analysis(const FuncArgs* args, const adt::Product& param_types) {
+    for (size_t i = 0; i < args->size(); i++) {
+        auto upperbound = param_types.items().at(i);
+        analysis(&args->at(i), upperbound, false);
     }
     types[args] = calcType(args).toBoxed();
 }
