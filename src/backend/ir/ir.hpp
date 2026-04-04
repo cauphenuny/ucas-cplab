@@ -102,6 +102,30 @@ struct ConstexprValue {
     template <typename T> ConstexprValue(T v) : type(adt::construct<T>()), val(v) {}
     ConstexprValue(Type type, std::unique_ptr<std::byte[]> vec)
         : type(std::move(type)), val(std::move(vec)) {}
+
+    ConstexprValue(const ConstexprValue& other) : type(other.type) {
+        match(other.val, 
+            [&](std::monostate) { val = std::monostate{}; },
+            [&](const std::unique_ptr<std::byte[]>& vec) {
+                if (vec) {
+                    auto size = adt::size_of(type);
+                    auto buf = std::make_unique<std::byte[]>(size);
+                    std::memcpy(buf.get(), vec.get(), size);
+                    val = std::move(buf);
+                } else {
+                    val = std::unique_ptr<std::byte[]>{};
+                }
+            },
+            [&](auto v) { val = v; });
+    }
+    ConstexprValue(ConstexprValue&&) noexcept = default;
+    ConstexprValue& operator=(const ConstexprValue& other) {
+        if (this != &other) {
+            *this = ConstexprValue(other);
+        }
+        return *this;
+    }
+    ConstexprValue& operator=(ConstexprValue&&) noexcept = default;
 };
 
 using LeftValue = std::variant<NamedValue, TempValue>;
@@ -360,7 +384,7 @@ struct Program {
         for (const auto& func : funcs) {
             str += fmt::format("{}\n", func);
         }
-        str.pop_back(), str.pop_back();  // remove last newlines
+        while (!str.empty() && str.back() == '\n') str.pop_back();  // remove last newlines
         return str;
     }
 
@@ -384,6 +408,11 @@ struct Program {
     }
 
     friend struct vm::VirtualMachine;
+    friend class IRConstructVisitor;
+
+    [[nodiscard]] const auto& getGlobals() const { return globals; }
+    [[nodiscard]] const auto& getFuncs() const { return funcs; }
+    [[nodiscard]] const auto& getBuiltinFuncs() const { return builtin_funcs; }
 
 private:
     std::vector<std::unique_ptr<Alloc>> globals;
