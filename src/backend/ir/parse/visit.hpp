@@ -101,8 +101,7 @@ public:
         auto type = take<adt::TypeBox>(visit(ctx->type()));
         auto init = take<ir::ConstexprValue>(visit(ctx->constexpr_()));
         auto alloc =
-            std::make_unique<ir::Alloc>(name, std::move(type),
-                                        /*immutable=*/true, /*comptime=*/true, std::move(init));
+            std::make_unique<ir::Alloc>(name, std::move(type), /*comptime=*/true, std::move(init));
         if (current_func_) {
             local_symbol_map_[name] = alloc.get();
             current_func_->addLocal(std::move(alloc));
@@ -116,14 +115,12 @@ public:
     std::any visitLetDecl(IRParser::LetDeclContext* ctx) override {
         auto name = ctx->ID()->getText();
         auto type = take<adt::TypeBox>(visit(ctx->type()));
-        bool is_mutable = ctx->MUT() != nullptr;
         std::optional<ir::ConstexprValue> init;
         if (ctx->constexpr_()) {
             init = take<ir::ConstexprValue>(visit(ctx->constexpr_()));
         }
-        auto alloc = std::make_unique<ir::Alloc>(name, std::move(type),
-                                                 /*immutable=*/!is_mutable, /*comptime=*/false,
-                                                 std::move(init));
+        auto alloc =
+            std::make_unique<ir::Alloc>(name, std::move(type), /*comptime=*/false, std::move(init));
         if (current_func_) {
             local_symbol_map_[name] = alloc.get();
             current_func_->addLocal(std::move(alloc));
@@ -361,9 +358,11 @@ public:
         else if (ctx->children.size() >= 4 && ctx->children[0]->getText() == "&") {
             // pointer: '&' '[' type ']'
             if (ctx->MUT()) {
-                type = std::move(adt::Pointer(take<adt::TypeBox>(visit(ctx->type(0))), false)).toBoxed();
+                type = std::move(adt::Pointer(take<adt::TypeBox>(visit(ctx->type(0))), false))
+                           .toBoxed();
             } else {
-                type = std::move(adt::Pointer(take<adt::TypeBox>(visit(ctx->type(0))), true)).toBoxed();
+                type = std::move(adt::Pointer(take<adt::TypeBox>(visit(ctx->type(0))), true))
+                           .toBoxed();
             }
         } else if (ctx->children.size() >= 5 && ctx->children[0]->getText() == "[") {
             // array: '[' type ';' INT_LITERAL ']'

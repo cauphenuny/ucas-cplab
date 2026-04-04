@@ -260,18 +260,15 @@ inline auto JumpExit::toString() const -> std::string {
     return fmt::format("jump {};", target ? target->label : "<unknown>");
 }
 
+// NOTE: non-comptime Alloc is always mutable, for immutable value, use TempValue
 struct Alloc {
     std::string name;
     Type type;
-    bool immutable{false};  // can only be assigned once
     bool comptime{false};   // value known at compile time
     std::optional<ConstexprValue> init;
 
     [[nodiscard]] std::string toString() const {
-        if (comptime) {
-            return fmt::format("const {}: {} = {};", name, type, init);
-        }
-        auto keyword = immutable ? "let" : "let mut";
+        auto keyword = comptime ? "const" : "let";
         if (init) {
             return fmt::format("{} {}: {} = {};", keyword, name, type, init);
         }
@@ -279,9 +276,9 @@ struct Alloc {
     }
 
     Alloc(Alloc&&) = delete;
-    Alloc(std::string name, Type type, bool immutable = false, bool comptime = false,
+    Alloc(std::string name, Type type, bool comptime = false,
           std::optional<ConstexprValue> init = std::nullopt)
-        : name(std::move(name)), type(std::move(type)), immutable(immutable), comptime(comptime),
+        : name(std::move(name)), type(std::move(type)), comptime(comptime),
           init(std::move(init)) {}
 };
 

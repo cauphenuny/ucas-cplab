@@ -41,7 +41,7 @@ WS: [ \t\r\n]+ -> skip;
 program: (constDecl | letDecl | funcDecl)* EOF;
 
 constDecl: CONST ID ':' type '=' constexpr ';';
-letDecl: LET (MUT)? ID ':' type ('=' constexpr)? ';';
+letDecl: LET ID ':' type ('=' constexpr)? ';';
 
 funcDecl:
 	FN ID '(' paramList? ')' ('->' type)? '{' (constDecl | letDecl)* block* '}';

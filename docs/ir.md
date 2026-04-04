@@ -1,6 +1,6 @@
 # Note of Intermediate Representation
 
-type.hpp: 纯结构化的 ADT（类型不含 comptime/immutable 属性，这些属性在变量绑定 `Alloc` 上）。
+type.hpp: 纯结构化的 ADT（类型不含 comptime 属性，属性在变量绑定 `Alloc` 上）。
 
 - 支持子类型判断
 - 支持 constructable 判断
@@ -26,14 +26,16 @@ A 是 B 的子类型，代表 A 的所有取值都可以在 B 中表示，即 A 
     `else => (from.elem <: to.elem) and (to.elem <: from.elem)` # 数组元素不变
 10. `from is array_type, to is pointer_type`: `from.decay <: to`
 
-变量绑定 `Alloc` 有两个正交属性：
-- `comptime`: 值在编译期已知（决定是否可以内联初始值）
-- `immutable`: 变量只能赋值一次
+---
 
-三种声明形式：
+变量绑定 `Alloc` 有一个属性：
+- `comptime`: 值在编译期已知
+
+两种声明形式：
 - `const x: type = val;` → comptime + immutable，一定有 `= constexpr`
-- `let x: type;` → immutable（运行时不可变），可选 `= constexpr`
-- `let mut x: type;` → mutable，可选 `= constexpr`
+- `let x: type;` → non-comptime + mutable，可选 `= constexpr`
+
+对于 non-comptime + immutable 的变量，可以用 TempValue 表示，不分配变量名字
 
 ---
 
@@ -62,7 +64,7 @@ A 是 B 的子类型，代表 A 的所有取值都可以在 B 中表示，即 A 
 - 指令有三种，分别是双地址指令、三地址指令、函数调用指令。其中地址是 `Value`
 - 出口有三种，分别是 jump, branch或者return。对于跳转类的出口，使用 `const Block*` 索引目标。
 
-`Alloc` 包含一个 `NamedValue` 和可选的初始值
+`Alloc` 包含一个名字、类型、属性和可选的初始值
 
 - 尽管数组可能是多维的，IR 中保证只存在扁平的初始化数组，e.g. `let a: [[int; 2]; 3] = {0, 1, 2, 3, 4, 5}`
 
@@ -142,9 +144,9 @@ int main() {
 const a_0: i32 = 0;
 
 fn main() -> i32 {
-  let mut i_0: i32;
-  let mut b_0: i32;
-  let mut b_1: i32;
+  let i_0: i32;
+  let b_0: i32;
+  let b_1: i32;
   const b_2: i32 = 2;
 .entry:
   i_0: i32 = 0;
