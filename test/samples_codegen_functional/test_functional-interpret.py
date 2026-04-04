@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Usage: $0 /path/to/compiler
+Usage: $0 /path/to/compiler [--ir]
 
-Finds pairs of `*.cact` and `*.out` files in the current directory,
-runs the compiler with `--exec --silent`, captures stdout, and compares
+Finds pairs of `*.cact` (or `*.ir` if --ir is specified) and `*.out` files in the current directory,
+runs the compiler (or interpreter) with appropriate flags, captures stdout, and compares
 it to the corresponding `.out` file after removing the first line of
 the `.out` file.
 
@@ -11,14 +11,18 @@ Exits with non-zero code if any mismatch occurs.
 """
 import sys
 import subprocess
+import argparse
 from pathlib import Path
 import difflib
 
 
-def compare_outputs(cact_path: Path, out_path: Path, compiler: str) -> int:
-    # run compiler
-    cmd = [compiler, str(cact_path), "--exec", "--silent"]
-    in_path = cact_path.with_suffix('.in')
+def compare_outputs(source_path: Path, out_path: Path, executable: str, is_ir: bool) -> int:
+    # run executable
+    if is_ir:
+        cmd = [executable, str(source_path), "--silent"]
+    else:
+        cmd = [executable, str(source_path), "--exec", "--silent"]
+    in_path = source_path.with_suffix('.in')
     if in_path.exists():
         with in_path.open('r') as infile:
             proc = subprocess.run(cmd, stdin=infile, stdout=subprocess.PIPE,
@@ -34,34 +38,38 @@ def compare_outputs(cact_path: Path, out_path: Path, compiler: str) -> int:
     expected = expected[1:]
 
     if actual == expected:
-        print(f"Passed: {cact_path}")
+        print("Passed: ", source_path)
         return 0
 
     # print unified diff
     diff = difflib.unified_diff(expected, actual, fromfile=str(
-        out_path) + " (expected)", tofile=str(cact_path) + " (actual)", lineterm="")
-    print("Mismatch for:", cact_path)
+        out_path) + " (expected)", tofile=str(source_path) + " (actual)", lineterm="")
+    print("Mismatch for:", source_path)
     for line in diff:
         print(line)
     return 2
 
 
-def main(argv):
-    if len(argv) != 2:
-        print("Usage: run_and_compare.py /path/to/compiler")
-        return 1
+def main():
+    parser = argparse.ArgumentParser(description="Test functional interpretation")
+    parser.add_argument("executable", help="Path to compiler or interpreter")
+    parser.add_argument("--ir", action="store_true", help="Test IR files instead of CACT files")
+    args = parser.parse_args()
 
-    compiler = argv[1]
     cwd = Path('.')
     status = 0
 
-    # find all .cact files and match .out
-    for cact in sorted(cwd.glob('*.cact')):
-        out = cact.with_suffix('.out')
+    if args.ir:
+        files = sorted(cwd.glob('*.ir'))
+    else:
+        files = sorted(cwd.glob('*.cact'))
+
+    for source in files:
+        out = source.with_suffix('.out')
         if not out.exists():
-            print(f"Skipping {cact}: no corresponding {out.name}")
+            print(f"Skipping {source}: no corresponding {out.name}")
             continue
-        rc = compare_outputs(cact, out, compiler)
+        rc = compare_outputs(source, out, args.executable, args.ir)
         if rc != 0:
             status = rc
 
@@ -69,4 +77,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    raise SystemExit(main(sys.argv))
+    raise SystemExit(main())

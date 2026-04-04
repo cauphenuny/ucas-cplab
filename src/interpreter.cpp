@@ -16,7 +16,7 @@ enum : uint8_t {
 
 auto usage(const char* prog_name, int ret = 0) -> std::string {
     fmt::print(
-        R"({} [--help] [--silent] IR-file
+        R"({} [--help] [--silent] [--print] IR_file
     --help      Show this help message
     --print     Show reconstructed IR, without executing
     --silent    Suppress all compiler output except the return value when executing

@@ -24,7 +24,7 @@ build/compiler [--ast] [--sem] [--ir] [--exec] [--silent] files ... [--output <o
     --help      Show this help message
 
 
-build/interpreter [--help] [--silent] IR-file
+build/interpreter [--help] [--silent] [--print] IR_file
     --help      Show this help message
     --print     Show reconstructed IR, without executing
     --silent    Suppress all compiler output except the return value when executing
