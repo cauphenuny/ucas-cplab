@@ -12,8 +12,8 @@ fn factorial(n_0: i32) -> i32 {
 }
 
 fn main() -> i32 {
-  let mut n_1: i32;
-  let mut result_0: i32;
+  let n_1: i32;
+  let result_0: i32;
 .entry:
   $0: i32 = get_int();
   n_1: i32 = $0;

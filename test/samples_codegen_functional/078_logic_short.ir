@@ -1,5 +1,5 @@
-let mut gx_0: i32 = 6;
-let mut dar_0: [f64; 3] = {1.20000, 1.10000, 1.00000};
+let gx_0: i32 = 6;
+let dar_0: [f64; 3] = {1.20000, 1.10000, 1.00000};
 
 fn sfx(a_0: i32) -> i32 {
 .entry:
@@ -9,8 +9,8 @@ fn sfx(a_0: i32) -> i32 {
 }
 
 fn main() -> i32 {
-  let mut r_0: i32;
-  let mut i_0: i32;
+  let r_0: i32;
+  let i_0: i32;
 .entry:
   r_0: i32 = 0;
   i_0: i32 = -95306;

@@ -1,8 +1,8 @@
-let mut k_0: i32;
+let k_0: i32;
 const n_0: i32 = 10;
 
 fn main() -> i32 {
-  let mut i_0: i32;
+  let i_0: i32;
 .entry:
   i_0: i32 = 0;
   k_0: i32 = 1;

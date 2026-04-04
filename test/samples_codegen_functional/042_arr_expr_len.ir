@@ -1,9 +1,9 @@
 const N_0: i32 = -1;
-let mut arr_0: [i32; 6] = {1, 2, 33, 4, 5, 6};
+let arr_0: [i32; 6] = {1, 2, 33, 4, 5, 6};
 
 fn main() -> i32 {
-  let mut i_0: i32;
-  let mut sum_0: i32;
+  let i_0: i32;
+  let sum_0: i32;
 .entry:
   i_0: i32 = 0;
   sum_0: i32 = 0;

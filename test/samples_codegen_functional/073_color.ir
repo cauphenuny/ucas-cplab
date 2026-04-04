@@ -1,8 +1,8 @@
 const maxn_0: i32 = 18;
 const mod_0: i32 = 1000000007;
-let mut dp_0: [[[[[[i32; 7]; 18]; 18]; 18]; 18]; 18];
-let mut list_0: [i32; 200];
-let mut cns_0: [i32; 20];
+let dp_0: [[[[[[i32; 7]; 18]; 18]; 18]; 18]; 18];
+let list_0: [i32; 200];
+let cns_0: [i32; 20];
 
 fn equal(a_0: i32, b_0: i32) -> i32 {
 .entry:
@@ -15,7 +15,7 @@ fn equal(a_0: i32, b_0: i32) -> i32 {
 }
 
 fn dfs(a_1: i32, b_1: i32, c_0: i32, d_0: i32, e_0: i32, last_0: i32) -> i32 {
-  let mut ans_0: i32;
+  let ans_0: i32;
 .entry:
   $0: &mut[[[[[i32; 7]; 18]; 18]; 18]] = dp_0[a_1];
   $1: &mut[[[[i32; 7]; 18]; 18]] = $0[b_1];
@@ -129,14 +129,14 @@ fn dfs(a_1: i32, b_1: i32, c_0: i32, d_0: i32, e_0: i32, last_0: i32) -> i32 {
 }
 
 fn main() -> i32 {
-  let mut n_0: i32;
-  let mut i_0: i32;
-  let mut j_0: i32;
-  let mut k_0: i32;
-  let mut l_0: i32;
-  let mut m_0: i32;
-  let mut h_0: i32;
-  let mut ans_1: i32;
+  let n_0: i32;
+  let i_0: i32;
+  let j_0: i32;
+  let k_0: i32;
+  let l_0: i32;
+  let m_0: i32;
+  let h_0: i32;
+  let ans_1: i32;
 .entry:
   $0: i32 = get_int();
   n_0: i32 = $0;

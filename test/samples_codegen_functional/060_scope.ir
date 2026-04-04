@@ -1,8 +1,8 @@
-let mut a_0: i32 = 7;
+let a_0: i32 = 7;
 
 fn func() -> i32 {
-  let mut b_0: i32;
-  let mut a_1: i32;
+  let b_0: i32;
+  let a_1: i32;
 .entry:
   b_0: i32 = a_0;
   a_1: i32 = 1;
@@ -17,8 +17,8 @@ fn func() -> i32 {
 }
 
 fn main() -> i32 {
-  let mut result_0: i32;
-  let mut i_0: i32;
+  let result_0: i32;
+  let i_0: i32;
 .entry:
   result_0: i32 = 0;
   i_0: i32 = 0;

@@ -1,6 +1,6 @@
 fn main() -> i32 {
-  let mut a_0: i32;
-  let mut b_0: i32;
+  let a_0: i32;
+  let b_0: i32;
 .entry:
   a_0: i32 = 10;
   b_0: i32 = 2;

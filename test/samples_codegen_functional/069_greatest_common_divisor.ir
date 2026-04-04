@@ -1,5 +1,5 @@
 fn fun(m_0: i32, n_0: i32) -> i32 {
-  let mut rem_0: i32;
+  let rem_0: i32;
 .entry:
   jump while_cond_3_1;
 .while_cond_3_1:
@@ -16,9 +16,9 @@ fn fun(m_0: i32, n_0: i32) -> i32 {
 }
 
 fn main() -> i32 {
-  let mut n_1: i32;
-  let mut m_1: i32;
-  let mut num_0: i32;
+  let n_1: i32;
+  let m_1: i32;
+  let num_0: i32;
 .entry:
   $0: i32 = get_int();
   m_1: i32 = $0;

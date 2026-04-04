@@ -4,7 +4,7 @@ fn defn() -> i32 {
 }
 
 fn main() -> i32 {
-  let mut a_0: i32;
+  let a_0: i32;
 .entry:
   $0: i32 = defn();
   a_0: i32 = $0;

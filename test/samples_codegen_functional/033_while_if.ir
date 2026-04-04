@@ -4,9 +4,9 @@ fn get_one(a_0: i32) -> i32 {
 }
 
 fn deepWhileBr(a_1: i32, b_0: i32) -> i32 {
-  let mut c_0: i32;
-  let mut d_0: i32;
-  let mut e_0: i32;
+  let c_0: i32;
+  let d_0: i32;
+  let e_0: i32;
 .entry:
   $0: i32 = a_1 + b_0;
   c_0: i32 = $0;
@@ -44,7 +44,7 @@ fn deepWhileBr(a_1: i32, b_0: i32) -> i32 {
 }
 
 fn main() -> i32 {
-  let mut p_0: i32;
+  let p_0: i32;
 .entry:
   p_0: i32 = 2;
   $0: i32 = deepWhileBr(p_0, p_0);

@@ -1,5 +1,5 @@
 fn main() -> i32 {
-  let mut x_0: f32;
+  let x_0: f32;
   const y_0: f32 = 2.00000e-05f;
 .entry:
   x_0: f32 = 13.0000f;

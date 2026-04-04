@@ -1,7 +1,7 @@
-let mut a_0: i32 = 3;
-let mut b_0: i32 = 5;
-let mut c_0: i32;
-let mut A_0: [i32; 4] = {1, -1, 0, 0};
+let a_0: i32 = 3;
+let b_0: i32 = 5;
+let c_0: i32;
+let A_0: [i32; 4] = {1, -1, 0, 0};
 
 fn main() -> i32 {
 .entry:

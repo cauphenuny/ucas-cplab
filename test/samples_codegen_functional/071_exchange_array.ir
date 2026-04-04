@@ -1,9 +1,9 @@
 fn main() -> i32 {
-  let mut a_0: [[i32; 5]; 5];
-  let mut m_0: i32;
-  let mut n_0: i32;
-  let mut i_0: i32;
-  let mut j_0: i32;
+  let a_0: [[i32; 5]; 5];
+  let m_0: i32;
+  let n_0: i32;
+  let i_0: i32;
+  let j_0: i32;
 .entry:
   a_0: [[i32; 5]; 5] = {1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5};
   m_0: i32 = 2;
