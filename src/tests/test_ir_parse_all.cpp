@@ -9,6 +9,7 @@ int main() {
     auto path = "test/samples_codegen_functional";
     for (const auto& file : std::filesystem::directory_iterator(path)) {
         if (file.path().extension() != ".cact") continue;
+        fmt::println("Testing file: {}\n", file.path().string());
         auto fstream = std::fstream(file.path());
         auto text =
             std::string(std::istreambuf_iterator<char>(fstream), std::istreambuf_iterator<char>());
@@ -24,6 +25,7 @@ int main() {
             fmt::println("Reconstructed IR: \n{}\n", ir_code);
         } catch (const std::exception& e) {
             fmt::println("Exception: {}\n", e.what());
+            exit(1);
         }
     }
     return 0;
