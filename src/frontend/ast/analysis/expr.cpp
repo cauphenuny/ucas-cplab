@@ -11,7 +11,9 @@ void SemanticAST::analysis(const LVal* lid, const Type& upperbound, bool immutab
         }
         match(*symdef, [&](const auto& def) {
             defs[lid] = def;
-            types[lid] = types[def].decay(immutable);
+            // const defs always decay to readonly pointers regardless of caller's immutable request
+            bool is_immutable = immutable || immutable_defs.count(def);
+            types[lid] = types[def].decay(is_immutable);
         });
     } else {
         if (!funcs.count(lid->name)) {

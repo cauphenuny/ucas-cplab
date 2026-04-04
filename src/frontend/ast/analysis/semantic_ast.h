@@ -7,6 +7,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -93,6 +94,7 @@ private:
     using Type = adt::TypeBox;
 
     std::unordered_map<LValNode, SymDefNode> defs;
+    std::unordered_set<VarDefNode> immutable_defs;  // variables that are declared as const
 
     std::unordered_map<ExprNode, Type> types;
 
