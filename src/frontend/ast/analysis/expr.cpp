@@ -14,9 +14,10 @@ void SemanticAST::analysis(const LVal* lid, const Type& upperbound, bool readonl
         }
         match(*symdef, [&](const auto& def) {
             defs[lid] = def;
-            // const defs always decay to readonly pointers regardless of caller's readonly request
-            bool is_readonly = readonly || readonly_defs.count(def);
-            types[lid] = types[def].decay(is_readonly);
+            // decay based on source constness only, not context readonly
+            // (readonly means "not an lvalue", not "pointer should be readonly")
+            bool is_const = readonly_defs.count(def);
+            types[lid] = types[def].decay(is_const);
         });
     } else {
         if (!funcs.count(lid->name)) {
@@ -119,14 +120,12 @@ void SemanticAST::analysis(const BinaryExp* binary_exp, const Type& upperbound, 
         case BinaryOp::GT:
         case BinaryOp::LEQ:
         case BinaryOp::GEQ: types[binary_exp] = BOOL; break;
-        case BinaryOp::INDEX:
-            if (types[left].is<adt::Array>()) {
-                types[binary_exp] = types[left].as<adt::Array>().elem;
-            } else {
-                types[binary_exp] = types[left].as<adt::Pointer>().elem;
-            }
-            types[binary_exp] = types[binary_exp].decay(readonly);
+        case BinaryOp::INDEX: {
+            const auto& ptr = types[left].as<adt::Pointer>(); // already decayed
+            types[binary_exp] = ptr.elem;
+            types[binary_exp] = types[binary_exp].decay(ptr.readonly);
             break;
+        }
         default:
             types[binary_exp] = types[left] <= types[right] ? types[right] : types[left];
             break;

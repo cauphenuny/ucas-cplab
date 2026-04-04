@@ -19,7 +19,7 @@ void SemanticAST::analysis(const FuncParams* params) {
 void SemanticAST::analysis(const FuncArgs* args, const adt::Product& param_types) {
     for (size_t i = 0; i < args->size(); i++) {
         auto upperbound = param_types.items().at(i);
-        analysis(&args->at(i), upperbound, false);
+        analysis(&args->at(i), upperbound, true);
     }
     types[args] = calcType(args).toBoxed();
 }
