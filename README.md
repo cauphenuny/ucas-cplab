@@ -137,7 +137,7 @@ IR:
 
 ```rust
 enum Value {
-    Named(Type, ASTNode),
+    Named(Type, &Alloc),
     Temp(Type, usize),
     Const(Type, ConstExp),
 }
