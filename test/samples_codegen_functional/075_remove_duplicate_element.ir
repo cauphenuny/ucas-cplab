@@ -1,5 +1,5 @@
-fn removeElement(nums_0: &[i32], n_0: i32, val_0: i32) -> i32 {
-  let i_0: i32;
+fn removeElement(nums_0: &mut[i32], n_0: i32, val_0: i32) -> i32 {
+  let mut i_0: i32;
 .entry:
   i_0: i32 = 0;
   jump while_cond_4_4;
@@ -28,9 +28,9 @@ fn removeElement(nums_0: &[i32], n_0: i32, val_0: i32) -> i32 {
 }
 
 fn main() -> i32 {
-  let res_0: i32;
-  let a_0: [i32; 10];
-  let val_1: i32;
+  let mut res_0: i32;
+  let mut a_0: [i32; 10];
+  let mut val_1: i32;
 .entry:
   a_0[0] = 3;
   a_0[1] = 3;

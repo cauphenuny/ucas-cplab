@@ -1,5 +1,5 @@
 fn ifElse() -> i32 {
-  let a_0: i32;
+  let mut a_0: i32;
 .entry:
   a_0: i32 = 5;
   $0: bool = a_0 == 5;

@@ -1,8 +1,8 @@
-let a_0: i32;
-let b_0: i32;
+let mut a_0: i32;
+let mut b_0: i32;
 
 fn main() -> i32 {
-  let c_0: i32;
+  let mut c_0: i32;
 .entry:
   $0: i32 = get_int();
   a_0: i32 = $0;

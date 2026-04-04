@@ -1,4 +1,4 @@
-let a_0: i32;
+let mut a_0: i32;
 
 fn func(p_0: i32) -> i32 {
 .entry:
@@ -8,7 +8,7 @@ fn func(p_0: i32) -> i32 {
 }
 
 fn main() -> i32 {
-  let b_0: i32;
+  let mut b_0: i32;
 .entry:
   a_0: i32 = 10;
   $0: i32 = func(a_0);

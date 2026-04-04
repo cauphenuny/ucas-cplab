@@ -1,6 +1,6 @@
 fn doubleWhile() -> i32 {
-  let i_0: i32;
-  let j_0: i32;
+  let mut i_0: i32;
+  let mut j_0: i32;
 .entry:
   i_0: i32 = 5;
   j_0: i32 = 7;

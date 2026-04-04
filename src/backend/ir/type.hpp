@@ -170,7 +170,7 @@ struct Pointer : mixin::ToBoxed<Pointer, Type> {
     TypeBox elem;
     bool readonly;
     Pointer(TypeBox elem, bool readonly = false) : elem(std::move(elem)), readonly(readonly) {}
-    SIMPLE_TO_STRING(fmt::format("&{}[{}]", readonly ? "" : "mut ", elem));
+    SIMPLE_TO_STRING(fmt::format("&{}[{}]", readonly ? "" : "mut", elem));
 };
 
 /// Sized array type: [elem; size]

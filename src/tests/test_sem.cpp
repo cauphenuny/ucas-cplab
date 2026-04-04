@@ -35,6 +35,7 @@ double foo(double x[2], double y[2]) {
 int main() {
     double a[2][2] = { {1.0, 2.0}, {4.5e-2} };
     foo(a[0], a[1]);
+    a[1][2] = 0.0;
     return 0;
 }
 )";

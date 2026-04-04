@@ -1,9 +1,9 @@
 fn main() -> i32 {
-  let a_0: i32;
-  let b_0: i32;
+  let mut a_0: i32;
+  let mut b_0: i32;
 .entry:
   a_0: i32 = 10;
-  $0: i32 const = -1;
+  $0: i32 = -1;
   b_0: i32 = $0;
   $1: i32 = a_0 + b_0;
   return $1;

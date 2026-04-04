@@ -1,14 +1,14 @@
-let k_0: i32;
-let n_0: i32 const = 10;
+let mut k_0: i32;
+const n_0: i32 = 10;
 
 fn main() -> i32 {
-  let i_0: i32;
+  let mut i_0: i32;
 .entry:
   i_0: i32 = 0;
   k_0: i32 = 1;
   jump while_cond_6_1;
 .while_cond_6_1:
-  $0: i32 const = n_0 - 1;
+  $0: i32 = n_0 - 1;
   $1: bool = i_0 <= $0;
   branch $1 ? while_body_6_1 : while_exit_6_1;
 .while_body_6_1:
