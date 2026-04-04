@@ -1,6 +1,6 @@
 fn main() -> i32 {
-  let a_3_8: i32;
+  let a_0: i32;
 .entry:
-  a_3_8: i32 = 15;
-  return a_3_8;
+  a_0: i32 = 15;
+  return a_0;
 }

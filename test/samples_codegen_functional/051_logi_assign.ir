@@ -1,24 +1,24 @@
-let a_1_4: i32;
-let b_2_4: i32;
+let a_0: i32;
+let b_0: i32;
 
 fn main() -> i32 {
-  let c_7_5: i32;
+  let c_0: i32;
 .entry:
   $0: i32 = get_int();
-  a_1_4: i32 = $0;
+  a_0: i32 = $0;
   $1: i32 = get_int();
-  b_2_4: i32 = $1;
-  $2: bool = a_1_4 == b_2_4;
+  b_0: i32 = $1;
+  $2: bool = a_0 == b_0;
   branch $2 ? L0 : if_false_8_1;
 .if_true_8_1:
-  c_7_5: i32 = 1;
+  c_0: i32 = 1;
   jump if_exit_8_1;
 .if_exit_8_1:
-  return c_7_5;
+  return c_0;
 .if_false_8_1:
-  c_7_5: i32 = 0;
+  c_0: i32 = 0;
   jump if_exit_8_1;
 .L0:
-  $3: bool = a_1_4 != 3;
+  $3: bool = a_0 != 3;
   branch $3 ? if_true_8_1 : if_false_8_1;
 }

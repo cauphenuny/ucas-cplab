@@ -1,7 +1,7 @@
-let a_2_10: i32 const = 10;
-let b_2_18: i32 const = 5;
+let a_0: i32 const = 10;
+let b_0: i32 const = 5;
 
 fn main() -> i32 {
 .entry:
-  return b_2_18;
+  return b_0;
 }

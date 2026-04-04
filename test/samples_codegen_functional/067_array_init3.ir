@@ -1,31 +1,31 @@
-let A_1_5: [[bool; 2]; 4] = {true, true, true, false, true, true, false, false};
+let A_0: [[bool; 2]; 4] = {true, true, true, false, true, true, false, false};
 
 fn main() -> i32 {
-  let i_8_8: i32;
-  let j_8_11: i32;
+  let i_0: i32;
+  let j_0: i32;
 .entry:
-  i_8_8: i32 = 0;
+  i_0: i32 = 0;
   jump while_cond_10_4;
 .while_cond_10_4:
-  $0: bool = i_8_8 < 4;
+  $0: bool = i_0 < 4;
   branch $0 ? while_body_10_4 : while_exit_10_4;
 .while_body_10_4:
-  j_8_11: i32 = 0;
+  j_0: i32 = 0;
   jump while_cond_12_8;
 .while_exit_10_4:
   return 0;
 .while_cond_12_8:
-  $1: bool = j_8_11 < 2;
+  $1: bool = j_0 < 2;
   branch $1 ? while_body_12_8 : while_exit_12_8;
 .while_body_12_8:
-  $2: &[bool] = A_1_5[i_8_8];
-  $3: bool = $2[j_8_11];
+  $2: &[bool] = A_0[i_0];
+  $3: bool = $2[j_0];
   $4: () = print_bool($3);
-  $5: i32 = j_8_11 + 1;
-  j_8_11: i32 = $5;
+  $5: i32 = j_0 + 1;
+  j_0: i32 = $5;
   jump while_cond_12_8;
 .while_exit_12_8:
-  $6: i32 = i_8_8 + 1;
-  i_8_8: i32 = $6;
+  $6: i32 = i_0 + 1;
+  i_0: i32 = $6;
   jump while_cond_10_4;
 }

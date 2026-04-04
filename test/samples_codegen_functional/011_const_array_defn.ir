@@ -1,7 +1,7 @@
-let a_1_10: [i32 const; 5] = {0, 1, 2, 3, 4};
+let a_0: [i32 const; 5] = {0, 1, 2, 3, 4};
 
 fn main() -> i32 {
 .entry:
-  $0: i32 const = a_1_10[4];
+  $0: i32 const = a_0[4];
   return $0;
 }

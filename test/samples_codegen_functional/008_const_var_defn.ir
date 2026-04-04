@@ -1,6 +1,6 @@
-let a_2_10: i32 const = 10;
+let a_0: i32 const = 10;
 
 fn main() -> i32 {
 .entry:
-  return a_2_10;
+  return a_0;
 }

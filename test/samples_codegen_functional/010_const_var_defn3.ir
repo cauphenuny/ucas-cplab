@@ -1,8 +1,8 @@
 fn main() -> i32 {
-  let a_3_14: i32 const;
-  let b_3_22: i32 const;
+  let a_0: i32 const;
+  let b_0: i32 const;
 .entry:
-  a_3_14: i32 const = 10;
-  b_3_22: i32 const = 5;
-  return b_3_22;
+  a_0: i32 const = 10;
+  b_0: i32 const = 5;
+  return b_0;
 }

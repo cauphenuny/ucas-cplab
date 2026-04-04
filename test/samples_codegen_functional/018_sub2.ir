@@ -1,9 +1,9 @@
-let a_2_10: i32 const = 10;
+let a_0: i32 const = 10;
 
 fn main() -> i32 {
-  let b_4_8: i32;
+  let b_0: i32;
 .entry:
-  b_4_8: i32 = 2;
-  $0: i32 = b_4_8 - a_2_10;
+  b_0: i32 = 2;
+  $0: i32 = b_0 - a_0;
   return $0;
 }

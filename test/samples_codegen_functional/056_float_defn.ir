@@ -1,10 +1,10 @@
 fn main() -> i32 {
-  let x_2_10: f32;
-  let y_5_16: f32 const;
+  let x_0: f32;
+  let y_0: f32 const;
 .entry:
-  x_2_10: f32 = 13.0000f;
-  $0: () = print_float(x_2_10);
-  y_5_16: f32 const = 2.00000e-05f;
-  $1: () = print_float(y_5_16);
+  x_0: f32 = 13.0000f;
+  $0: () = print_float(x_0);
+  y_0: f32 const = 2.00000e-05f;
+  $1: () = print_float(y_0);
   return 0;
 }
