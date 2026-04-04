@@ -61,7 +61,7 @@ void SemanticAST::analysis(const ReturnStmt* return_stmt) {
 void SemanticAST::analysis(const AssignStmt* assign_stmt) {
     auto var = &assign_stmt->var;
     auto exp = &assign_stmt->exp;
-    analysis(var);
+    analysis(var, ANY, false);
     analysis(exp, types[var]);
 }
 

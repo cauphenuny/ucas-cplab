@@ -178,10 +178,11 @@ struct Func : mixin::ToBoxed<Func, Type> {
 
 /// Unsized array / pointer type: &[elem]
 struct Pointer : mixin::ToBoxed<Pointer, Type> {
-    bool comptime{false};
     TypeBox elem;
-    Pointer(TypeBox elem) : elem(std::move(elem)) {}
-    SIMPLE_TO_STRING(fmt::format("&[{}]{}", elem, comptime ? " const" : ""));
+    bool readonly;
+    bool comptime{false};
+    Pointer(TypeBox elem, bool readonly = false) : elem(std::move(elem)), readonly(readonly) {}
+    SIMPLE_TO_STRING(fmt::format("&{}[{}]{}", readonly ? "" : "mut", elem, comptime ? " const" : ""));
 };
 
 /// Sized array type: [elem; size]
@@ -192,7 +193,7 @@ struct Array : mixin::ToBoxed<Array, Type> {
     Array(TypeBox elem, size_t size) : elem(std::move(elem)), size(size) {}
     SIMPLE_TO_STRING(fmt::format("[{}; {}]{}", elem, size, comptime ? " const" : ""));
     [[nodiscard]] auto flatten() const -> Array;
-    [[nodiscard]] auto decay() const -> Pointer;
+    [[nodiscard]] auto decay(bool readonly = false) const -> Pointer;
 };
 
 inline std::string TypeBox::toString() const {
@@ -261,8 +262,8 @@ inline auto Array::flatten() const -> Array {
     return *this;
 }
 
-inline auto Array::decay() const -> Pointer {
-    auto p = Pointer(elem);
+inline auto Array::decay(bool readonly) const -> Pointer {
+    auto p = Pointer(elem, readonly);
     p.comptime = comptime;
     return p;
 }
@@ -551,19 +552,19 @@ inline bool operator<=(const Func& from, const Func& to) {
 
 inline bool operator<=(const Array& from, const Array& to) {
     if (!(from.elem <= to.elem)) return false;
-    if (!to.elem.comptime() && !(to.elem <= from.elem)) return false;
+    if (!(to.elem <= from.elem)) return false;
     return from.size == to.size;
 }
 
 inline bool operator<=(const Array& from, const Pointer& to) {
     if (!(from.elem <= to.elem)) return false;
-    if (!to.elem.comptime() && !(to.elem <= from.elem)) return false;
+    if (!to.readonly && !(to.elem <= from.elem)) return false;
     return true;
 }
 
 inline bool operator<=(const Pointer& from, const Pointer& to) {
     if (!(from.elem <= to.elem)) return false;
-    if (!to.elem.comptime() && !(to.elem <= from.elem)) return false;
+    if (!to.readonly && !(to.elem <= from.elem)) return false;
     return true;
 }
 

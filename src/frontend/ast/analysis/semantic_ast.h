@@ -142,15 +142,15 @@ private:
     void analysis(const ExpStmt* exp_stmt);
     void analysis(const StmtBox* stmt_box);
 
-    void analysis(const Exp* exp, const Type& upperbound = ANY);
-    void analysis(const LVal* lid, const Type& upperbound = ANY);
-    void analysis(const LValExp* lval, const Type& upperbound = ANY);
-    void analysis(const CallExp* call, const Type& upperbound = ANY);
-    void analysis(const ConstExp* const_exp, const Type& upperbound = ANY);
-    void analysis(const PrimaryExp* primary, const Type& upperbound = ANY);
-    void analysis(const UnaryExp* unary_exp, const Type& upperbound = ANY);
-    void analysis(const BinaryExp* binary_exp, const Type& upperbound = ANY);
-    void analysis(const ExpBox* exp_box, const Type& upperbound = ANY);
+    void analysis(const Exp* exp, const Type& upperbound = ANY, bool immutable = true);
+    void analysis(const LVal* lid, const Type& upperbound = ANY, bool immutable = true);
+    void analysis(const LValExp* lval, const Type& upperbound = ANY, bool immutable = true);
+    void analysis(const CallExp* call, const Type& upperbound = ANY, bool immutable = true);
+    void analysis(const ConstExp* const_exp, const Type& upperbound = ANY, bool immutable = true);
+    void analysis(const PrimaryExp* primary, const Type& upperbound = ANY, bool immutable = true);
+    void analysis(const UnaryExp* unary_exp, const Type& upperbound = ANY, bool immutable = true);
+    void analysis(const BinaryExp* binary_exp, const Type& upperbound = ANY, bool immutable = true);
+    void analysis(const ExpBox* exp_box, const Type& upperbound = ANY, bool immutable = true);
 
     auto calcType(ast::Type type, bool comptime = false) -> adt::TypeBox;
     auto calcType(const FuncParam* param) -> adt::TypeBox;

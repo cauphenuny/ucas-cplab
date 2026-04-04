@@ -3,7 +3,7 @@
 
 namespace ast {
 
-void SemanticAST::analysis(const LVal* lid, const Type& upperbound) {
+void SemanticAST::analysis(const LVal* lid, const Type& upperbound, bool immutable) {
     if (!upperbound.is<adt::Func>()) {
         auto symdef = lookup(lid->name);
         if (!symdef) {
@@ -24,43 +24,43 @@ void SemanticAST::analysis(const LVal* lid, const Type& upperbound) {
     checkType(lid, upperbound);
 }
 
-void SemanticAST::analysis(const LValExp* lval, const Type& upperbound) {
+void SemanticAST::analysis(const LValExp* lval, const Type& upperbound, bool immutable) {
     match(lval->val, [&](const auto& subexp) {
-        analysis(&subexp, upperbound);
+        analysis(&subexp, upperbound, immutable);
         types[lval] = types[&subexp];
     });
 }
 
-void SemanticAST::analysis(const Exp* exp, const Type& upperbound) {
+void SemanticAST::analysis(const Exp* exp, const Type& upperbound, bool immutable) {
     match(*exp, [&](const auto& subexp) {
         analysis(&subexp, upperbound);
         types[exp] = types[&subexp];
     });
 }
 
-void SemanticAST::analysis(const CallExp* call, const Type& upperbound) {
+void SemanticAST::analysis(const CallExp* call, const Type& upperbound, bool immutable) {
     auto args = &call->args;
     analysis(args);
     auto func = &call->func;
-    analysis(func, adt::Func(types[args].as<adt::Product>(), ANY).toBoxed());
+    analysis(func, adt::Func(types[args].as<adt::Product>(), ANY).toBoxed(), immutable);
     types[call] = types[func].as<adt::Func>().ret;
     checkType(call, upperbound);
 }
 
-void SemanticAST::analysis(const ConstExp* const_exp, const Type& upperbound) {
+void SemanticAST::analysis(const ConstExp* const_exp, const Type& upperbound, bool immutable) {
     types[const_exp] =
         match(*const_exp, [&](auto val) { return adt::construct<const decltype(val)>(); });
 }
 
-void SemanticAST::analysis(const PrimaryExp* primary, const Type& upperbound) {
+void SemanticAST::analysis(const PrimaryExp* primary, const Type& upperbound, bool immutable) {
     match(primary->exp, [&](const auto& subexp) {
-        analysis(&subexp, upperbound);
+        analysis(&subexp, upperbound, immutable);
         types[primary] = types[&subexp];
     });
     checkType(primary, upperbound);
 }
 
-void SemanticAST::analysis(const UnaryExp* unary_exp, const Type& upperbound) {
+void SemanticAST::analysis(const UnaryExp* unary_exp, const Type& upperbound, bool immutable) {
     auto exp = &unary_exp->exp;
     Type operand;
     switch (unary_exp->op) {
@@ -68,12 +68,12 @@ void SemanticAST::analysis(const UnaryExp* unary_exp, const Type& upperbound) {
         case UnaryOp::MINUS: operand = NUM; break;
         case UnaryOp::NOT: operand = BOOL;
     }
-    analysis(exp, operand);
+    analysis(exp, operand, immutable);
     types[unary_exp] = types[exp];
     checkType(unary_exp, upperbound);
 }
 
-void SemanticAST::analysis(const BinaryExp* binary_exp, const Type& upperbound) {
+void SemanticAST::analysis(const BinaryExp* binary_exp, const Type& upperbound, bool immutable) {
     using namespace ast;
     auto left = &binary_exp->left;
     auto right = &binary_exp->right;
@@ -84,14 +84,14 @@ void SemanticAST::analysis(const BinaryExp* binary_exp, const Type& upperbound) 
         case BinaryOp::INDEX: rhs_bound = INT; break;
         default: rhs_bound = NUM; break;
     }
-    analysis(right, rhs_bound);
+    analysis(right, rhs_bound, immutable);
     switch (binary_exp->op) {
         case BinaryOp::INDEX: lhs_bound = ANY; break;
         case BinaryOp::AND:
         case BinaryOp::OR: lhs_bound = BOOL; break;
         default: rhs_bound = NUM; break;
     }
-    analysis(left, lhs_bound);
+    analysis(left, lhs_bound, immutable);
     if (binary_exp->op != BinaryOp::INDEX) {
         if (!(types[left] <= types[right]) && !(types[right] <= types[left])) {
             throw SemanticError(
@@ -109,7 +109,7 @@ void SemanticAST::analysis(const BinaryExp* binary_exp, const Type& upperbound) 
         case BinaryOp::LEQ:
         case BinaryOp::GEQ: types[binary_exp] = BOOL; break;
         case BinaryOp::INDEX:
-            checkType(left, adt::Pointer(ANY).toBoxed());
+            checkType(left, adt::Pointer(ANY, immutable).toBoxed());
             if (types[left].is<adt::Array>()) {
                 types[binary_exp] = types[left].as<adt::Array>().elem;
             } else {
@@ -123,9 +123,9 @@ void SemanticAST::analysis(const BinaryExp* binary_exp, const Type& upperbound) 
     checkType(binary_exp, upperbound);
 }
 
-void SemanticAST::analysis(const ExpBox* exp_box, const Type& upperbound) {
+void SemanticAST::analysis(const ExpBox* exp_box, const Type& upperbound, bool immutable) {
     auto exp = exp_box->exp.get();
-    analysis(exp, upperbound);
+    analysis(exp, upperbound, immutable);
     types[exp_box] = types[exp];
     checkType(exp_box, upperbound);
 }
