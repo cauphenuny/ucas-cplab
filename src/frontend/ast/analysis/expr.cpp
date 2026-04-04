@@ -42,7 +42,7 @@ void SemanticAST::analysis(const Exp* exp, const Type& upperbound, bool immutabl
 
 void SemanticAST::analysis(const CallExp* call, const Type& upperbound, bool immutable) {
     auto func = &call->func;
-    analysis(func, adt::Func(NEVER, ANY).toBoxed(), immutable);
+    analysis(func, adt::Func(NEVER, ANY).toBoxed(), true);
     auto args = &call->args;
     auto param_type = types[func].as<adt::Func>().params.as<adt::Product>();
     if (args->size() != param_type.items().size()) {
@@ -76,7 +76,7 @@ void SemanticAST::analysis(const UnaryExp* unary_exp, const Type& upperbound, bo
         case UnaryOp::MINUS: operand = NUM; break;
         case UnaryOp::NOT: operand = BOOL;
     }
-    analysis(exp, operand, immutable);
+    analysis(exp, operand, true);
     types[unary_exp] = types[exp];
     checkType(unary_exp, upperbound);
 }
@@ -92,14 +92,14 @@ void SemanticAST::analysis(const BinaryExp* binary_exp, const Type& upperbound, 
         case BinaryOp::INDEX: rhs_bound = INT; break;
         default: rhs_bound = NUM; break;
     }
-    analysis(right, rhs_bound, immutable);
+    analysis(right, rhs_bound, true);
     switch (binary_exp->op) {
         case BinaryOp::INDEX: lhs_bound = adt::Pointer(upperbound, immutable).toBoxed(); break;
         case BinaryOp::AND:
         case BinaryOp::OR: lhs_bound = BOOL; break;
         default: lhs_bound = NUM; break;
     }
-    analysis(left, lhs_bound, immutable);
+    analysis(left, lhs_bound, immutable || binary_exp->op != BinaryOp::INDEX);
     if (binary_exp->op != BinaryOp::INDEX) {
         if (!(types[left] <= types[right]) && !(types[right] <= types[left])) {
             throw SemanticError(

@@ -506,7 +506,7 @@ inline bool operator<=(const Array& from, const Array& to) {
 }
 
 inline bool operator<=(const Array& from, const Pointer& to) {
-    auto from_elem = from.elem.decay(true);  // array can decay to mutable pointer
+    auto from_elem = from.elem.decay(false);  // array can decay to mutable pointer
     auto to_elem = to.elem.decay(to.readonly);
     if (!(from_elem <= to_elem)) return false;
     if (!to.readonly && !(to_elem <= from_elem)) return false;
