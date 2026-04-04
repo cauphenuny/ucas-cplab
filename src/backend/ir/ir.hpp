@@ -104,8 +104,8 @@ struct ConstexprValue {
         : type(std::move(type)), val(std::move(vec)) {}
 
     ConstexprValue(const ConstexprValue& other) : type(other.type) {
-        match(other.val, 
-            [&](std::monostate) { val = std::monostate{}; },
+        match(
+            other.val, [&](std::monostate) { val = std::monostate{}; },
             [&](const std::unique_ptr<std::byte[]>& vec) {
                 if (vec) {
                     auto size = adt::size_of(type);
@@ -264,7 +264,7 @@ struct Alloc {
     std::string name;
     Type type;
     std::optional<ConstexprValue> init;
-    SIMPLE_TO_STRING(init ? fmt::format("let {}: {} = {};", name, type, init)
+    SIMPLE_TO_STRING(init ? fmt::format("const {}: {} = {};", name, type, init)
                           : fmt::format("let {}: {};", name, type));
     Alloc(Alloc&&) = delete;
     Alloc(std::string name, Type type, std::optional<ConstexprValue> init = std::nullopt)
@@ -410,9 +410,15 @@ struct Program {
     friend struct vm::VirtualMachine;
     friend class IRConstructVisitor;
 
-    [[nodiscard]] const auto& getGlobals() const { return globals; }
-    [[nodiscard]] const auto& getFuncs() const { return funcs; }
-    [[nodiscard]] const auto& getBuiltinFuncs() const { return builtin_funcs; }
+    [[nodiscard]] const auto& getGlobals() const {
+        return globals;
+    }
+    [[nodiscard]] const auto& getFuncs() const {
+        return funcs;
+    }
+    [[nodiscard]] const auto& getBuiltinFuncs() const {
+        return builtin_funcs;
+    }
 
 private:
     std::vector<std::unique_ptr<Alloc>> globals;

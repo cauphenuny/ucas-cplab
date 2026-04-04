@@ -16,7 +16,7 @@ auto Generator::branch(const ast::Exp* cond, Func* func, Block* scope, const Blo
                     auto left_exit =
                         branch(binary_exp.left.exp.get(), func, scope, right_block, false_block);
                     right_block->setExit(branch(binary_exp.right.exp.get(), func, right_block,
-                                               true_block, false_block));
+                                                true_block, false_block));
                     return left_exit;
                 }
                 case ast::BinaryOp::OR: {
@@ -24,7 +24,7 @@ auto Generator::branch(const ast::Exp* cond, Func* func, Block* scope, const Blo
                     auto left_exit =
                         branch(binary_exp.left.exp.get(), func, scope, true_block, right_block);
                     right_block->setExit(branch(binary_exp.right.exp.get(), func, right_block,
-                                               true_block, false_block));
+                                                true_block, false_block));
                     return left_exit;
                 }
                 default: {
@@ -45,13 +45,17 @@ auto Generator::gen(const ast::BlockStmt* block_stmt, Func* func, Block* scope) 
             stmt,
             [&](const ast::Decl& decl) {
                 for (auto& alloc : gen(&decl)) {
-                    auto init = std::move(alloc->init);
-                    alloc->init = std::nullopt;
-                    auto val = NamedValue{.type = alloc->type, .def = alloc.get()};
-                    func->addLocal(std::move(alloc));
-                    // Local declaration initializers must execute when the declaration runs.
-                    if (init) {
-                        scope->add(UnaryInst{UnaryInstOp::MOV, val, Value{std::move(*init)}});
+                    if (alloc->type.comptime()) {
+                        func->addLocal(std::move(alloc));
+                    } else {
+                        auto init = std::move(alloc->init);
+                        alloc->init = std::nullopt;
+                        auto val = NamedValue{.type = alloc->type, .def = alloc.get()};
+                        func->addLocal(std::move(alloc));
+                        // Local declaration initializers must execute when the declaration runs.
+                        if (init) {
+                            scope->add(UnaryInst{UnaryInstOp::MOV, val, Value{std::move(*init)}});
+                        }
                     }
                 }
             },
@@ -123,7 +127,7 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
         },
         [&](const ast::ReturnStmt& return_stmt) -> Block* {
             scope->setExit(ReturnExit{return_stmt.exp ? gen(&*return_stmt.exp, func, scope)
-                                                     : Value{ConstexprValue{}}});
+                                                      : Value{ConstexprValue{}}});
             return nullptr;
         },
         [&](const ast::ContinueStmt&) -> Block* {
