@@ -152,7 +152,7 @@ private:
     void analysis(const BinaryExp* binary_exp, const Type& upperbound = ANY);
     void analysis(const ExpBox* exp_box, const Type& upperbound = ANY);
 
-    auto calcType(ast::Type type, bool immutable = false) -> adt::TypeBox;
+    auto calcType(ast::Type type, bool comptime = false) -> adt::TypeBox;
     auto calcType(const FuncParam* param) -> adt::TypeBox;
     auto calcType(const FuncArgs* args) -> adt::Product;
     auto calcType(const FuncParams* params) -> adt::Product;

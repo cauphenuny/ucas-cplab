@@ -372,9 +372,9 @@ public:
                               std::is_same_v<T, adt::Array> || std::is_same_v<T, adt::Pointer> ||
                               std::is_same_v<T, adt::Product> || std::is_same_v<T, adt::Sum> ||
                               std::is_same_v<T, adt::Func>) {
-                    t.immutable = true;
+                    t.comptime = true;
                 } else if constexpr (std::is_same_v<T, adt::Primitive>) {
-                    match(t, [](auto& prim) { prim.immutable = true; });
+                    match(t, [](auto& prim) { prim.comptime = true; });
                 }
             });
         }
