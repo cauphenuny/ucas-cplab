@@ -2,7 +2,7 @@
 """
 Usage: $0 /path/to/compiler [--ir]
 
-Finds pairs of `*.cact` (or `*.ir` if --ir is specified) and `*.out` files in the current directory,
+Finds pairs of `*.cact` (or `*.riir` if --ir is specified) and `*.out` files in the current directory,
 runs the compiler (or interpreter) with appropriate flags, captures stdout, and compares
 it to the corresponding `.out` file after removing the first line of
 the `.out` file.
@@ -60,7 +60,7 @@ def main():
     status = 0
 
     if args.ir:
-        files = sorted(cwd.glob('*.ir'))
+        files = sorted(cwd.glob('*.riir'))
     else:
         files = sorted(cwd.glob('*.cact'))
 
