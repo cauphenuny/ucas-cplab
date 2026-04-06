@@ -1,9 +1,16 @@
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/parse/visit.hpp"
+#include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/syntax/visit.hpp"
 
+#include <cstdlib>
+#include <exception>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <sstream>
+#include <string>
 
 int main() {
     auto path = "test/samples_codegen_functional";

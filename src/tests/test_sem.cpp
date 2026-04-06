@@ -1,6 +1,11 @@
+#include "backend/ir/gen/irgen.h"
+#include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/syntax/visit.hpp"
-#include "backend/ir/gen/irgen.h"
+#include "utils/error.hpp"
+
+#include <cassert>
+#include <sstream>
 
 void test_const_to_non_const() {
     auto text = R"(

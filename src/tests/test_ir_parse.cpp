@@ -1,8 +1,13 @@
 #include "backend/ir/ir.hpp"
 #include "backend/ir/parse/visit.hpp"
 #include "backend/ir/vm/vm.h"
+#include "fmt/base.h"
 
-#include <cassert>
+#include <cstdlib>
+#include <exception>
+#include <iostream>
+#include <sstream>
+#include <utility>
 
 int main() {
     {
@@ -58,7 +63,7 @@ fn main() -> i32 {
         auto ir_code = ir::parse(ir_stream);
         fmt::println("Reconstructed IR: \n{}", ir_code);
         ir::vm::VirtualMachine env(std::cin, std::cout);
-        auto ret = env.execute(std::move(ir_code));
+        auto ret = env.execute(ir_code);
         assert(ret == 1);
     }
     return 0;

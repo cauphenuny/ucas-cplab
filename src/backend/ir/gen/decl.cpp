@@ -1,6 +1,19 @@
 #include "backend/ir/ir.hpp"
+#include "backend/ir/type.hpp"
+#include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/ast/ast.hpp"
 #include "irgen.h"
+#include "utils/error.hpp"
+#include "utils/match.hpp"
+
+#include <cstddef>
+#include <cstring>
+#include <memory>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace ir::gen {
 

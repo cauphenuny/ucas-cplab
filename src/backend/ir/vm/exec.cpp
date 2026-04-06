@@ -1,5 +1,19 @@
 #include "backend/ir/ir.hpp"
+#include "backend/ir/type.hpp"
+#include "backend/ir/vm/view.hpp"
+#include "utils/error.hpp"
+#include "utils/match.hpp"
 #include "vm.h"
+
+#include <cstddef>
+#include <cstring>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <variant>
+#include <vector>
 
 namespace ir::vm {
 

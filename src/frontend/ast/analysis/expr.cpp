@@ -1,5 +1,18 @@
+#include "backend/ir/type.hpp"
+#include "frontend/ast/ast.hpp"
+#include "frontend/ast/op.hpp"
 #include "semantic_ast.h"
 #include "utils/error.hpp"
+#include "utils/match.hpp"
+#include "utils/traits.hpp"
+#include "utils/tui.h"
+
+#include <memory>
+#include <optional>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 namespace ast {
 

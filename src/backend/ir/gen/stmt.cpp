@@ -1,7 +1,14 @@
 #include "backend/ir/ir.hpp"
+#include "backend/ir/op.hpp"
+#include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/ast/ast.hpp"
 #include "frontend/ast/op.hpp"
 #include "irgen.h"
+#include "utils/match.hpp"
+
+#include <memory>
+#include <optional>
+#include <utility>
 
 namespace ir::gen {
 

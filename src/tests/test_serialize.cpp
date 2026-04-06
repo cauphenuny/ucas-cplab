@@ -1,5 +1,7 @@
+#include "fmt/base.h"
 #include "utils/serialize.hpp"
 
+#include <string>
 #include <variant>
 
 struct Inner {

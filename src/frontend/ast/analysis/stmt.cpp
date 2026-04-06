@@ -1,4 +1,10 @@
+#include "frontend/ast/ast.hpp"
 #include "semantic_ast.h"
+#include "utils/match.hpp"
+
+#include <memory>
+#include <optional>
+#include <unordered_map>
 
 namespace ast {
 

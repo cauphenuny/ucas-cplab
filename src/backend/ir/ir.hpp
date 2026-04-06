@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 #include <variant>
+#include <cstring>
 
 namespace ir {
 

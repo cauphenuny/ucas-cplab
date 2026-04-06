@@ -1,5 +1,10 @@
 #include "semantic_ast.h"
 #include "utils/error.hpp"
+#include "utils/match.hpp"
+#include "utils/traits.hpp"
+
+#include <unordered_map>
+#include <vector>
 
 namespace ast {
 

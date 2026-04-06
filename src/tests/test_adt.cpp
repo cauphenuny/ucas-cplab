@@ -1,6 +1,10 @@
 #include "backend/ir/type.hpp"
+#include "fmt/base.h"
 
+#include <any>
 #include <cassert>
+#include <tuple>
+#include <variant>
 
 void test_subtype() {
     using namespace adt;

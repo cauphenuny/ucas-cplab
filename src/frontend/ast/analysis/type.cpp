@@ -1,4 +1,13 @@
+#include "backend/ir/type.hpp"
+
+#include "frontend/ast/ast.hpp"
+#include "frontend/ast/op.hpp"
 #include "semantic_ast.h"
+
+#include <cstddef>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace ast {
 

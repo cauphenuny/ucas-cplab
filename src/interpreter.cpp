@@ -1,10 +1,15 @@
+#include "backend/ir/ir.hpp"
 #include "backend/ir/parse/visit.hpp"
-
-#include <iostream>
-#define FMT_HEADER_ONLY
 #include "backend/ir/vm/vm.h"
-#include "fmt/format.h"
+#include "fmt/base.h"
 #include "utils/error.hpp"
+
+#include <cstdint>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <stdexcept>
+#include <string>
 
 enum : uint8_t {
     SUCCESS = 0,

@@ -1,7 +1,14 @@
 #include "backend/ir/ir.hpp"
+#include "backend/ir/type.hpp"
+#include "backend/ir/vm/view.hpp"
+#include "utils/error.hpp"
+#include "utils/match.hpp"
 #include "vm.h"
 
 #include <cstddef>
+#include <cstring>
+#include <type_traits>
+#include <vector>
 
 namespace ir::vm {
 

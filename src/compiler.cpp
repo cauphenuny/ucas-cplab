@@ -1,15 +1,22 @@
-#include <iostream>
-#define FMT_HEADER_ONLY
 #include "backend/ir/gen/irgen.h"
+#include "backend/ir/ir.hpp"
 #include "backend/ir/vm/vm.h"
-#include "fmt/format.h"
+#include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/syntax/visit.hpp"
 #include "utils/error.hpp"
 #include "utils/tui.h"
 
-#include <CACTLexer.h>
-#include <CACTParser.h>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <memory>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 using namespace antlr4;
 

@@ -1,10 +1,14 @@
+#include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.hpp"
 #include "backend/ir/vm/vm.h"
-#include "backend/ir/gen/irgen.h"
+#include "fmt/base.h"
+#include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/syntax/visit.hpp"
 
-#include <sstream>
 #include <cassert>
+#include <iostream>
+#include <sstream>
+#include <string>
 
 void test_builtin() {
     auto text = R"(

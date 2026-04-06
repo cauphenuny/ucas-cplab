@@ -4,6 +4,16 @@ project(Compiler LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+option(ENABLE_IWYU "Enable Include-What-You-Use (IWYU)" OFF)
+if(ENABLE_IWYU)
+    find_program(IWYU_EXECUTABLE include-what-you-use)
+    if(IWYU_EXECUTABLE)
+        set(CMAKE_CXX_INCLUDE_WHAT_YOU_USE ${IWYU_EXECUTABLE})
+    else()
+        message(FATAL_ERROR "include-what-you-use not found!")
+    endif()
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
