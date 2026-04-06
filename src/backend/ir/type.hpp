@@ -616,20 +616,26 @@ inline TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs) {
     return Sum(std::move(unique)).toBoxed();
 }
 
+inline size_t dim(const Array& arr) {
+    if (arr.elem.is<Array>()) {
+        return 1 + dim(arr.elem.as<Array>());
+    }
+    return 1;
+}
+
 inline bool constructable(const TypeBox& from_box, const TypeBox& to_box) {
     if (from_box.is<Array>() && to_box.is<Array>()) {
         const auto& from = from_box.as<Array>();
         const auto& to = to_box.as<Array>();
         // NOTE: flat array can construct multi-dim array
-        if (!from.elem.is<Array>() && to.elem.is<Array>()) {
+        auto dim_from = dim(from);
+        auto dim_to = dim(to);
+        if (dim_from > 1 && dim_to != dim_from) return false; // from is not flatten, then dims must match
+        if (dim_from == 1 && dim_to > 1) {
             auto flattened_to = to_box.flatten();
             if (!flattened_to.is<Array>()) return false;
             const auto& fa = flattened_to.as<Array>();
             return constructable(from.elem, fa.elem) && fa.size >= from.size;
-        }
-        if (!to.elem.is<Array>() && from.elem.is<Array>()) {
-            // NOTE: multi-dim array can not construct flat array
-            return false;
         }
         return constructable(from.elem, to.elem) && from.size <= to.size;
     }

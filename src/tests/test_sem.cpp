@@ -91,10 +91,54 @@ int main() {
     assert(false && "Expected a semantic error due to incompatible pointer passing");
 }
 
+void test_multidim() {
+    auto text = R"(
+int b[2][2][2] = { {1,2,3,4} }; 
+int main() {
+    b[0][0][0] = 1;
+    b[0][0][1] = 2;
+    b[0][1][0] = 3;
+    b[0][1][1] = 4;
+    return 0;
+}
+)";
+    auto stream = std::istringstream(text);
+    try {
+        auto code = ast::analysis(ast::parse(stream));
+        auto program = ir::gen::generate(code);
+        fmt::println("Generated IR:\n{}", program);
+    } catch (const SemanticError& e) {
+        fmt::println("Caught semantic error: {}", e.what());
+        return;
+    }
+    assert(false && "Expected a semantic error due to incompatible array construction");
+}
+
+void test_multidim_2() {
+    auto text = R"(
+int a[4] = {1,2, {3,4}};
+int main() {
+    return 0;
+}
+)";
+    auto stream = std::istringstream(text);
+    try {
+        auto code = ast::analysis(ast::parse(stream));
+        auto program = ir::gen::generate(code);
+        fmt::println("Generated IR:\n{}", program);
+    } catch (const SemanticError& e) {
+        fmt::println("Caught expected semantic error: {}", e.what());
+        return;
+    }
+    assert(false && "Expected a semantic error due to incompatible array construction");
+}
+
 int main() {
     test_const_to_non_const();
     test_non_const_to_non_const();
     test_const_to_non_const_2();
     test_const_to_non_const_3();
+    test_multidim();
+    test_multidim_2();
     return 0;
 }
