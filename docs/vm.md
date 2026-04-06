@@ -1,4 +1,6 @@
-# Note of Virtual Machine
+# Notes of IR Virtual Machine
+
+VM 中通过 View 进行计算
 
 View 是对于内存资源的引用，不持有所有权，包含类型 .type 和地址 .data
 

@@ -33,19 +33,74 @@ build/interpreter [--help] [--silent] [--print] IR_file
 Examples:
 
 - print IR: `build/compiler --ir source.cact`
-- output IR to file: `build/compiler --ir source.cact --output ir_code.rs`
+- output IR to file: `build/compiler --ir source.cact --output ir_code.riir`
 - execute source program: `build/compiler --exec source.cact`
 - execute source program, sliently (without any output except program IO and return code): `build/compiler --exec --silent source.cact`
-- execute IR program: `build/interpreter ir_code.rs`
-- execute IR program, silently: `build/interpreter ir_code.rs --silent`
+- execute IR program: `build/interpreter ir_code.riir`
+- execute IR program, silently: `build/interpreter ir_code.riir --silent`
 
 ---
 
 Design Notes:
 
-- [IR](docs/ir.md)
+- [Our IR: RIIR](docs/ir.md)
 
-- [IR Virtual Machine](docs/vm.md)
+- [Virtual Machine of IR](docs/vm.md)
+
+Pipeline:
+
+```
+source -> IR(RIIR) -> target(rv64)
+```
+
+e.g.
+
+example.cact
+
+```c
+double foo(double x[2], double y[2]) {
+    return x[0] + y[0];
+}
+
+int main() {
+    double a[2][2] = { {1.0, 2.0}, {4.5e-2} };
+    if (a[1][0] > a[1][1]) {
+        foo(a[0], a[1]);
+    }
+    return 0;
+}
+```
+
+example.riir
+
+```rust 
+fn foo(x_0: &mut[f64], y_0: &mut[f64]) -> f64 {
+.entry:
+  $0: f64 = x_0[0];
+  $1: f64 = y_0[0];
+  $2: f64 = $0 + $1;
+  return $2;
+}
+
+fn main() -> i32 {
+  let a_0: [[f64; 2]; 2];
+.entry:
+  a_0: [[f64; 2]; 2] = {1.00000, 2.00000, 0.0450000, 0.00000};
+  $0: &mut[f64] = a_0[1];
+  $1: f64 = $0[0];
+  $2: &mut[f64] = a_0[1];
+  $3: f64 = $2[1];
+  $4: bool = $1 > $3;
+  branch $4 ? if_true_7_4 : if_exit_7_4;
+.if_true_7_4:
+  $5: &mut[f64] = a_0[0];
+  $6: &mut[f64] = a_0[1];
+  $7: f64 = foo($5, $6);
+  jump if_exit_7_4;
+.if_exit_7_4:
+  return 0;
+}
+```
 
 ---
 
