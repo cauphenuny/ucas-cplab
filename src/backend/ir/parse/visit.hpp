@@ -57,14 +57,18 @@ public:
     }
 
     template <typename T> static T take(std::any a) {
-        if (a.has_value()) {
-            if (a.type() == typeid(T)) return std::any_cast<T>(std::move(a));
-            if (a.type() == typeid(node_ptr<T>)) {
-                auto ptr = std::any_cast<node_ptr<T>>(a);
-                return std::move(*ptr);
-            }
+        if (a.has_value() && a.type() == typeid(T)) {
+            return std::any_cast<T>(std::move(a));
         }
         throw COMPILER_ERROR(fmt::format("take failed for type {}", typeid(T).name()));
+    }
+
+    template<typename T> static T take_ptr(std::any a) {
+        if (a.has_value() && a.type() == typeid(node_ptr<T>)) {
+            auto ptr = std::any_cast<node_ptr<T>>(std::move(a));
+            return std::move(*ptr);
+        }
+        throw COMPILER_ERROR(fmt::format("take_ptr failed for type {}", typeid(T).name()));
     }
 
     template <typename T> static std::any wrap(T&& val) {
@@ -191,7 +195,7 @@ public:
         }
         std::vector<std::unique_ptr<ir::Alloc>> params;
         if (ctx->paramList()) {
-            params = take<std::vector<std::unique_ptr<ir::Alloc>>>(visit(ctx->paramList()));
+            params = take_ptr<std::vector<std::unique_ptr<ir::Alloc>>>(visit(ctx->paramList()));
         }
         return {name, std::move(ret_type), std::move(params)};
     }
@@ -207,7 +211,7 @@ public:
     std::any visitParam(IRParser::ParamContext* ctx) override {
         auto name = ctx->ID()->getText();
         auto type = take<adt::TypeBox>(visit(ctx->type()));
-        return wrap_ptr(new ir::Alloc(name, std::move(type)));
+        return wrap(new ir::Alloc(name, std::move(type)));
     }
 
     std::any visitBlock(IRParser::BlockContext* ctx) override {
@@ -262,7 +266,7 @@ public:
                 throw SemanticError(get_loc(ctx), fmt::format("Function {} not found", func_name));
             std::vector<ir::Value> args;
             if (ctx->argList()) {
-                args = take<std::vector<ir::Value>>(visit(ctx->argList()));
+                args = take_ptr<std::vector<ir::Value>>(visit(ctx->argList()));
             }
             current_block_->add(
                 ir::CallInst{.result = std::move(result),
