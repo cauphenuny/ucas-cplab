@@ -17,7 +17,7 @@ enum : uint8_t {
     SUCCESS = 0,
     INVALID_ARGUMENT = 1,
     SYNTAX_ERROR = 2,
-    SEMANTIC_ERROR = 0,  // for PR1, we do not need report semantic errors.
+    SEMANTIC_ERROR = 4,
     RUNTIME_ERROR = 255,
 };
 
