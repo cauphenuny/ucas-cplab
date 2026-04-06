@@ -252,9 +252,9 @@ match(exp,
 多个variant也能一起处理：
 
 ```cpp
-Match{left_node, right_node}(
-    [&](const IntExp& l, const IntExp& r) { /* 整数运算优化 */ },
-    [&](const FloatExp& l, const FloatExp& r) { /* 浮点运算逻辑 */ },
+Match{left_type, right_type}(
+    [&](const Int& l, const Int& r) { /* 整数运算优化 */ },
+    [&](const Float& l, const Float& r) { /* 浮点运算逻辑 */ },
     [&](const auto& l, const auto& r) { /* fallback 或类型不匹配报错 */ }
 );
 ```
