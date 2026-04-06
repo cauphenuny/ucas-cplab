@@ -24,7 +24,7 @@ enum : uint8_t {
     SUCCESS = 0,
     INVALID_ARGUMENT = 1,
     SYNTAX_ERROR = 2,
-    SEMANTIC_ERROR = 4,
+    SEMANTIC_ERROR = 0,
     RUNTIME_ERROR = 255,
 };
 
