@@ -199,7 +199,7 @@ public:
     std::any visitParamList(IRParser::ParamListContext* ctx) override {
         std::vector<std::unique_ptr<ir::Alloc>> params;
         for (auto* param_ctx : ctx->param()) {
-            params.push_back(take<std::unique_ptr<ir::Alloc>>(visit(param_ctx)));
+            params.push_back(std::unique_ptr<ir::Alloc>(take<ir::Alloc*>(visit(param_ctx))));
         }
         return wrap_ptr(std::move(params));
     }
@@ -207,7 +207,7 @@ public:
     std::any visitParam(IRParser::ParamContext* ctx) override {
         auto name = ctx->ID()->getText();
         auto type = take<adt::TypeBox>(visit(ctx->type()));
-        return wrap_ptr(std::make_unique<ir::Alloc>(name, std::move(type)));
+        return wrap_ptr(new ir::Alloc(name, std::move(type)));
     }
 
     std::any visitBlock(IRParser::BlockContext* ctx) override {
