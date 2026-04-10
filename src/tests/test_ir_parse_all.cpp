@@ -13,7 +13,19 @@
 #include <string>
 
 int main() {
-    auto path = "test/samples_codegen_functional";
+    std::string base_path = "test/samples_codegen_functional";
+    std::filesystem::path path(base_path);
+    const int max_up = 10;
+    int up = 0;
+    while (!std::filesystem::exists(path) && up < max_up) {
+        path = std::filesystem::path("..") / path;
+        ++up;
+    }
+    if (!std::filesystem::exists(path)) {
+        fmt::println("Directory not found after searching {} levels: {}\n", max_up, base_path);
+        return 1;
+    }
+    fmt::println("Using directory: {}\n", path.string());
     for (const auto& file : std::filesystem::directory_iterator(path)) {
         if (file.path().extension() != ".cact") continue;
         fmt::println("Testing file: {}\n", file.path().string());
