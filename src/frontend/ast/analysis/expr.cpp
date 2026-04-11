@@ -17,13 +17,14 @@
 namespace ast {
 
 void SemanticAST::analysis(const LVal* lid, const Type& upperbound, bool readonly) {
-    if (!upperbound.is<adt::Func>()) {
+    if (!upperbound.is<ir::type::Func>()) {
         auto symdef = lookup(lid->name);
         if (!symdef) {
             throw SemanticError(lid->loc, fmt::format("undefined variable '{}'", lid->name));
         }
         if (this->readonly_defs.count(*symdef) && !readonly) {
-            throw SemanticError(lid->loc, fmt::format("can not use constant '{}' as left val", lid->name));
+            throw SemanticError(lid->loc,
+                                fmt::format("can not use constant '{}' as left val", lid->name));
         }
         match(*symdef, [&](const auto& def) {
             defs[lid] = def;
@@ -59,22 +60,22 @@ void SemanticAST::analysis(const Exp* exp, const Type& upperbound, bool readonly
 
 void SemanticAST::analysis(const CallExp* call, const Type& upperbound, bool readonly) {
     auto func = &call->func;
-    analysis(func, adt::Func(NEVER, ANY).toBoxed(), true);
+    analysis(func, ir::type::Func(NEVER, ANY).toBoxed(), true);
     auto args = &call->args;
-    auto param_type = types[func].as<adt::Func>().params.as<adt::Product>();
+    auto param_type = types[func].as<ir::type::Func>().params.as<ir::type::Product>();
     if (args->size() != param_type.items().size()) {
         throw SemanticError(call->loc,
                             fmt::format("function `{}` expects {} arguments, but {} provided",
                                         func->name, param_type.items().size(), args->size()));
     }
     analysis(args, param_type);
-    types[call] = types[func].as<adt::Func>().ret;
+    types[call] = types[func].as<ir::type::Func>().ret;
     checkType(call, upperbound);
 }
 
 void SemanticAST::analysis(const ConstExp* const_exp, const Type& upperbound, bool readonly) {
     types[const_exp] =
-        match(*const_exp, [&](auto val) { return adt::construct<decltype(val)>(); });
+        match(*const_exp, [&](auto val) { return ir::type::construct<decltype(val)>(); });
 }
 
 void SemanticAST::analysis(const PrimaryExp* primary, const Type& upperbound, bool readonly) {
@@ -111,7 +112,7 @@ void SemanticAST::analysis(const BinaryExp* binary_exp, const Type& upperbound, 
     }
     analysis(right, rhs_bound, true);
     switch (binary_exp->op) {
-        case BinaryOp::INDEX: lhs_bound = adt::Pointer(upperbound, readonly).toBoxed(); break;
+        case BinaryOp::INDEX: lhs_bound = ir::type::Pointer(upperbound, readonly).toBoxed(); break;
         case BinaryOp::AND:
         case BinaryOp::OR: lhs_bound = BOOL; break;
         default: lhs_bound = NUM; break;
@@ -134,7 +135,7 @@ void SemanticAST::analysis(const BinaryExp* binary_exp, const Type& upperbound, 
         case BinaryOp::LEQ:
         case BinaryOp::GEQ: types[binary_exp] = BOOL; break;
         case BinaryOp::INDEX: {
-            const auto& ptr = types[left].as<adt::Pointer>(); // already decayed
+            const auto& ptr = types[left].as<ir::type::Pointer>();  // already decayed
             types[binary_exp] = ptr.elem;
             types[binary_exp] = types[binary_exp].decay(ptr.readonly);
             break;

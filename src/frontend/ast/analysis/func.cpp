@@ -22,7 +22,7 @@ void SemanticAST::analysis(const FuncParams* params) {
     types[params] = calcType(params).toBoxed();
 }
 
-void SemanticAST::analysis(const FuncArgs* args, const adt::Product& param_types) {
+void SemanticAST::analysis(const FuncArgs* args, const ir::type::Product& param_types) {
     for (size_t i = 0; i < args->size(); i++) {
         auto upperbound = param_types.items().at(i);
         analysis(&args->at(i), upperbound, true);
@@ -40,12 +40,12 @@ void SemanticAST::analysis(const FuncDef* func_def, bool is_builtin) {
     analysis(&func_def->block);
     popScope();
     auto block_type = stmt_types[&func_def->block];
-    if (!block_type.always_return && !(types[func_def].as<adt::Func>().ret <= VOID)) {
+    if (!block_type.always_return && !(types[func_def].as<ir::type::Func>().ret <= VOID)) {
         throw SemanticError(
             func_def->loc,
             fmt::format("non-void function '{}' may not return on all paths", func_def->name));
     }
-    auto ret_type = types[func_def].as<adt::Func>().ret;
+    auto ret_type = types[func_def].as<ir::type::Func>().ret;
     if (!(block_type.ret_type <= ret_type)) {
         throw SemanticError(func_def->loc,
                             fmt::format("function '{}' has return type `{}`, but declared as `{}`",

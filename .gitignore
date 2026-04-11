@@ -5,7 +5,6 @@ cmake-build-debug
 
 .vscode
 .idea
-.clang-format
 .cache
 
 grammar/*.cpp

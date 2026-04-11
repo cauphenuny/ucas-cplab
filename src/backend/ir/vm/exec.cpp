@@ -115,13 +115,13 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
 
     size_t stack_size = 0;
     for (const auto& local : func.locals()) {
-        stack_size += adt::size_of(local->type);
+        stack_size += ir::type::size_of(local->type);
     }
     for (const auto& temp : func.temps()) {
-        stack_size += adt::size_of(temp);
+        stack_size += ir::type::size_of(temp);
     }
     for (const auto& param : func.params) {
-        stack_size += adt::size_of(param->type);
+        stack_size += ir::type::size_of(param->type);
     }
 
     auto buffer = std::make_unique<std::byte[]>(stack_size);
@@ -138,17 +138,17 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
         auto& param = func.params[i];
         frame.vars[param.get()] = View{.data = cur, .type = param->type};
         assign(param->type, cur, args[i].type, args[i].data);
-        cur += adt::size_of(param->type);
+        cur += ir::type::size_of(param->type);
     }
     /// locals
     for (const auto& local : func.locals()) {
         alloc(frame, local.get(), cur);
-        cur += adt::size_of(local->type);
+        cur += ir::type::size_of(local->type);
     }
     /// temps
     for (const auto& temp : func.temps()) {
         frame.temps.push_back(View{.data = cur, .type = temp});
-        cur += adt::size_of(temp);
+        cur += ir::type::size_of(temp);
     }
 
     const Block* cur_block = func.blocks().front().get();
@@ -165,7 +165,7 @@ int VirtualMachine::execute(const Program& program) {
     size_t global_size = 0;
     /// global variables
     for (const auto& global : program.globals) {
-        global_size += adt::size_of(global->type);
+        global_size += ir::type::size_of(global->type);
     }
     /// return value
     global_size += sizeof(int);
@@ -175,10 +175,10 @@ int VirtualMachine::execute(const Program& program) {
     std::byte* cur = buffer.get();
     for (const auto& global : program.globals) {
         alloc(global_frame, global.get(), cur);
-        cur += adt::size_of(global->type);
+        cur += ir::type::size_of(global->type);
     }
 
-    View ret{.data = cur, .type = adt::construct<int>()};
+    View ret{.data = cur, .type = ir::type::construct<int>()};
 
     auto& main_func = program.findFunc("main");
     std::vector<View> args;

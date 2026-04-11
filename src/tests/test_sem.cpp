@@ -52,7 +52,9 @@ int main() {
         fmt::println("Generated IR:\n{}", program);
     } catch (const SemanticError& e) {
         fmt::println("Caught expected semantic error: {}", e.what());
-        assert(false && "Unexpected semantic error: non-const to non-const pointer passing should be allowed");
+        assert(
+            false &&
+            "Unexpected semantic error: non-const to non-const pointer passing should be allowed");
         return;
     }
 }

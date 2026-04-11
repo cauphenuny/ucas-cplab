@@ -91,7 +91,7 @@ struct SemanticAST {
 private:
     const std::unique_ptr<const CompUnit> tree;
 
-    using Type = adt::TypeBox;
+    using Type = ir::type::TypeBox;
 
     std::unordered_map<LValNode, SymDefNode> defs;
     std::unordered_set<VarDefNode> readonly_defs;  // variables that are declared as const
@@ -114,13 +114,13 @@ private:
     };
     std::unordered_map<StmtNode, StmtType> stmt_types;
 
-    inline const static auto VOID = adt::construct<void>();
-    inline const static auto NUM = adt::construct<std::variant<int, float, double>>();
-    inline const static auto BOOL = adt::construct<bool>();
-    inline const static auto INT = adt::construct<int>();
+    inline const static auto VOID = ir::type::construct<void>();
+    inline const static auto NUM = ir::type::construct<std::variant<int, float, double>>();
+    inline const static auto BOOL = ir::type::construct<bool>();
+    inline const static auto INT = ir::type::construct<int>();
 
-    inline const static auto ANY = adt::construct<std::any>();
-    inline const static auto NEVER = adt::TypeBox{adt::Bottom{}.toBoxed()};
+    inline const static auto ANY = ir::type::construct<std::any>();
+    inline const static auto NEVER = ir::type::TypeBox{ir::type::Bottom{}.toBoxed()};
 
     template <typename T> void analysis(const T* elem) {}
 
@@ -132,7 +132,7 @@ private:
 
     void analysis(const FuncParam* param);
     void analysis(const FuncParams* params);
-    void analysis(const FuncArgs* args, const adt::Product& param_types);
+    void analysis(const FuncArgs* args, const ir::type::Product& param_types);
     void analysis(const FuncDef* func_def, bool is_builtin = false);
 
     void analysis(const Stmt* stmt);
@@ -154,11 +154,11 @@ private:
     void analysis(const BinaryExp* binary_exp, const Type& upperbound = ANY, bool readonly = true);
     void analysis(const ExpBox* exp_box, const Type& upperbound = ANY, bool readonly = true);
 
-    auto calcType(ast::Type type) -> adt::TypeBox;
-    auto calcType(const FuncParam* param) -> adt::TypeBox;
-    auto calcType(const FuncArgs* args) -> adt::Product;
-    auto calcType(const FuncParams* params) -> adt::Product;
-    auto calcType(const FuncDef* func_def) -> adt::Func;
+    auto calcType(ast::Type type) -> ir::type::TypeBox;
+    auto calcType(const FuncParam* param) -> ir::type::TypeBox;
+    auto calcType(const FuncArgs* args) -> ir::type::Product;
+    auto calcType(const FuncParams* params) -> ir::type::Product;
+    auto calcType(const FuncDef* func_def) -> ir::type::Func;
 
     template <typename T> void checkType(T node, Type upperbound) {
         if (!(types[node] <= upperbound)) {

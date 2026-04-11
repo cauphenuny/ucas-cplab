@@ -14,6 +14,8 @@ if(ENABLE_IWYU)
     endif()
 endif()
 
+option(ENABLE_FORMAT "Run clang-format before building other targets" OFF)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -39,9 +41,46 @@ list(FILTER LIB_SOURCES EXCLUDE REGEX "src/[^/]*\\.cpp$") # Exclude .cpp files d
 # ANTLR Lib
 FILE(GLOB_RECURSE ANTLR_LIB_FILES "deps/antlr4-runtime/*.cpp")
 
+# Source files to format under src/**
+FILE(GLOB_RECURSE FORMAT_FILES CONFIGURE_DEPENDS
+    "src/*.h"
+    "src/*.hpp"
+    "src/*.c"
+    "src/*.cc"
+    "src/*.cpp"
+)
+
+find_program(CLANG_FORMAT_EXECUTABLE clang-format)
+if(NOT CLANG_FORMAT_EXECUTABLE)
+    message(WARNING "clang-format not found, 'format' target will be unavailable.")
+endif()
+
+if(CLANG_FORMAT_EXECUTABLE)
+    if(FORMAT_FILES)
+        add_custom_target(format
+            COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${FORMAT_FILES}
+            COMMENT "Formatting src/** with clang-format"
+            VERBATIM
+        )
+    else()
+        add_custom_target(format
+            COMMAND ${CMAKE_COMMAND} -E echo "No files found under src/** to format."
+            VERBATIM
+        )
+    endif()
+endif()
+
 # add_definitions(-w -g)
 add_definitions(-g -Wall) # Do not ignore warnings!
 add_library(antlr STATIC ${ANTLR_LIB_FILES})
+
+if(ENABLE_FORMAT)
+    if(CLANG_FORMAT_EXECUTABLE)
+        add_dependencies(antlr format)
+    else()
+        message(FATAL_ERROR "ENABLE_FORMAT is ON but clang-format was not found.")
+    endif()
+endif()
 
 message("LIB_SOURCES: ${LIB_SOURCES}")
 
@@ -55,6 +94,10 @@ else()
     add_library(compiler_core STATIC ${CMAKE_CURRENT_BINARY_DIR}/empty_compiler_core.cpp)
 endif()
 
+if(ENABLE_FORMAT)
+    add_dependencies(compiler_core format)
+endif()
+
 find_package(Threads REQUIRED)
 
 # Add targets for each test in src/tests
@@ -63,6 +106,9 @@ foreach(TEST_SOURCE ${TEST_FILES})
     get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
     add_executable(${TEST_NAME} ${TEST_SOURCE})
     target_link_libraries(${TEST_NAME} compiler_core antlr Threads::Threads)
+    if(ENABLE_FORMAT)
+        add_dependencies(${TEST_NAME} format)
+    endif()
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
 endforeach()
 
@@ -72,4 +118,7 @@ foreach(EXEC_SOURCE ${SRC_EXECUTABLES})
     get_filename_component(EXEC_NAME ${EXEC_SOURCE} NAME_WE)
     add_executable(${EXEC_NAME} ${EXEC_SOURCE})
     target_link_libraries(${EXEC_NAME} compiler_core antlr Threads::Threads)
+    if(ENABLE_FORMAT)
+        add_dependencies(${EXEC_NAME} format)
+    endif()
 endforeach()

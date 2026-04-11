@@ -31,7 +31,7 @@ void SemanticAST::analysis(const CompUnit* comp_unit) {
         throw SemanticError(comp_unit->loc, "function `main` is not defined");
     }
     auto [main, _] = funcs["main"];
-    auto expected_type = adt::construct<int()>();
+    auto expected_type = ir::type::construct<int()>();
     if (!(types[main] == expected_type)) {
         throw SemanticError(main->loc,
                             fmt::format("function `main` must have type `{}`, but got `{}`",
@@ -48,7 +48,8 @@ void SemanticAST::analysis(const Decl* decl) {
                 // array type
                 auto elem_type = calcType(decl.type);
                 for (size_t i = def.dims.size(); i > 0; i--) {
-                    elem_type = adt::Array(std::move(elem_type), def.dims[i - 1].value()).toBoxed();
+                    elem_type =
+                        ir::type::Array(std::move(elem_type), def.dims[i - 1].value()).toBoxed();
                 }
                 types[&def] = std::move(elem_type);
             } else {
@@ -103,8 +104,8 @@ void SemanticAST::analysis(const ConstInitVal* val) {
             Type elem_type = NEVER;
             for (const auto& val : vals) {
                 analysis(&val);
-                if (!adt::constructable(elem_type, types[&val]) &&
-                    !adt::constructable(types[&val], elem_type)) {
+                if (!ir::type::constructable(elem_type, types[&val]) &&
+                    !ir::type::constructable(types[&val], elem_type)) {
                     throw SemanticError(
                         val.loc,
                         fmt::format(
@@ -112,9 +113,10 @@ void SemanticAST::analysis(const ConstInitVal* val) {
                             " (at {})" NONE,
                             elem_type, types[&val], val));
                 }
-                elem_type = adt::constructable(elem_type, types[&val]) ? types[&val] : elem_type;
+                elem_type =
+                    ir::type::constructable(elem_type, types[&val]) ? types[&val] : elem_type;
             }
-            types[val] = adt::Array(std::move(elem_type), vals.size()).toBoxed();
+            types[val] = ir::type::Array(std::move(elem_type), vals.size()).toBoxed();
         });
 }
 

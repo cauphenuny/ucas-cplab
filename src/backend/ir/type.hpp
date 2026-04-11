@@ -8,6 +8,7 @@
 #include "utils/serialize.hpp"
 #include "utils/traits.hpp"
 
+#include <algorithm>
 #include <any>
 #include <cstddef>
 #include <memory>
@@ -18,7 +19,7 @@
 #include <variant>
 #include <vector>
 
-namespace adt {
+namespace ir::type {
 
 struct Int;
 struct Bool;
@@ -268,10 +269,9 @@ inline size_t size_of(const Bool&) {
 }
 
 inline size_t size_of(const Primitive& prim) {
-    return Match{prim}([](const Int& t) { return size_of(t); },
-                       [](const Float& t) { return size_of(t); },
-                       [](const Double& t) { return size_of(t); },
-                       [](const Bool& t) { return size_of(t); });
+    return Match{prim}(
+        [](const Int& t) { return size_of(t); }, [](const Float& t) { return size_of(t); },
+        [](const Double& t) { return size_of(t); }, [](const Bool& t) { return size_of(t); });
 }
 
 inline size_t size_of(const Product& prod) {
@@ -432,23 +432,25 @@ template <typename T1, typename T2> bool operator<=(const T1& from, const T2& to
     return false;
 }
 
-template <typename T, typename = std::enable_if_t<std::disjunction_v<
-                          std::is_same<T, Int>, std::is_same<T, Float>, std::is_same<T, Bool>,
-                          std::is_same<T, Double>, std::is_same<T, Top>, std::is_same<T, Bottom>>>>
+template <typename T> struct is_primitive : std::false_type {};
+template <> struct is_primitive<Int> : std::true_type {};
+template <> struct is_primitive<Float> : std::true_type {};
+template <> struct is_primitive<Double> : std::true_type {};
+template <> struct is_primitive<Bool> : std::true_type {};
+
+template <typename T> inline constexpr bool is_primitive_v = is_primitive<T>::value;
+
+template <typename T, typename = std::enable_if_t<is_primitive_v<T>>>
 bool operator<=(const T&, const T&) {
     return true;  // same type is always a subtype
 }
 
-template <typename T, typename = std::enable_if_t<
-                          std::disjunction_v<std::is_same<T, Int>, std::is_same<T, Float>,
-                                             std::is_same<T, Bool>, std::is_same<T, Double>>>>
+template <typename T, typename = std::enable_if_t<is_primitive_v<T>>>
 bool operator<=(const Primitive& from, const T& to) {
     return Match{from}([&](const auto& from) -> bool { return from <= to; });
 }
 
-template <typename T, typename = std::enable_if_t<
-                          std::disjunction_v<std::is_same<T, Int>, std::is_same<T, Float>,
-                                             std::is_same<T, Bool>, std::is_same<T, Double>>>>
+template <typename T, typename = std::enable_if_t<is_primitive_v<T>>>
 bool operator<=(const T& from, const Primitive& to) {
     return Match{to}([&](const auto& to) -> bool { return from <= to; });
 }
@@ -472,26 +474,20 @@ inline bool operator<=(const Product& from, const Product& to) {
 template <typename T>
 std::enable_if_t<!std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>, bool>
 operator<=(const Sum& from, const T& to) {
-    for (const auto& item : from.items_) {
-        if (!(item <= to)) return false;
-    }
-    return true;
+    return std::all_of(from.items_.begin(), from.items_.end(),
+                       [&](const TypeBox& item) { return item <= to; });
+}
+
+inline bool operator<=(const Sum& from, const Sum& to) {  // forall T in from s.t. T -> to
+    return std::all_of(from.items_.begin(), from.items_.end(),
+                       [&](const TypeBox& item) { return item <= to; });
 }
 
 template <typename T>
 std::enable_if_t<!std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>, bool>
 operator<=(const T& from, const Sum& to) {
-    for (const auto& item : to.items_) {
-        if (from <= item) return true;
-    }
-    return false;
-}
-
-inline bool operator<=(const Sum& from, const Sum& to) {  // forall T in from s.t. T -> to
-    for (const auto& item : from.items_) {
-        if (!(item <= to)) return false;
-    }
-    return true;
+    return std::any_of(to.items_.begin(), to.items_.end(),
+                       [&](const TypeBox& item) { return from <= item; });
 }
 
 inline bool operator<=(const Func& from, const Func& to) {
@@ -505,14 +501,6 @@ inline bool operator<=(const Array& from, const Array& to) {
     return from.size == to.size;
 }
 
-inline bool operator<=(const Array& from, const Pointer& to) {
-    auto from_elem = from.elem.decay(false);  // array can decay to mutable pointer
-    auto to_elem = to.elem.decay(to.readonly);
-    if (!(from_elem <= to_elem)) return false;
-    if (!to.readonly && !(to_elem <= from_elem)) return false;
-    return true;
-}
-
 inline bool operator<=(const Pointer& from, const Pointer& to) {
     auto from_elem = from.elem.decay(from.readonly);
     auto to_elem = to.elem.decay(to.readonly);
@@ -520,6 +508,10 @@ inline bool operator<=(const Pointer& from, const Pointer& to) {
     if (from.readonly && !to.readonly) return false;
     if (!to.readonly && !(to_elem <= from_elem)) return false;
     return true;
+}
+
+inline bool operator<=(const Array& from, const Pointer& to) {
+    return from.decay(false) <= to;
 }
 
 inline bool operator<=(const TypeBox& from, const TypeBox& to) {
@@ -630,7 +622,8 @@ inline bool constructable(const TypeBox& from_box, const TypeBox& to_box) {
         // NOTE: flat array can construct multi-dim array
         auto dim_from = dim(from);
         auto dim_to = dim(to);
-        if (dim_from > 1 && dim_to != dim_from) return false; // from is not flatten, then dims must match
+        if (dim_from > 1 && dim_to != dim_from)
+            return false;  // from is not flatten, then dims must match
         if (dim_from == 1 && dim_to > 1) {
             auto flattened_to = to_box.flatten();
             if (!flattened_to.is<Array>()) return false;
@@ -650,4 +643,4 @@ inline bool constructable(const TypeBox& from_box, const TypeBox& to_box) {
     return from_box <= to_box;
 }
 
-}  // namespace adt
+}  // namespace ir::type

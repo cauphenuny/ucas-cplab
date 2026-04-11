@@ -32,8 +32,7 @@ template <typename... Ts> struct Match {
             [](auto&&... args) {
                 return Match<Ts..., T2s...>(std::forward<decltype(args)>(args)...);
             },
-            std::tuple_cat(std::move(values), std::move(other.values))
-        );
+            std::tuple_cat(std::move(values), std::move(other.values)));
     }
 };
 

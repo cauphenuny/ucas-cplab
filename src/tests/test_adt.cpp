@@ -7,7 +7,7 @@
 #include <variant>
 
 void test_subtype() {
-    using namespace adt;
+    using namespace ir::type;
 
     auto i = construct<int>();
     auto f = construct<float>();
@@ -34,22 +34,23 @@ void test_subtype() {
     // Sums (Source)
     auto s1 = construct<std::variant<int, float>>();
     assert(s1 <= s1);
-    assert(!(s1 <= i)); // {int, float} is not always int
+    assert(!(s1 <= i));  // {int, float} is not always int
 
     // Sums (Target)
-    assert(i <= s1); // int can be converted to {int, float}
-    assert(f <= s1); // float can be converted to {int, float}
-    assert(!(b <= s1)); // bool cannot be converted to {int, float}
+    assert(i <= s1);     // int can be converted to {int, float}
+    assert(f <= s1);     // float can be converted to {int, float}
+    assert(!(b <= s1));  // bool cannot be converted to {int, float}
 
     // Sums (Both)
     auto s2 = construct<std::variant<int, float, bool>>();
-    assert(s1 <= s2); // {int, float} -> {int, float, bool} is ok
-    assert(!(s2 <= s1)); // {int, float, bool} -> {int, float} is not ok (bool missing)
+    assert(s1 <= s2);     // {int, float} -> {int, float, bool} is ok
+    assert(!(s2 <= s1));  // {int, float, bool} -> {int, float} is not ok (bool missing)
 
     // Pointers
     auto pi = construct<int*>();
     auto pf = construct<float*>();
     auto ppi = construct<int**>();
+    fmt::println("pi: {}, pf: {}, ppi: {}", pi, pf, ppi);
     assert(pi <= pi);
     assert(!(pi <= pf));
     assert(!(pi <= ppi));
@@ -58,6 +59,7 @@ void test_subtype() {
     auto a10 = construct<int[10]>();
     auto a5 = construct<int[5]>();
     auto af10 = construct<float[10]>();
+    fmt::println("a10: {}, a5: {}, af10: {}", a10, a5, af10);
     assert(a10 <= a10);
     assert(!(a10 <= a5));
     assert(!(a5 <= a10));
@@ -78,18 +80,18 @@ void test_subtype() {
     // Sum s1 = {int, float}, s2 = {int, float, bool}
     // s1 -> s2 (s1 is "smaller" than s2)
     // Func: f1 = (s2 -> int), f2 = (s1 -> int)  -- parameter s1 is convertible to s2?
-    // if I have a function that takes {int, float, bool}, I can pass it a function that expects {int, float}?
-    // The target will call it with s1. s1 is convertible to s2. So it's OK.
+    // if I have a function that takes {int, float, bool}, I can pass it a function that expects
+    // {int, float}? The target will call it with s1. s1 is convertible to s2. So it's OK.
     auto fs2 = construct<int(std::variant<int, float, bool>)>();
     auto fs1 = construct<int(std::variant<int, float>)>();
-    assert(fs2 <= fs1); // OK: (s2->int) is convertible to (s1->int)
-    assert(!(fs1 <= fs2)); // ERR: (s1->int) is not convertible to (s2->int)
+    assert(fs2 <= fs1);     // OK: (s2->int) is convertible to (s1->int)
+    assert(!(fs1 <= fs2));  // ERR: (s1->int) is not convertible to (s2->int)
 
     // Co-variant return
     auto frs1 = construct<std::variant<int, float>(int)>();
     auto frs2 = construct<std::variant<int, float, bool>(int)>();
-    assert(frs1 <= frs2); // OK: (int->s1) is convertible to (int->s2)
-    assert(!(frs2 <= frs1)); // ERR
+    assert(frs1 <= frs2);     // OK: (int->s1) is convertible to (int->s2)
+    assert(!(frs2 <= frs1));  // ERR
 
     // Top and bottom
     auto top = construct<std::any>();
@@ -114,18 +116,21 @@ void test_subtype() {
     assert((never | construct<void>()) == construct<void>());
 
     // constructable
-    assert(constructable(construct<int[5]>(), construct<int[10]>())); // smaller array can construct bigger array
+    assert(constructable(construct<int[5]>(),
+                         construct<int[10]>()));  // smaller array can construct bigger array
     assert(!constructable(construct<int[10]>(), construct<int[5]>()));
-    assert(!constructable(construct<int[5]>(), construct<int*>())); // array cannot construct pointer
+    assert(
+        !constructable(construct<int[5]>(), construct<int*>()));  // array cannot construct pointer
     assert(
         !constructable(construct<int*>(), construct<int[5]>()));  // pointer cannot construct array
-    assert(constructable(construct<int[6]>(), construct<int[2][3]>())); // flat array can construct multi-dim array
+    assert(constructable(construct<int[6]>(),
+                         construct<int[2][3]>()));  // flat array can construct multi-dim array
 
     fmt::println("All subtype tests passed!");
 }
 
 void test_construct() {
-    using namespace adt;
+    using namespace ir::type;
     fmt::println("int: {}", construct<int>());
     fmt::println("float: {}", construct<float>());
     fmt::println("bool: {}", construct<bool>());
@@ -137,8 +142,9 @@ void test_construct() {
     fmt::println("variant<int, float>: {}", construct<std::variant<int, float>>());
     fmt::println("any: {}", construct<std::any>());
     fmt::println(
-        "Complex: {}", construct<int (*(*(*)(float, std::variant<int, float> (*)(bool))))(float, int*)>());
-    
+        "Complex: {}",
+        construct<int (*(*(*)(float, std::variant<int, float> (*)(bool))))(float, int*)>());
+
     fmt::println("\nUnion tests:");
     auto never = TypeBox{Bottom{}.toBoxed()};
     auto i = construct<int>();
@@ -150,7 +156,7 @@ void test_construct() {
 }
 
 void test_slice() {
-    using namespace adt;
+    using namespace ir::type;
     auto slice1 = construct<int[10]>();
     fmt::println("decay({}): {}", slice1, slice1.decay());
     auto slice2 = construct<int[10][20]>();

@@ -81,7 +81,8 @@ int main(int argc, const char* argv[]) {
     }
 
     if (output_file && files.size() > 1) {
-        fmt::println(stderr, "Warning: multiple input files, but only one output file specified. Output will be overwritten.");
+        fmt::println(stderr, "Warning: multiple input files, but only one output file specified. "
+                             "Output will be overwritten.");
     }
 
     try {

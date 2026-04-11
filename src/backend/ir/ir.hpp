@@ -4,15 +4,15 @@
 #include "type.hpp"
 
 #include <cstddef>
+#include <cstring>
 #include <functional>
 #include <string>
 #include <utility>
 #include <variant>
-#include <cstring>
 
 namespace ir {
 
-using Type = adt::TypeBox;
+using Type = ir::type::TypeBox;
 
 struct Block;
 struct Alloc;
@@ -63,18 +63,18 @@ inline auto toString(bool val) -> std::string {
 
 inline auto serializeArray(const Type& type, std::byte* buffer) -> std::string {
     std::string result;
-    auto elem_type = type.as<adt::Array>().elem;
-    auto size = type.as<adt::Array>().size;
+    auto elem_type = type.as<ir::type::Array>().elem;
+    auto size = type.as<ir::type::Array>().size;
     for (size_t i = 0; i < size; i++) {
         result += match(
                       elem_type.var(),
-                      [&](const adt::Primitive& prim) -> std::string {
+                      [&](const ir::type::Primitive& prim) -> std::string {
                           return match(prim, [&](auto v) {
                               using type = typename decltype(v)::type;
                               return toString(*(type*)buffer);
                           });
                       },
-                      [&](const adt::Array& arr) -> std::string {
+                      [&](const ir::type::Array& arr) -> std::string {
                           return serializeArray(elem_type, buffer);
                       },
                       [&](const auto&) -> std::string {
@@ -82,7 +82,7 @@ inline auto serializeArray(const Type& type, std::byte* buffer) -> std::string {
                               "Unsupported type in ConstexprValue array: {}", elem_type));
                       }) +
                   ", ";
-        buffer += adt::size_of(elem_type);
+        buffer += ir::type::size_of(elem_type);
     }
     if (result.size()) result.pop_back(), result.pop_back();
     return "{" + result + "}";
@@ -99,8 +99,8 @@ struct ConstexprValue {
                          },
                          [&](auto v) { return ir::toString(v); }););
 
-    ConstexprValue() : type(adt::construct<void>()), val(std::monostate{}) {}
-    template <typename T> ConstexprValue(T v) : type(adt::construct<T>()), val(v) {}
+    ConstexprValue() : type(ir::type::construct<void>()), val(std::monostate{}) {}
+    template <typename T> ConstexprValue(T v) : type(ir::type::construct<T>()), val(v) {}
     ConstexprValue(Type type, std::unique_ptr<std::byte[]> vec)
         : type(std::move(type)), val(std::move(vec)) {}
 
@@ -109,7 +109,7 @@ struct ConstexprValue {
             other.val, [&](std::monostate) { val = std::monostate{}; },
             [&](const std::unique_ptr<std::byte[]>& vec) {
                 if (vec) {
-                    auto size = adt::size_of(type);
+                    auto size = ir::type::size_of(type);
                     auto buf = std::make_unique<std::byte[]>(size);
                     std::memcpy(buf.get(), vec.get(), size);
                     val = std::move(buf);
@@ -140,16 +140,16 @@ inline LeftValue as_lvalue(const Value& value) {
         });
 }
 
-inline auto type(const LeftValue& value) -> Type {
+inline auto type_of(const LeftValue& value) -> Type {
     return match(value, [&](const auto& var) { return var.type; });
 }
 
-inline auto type(const ConstexprValue& value) -> Type {
+inline auto type_of(const ConstexprValue& value) -> Type {
     return value.type;
 }
 
-inline auto type(const Value& value) -> Type {
-    return match(value, [&](const auto& val) { return type(val); });
+inline auto type_of(const Value& value) -> Type {
+    return match(value, [&](const auto& val) { return type_of(val); });
 }
 
 struct UnaryInst {
@@ -157,7 +157,7 @@ struct UnaryInst {
     LeftValue result;
     Value operand;
 
-    SIMPLE_TO_STRING(fmt::format("{}: {} = {}{};", result, type(result), op, operand))
+    SIMPLE_TO_STRING(fmt::format("{}: {} = {}{};", result, type_of(result), op, operand))
 };
 
 struct BinaryInst {
@@ -166,10 +166,10 @@ struct BinaryInst {
     Value lhs, rhs;
 
     SIMPLE_TO_STRING(op == InstOp::LOAD
-                         ? fmt::format("{}: {} = {}[{}];", result, type(result), lhs, rhs)
+                         ? fmt::format("{}: {} = {}[{}];", result, type_of(result), lhs, rhs)
                      : op == InstOp::STORE
                          ? fmt::format("{}[{}] = {};", result, lhs, rhs)
-                         : fmt::format("{}: {} = {} {} {};", result, type(result), lhs, op, rhs))
+                         : fmt::format("{}: {} = {} {} {};", result, type_of(result), lhs, op, rhs))
 };
 
 struct CallInst {
@@ -183,7 +183,7 @@ struct CallInst {
             arg_str += fmt::format("{}, ", arg);
         }
         if (!arg_str.empty()) arg_str.pop_back(), arg_str.pop_back();
-        return fmt::format("{}: {} = {}({});", result, type(result), func, arg_str);
+        return fmt::format("{}: {} = {}({});", result, type_of(result), func, arg_str);
     }
 };
 
@@ -265,7 +265,7 @@ inline auto JumpExit::toString() const -> std::string {
 struct Alloc {
     std::string name;
     Type type;
-    bool comptime{false};   // value known at compile time
+    bool comptime{false};  // value known at compile time
     std::optional<ConstexprValue> init;
 
     [[nodiscard]] std::string toString() const {
@@ -279,8 +279,7 @@ struct Alloc {
     Alloc(Alloc&&) = delete;
     Alloc(std::string name, Type type, bool comptime = false,
           std::optional<ConstexprValue> init = std::nullopt)
-        : name(std::move(name)), type(std::move(type)), comptime(comptime),
-          init(std::move(init)) {}
+        : name(std::move(name)), type(std::move(type)), comptime(comptime), init(std::move(init)) {}
 };
 
 struct Func {
@@ -300,7 +299,7 @@ struct Func {
         if (!params.empty()) params.pop_back(), params.pop_back();
 
         std::string str;
-        if (ret_type == adt::construct<void>()) {
+        if (ret_type == ir::type::construct<void>()) {
             str += fmt::format("fn {}({}) {{\n", name, params);
         } else {
             str += fmt::format("fn {}({}) -> {} {{\n", name, params, ret_type);

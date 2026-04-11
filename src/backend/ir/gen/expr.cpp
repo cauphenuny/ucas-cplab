@@ -61,7 +61,8 @@ auto Generator::gen(const ast::Exp* exp, Func* func, Block* scope) -> Value {
                 args.push_back(gen(&arg, func, scope));
             }
             auto result = func->newTemp(this->info->type_of(&call_exp));
-            scope->add(CallInst{.result = result, .func = gen(&call_exp.func), .args = std::move(args)});
+            scope->add(
+                CallInst{.result = result, .func = gen(&call_exp.func), .args = std::move(args)});
             return LeftValue{result};
         });
 }

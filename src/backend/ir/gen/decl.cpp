@@ -24,20 +24,21 @@ auto Generator::gen(const ast::ConstInitVal* init, Type target_type) -> Constexp
             return match(val, [](auto v) { return ConstexprValue(v); });
         },
         [&](const std::vector<ast::ConstInitVal>& subvals) -> ConstexprValue {
-            auto type = this->info->type_of(init).as<adt::Array>();
-            if (!type.elem.is<adt::Array>() && target_type.as<adt::Array>().elem.is<adt::Array>()) {
+            auto type = this->info->type_of(init).as<ir::type::Array>();
+            if (!type.elem.is<ir::type::Array>() &&
+                target_type.as<ir::type::Array>().elem.is<ir::type::Array>()) {
                 // NOTE: initialize multi-dim array with flat initializer list
                 target_type = target_type.flatten();
             }
-            auto buffer = std::make_unique<std::byte[]>(adt::size_of(target_type));
-            memset(buffer.get(), 0, adt::size_of(target_type));
+            auto buffer = std::make_unique<std::byte[]>(ir::type::size_of(target_type));
+            memset(buffer.get(), 0, ir::type::size_of(target_type));
 
-            auto construct = [&](auto self, const adt::Array& type, const adt::Array& target_type,
-                                 const std::vector<ast::ConstInitVal>& elems,
-                                 std::byte* buf) -> void {
+            auto construct =
+                [&](auto self, const ir::type::Array& type, const ir::type::Array& target_type,
+                    const std::vector<ast::ConstInitVal>& elems, std::byte* buf) -> void {
                 // NOTE: when array is not fully initialized, elems.size() < type.size
                 auto length = elems.size();
-                auto elem_size = adt::size_of(target_type.elem);
+                auto elem_size = ir::type::size_of(target_type.elem);
                 for (size_t i = 0; i < length; i++) {
                     auto& elem = elems[i];
                     match(
@@ -49,14 +50,14 @@ auto Generator::gen(const ast::ConstInitVal* init, Type target_type) -> Constexp
                             });
                         },
                         [&](const std::vector<ast::ConstInitVal>& subvals) {
-                            self(self, type.elem.as<adt::Array>(),
-                                 target_type.elem.as<adt::Array>(), subvals, buf);
+                            self(self, type.elem.as<ir::type::Array>(),
+                                 target_type.elem.as<ir::type::Array>(), subvals, buf);
                         });
                     buf += elem_size;
                 }
             };
 
-            construct(construct, type, target_type.as<adt::Array>(), subvals, buffer.get());
+            construct(construct, type, target_type.as<ir::type::Array>(), subvals, buffer.get());
 
             return {target_type.flatten(), std::move(buffer)};
         });
@@ -98,7 +99,7 @@ auto Generator::gen(const ast::Decl* decl) -> std::vector<std::unique_ptr<Alloc>
 }
 
 auto Generator::gen(const ast::FuncDef* func) -> std::unique_ptr<Func> {
-    auto type = this->info->type_of(func).as<adt::Func>();
+    auto type = this->info->type_of(func).as<ir::type::Func>();
     auto params = std::vector<std::unique_ptr<Alloc>>{};
     for (const auto& param : func->params) {
         auto alloc = gen(&param);
@@ -109,7 +110,7 @@ auto Generator::gen(const ast::FuncDef* func) -> std::unique_ptr<Func> {
     this->ir_defs[func] = ir_func.get();
     auto end = gen(&func->block, ir_func.get(), ir_func->entrance());
     if (end) {
-        if (!(type.ret <= adt::construct<void>())) {
+        if (!(type.ret <= ir::type::construct<void>())) {
             throw COMPILER_ERROR(fmt::format("control may reach end of function '{}'", func->name));
         } else {
             end->setExit(ReturnExit{});

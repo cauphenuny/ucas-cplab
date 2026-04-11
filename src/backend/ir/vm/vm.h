@@ -24,7 +24,7 @@ struct VirtualMachine {
 private:
     template <template <typename> class Op>
     void eval_binary(View& dest, const View& lhs, const View& rhs) const {
-        match(dest.type.as<adt::Primitive>(), [&](auto value) {
+        match(dest.type.as<ir::type::Primitive>(), [&](auto value) {
             using type = typename decltype(value)::type;
             if constexpr (std::is_floating_point_v<type> &&
                           std::is_same_v<Op<type>, std::modulus<type>>) {
@@ -36,7 +36,7 @@ private:
     }
 
     template <template <typename> class Op> void eval_unary(View& dest, const View& operand) const {
-        match(dest.type.as<adt::Primitive>(), [&](auto value) {
+        match(dest.type.as<ir::type::Primitive>(), [&](auto value) {
             using type = typename decltype(value)::type;
             *(type*)dest.data = Op<type>{}(*(type*)operand.data);
         });
@@ -44,7 +44,7 @@ private:
 
     template <template <typename> class Op>
     void eval_comparison(View& dest, const View& lhs, const View& rhs) const {
-        match(lhs.type.as<adt::Primitive>(), [&](auto value) {
+        match(lhs.type.as<ir::type::Primitive>(), [&](auto value) {
             using type = typename decltype(value)::type;
             *(bool*)dest.data = Op<type>{}(*(type*)lhs.data, *(type*)rhs.data);
         });
@@ -76,18 +76,18 @@ private:
         throw COMPILER_ERROR(fmt::format("Cannot assign {} to {}", src_type, dest_type));
     }
 
-    void assign(const adt::Primitive& dest_type, std::byte* dest, const adt::Primitive& src_type,
+    void assign(const ir::type::Primitive& dest_type, std::byte* dest,
+                const ir::type::Primitive& src_type, const std::byte* src) const;
+    void assign(const ir::type::Sum& dest_type, std::byte* dest, const ir::Type& src_type,
                 const std::byte* src) const;
-    void assign(const adt::Sum& dest_type, std::byte* dest, const ir::Type& src_type,
+    void assign(const ir::type::Array& dest_type, std::byte* dest, const ir::type::Array& src_type,
                 const std::byte* src) const;
-    void assign(const adt::Array& dest_type, std::byte* dest, const adt::Array& src_type,
-                const std::byte* src) const;
-    void assign(const adt::Pointer& dest_type, std::byte* dest, const adt::Pointer& src_type,
-                const std::byte* src) const;
-    void assign(const adt::Pointer& dest_type, std::byte* dest, const adt::Array& src_type,
-                const std::byte* src) const;
-    void assign(const adt::Product& dest_type, std::byte* dest, const adt::Product& src_type,
-                const std::byte* src) const;
+    void assign(const ir::type::Pointer& dest_type, std::byte* dest,
+                const ir::type::Pointer& src_type, const std::byte* src) const;
+    void assign(const ir::type::Pointer& dest_type, std::byte* dest,
+                const ir::type::Array& src_type, const std::byte* src) const;
+    void assign(const ir::type::Product& dest_type, std::byte* dest,
+                const ir::type::Product& src_type, const std::byte* src) const;
     void assign(const Type& dest_type, std::byte* dest, const Type& src_type,
                 const std::byte* src) const;
 
@@ -219,7 +219,7 @@ public:
         };
         binary_ops[InstOp::LOAD] = [&](View& dest, const View& lhs, const View& rhs) {
             // NOTE: lhs: pointer, rhs: offset
-            using namespace adt;
+            using namespace ir::type;
             if (!rhs.type.is<Primitive>() ||
                 !std::holds_alternative<Int>(rhs.type.as<Primitive>())) {
                 throw COMPILER_ERROR(
@@ -233,11 +233,11 @@ public:
             auto offset = *(int*)rhs.data;
             auto elem_type = is_pointer ? lhs.type.as<Pointer>().elem : lhs.type.as<Array>().elem;
             auto base = is_pointer ? *(std::byte**)lhs.data : lhs.data;
-            assign(dest.type, dest.data, elem_type, base + offset * adt::size_of(elem_type));
+            assign(dest.type, dest.data, elem_type, base + offset * ir::type::size_of(elem_type));
         };
         binary_ops[InstOp::STORE] = [this](View& dest, const View& lhs, const View& rhs) {
             // NOTE: dest: pointer, lhs: offset, rhs: value
-            using namespace adt;
+            using namespace ir::type;
             if (!lhs.type.is<Primitive>() ||
                 !std::holds_alternative<Int>(lhs.type.as<Primitive>())) {
                 throw COMPILER_ERROR(
@@ -251,7 +251,7 @@ public:
             auto offset = *(int*)lhs.data;
             auto elem_type = is_pointer ? dest.type.as<Pointer>().elem : dest.type.as<Array>().elem;
             auto base = is_pointer ? *(std::byte**)dest.data : dest.data;
-            assign(elem_type, base + offset * adt::size_of(elem_type), rhs.type, rhs.data);
+            assign(elem_type, base + offset * ir::type::size_of(elem_type), rhs.type, rhs.data);
         };
     }
 };

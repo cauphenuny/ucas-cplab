@@ -14,8 +14,7 @@ struct CodeError : std::runtime_error {
 };
 
 struct SyntaxError : CodeError {
-    SyntaxError(Location loc, const std::string& desc,
-                const std::string& type = "syntax error")
+    SyntaxError(Location loc, const std::string& desc, const std::string& type = "syntax error")
         : CodeError(loc, desc, type) {}
 };
 
@@ -27,13 +26,11 @@ struct LexicalError : SyntaxError {
 
 struct SyntacticError : SyntaxError {
     using SyntaxError::SyntaxError;
-    SyntacticError(Location loc, const std::string& desc)
-        : SyntaxError(loc, desc, "parse error") {}
+    SyntacticError(Location loc, const std::string& desc) : SyntaxError(loc, desc, "parse error") {}
 };
 
 struct SemanticError : CodeError {
-    SemanticError(Location loc, const std::string& desc,
-                  const std::string& type = "semantic error")
+    SemanticError(Location loc, const std::string& desc, const std::string& type = "semantic error")
         : CodeError(loc, desc, type) {}
 };
 

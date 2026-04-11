@@ -27,29 +27,30 @@ class IRConstructVisitor : public IRBaseVisitor {
 public:
     IRConstructVisitor() {
         // Populate standard builtins to allow resolution during parsing
-        auto addBuiltin = [&](const std::string& name, adt::Product params, adt::TypeBox ret) {
-            auto type = adt::Func(std::move(params).toBoxed(), std::move(ret)).toBoxed();
+        auto addBuiltin = [&](const std::string& name, ir::type::Product params,
+                              ir::type::TypeBox ret) {
+            auto type = ir::type::Func(std::move(params).toBoxed(), std::move(ret)).toBoxed();
             program_.addBuiltinFunc(std::make_unique<ir::BuiltinFunc>(name, std::move(type)));
         };
 
-        auto addPrint = [&](const std::string& name, adt::TypeBox param_type) {
-            auto params = adt::Product();
+        auto addPrint = [&](const std::string& name, ir::type::TypeBox param_type) {
+            auto params = ir::type::Product();
             params.append(std::move(param_type));
-            addBuiltin(name, std::move(params), adt::construct<void>());
+            addBuiltin(name, std::move(params), ir::type::construct<void>());
         };
 
-        auto addGet = [&](const std::string& name, adt::TypeBox ret_type) {
-            addBuiltin(name, adt::Product(), std::move(ret_type));
+        auto addGet = [&](const std::string& name, ir::type::TypeBox ret_type) {
+            addBuiltin(name, ir::type::Product(), std::move(ret_type));
         };
 
-        addPrint("print_int", adt::construct<int>());
-        addPrint("print_float", adt::construct<float>());
-        addPrint("print_bool", adt::construct<bool>());
-        addPrint("print_double", adt::construct<double>());
+        addPrint("print_int", ir::type::construct<int>());
+        addPrint("print_float", ir::type::construct<float>());
+        addPrint("print_bool", ir::type::construct<bool>());
+        addPrint("print_double", ir::type::construct<double>());
 
-        addGet("get_int", adt::construct<int>());
-        addGet("get_float", adt::construct<float>());
-        addGet("get_double", adt::construct<double>());
+        addGet("get_int", ir::type::construct<int>());
+        addGet("get_float", ir::type::construct<float>());
+        addGet("get_double", ir::type::construct<double>());
     }
 
     auto takeProgram() && -> ir::Program {
@@ -63,7 +64,7 @@ public:
         throw COMPILER_ERROR(fmt::format("take failed for type {}", typeid(T).name()));
     }
 
-    template<typename T> static T take_ptr(std::any a) {
+    template <typename T> static T take_ptr(std::any a) {
         if (a.has_value() && a.type() == typeid(node_ptr<T>)) {
             auto ptr = std::any_cast<node_ptr<T>>(std::move(a));
             return std::move(*ptr);
@@ -102,7 +103,7 @@ public:
 
     std::any visitConstDecl(IRParser::ConstDeclContext* ctx) override {
         auto name = ctx->ID()->getText();
-        auto type = take<adt::TypeBox>(visit(ctx->type()));
+        auto type = take<ir::type::TypeBox>(visit(ctx->type()));
         auto init = take<ir::ConstexprValue>(visit(ctx->constexpr_()));
         auto alloc =
             std::make_unique<ir::Alloc>(name, std::move(type), /*comptime=*/true, std::move(init));
@@ -118,7 +119,7 @@ public:
 
     std::any visitLetDecl(IRParser::LetDeclContext* ctx) override {
         auto name = ctx->ID()->getText();
-        auto type = take<adt::TypeBox>(visit(ctx->type()));
+        auto type = take<ir::type::TypeBox>(visit(ctx->type()));
         std::optional<ir::ConstexprValue> init;
         if (ctx->constexpr_()) {
             init = take<ir::ConstexprValue>(visit(ctx->constexpr_()));
@@ -187,11 +188,11 @@ public:
     }
 
     auto extractFuncSignature(IRParser::FuncDeclContext* ctx)
-        -> std::tuple<std::string, adt::TypeBox, std::vector<std::unique_ptr<ir::Alloc>>> {
+        -> std::tuple<std::string, ir::type::TypeBox, std::vector<std::unique_ptr<ir::Alloc>>> {
         auto name = ctx->ID()->getText();
-        adt::TypeBox ret_type = adt::construct<void>();
+        ir::type::TypeBox ret_type = ir::type::construct<void>();
         if (ctx->type()) {
-            ret_type = take<adt::TypeBox>(visit(ctx->type()));
+            ret_type = take<ir::type::TypeBox>(visit(ctx->type()));
         }
         std::vector<std::unique_ptr<ir::Alloc>> params;
         if (ctx->paramList()) {
@@ -210,7 +211,7 @@ public:
 
     std::any visitParam(IRParser::ParamContext* ctx) override {
         auto name = ctx->ID()->getText();
-        auto type = take<adt::TypeBox>(visit(ctx->type()));
+        auto type = take<ir::type::TypeBox>(visit(ctx->type()));
         return wrap(new ir::Alloc(name, std::move(type)));
     }
 
@@ -259,7 +260,7 @@ public:
                                                .rhs = std::move(val)});
         } else if (ctx->ID()) {
             // var ':' type '=' ID '(' (argList)? ')' ';' // call
-            auto result = resolveDef(ctx->var(0), take<adt::TypeBox>(visit(ctx->type())));
+            auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
             auto func_name = ctx->ID()->getText();
             auto func_def = resolveFunc(func_name);
             if (!func_def)
@@ -274,7 +275,7 @@ public:
                              .args = std::move(args)});
         } else if (ctx->binop()) {
             // var ':' type '=' value binop value ';' // binary op
-            auto result = resolveDef(ctx->var(0), take<adt::TypeBox>(visit(ctx->type())));
+            auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
             auto lhs = take<ir::Value>(visit(ctx->value(0)));
             auto rhs = take<ir::Value>(visit(ctx->value(1)));
             auto op = getBinOp(ctx->binop());
@@ -284,7 +285,7 @@ public:
                                                .rhs = std::move(rhs)});
         } else if (is_load) {
             // var ':' type '=' value '[' value ']' ';' // load
-            auto result = resolveDef(ctx->var(0), take<adt::TypeBox>(visit(ctx->type())));
+            auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
             auto base = take<ir::Value>(visit(ctx->value(0)));
             auto index = take<ir::Value>(visit(ctx->value(1)));
             current_block_->add(ir::BinaryInst{.op = ir::InstOp::LOAD,
@@ -293,7 +294,7 @@ public:
                                                .rhs = std::move(index)});
         } else {
             // var ':' type '=' ('!' value | '-' var | value) ';' // unary or simple assign
-            auto result = resolveDef(ctx->var(0), take<adt::TypeBox>(visit(ctx->type())));
+            auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
             if (ctx->children.size() >= 7 &&
                 (ctx->children[4]->getText() == "!" || ctx->children[4]->getText() == "-")) {
                 // '!' value or '-' var
@@ -350,41 +351,43 @@ public:
     }
 
     std::any visitType(IRParser::TypeContext* ctx) override {
-        adt::TypeBox type = adt::construct<void>();
+        ir::type::TypeBox type = ir::type::construct<void>();
         if (ctx->INT())
-            type = adt::construct<int>();
+            type = ir::type::construct<int>();
         else if (ctx->FLOAT())
-            type = adt::construct<float>();
+            type = ir::type::construct<float>();
         else if (ctx->DOUBLE())
-            type = adt::construct<double>();
+            type = ir::type::construct<double>();
         else if (ctx->BOOL())
-            type = adt::construct<bool>();
+            type = ir::type::construct<bool>();
         else if (ctx->children.size() >= 4 && ctx->children[0]->getText() == "&") {
             // pointer: '&' '[' type ']'
             if (ctx->MUT()) {
-                type = std::move(adt::Pointer(take<adt::TypeBox>(visit(ctx->type(0))), false))
+                type = std::move(
+                           ir::type::Pointer(take<ir::type::TypeBox>(visit(ctx->type(0))), false))
                            .toBoxed();
             } else {
-                type = std::move(adt::Pointer(take<adt::TypeBox>(visit(ctx->type(0))), true))
-                           .toBoxed();
+                type =
+                    std::move(ir::type::Pointer(take<ir::type::TypeBox>(visit(ctx->type(0))), true))
+                        .toBoxed();
             }
         } else if (ctx->children.size() >= 5 && ctx->children[0]->getText() == "[") {
             // array: '[' type ';' INT_LITERAL ']'
-            auto elem = take<adt::TypeBox>(visit(ctx->type(0)));
+            auto elem = take<ir::type::TypeBox>(visit(ctx->type(0)));
             size_t size = std::stoul(ctx->INT_LITERAL()->getText());
-            type = std::move(adt::Array(std::move(elem), size)).toBoxed();
+            type = std::move(ir::type::Array(std::move(elem), size)).toBoxed();
         } else if (ctx->type().size() > 1) {
             // sum: '(' type ('|' type)+ ')'
-            std::vector<adt::TypeBox> items;
+            std::vector<ir::type::TypeBox> items;
             for (auto* t : ctx->type()) {
-                items.push_back(take<adt::TypeBox>(visit(t)));
+                items.push_back(take<ir::type::TypeBox>(visit(t)));
             }
-            type = std::move(adt::Sum(std::move(items))).toBoxed();
+            type = std::move(ir::type::Sum(std::move(items))).toBoxed();
         } else if (ctx->type().size() >= 1) {
             // product: '(' (type ',')* ')'
-            adt::Product prod;
+            ir::type::Product prod;
             for (auto* t : ctx->type()) {
-                prod.append(take<adt::TypeBox>(visit(t)));
+                prod.append(take<ir::type::TypeBox>(visit(t)));
             }
             type = std::move(prod).toBoxed();
         }
@@ -401,7 +404,7 @@ public:
             }
             if (elements.empty()) return wrap(ir::ConstexprValue());
             auto elem_type = elements[0].type;
-            size_t elem_size = adt::size_of(elem_type);
+            size_t elem_size = ir::type::size_of(elem_type);
             auto buf = std::make_unique<std::byte[]>(elem_size * elements.size());
             for (size_t i = 0; i < elements.size(); ++i) {
                 match(
@@ -417,7 +420,7 @@ public:
                     });
             }
             return wrap(ir::ConstexprValue(
-                std::move(adt::Array(std::move(elem_type), elements.size())).toBoxed(),
+                std::move(ir::type::Array(std::move(elem_type), elements.size())).toBoxed(),
                 std::move(buf)));
         }
         return visit(ctx->basicConstexpr(0));
@@ -503,7 +506,7 @@ private:
         }
     }
 
-    auto resolveDef(IRParser::VarContext* ctx, const adt::TypeBox& type) -> ir::LeftValue {
+    auto resolveDef(IRParser::VarContext* ctx, const ir::type::TypeBox& type) -> ir::LeftValue {
         if (ctx->temp()) {
             int id = std::stoi(ctx->temp()->INT_LITERAL()->getText());
             if (temp_map_.count(id)) {
@@ -532,14 +535,14 @@ private:
     }
 
     auto resolveFunc(const std::string& name)
-        -> std::optional<std::pair<adt::TypeBox, ir::NameDef>> {
-        using T = std::pair<adt::TypeBox, ir::NameDef>;
+        -> std::optional<std::pair<ir::type::TypeBox, ir::NameDef>> {
+        using T = std::pair<ir::type::TypeBox, ir::NameDef>;
         try {
             const auto& func = program_.findFunc(name);
-            auto params = adt::Product();
+            auto params = ir::type::Product();
             for (const auto& p : func.params) params.append(p->type);
             return std::make_optional<T>(
-                {adt::Func(std::move(params).toBoxed(), func.ret_type).toBoxed(),
+                {ir::type::Func(std::move(params).toBoxed(), func.ret_type).toBoxed(),
                  (const ir::Func*)&func});
         } catch (...) {
             // Check builtins in our program
