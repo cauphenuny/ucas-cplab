@@ -58,13 +58,16 @@ e.g.
 example.cact
 
 ```c
-double foo(double x[2], double y[2]) {
-    return x[0] + y[0];
+int c = 2;
+
+int foo(int a[2], int b[2]) {
+    return a[0] + b[0];
 }
 
 int main() {
-    double a[2][2] = { {1.0, 2.0}, {4.5e-2} };
-    if (a[1][0] > a[1][1]) {
+    int a[2][2] = { {1, 2}, {4} };
+    const int b = 1;
+    if (b < c) {
         foo(a[0], a[1]);
     }
     return 0;
@@ -74,30 +77,29 @@ int main() {
 example.riir
 
 ```rust 
-fn foo(x_0: &mut[f64], y_0: &mut[f64]) -> f64 {
+let c_0: i32 = 2;
+
+fn foo(a_0: &mut[i32], b_0: &mut[i32]) -> i32 {
 .entry:
-  $0: f64 = x_0[0];
-  $1: f64 = y_0[0];
-  $2: f64 = $0 + $1;
+  $0: i32 = a_0[0];
+  $1: i32 = b_0[0];
+  $2: i32 = $0 + $1;
   return $2;
 }
 
 fn main() -> i32 {
-  let a_0: [[f64; 2]; 2];
+  let a_1: [[i32; 2]; 2];
+  const b_1: i32 = 1;
 .entry:
-  a_0: [[f64; 2]; 2] = {1.00000, 2.00000, 0.0450000, 0.00000};
-  $0: &mut[f64] = a_0[1];
-  $1: f64 = $0[0];
-  $2: &mut[f64] = a_0[1];
-  $3: f64 = $2[1];
-  $4: bool = $1 > $3;
-  branch $4 ? if_true_7_4 : if_exit_7_4;
-.if_true_7_4:
-  $5: &mut[f64] = a_0[0];
-  $6: &mut[f64] = a_0[1];
-  $7: f64 = foo($5, $6);
-  jump if_exit_7_4;
-.if_exit_7_4:
+  a_1: [[i32; 2]; 2] = {1, 2, 4, 0};
+  $0: bool = b_1 < c_0;
+  branch $0 ? if_true_10_4 : if_exit_10_4;
+.if_true_10_4:
+  $1: &mut[i32] = a_1[0];
+  $2: &mut[i32] = a_1[1];
+  $3: i32 = foo($1, $2);
+  jump if_exit_10_4;
+.if_exit_10_4:
   return 0;
 }
 ```

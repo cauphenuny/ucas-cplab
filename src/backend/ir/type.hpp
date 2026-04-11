@@ -82,6 +82,14 @@ struct Bool : mixin::ToBoxed<Bool, Type> {
     SIMPLE_TO_STRING("bool");
 };
 
+template <typename T> struct is_primitive : std::false_type {};
+template <> struct is_primitive<Int> : std::true_type {};
+template <> struct is_primitive<Float> : std::true_type {};
+template <> struct is_primitive<Double> : std::true_type {};
+template <> struct is_primitive<Bool> : std::true_type {};
+
+template <typename T> inline constexpr bool is_primitive_v = is_primitive<T>::value;
+
 struct Bottom : mixin::ToBoxed<Bottom, Type> {
     SIMPLE_TO_STRING("⊥");
 };
@@ -104,7 +112,6 @@ struct Product : mixin::ToBoxed<Product, Type> {
         }
     }
     void append(TypeBox item);
-    friend bool operator<=(const Product& from, const Product& to);
     [[nodiscard]] const auto& items() const {
         return items_;
     }
@@ -125,17 +132,6 @@ struct Sum : mixin::ToBoxed<Sum, Type> {
     [[nodiscard]] const auto& items() const {
         return items_;
     }
-
-    friend TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs);
-    friend bool operator<=(const Sum& from, const Sum& to);
-    template <typename T>
-    friend std::enable_if_t<!std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>,
-                            bool>
-    operator<=(const Sum& from, const T& to);
-    template <typename T>
-    friend std::enable_if_t<!std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>,
-                            bool>
-    operator<=(const T& from, const Sum& to);
 
     Sum(std::vector<TypeBox> items) {
         for (auto& item : items) {
@@ -252,26 +248,13 @@ inline auto TypeBox::flatten() const -> TypeBox {
 inline size_t size_of(const Type& type);
 inline size_t size_of(const TypeBox& type_box);
 
-inline size_t size_of(const Int&) {
-    return sizeof(Int::type);
-}
-
-inline size_t size_of(const Float&) {
-    return sizeof(Float::type);
-}
-
-inline size_t size_of(const Double&) {
-    return sizeof(Double::type);
-}
-
-inline size_t size_of(const Bool&) {
-    return sizeof(Bool::type);
+template <typename T, typename = std::enable_if_t<is_primitive_v<T>>>
+inline size_t size_of(const T&) {
+    return sizeof(typename T::type);
 }
 
 inline size_t size_of(const Primitive& prim) {
-    return Match{prim}(
-        [](const Int& t) { return size_of(t); }, [](const Float& t) { return size_of(t); },
-        [](const Double& t) { return size_of(t); }, [](const Bool& t) { return size_of(t); });
+    return Match{prim}([](const auto& t) { return size_of(t); });
 }
 
 inline size_t size_of(const Product& prod) {
@@ -432,14 +415,6 @@ template <typename T1, typename T2> bool operator<=(const T1& from, const T2& to
     return false;
 }
 
-template <typename T> struct is_primitive : std::false_type {};
-template <> struct is_primitive<Int> : std::true_type {};
-template <> struct is_primitive<Float> : std::true_type {};
-template <> struct is_primitive<Double> : std::true_type {};
-template <> struct is_primitive<Bool> : std::true_type {};
-
-template <typename T> inline constexpr bool is_primitive_v = is_primitive<T>::value;
-
 template <typename T, typename = std::enable_if_t<is_primitive_v<T>>>
 bool operator<=(const T&, const T&) {
     return true;  // same type is always a subtype
@@ -460,11 +435,11 @@ inline bool operator<=(const Primitive& from, const Primitive& to) {
 }
 
 inline bool operator<=(const Product& from, const Product& to) {
-    if (from.items_.size() != to.items_.size()) {
+    if (from.items().size() != to.items().size()) {
         return false;
     }
-    for (size_t i = 0; i < from.items_.size(); i++) {
-        if (!(from.items_[i] <= to.items_[i])) {
+    for (size_t i = 0; i < from.items().size(); i++) {
+        if (!(from.items()[i] <= to.items()[i])) {
             return false;
         }
     }
@@ -474,19 +449,19 @@ inline bool operator<=(const Product& from, const Product& to) {
 template <typename T>
 std::enable_if_t<!std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>, bool>
 operator<=(const Sum& from, const T& to) {
-    return std::all_of(from.items_.begin(), from.items_.end(),
+    return std::all_of(from.items().begin(), from.items().end(),
                        [&](const TypeBox& item) { return item <= to; });
 }
 
 inline bool operator<=(const Sum& from, const Sum& to) {  // forall T in from s.t. T -> to
-    return std::all_of(from.items_.begin(), from.items_.end(),
+    return std::all_of(from.items().begin(), from.items().end(),
                        [&](const TypeBox& item) { return item <= to; });
 }
 
 template <typename T>
 std::enable_if_t<!std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>, bool>
 operator<=(const T& from, const Sum& to) {
-    return std::any_of(to.items_.begin(), to.items_.end(),
+    return std::any_of(to.items().begin(), to.items().end(),
                        [&](const TypeBox& item) { return from <= item; });
 }
 
@@ -588,7 +563,7 @@ inline TypeBox operator|(const TypeBox& lhs, const TypeBox& rhs) {
     auto append_to_sum = [&](const TypeBox& b) {
         TypeBox::match(b)(
             [&](const Sum& s) {
-                for (const auto& item : s.items_) collect.push_back(item);
+                for (const auto& item : s.items()) collect.push_back(item);
             },
             [&](const auto&) { collect.push_back(b); });
     };

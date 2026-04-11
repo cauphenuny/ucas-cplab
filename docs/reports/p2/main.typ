@@ -41,44 +41,48 @@
 
 一段 IR 代码示例如下：
 
+
 ```rust
-fn foo(x_0: &mut[f64], y_0: &mut[f64]) -> f64 {
+let c_0: i32 = 2;
+
+fn foo(a_0: &mut[i32], b_0: &mut[i32]) -> i32 {
 .entry:
-  $0: f64 = x_0[0];
-  $1: f64 = y_0[0];
-  $2: f64 = $0 + $1;
+  $0: i32 = a_0[0];
+  $1: i32 = b_0[0];
+  $2: i32 = $0 + $1;
   return $2;
 }
 
 fn main() -> i32 {
-  let a_0: [[f64; 2]; 2];
+  let a_1: [[i32; 2]; 2];
+  const b_1: i32 = 1;
 .entry:
-  a_0: [[f64; 2]; 2] = {1.00000, 2.00000, 0.0450000, 0.00000};
-  $0: &mut[f64] = a_0[1];
-  $1: f64 = $0[0];
-  $2: &mut[f64] = a_0[1];
-  $3: f64 = $2[1];
-  $4: bool = $1 > $3;
-  branch $4 ? if_true_7_4 : if_exit_7_4;
-.if_true_7_4:
-  $5: &mut[f64] = a_0[0];
-  $6: &mut[f64] = a_0[1];
-  $7: f64 = foo($5, $6);
-  jump if_exit_7_4;
-.if_exit_7_4:
+  a_1: [[i32; 2]; 2] = {1, 2, 4, 0};
+  $0: bool = b_1 < c_0;
+  branch $0 ? if_true_10_4 : if_exit_10_4;
+.if_true_10_4:
+  $1: &mut[i32] = a_1[0];
+  $2: &mut[i32] = a_1[1];
+  $3: i32 = foo($1, $2);
+  jump if_exit_10_4;
+.if_exit_10_4:
   return 0;
 }
 ```
 
 对应原代码
+
 ```c
-double foo(double x[2], double y[2]) {
-    return x[0] + y[0];
+int c = 2;
+
+int foo(int a[2], int b[2]) {
+    return a[0] + b[0];
 }
 
 int main() {
-    double a[2][2] = { {1.0, 2.0}, {4.5e-2} };
-    if (a[1][0] > a[1][1]) {
+    int a[2][2] = { {1, 2}, {4} };
+    const int b = 1;
+    if (b < c) {
         foo(a[0], a[1]);
     }
     return 0;
@@ -228,7 +232,65 @@ int main() {
 
 === 大小计算
 
+这里的类型大小是在编译器/解释器端虚拟环境中的大小，而不是目标机器上的类型大小（但是实际上没什么区别？）
 
+- 对于普通的 Primitive 类型，我们使用 sizeof(T)
+  
+  ```cpp
+  template<typename T, typename = std::enable_if_t<is_primitive_v<T>>>
+  inline size_t size_of(const T&) {
+      return sizeof(typename T::type);
+  }
+  inline size_t size_of(const Primitive& prim) {
+      return Match{prim}([](const auto& t) { return size_of(t); });
+  }
+  ```
+
+- 对于 Product 类型，大小是所有元素大小之和
+
+```cpp
+  inline size_t size_of(const Product& prod) {
+      size_t size = 0;
+      for (const auto& item : prod.items()) {
+          size += size_of(item);
+      }
+      return size;
+  }
+  ```
+
+- 对于 Sum 类型，大小是所有元素大小的最大值再加上tag的大小（int）
+  
+  ```cpp
+  inline size_t size_of(const Sum& sum) {
+      size_t max_size = 0;
+      for (const auto& item : sum.items()) {
+          auto item_size = size_of(item);
+          if (item_size > max_size) {
+              max_size = item_size;
+          }
+      }
+      return max_size + sizeof(int);  // tag
+  }
+  ```
+
+- 对于 Func 类型或者 Pointer 类型，大小是指针大小
+  
+  ```cpp
+  inline size_t size_of(const Func&) {
+      return sizeof(void*);  // function pointer
+  }
+  inline size_t size_of(const Pointer&) {
+      return sizeof(void*);
+  }
+  ```
+
+- 对于 Array 类型，大小是元素大小乘以长度
+  
+  ```cpp
+  inline size_t size_of(const Array& arr) {
+      return size_of(arr.elem) * arr.size;
+  }
+  ```
 
 = 语法分析
 
