@@ -74,10 +74,7 @@ auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) -
             });
         perf_counter.num_insts++;
     }
-    if (!block.exit()) {
-        throw COMPILER_ERROR(fmt::format("Block {} has no exit instruction", block.label));
-    }
-    auto& exit = block.exit().value();
+    auto& exit = block.exit();
     perf_counter.num_insts++;  // count exit instruction as well
     return match(
         exit,
@@ -118,7 +115,7 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
         stack_size += ir::type::size_of(local->type);
     }
     for (const auto& temp : func.temps()) {
-        stack_size += ir::type::size_of(temp);
+        stack_size += ir::type::size_of(temp.type);
     }
     for (const auto& param : func.params) {
         stack_size += ir::type::size_of(param->type);
@@ -147,11 +144,11 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
     }
     /// temps
     for (const auto& temp : func.temps()) {
-        frame.temps.push_back(View{.data = cur, .type = temp});
-        cur += ir::type::size_of(temp);
+        frame.temps.push_back(View{.data = cur, .type = temp.type});
+        cur += ir::type::size_of(temp.type);
     }
 
-    const Block* cur_block = func.blocks().front().get();
+    const Block* cur_block = func.entrance();
     while (cur_block) {
         cur_block = execute(*cur_block, frame, ret);
     }

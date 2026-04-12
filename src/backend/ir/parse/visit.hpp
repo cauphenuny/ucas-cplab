@@ -461,7 +461,7 @@ public:
         if (temp_map_.count(id)) {
             size_t internal_id = temp_map_.at(id);
             return wrap(
-                ir::TempValue{.type = current_func_->temps()[internal_id], .id = internal_id});
+                ir::TempValue{.type = current_func_->temps()[internal_id].type, .id = internal_id});
         }
         throw SemanticError(get_loc(ctx), fmt::format("Temporary ${} used before definition", id));
     }
@@ -487,7 +487,7 @@ private:
             int id = std::stoi(ctx->temp()->INT_LITERAL()->getText());
             if (temp_map_.count(id)) {
                 size_t internal_id = temp_map_.at(id);
-                return ir::TempValue{.type = current_func_->temps()[internal_id],
+                return ir::TempValue{.type = current_func_->temps()[internal_id].type,
                                      .id = internal_id};
             }
             throw SemanticError(get_loc(ctx),
@@ -514,7 +514,7 @@ private:
                     get_loc(ctx),
                     fmt::format("Temporary ${} redefined (Single Assignment violated)", id));
             }
-            auto temp = current_func_->newTemp(type);
+            auto temp = current_func_->newTemp(type, current_block_);
             temp_map_[id] = temp.id;
             return temp;
         } else {

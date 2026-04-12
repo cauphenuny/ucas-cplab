@@ -32,7 +32,7 @@ auto Generator::gen(const ast::LValExp* lval, Func* func, Block* scope) -> LeftV
 auto Generator::gen(const ast::BinaryExp* exp, Func* func, Block* scope) -> Value {
     auto left = gen(&exp->left, func, scope);
     auto right = gen(&exp->right, func, scope);
-    auto result = func->newTemp(this->info->type_of(exp));
+    auto result = func->newTemp(this->info->type_of(exp), scope);
     scope->add(BinaryInst{convert_op(exp->op), result, std::move(left), std::move(right)});
     return LeftValue{result};
 }
@@ -50,7 +50,7 @@ auto Generator::gen(const ast::Exp* exp, Func* func, Block* scope) -> Value {
         },
         [&](const ast::UnaryExp& unary_exp) -> Value {
             auto operand = gen(&unary_exp.exp, func, scope);
-            auto result = func->newTemp(this->info->type_of(&unary_exp));
+            auto result = func->newTemp(this->info->type_of(&unary_exp), scope);
             scope->add(UnaryInst{convert_op(unary_exp.op), result, std::move(operand)});
             return LeftValue{result};
         },
@@ -60,7 +60,7 @@ auto Generator::gen(const ast::Exp* exp, Func* func, Block* scope) -> Value {
             for (auto& arg : call_exp.args) {
                 args.push_back(gen(&arg, func, scope));
             }
-            auto result = func->newTemp(this->info->type_of(&call_exp));
+            auto result = func->newTemp(this->info->type_of(&call_exp), scope);
             scope->add(
                 CallInst{.result = result, .func = gen(&call_exp.func), .args = std::move(args)});
             return LeftValue{result};

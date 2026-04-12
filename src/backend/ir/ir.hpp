@@ -236,11 +236,14 @@ struct Block {
         }
         this->exit_ = std::move(exit);
     }
+    [[nodiscard]] bool hasExit() const {
+        return exit_.has_value();
+    }
     [[nodiscard]] const auto& insts() const {
         return insts_;
     }
     [[nodiscard]] const auto& exit() const {
-        return exit_;
+        return *exit_;
     }
 
     Block(std::string label, std::vector<Inst> insts, Exit exit)
@@ -326,9 +329,9 @@ struct Func {
         return temps_;
     }
 
-    auto newTemp(const Type& type) -> TempValue {
+    auto newTemp(const Type& type, const Block* container) -> TempValue {
         auto temp = TempValue{.type = type, .id = temps_.size()};
-        temps_.push_back(type);
+        temps_.emplace_back(TempInfo{type, container});
         return temp;
     }
 
@@ -342,6 +345,10 @@ struct Func {
     }
 
     auto entrance() -> Block* {
+        return blocks_.front().get();
+    }
+
+    [[nodiscard]] auto entrance() const -> const Block* {
         return blocks_.front().get();
     }
 
@@ -364,13 +371,20 @@ struct Func {
 
 private:
     std::vector<std::unique_ptr<Alloc>> locals_;
-    std::vector<Type> temps_;
     std::vector<std::unique_ptr<Block>> blocks_;
+
+    struct TempInfo {
+        Type type;
+        const Block* block;  // block where the temp is defined
+    };
+    std::vector<TempInfo> temps_;
+
     struct LoopContext {
         const Block* continue_target;
         const Block* break_target;
     };
     std::vector<LoopContext> loops;  // for break/continue target
+
     size_t temp_label_count{0};
 };
 
