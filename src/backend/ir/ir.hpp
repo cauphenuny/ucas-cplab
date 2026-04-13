@@ -272,21 +272,53 @@ inline auto JumpExit::toString() const -> std::string {
 struct Alloc {
     std::string name;
     Type type;
-    bool comptime{false};  // value known at compile time
+    bool comptime{false};   // value known at compile time
+    bool immutable{false};  // value cannot be assigned multiple times
+    bool only_ref{false};   // value can only accessed by ref's load/store operation
+
     std::optional<ConstexprValue> init;
+
+    Alloc(std::string name, Type type, bool comptime = false, bool immutable = false,
+          bool only_ref = false, std::optional<ConstexprValue> init = std::nullopt)
+        : name(std::move(name)), type(std::move(type)), comptime(comptime), immutable(immutable),
+          only_ref(only_ref), init(std::move(init)) {
+        if (comptime && !init) {
+            throw COMPILER_ERROR(
+                fmt::format("comptime variable '{}' must have an initializer", this->name));
+        }
+        if (comptime && !immutable) {
+            throw COMPILER_ERROR(
+                fmt::format("comptime variable '{}' must be immutable", this->name));
+        }
+    }
 
     [[nodiscard]] std::string toString() const {
         auto keyword = comptime ? "const" : "let";
+        std::string attr = immutable ? "" : "mut ";
+        attr += only_ref ? "ref " : "";
         if (init) {
-            return fmt::format("{} {}: {} = {};", keyword, name, type, init);
+            return fmt::format("{} {}{}: {} = {};", keyword, attr, name, type, init);
         }
-        return fmt::format("{} {}: {};", keyword, name, type);
+        return fmt::format("{} {}{}: {};", keyword, attr, name, type);
     }
 
     Alloc(Alloc&&) = delete;
-    Alloc(std::string name, Type type, bool comptime = false,
-          std::optional<ConstexprValue> init = std::nullopt)
-        : name(std::move(name)), type(std::move(type)), comptime(comptime), init(std::move(init)) {}
+    static auto constant(std::string name, Type type, ConstexprValue init) {
+        return std::make_unique<Alloc>(std::move(name), std::move(type), true, true, false,
+                                       std::move(init));
+    }
+    static auto variable(std::string name, Type type,
+                         std::optional<ConstexprValue> init = std::nullopt,
+                         bool immutable = false) {
+        return std::make_unique<Alloc>(std::move(name), std::move(type), false, immutable, false,
+                                       std::move(init));
+    }
+    static auto reference_var(std::string name, Type type,
+                              std::optional<ConstexprValue> init = std::nullopt,
+                              bool immutable = false) {
+        return std::make_unique<Alloc>(std::move(name), std::move(type), false, immutable, true,
+                                       std::move(init));
+    }
 };
 
 struct Func {

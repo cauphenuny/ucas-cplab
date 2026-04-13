@@ -105,8 +105,7 @@ public:
         auto name = ctx->ID()->getText();
         auto type = take<ir::type::TypeBox>(visit(ctx->type()));
         auto init = take<ir::ConstexprValue>(visit(ctx->constexpr_()));
-        auto alloc =
-            std::make_unique<ir::Alloc>(name, std::move(type), /*comptime=*/true, std::move(init));
+        auto alloc = ir::Alloc::constant(name, std::move(type), std::move(init));
         if (current_func_) {
             local_symbol_map_[name] = alloc.get();
             current_func_->addLocal(std::move(alloc));
@@ -124,8 +123,7 @@ public:
         if (ctx->constexpr_()) {
             init = take<ir::ConstexprValue>(visit(ctx->constexpr_()));
         }
-        auto alloc =
-            std::make_unique<ir::Alloc>(name, std::move(type), /*comptime=*/false, std::move(init));
+        auto alloc = ir::Alloc::variable(name, std::move(type), std::move(init));
         if (current_func_) {
             local_symbol_map_[name] = alloc.get();
             current_func_->addLocal(std::move(alloc));
