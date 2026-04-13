@@ -184,7 +184,7 @@ struct Reference : mixin::ToBoxed<Reference, Type> {
         };
         return ref;
     }
-    SIMPLE_TO_STRING(is_slice ? fmt::format("&{}[{}]", readonly ? "" : "mut ", elem)
+    SIMPLE_TO_STRING(is_slice ? fmt::format("&{}[{}]", readonly ? "" : "mut", elem)
                               : fmt::format("&{}{}", readonly ? "" : "mut ", elem));
 };
 

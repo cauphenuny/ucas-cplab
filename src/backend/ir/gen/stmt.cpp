@@ -57,10 +57,10 @@ auto Generator::gen(const ast::BlockStmt* block_stmt, Func* func, Block* scope) 
                     } else {
                         auto init = std::move(alloc->init);
                         alloc->init = std::nullopt;
-                        auto val = NamedValue{.type = alloc->type, .def = alloc.get()};
                         func->addLocal(std::move(alloc));
                         // Local declaration initializers must execute when the declaration runs.
                         if (init) {
+                            auto val = NamedValue{.type = alloc->type, .def = alloc.get()};
                             scope->add(UnaryInst{UnaryInstOp::MOV, val, Value{std::move(*init)}});
                         }
                     }
