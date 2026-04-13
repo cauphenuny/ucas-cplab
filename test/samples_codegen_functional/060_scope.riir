@@ -1,24 +1,25 @@
-let a_0: i32 = 7;
+let ref mut a_0: i32 = 7;
 
 fn func() -> i32 {
-  let b_0: i32;
-  let a_1: i32;
+  let mut b_0: i32;
+  let mut a_1: i32;
 .entry:
-  b_0: i32 = a_0;
+  $0: i32 = *(a_0);
+  b_0: i32 = $0;
   a_1: i32 = 1;
-  $0: bool = a_1 == b_0;
-  branch $0 ? if_true_8_2 : if_false_8_2;
+  $1: bool = a_1 == b_0;
+  branch $1 ? if_true_8_2 : if_false_8_2;
 .if_true_8_2:
-  $1: i32 = a_1 + 1;
-  a_1: i32 = $1;
+  $2: i32 = a_1 + 1;
+  a_1: i32 = $2;
   return 1;
 .if_false_8_2:
   return 0;
 }
 
 fn main() -> i32 {
-  let result_0: i32;
-  let i_0: i32;
+  let mut result_0: i32;
+  let mut i_0: i32;
 .entry:
   result_0: i32 = 0;
   i_0: i32 = 0;

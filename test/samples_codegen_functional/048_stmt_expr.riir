@@ -1,24 +1,30 @@
-let k_0: i32;
-const n_0: i32 = 10;
+let ref mut k_0: i32;
+const ref n_0: i32 = 10;
 
 fn main() -> i32 {
-  let i_0: i32;
+  let mut i_0: i32;
 .entry:
   i_0: i32 = 0;
-  k_0: i32 = 1;
+  *(k_0) = 1;
   jump while_cond_6_1;
 .while_cond_6_1:
-  $0: i32 = n_0 - 1;
-  $1: bool = i_0 <= $0;
-  branch $1 ? while_body_6_1 : while_exit_6_1;
+  $0: i32 = *(n_0);
+  $1: i32 = $0 - 1;
+  $2: bool = i_0 <= $1;
+  branch $2 ? while_body_6_1 : while_exit_6_1;
 .while_body_6_1:
-  $2: i32 = i_0 + 1;
-  i_0: i32 = $2;
-  $3: i32 = k_0 + 1;
-  $4: i32 = k_0 + k_0;
-  k_0: i32 = $4;
+  $3: i32 = i_0 + 1;
+  i_0: i32 = $3;
+  $4: i32 = *(k_0);
+  $5: i32 = $4 + 1;
+  $6: i32 = *(k_0);
+  $7: i32 = *(k_0);
+  $8: i32 = $6 + $7;
+  *(k_0) = $8;
   jump while_cond_6_1;
 .while_exit_6_1:
-  $5: () = print_int(k_0);
-  return k_0;
+  $9: i32 = *(k_0);
+  $10: () = print_int($9);
+  $11: i32 = *(k_0);
+  return $11;
 }

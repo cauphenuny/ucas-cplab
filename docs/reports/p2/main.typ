@@ -18,7 +18,11 @@
 
 #split
 
-- 变量 `Alloc` 包含名字、类型和属性，目前仅有一个属性 `comptime` 用于标记是否是编译期常量，我们没有设计 `immutable` 属性：出于简化 IR 设计的考虑，我们认为所有变量都是 `mutable` 的，如果不需要可变性，可以用临时值来代替。
+- 变量 `Alloc` 包含名字、类型和属性，属性为 `comptime`、`immutable`、`reference`：
+  - `comptime` 表示值在编译期已知 （comptime 一定是 immutable的）；
+  - `immutable` 表示运行时单赋值；
+  - `reference` 表示名字绑定的是引用，读取/写入分别通过 `LOAD`/`STORE` 完成。
+  为便于后续 SSA 转换，全局变量统一标记为 `reference`。
 
 #split
 
@@ -34,16 +38,54 @@
 - 指令 `Inst` 是一个 variant，包含3个 alternative：`UnaryInst`, `BinaryInst`, `CallInst`
 
 - 一元指令 `UnaryInst` 包含一个操作符和一个左值（结果）和一个值（操作数）
+
+#align(center)[
+  #three-line-table[
+    | 一元指令 | 作用 | 示例 |
+    | --- | --- | --- |
+    | `LOAD` | 从引用读取值（解引用） | `$1: int = *($0);` |
+    | `STORE` | 将值写入引用指向的位置 | `*($1) = $0;` |
+    | `MOV` | 赋值 | `$1: int = $0;` |
+    | `NOT` | 逻辑非 | `$1: bool = !$0;` |
+    | `NEG` | 算术取负 | `$1: int = -$0;` |
+    | `BORROW` | 取只读引用 | `$1: &int = &$0;` |
+    | `BORROW_MUT` | 取可变引用 | `$1: &mut int = &mut $0;` |
+  ]
+]
+
 - 二元指令 `BinaryInst` 包含一个操作符和一个左值（结果）和两个值（操作数）
+
+#align(center)[
+  #three-line-table[
+    | 二元指令 | 作用 | 示例 |
+    | --- | --- | --- |
+    | `ADD` | 加法 | `$2: int = $0 + $1;` |
+    | `SUB` | 减法 | `$2: int = $0 - $1;` |
+    | `MUL` | 乘法 | `$2: int = $0 * $1;` |
+    | `DIV` | 除法 | `$2: int = $0 / $1;` |
+    | `MOD` | 取模 | `$2: int = $0 % $1;` |
+    | `LT` | 小于比较 | `$2: bool = $0 < $1;` |
+    | `GT` | 大于比较 | `$2: bool = $0 > $1;` |
+    | `LEQ` | 小于等于比较 | `$2: bool = $0 <= $1;` |
+    | `GEQ` | 大于等于比较 | `$2: bool = $0 >= $1;` |
+    | `EQ` | 相等比较 | `$2: bool = $0 == $1;` |
+    | `NEQ` | 不等比较 | `$2: bool = $0 != $1;` |
+    | `AND` | 逻辑与 | `$2: bool = $0 && $1;` |
+    | `OR` | 逻辑或 | `$2: bool = $0 || $1;` |
+    | `LOAD` | 数组/切片索引读取 | `$2: int = $0[$1];` |
+    | `STORE` | 数组/切片索引写入 | `$2[$0] = $1;` |
+  ]
+]
+
 - 调用指令 `CallInst` 包含一个左值（结果）、一个具名值（函数）和一个值列表（参数）
 
-#split
+#split-full
 
 一段 IR 代码示例如下：
 
 
 ```rust
-let c_0: i32 = 2;
+let ref mut c_0: i32 = 2;
 
 fn foo(a_0: &mut[i32], b_0: &mut[i32]) -> i32 {
 .entry:
@@ -54,16 +96,17 @@ fn foo(a_0: &mut[i32], b_0: &mut[i32]) -> i32 {
 }
 
 fn main() -> i32 {
-  let a_1: [[i32; 2]; 2];
+  let mut a_1: [[i32; 2]; 2];
   const b_1: i32 = 1;
 .entry:
   a_1: [[i32; 2]; 2] = {1, 2, 4, 0};
-  $0: bool = b_1 < c_0;
-  branch $0 ? if_true_10_4 : if_exit_10_4;
+  $0: i32 = *(c_0);
+  $1: bool = b_1 < $0;
+  branch $1 ? if_true_10_4 : if_exit_10_4;
 .if_true_10_4:
-  $1: &mut[i32] = a_1[0];
-  $2: &mut[i32] = a_1[1];
-  $3: i32 = foo($1, $2);
+  $2: &mut[i32] = a_1[0];
+  $3: &mut[i32] = a_1[1];
+  $4: i32 = foo($2, $3);
   jump if_exit_10_4;
 .if_exit_10_4:
   return 0;
@@ -194,8 +237,8 @@ int main() {
   ```
 
 - 如果都是 Reference 类型，from 是 to 的子类型当且仅当以下条件同时满足：
-  
-  1. from 的只读属性不比 to 更宽松（即 from 不能是 `&mut` 而 to 是 `&`）
+
+1. from 的只读属性不比 to 更宽松（即 from 不能是 `&mut` 而 to 是 `&`）
   2. from 的目标类型是 to 的目标类型的子类型  (covariance)
   3. 若 to 非只读，则 from 的目标类型与 to 的目标类型相同 (invariance)
   
@@ -213,12 +256,12 @@ int main() {
   ```
 
 - 如果 from 是 Array，并且 to 是 Pointer，则 from 是 to 的子类型当且仅当 from 产生的 可变 Reference 是 to 的子类型
-  
-  ```cpp
-  inline bool operator<=(const Array& from, const Reference& to) {
-      return from.decay(/*readonly=*/false) <= to;
-  }
-  ```
+
+```cpp
+inline bool operator<=(const Array& from, const Reference& to) {
+    return from.decay(/*readonly=*/false) <= to;
+}
+```
 
 - 对于其他情况，若 from 是 `Bottom` 或者 to 是 `Top`，则 from 是 to 的子类型，否则不是
 
@@ -235,62 +278,62 @@ int main() {
 这里的类型大小是在编译器/解释器端虚拟环境中的大小，而不是目标机器上的类型大小（但是实际上没什么区别？）
 
 - 对于普通的 Primitive 类型，我们使用 sizeof(T)
-  
-  ```cpp
-  template<typename T, typename = std::enable_if_t<is_primitive_v<T>>>
-  inline size_t size_of(const T&) {
-      return sizeof(typename T::type);
-  }
-  inline size_t size_of(const Primitive& prim) {
-      return Match{prim}([](const auto& t) { return size_of(t); });
-  }
-  ```
+
+```cpp
+template<typename T, typename = std::enable_if_t<is_primitive_v<T>>>
+inline size_t size_of(const T&) {
+    return sizeof(typename T::type);
+}
+inline size_t size_of(const Primitive& prim) {
+    return Match{prim}([](const auto& t) { return size_of(t); });
+}
+```
 
 - 对于 Product 类型，大小是所有元素大小之和
 
 ```cpp
-  inline size_t size_of(const Product& prod) {
-      size_t size = 0;
-      for (const auto& item : prod.items()) {
-          size += size_of(item);
-      }
-      return size;
-  }
-  ```
+inline size_t size_of(const Product& prod) {
+    size_t size = 0;
+    for (const auto& item : prod.items()) {
+        size += size_of(item);
+    }
+    return size;
+}
+```
 
 - 对于 Sum 类型，大小是所有元素大小的最大值再加上tag的大小（int）
-  
-  ```cpp
-  inline size_t size_of(const Sum& sum) {
-      size_t max_size = 0;
-      for (const auto& item : sum.items()) {
-          auto item_size = size_of(item);
-          if (item_size > max_size) {
-              max_size = item_size;
-          }
-      }
-      return max_size + sizeof(int);  // tag
-  }
-  ```
+
+```cpp
+inline size_t size_of(const Sum& sum) {
+    size_t max_size = 0;
+    for (const auto& item : sum.items()) {
+        auto item_size = size_of(item);
+        if (item_size > max_size) {
+            max_size = item_size;
+        }
+    }
+    return max_size + sizeof(int);  // tag
+}
+```
 
 - 对于 Func 类型或者 Reference 类型，大小是指针大小
-  
-  ```cpp
-  inline size_t size_of(const Func&) {
-      return sizeof(void*);  // function pointer
-  }
-  inline size_t size_of(const Reference&) {
-      return sizeof(void*);
-  }
-  ```
+
+```cpp
+inline size_t size_of(const Func&) {
+    return sizeof(void*);  // function pointer
+}
+inline size_t size_of(const Reference&) {
+    return sizeof(void*);
+}
+```
 
 - 对于 Array 类型，大小是元素大小乘以长度
-  
-  ```cpp
-  inline size_t size_of(const Array& arr) {
-      return size_of(arr.elem) * arr.size;
-  }
-  ```
+
+```cpp
+inline size_t size_of(const Array& arr) {
+    return size_of(arr.elem) * arr.size;
+}
+```
 
 = 语法分析
 

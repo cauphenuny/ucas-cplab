@@ -1,8 +1,8 @@
-let A_0: [[bool; 2]; 4] = {true, true, true, false, true, true, false, false};
+let ref mut A_0: [[bool; 2]; 4] = {true, true, true, false, true, true, false, false};
 
 fn main() -> i32 {
-  let i_0: i32;
-  let j_0: i32;
+  let mut i_0: i32;
+  let mut j_0: i32;
 .entry:
   i_0: i32 = 0;
   jump while_cond_10_4;

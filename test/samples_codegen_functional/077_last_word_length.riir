@@ -1,6 +1,6 @@
 fn lengthOfLastWord(s_0: &mut[i32], n_0: i32) -> i32 {
-  let c_0: i32;
-  let i_0: i32;
+  let mut c_0: i32;
+  let mut i_0: i32;
 .entry:
   $0: bool = n_0 == 0;
   branch $0 ? if_true_2_4 : if_exit_2_4;
@@ -56,8 +56,8 @@ fn lengthOfLastWord(s_0: &mut[i32], n_0: i32) -> i32 {
 }
 
 fn main() -> i32 {
-  let res_0: i32;
-  let a_0: [i32; 10];
+  let mut res_0: i32;
+  let mut a_0: [i32; 10];
 .entry:
   $0: i32 = -4;
   a_0[0] = $0;

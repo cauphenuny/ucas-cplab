@@ -38,14 +38,31 @@ A 是 B 的子类型，代表 A 的所有取值都可以在 B 中表示，即 A 
 
 ## 变量绑定
 
-变量绑定 `Alloc` 有一个属性：
-- `comptime`: 值在编译期已知
+变量绑定 `Alloc` 有几个属性：
+- `comptime`：值在编译期已知（如 `const`）。
+- `immutable`：运行时不允许被多次赋值（单赋值）。如果声明时没有 `mut` 修饰，则默认 `immutable = true`。
+- `reference`：名字绑定到值的引用而不是值本身；访问值必须通过 `load`/`store` 指令。
 
-两种声明形式：
-- `const x: type = val;` → comptime + immutable，一定有 `= constexpr`
-- `let x: type;` → non-comptime + mutable，可选 `= constexpr`
+两种声明形式和修饰符：
+- `const x: type = val;` → `comptime = true` 且 `immutable = true`，一定有 `= constexpr`。可用 `ref` 标注为引用：`const ref x: T = ...`（此时为只读引用）。
+- `let x: type;` → 默认 `immutable = true`（不可变），除非写成 `let mut x: type;`。可用 `ref` 标注为引用：`let ref x: T;` 或 `let mut ref x: T;`。
 
-对于 non-comptime + immutable 的变量，可以用 TempValue 表示，不分配变量名字
+对于 non-comptime 且 `immutable` 的变量，可以用 `TempValue` 表示，不分配变量名字；可变变量仍会分配命名的 `Alloc`。
+
+Reference 的类型与访问：
+- 从 `reference` 的 `Alloc` 得到的 `NamedValue` 的类型为 `alloc.type.borrow(readonly: alloc.immutable)`，即 IR 中的 `Reference` 类型（可能带 `is_slice` 标记）。
+- 对非 slice 的 `Reference` 读取会在 IR 生成阶段插入 `LOAD` 指令来解引用；赋值会生成 `STORE` 指令而不是普通的 `MOV`。
+- 这保证后续 SSA/优化阶段统一通过引用形式访问被标注的变量（尤其是全局变量）。
+
+示例：
+```rust
+const ref g: int = 42;
+let mut ref p: int;
+...
+// IR 中 g, p 的 NamedValue 类型是 &int, &mut int，对 p 的赋值会生成 STORE p, <value>，对 g 的读取会生成 LOAD tmp, g
+```
+
+- 为了便于后续 SSA 转换，所有的全局变量都标记为 `reference`。
 
 ---
 
@@ -76,6 +93,41 @@ A 是 B 的子类型，代表 A 的所有取值都可以在 B 中表示，即 A 
 `Block` 由指令列表 `vector<Inst>` 和唯一的一个出口 `Exit` 构成。
 
 - 指令有三种，分别是双地址指令、三地址指令、函数调用指令。其中地址是 `Value`
+
+
+一元指令：
+
+| 一元指令 | 作用 | 示例 |
+| --- | --- | --- |
+| `LOAD` | 从引用读取值（解引用） | `$1: int = *($0);` |
+| `STORE` | 将值写入引用指向的位置 | `*($1) = $0;` |
+| `MOV` | 赋值 | `$1: int = $0;` |
+| `NOT` | 逻辑非 | `$1: bool = !$0;` |
+| `NEG` | 算术取负 | `$1: int = -$0;` |
+| `BORROW` | 取只读引用 | `$1: &int = &$0;` |
+| `BORROW_MUT` | 取可变引用 | `$1: &mut int = &mut $0;` |
+
+二元指令：
+
+| 二元指令 | 作用 | 示例 |
+| --- | --- | --- |
+| `ADD` | 加法 | `$2: int = $0 + $1;` |
+| `SUB` | 减法 | `$2: int = $0 - $1;` |
+| `MUL` | 乘法 | `$2: int = $0 * $1;` |
+| `DIV` | 除法 | `$2: int = $0 / $1;` |
+| `MOD` | 取模 | `$2: int = $0 % $1;` |
+| `LT` | 小于比较 | `$2: bool = $0 < $1;` |
+| `GT` | 大于比较 | `$2: bool = $0 > $1;` |
+| `LEQ` | 小于等于比较 | `$2: bool = $0 <= $1;` |
+| `GEQ` | 大于等于比较 | `$2: bool = $0 >= $1;` |
+| `EQ` | 相等比较 | `$2: bool = $0 == $1;` |
+| `NEQ` | 不等比较 | `$2: bool = $0 != $1;` |
+| `AND` | 逻辑与 | `$2: bool = $0 && $1;` |
+| `OR` | 逻辑或 | `$2: bool = $0 \|\| $1;` |
+| `LOAD` | 数组/切片索引读取 | `$2: int = $0[$1];` |
+| `STORE` | 数组/切片索引写入 | `$0[$1] = $2;` |
+
+
 - 出口有三种，分别是 jump, branch或者return。对于跳转类的出口，使用 `const Block*` 索引目标。
 
 `Alloc` 包含一个名字、类型、属性和可选的初始值

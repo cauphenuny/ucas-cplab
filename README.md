@@ -77,7 +77,7 @@ int main() {
 example.riir
 
 ```rust 
-let c_0: i32 = 2;
+let ref mut c_0: i32 = 2;
 
 fn foo(a_0: &mut[i32], b_0: &mut[i32]) -> i32 {
 .entry:
@@ -88,16 +88,17 @@ fn foo(a_0: &mut[i32], b_0: &mut[i32]) -> i32 {
 }
 
 fn main() -> i32 {
-  let a_1: [[i32; 2]; 2];
+  let mut a_1: [[i32; 2]; 2];
   const b_1: i32 = 1;
 .entry:
   a_1: [[i32; 2]; 2] = {1, 2, 4, 0};
-  $0: bool = b_1 < c_0;
-  branch $0 ? if_true_10_4 : if_exit_10_4;
+  $0: i32 = *(c_0);
+  $1: bool = b_1 < $0;
+  branch $1 ? if_true_10_4 : if_exit_10_4;
 .if_true_10_4:
-  $1: &mut[i32] = a_1[0];
-  $2: &mut[i32] = a_1[1];
-  $3: i32 = foo($1, $2);
+  $2: &mut[i32] = a_1[0];
+  $3: &mut[i32] = a_1[1];
+  $4: i32 = foo($2, $3);
   jump if_exit_10_4;
 .if_exit_10_4:
   return 0;

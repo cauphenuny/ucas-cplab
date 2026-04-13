@@ -1,50 +1,57 @@
-let gx_0: i32 = 6;
-let dar_0: [f64; 3] = {1.20000, 1.10000, 1.00000};
+let ref mut gx_0: i32 = 6;
+let ref mut dar_0: [f64; 3] = {1.20000, 1.10000, 1.00000};
 
 fn sfx(a_0: i32) -> i32 {
 .entry:
-  $0: i32 = gx_0 + a_0;
-  gx_0: i32 = $0;
-  return gx_0;
+  $0: i32 = *(gx_0);
+  $1: i32 = $0 + a_0;
+  *(gx_0) = $1;
+  $2: i32 = *(gx_0);
+  return $2;
 }
 
 fn main() -> i32 {
-  let r_0: i32;
-  let i_0: i32;
+  let mut r_0: i32;
+  let mut i_0: i32;
 .entry:
   r_0: i32 = 0;
   i_0: i32 = -95306;
-  $0: bool = gx_0 > 2;
-  branch $0 ? if_true_13_1 : L0;
+  $0: i32 = *(gx_0);
+  $1: bool = $0 > 2;
+  branch $1 ? if_true_13_1 : L0;
 .if_true_13_1:
-  r_0: i32 = gx_0;
+  $4: i32 = *(gx_0);
+  r_0: i32 = $4;
   jump if_exit_13_1;
 .if_exit_13_1:
-  $3: bool = gx_0 < 9;
-  branch $3 ? L1 : if_exit_15_1;
+  $5: i32 = *(gx_0);
+  $6: bool = $5 < 9;
+  branch $6 ? L1 : if_exit_15_1;
 .L0:
-  $1: i32 = sfx(2);
-  $2: bool = $1 > 0;
-  branch $2 ? if_true_13_1 : if_exit_13_1;
+  $2: i32 = sfx(2);
+  $3: bool = $2 > 0;
+  branch $3 ? if_true_13_1 : if_exit_13_1;
 .if_true_15_1:
-  r_0: i32 = gx_0;
+  $9: i32 = *(gx_0);
+  r_0: i32 = $9;
   jump if_exit_15_1;
 .if_exit_15_1:
-  $6: bool = i_0 >= 0;
-  branch $6 ? L2 : if_exit_17_1;
+  $10: bool = i_0 >= 0;
+  branch $10 ? L2 : if_exit_17_1;
 .L1:
-  $4: i32 = sfx(3);
-  $5: bool = $4 > 0;
-  branch $5 ? if_true_15_1 : if_exit_15_1;
+  $7: i32 = sfx(3);
+  $8: bool = $7 > 0;
+  branch $8 ? if_true_15_1 : if_exit_15_1;
 .if_true_17_1:
-  $9: i32 = gx_0 + 1;
-  r_0: i32 = $9;
+  $13: i32 = *(gx_0);
+  $14: i32 = $13 + 1;
+  r_0: i32 = $14;
   jump if_exit_17_1;
 .if_exit_17_1:
-  $10: () = print_int(r_0);
+  $15: () = print_int(r_0);
   return 0;
 .L2:
-  $7: f64 = dar_0[i_0];
-  $8: bool = $7 < 2.00000;
-  branch $8 ? if_true_17_1 : if_exit_17_1;
+  $11: f64 = dar_0[i_0];
+  $12: bool = $11 < 2.00000;
+  branch $12 ? if_true_17_1 : if_exit_17_1;
 }

@@ -1,13 +1,13 @@
-let a_0: [i32; 6] = {10, 1, 50, 50, 20, 5};
-let dp_0: [[i32; 10]; 10];
+let ref mut a_0: [i32; 6] = {10, 1, 50, 50, 20, 5};
+let ref mut dp_0: [[i32; 10]; 10];
 
 fn main() -> i32 {
-  let n_0: i32;
-  let k_0: i32;
-  let i_0: i32;
-  let t_0: i32;
-  let j_0: i32;
-  let aa_0: i32;
+  let mut n_0: i32;
+  let mut k_0: i32;
+  let mut i_0: i32;
+  let mut t_0: i32;
+  let mut j_0: i32;
+  let mut aa_0: i32;
 .entry:
   n_0: i32 = 6;
   k_0: i32 = 3;
