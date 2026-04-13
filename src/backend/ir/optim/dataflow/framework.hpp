@@ -68,6 +68,15 @@ struct DataFlow : private DataFlowContext<Trait> {
         solve();
     }
 
+    [[nodiscard]] auto toString() const -> std::string {
+        std::string res;
+        for (const auto& [blk, data] : in) {
+            res += fmt::format("    {}:\n      IN = {}\n      OUT = {}\n", blk->label,
+                               data.toString(), out.at(blk).toString());
+        }
+        return res;
+    }
+
 private:
     auto transfer(const Block& blk, const Data& in) {
         if constexpr (has_context<Trait>::value) {
@@ -136,9 +145,7 @@ private:
     }
 };
 
-namespace flow {
-
-template <typename T> struct Set {
+template <typename T, auto print> struct Set {
     bool is_universe = true;
     std::unordered_set<T> set;
 
@@ -223,8 +230,19 @@ template <typename T> struct Set {
         if (is_universe) return;
         set.erase(elem);
     }
-};
 
-}  // namespace flow
+    [[nodiscard]] auto toString() const -> std::string {
+        if (is_universe) return "<universe>";
+        std::string res = "{";
+        bool first = true;
+        for (const auto& elem : set) {
+            if (!first) res += ", ";
+            res += print(elem);
+            first = false;
+        }
+        res += "}";
+        return res;
+    }
+};
 
 }  // namespace ir::optim

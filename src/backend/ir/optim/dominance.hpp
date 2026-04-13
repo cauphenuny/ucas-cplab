@@ -1,3 +1,4 @@
+#pragma once
 #include "backend/ir/ir.hpp"
 #include "backend/ir/optim/cfg.hpp"
 #include "backend/ir/optim/dataflow/dominance.hpp"
@@ -52,7 +53,12 @@ private:
 };
 
 struct DominanceFrontier {
-    auto frontier(const Block* blk) const -> const std::unordered_set<const Block*>& {
+    static auto print(const Block* blk) -> std::string {
+        return blk->label;
+    }
+    using Data = Set<const Block*, print>;
+
+    auto frontier(const Block* blk) const -> const Data& {
         auto it = frontier_map.find(blk);
         if (it == frontier_map.end()) {
             throw COMPILER_ERROR(
@@ -63,7 +69,7 @@ struct DominanceFrontier {
 
     /// NOTE: frontier(N) = { W | N dom a pred of W, and N does not dom W }
     DominanceFrontier(const ControlFlowGraph& cfg, const DominanceTree& dom_tree) {
-        for (auto& block_box : cfg.func.blocks()) frontier_map[block_box.get()] = {};
+        for (auto& block_box : cfg.func.blocks()) frontier_map[block_box.get()] = Data::empty();
 
         for (auto& block_box : cfg.func.blocks()) {
             const Block* block = block_box.get();
@@ -81,7 +87,7 @@ struct DominanceFrontier {
     }
 
 private:
-    std::unordered_map<const Block*, std::unordered_set<const Block*>> frontier_map;
+    std::unordered_map<const Block*, Data> frontier_map;
 };
 
 }  // namespace ir::optim

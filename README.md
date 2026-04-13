@@ -14,11 +14,12 @@ $ cmake --build build
 Usage:
 
 ```
-build/compiler [--ast] [--sem] [--ir] [--exec] [--silent] files ... [--output <output file>] [--help]
+build/compiler [--ast] [--ast-info] [--ir] [--exec] [--silent] files ... [--output <output file>] [--help]
     --ast       Print the AST of the input files
-    --sem       Print the semantic analysis result of the input files
+    --ast-info  Print the semantic analysis result of the AST
     --ir        Print the generated IR of the input files
-    --exec      Execute the generated IR in virtual machine
+    --ir-info   Print some analysis result of the generated IR
+    --exec      Execute the generated IR
     --silent    Suppress all compiler output except the return value when executing
     --output    Write the generated IR also to the specified file
     --help      Show this help message

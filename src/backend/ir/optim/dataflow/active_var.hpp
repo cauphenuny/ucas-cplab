@@ -1,11 +1,20 @@
+#pragma once
+
 #include "framework.hpp"
+#include "utils/match.hpp"
 
 namespace ir::optim::flow {
 
 struct ActiveVariables {
     static constexpr bool is_forward = false;
     using ElemType = std::variant<size_t, NameDef>;
-    using Data = Set<ElemType>;
+    static std::string print(const ElemType& elem) {
+        return match(
+            elem, [](size_t id) { return fmt::format("${}", id); },
+            [](const NameDef& def) { return match(def, [](const auto& d) { return d->name; }); });
+    }
+
+    using Data = Set<ElemType, print>;
     struct Context {
         std::unordered_map<const Block*, Data> gen, kill;
     };
@@ -18,7 +27,7 @@ struct ActiveVariables {
         return Data::union_set(out.difference(ctx.kill[&blk]), ctx.gen[&blk]);
     }
 
-    Context init(const ControlFlowGraph& cfg) {
+    static Context init(const ControlFlowGraph& cfg) {
         Context ctx;
         // TODO
         auto convert = [](const Value& val) -> std::optional<ElemType> {
@@ -79,6 +88,19 @@ struct ActiveVariables {
                     kill.insert(*def);
                 }
             }
+            match(
+                block->exit(),
+                [&](const BranchExit& exit) {
+                    auto use = convert(exit.cond);
+                    if (!use) return;
+                    if (!kill.contains(*use)) gen.insert(*use);
+                },
+                [&](const JumpExit&) {},
+                [&](const ReturnExit& exit) {
+                    auto use = convert(exit.exp);
+                    if (!use) return;
+                    if (!kill.contains(*use)) gen.insert(*use);
+                });
             ctx.gen[block] = gen;
             ctx.kill[block] = kill;
         }
@@ -86,6 +108,7 @@ struct ActiveVariables {
     }
 };
 
+static_assert(has_context<ActiveVariables>::value);
 static_assert(is_flow_trait_v<ActiveVariables>);
 
 }  // namespace ir::optim::flow
