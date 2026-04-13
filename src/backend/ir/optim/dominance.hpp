@@ -50,4 +50,37 @@ private:
     std::unordered_map<const Block*, const Block*> idom_map;  // immediate dominator
 };
 
+struct DominanceFrontier {
+    auto frontier(const Block* blk) const -> const std::unordered_set<const Block*>& {
+        auto it = frontier_map.find(blk);
+        if (it == frontier_map.end()) {
+            throw COMPILER_ERROR(
+                fmt::format("Block {} not found in dominance frontier", blk->label));
+        }
+        return it->second;
+    }
+
+    /// NOTE: frontier(N) = { W | N dom a pred of W, and N does not dom W }
+    DominanceFrontier(const ControlFlowGraph& cfg, const DominanceTree& dom_tree) {
+        for (auto& block_box : cfg.func.blocks()) frontier_map[block_box.get()] = {};
+
+        for (auto& block_box : cfg.func.blocks()) {
+            const Block* block = block_box.get();
+            auto idom = dom_tree.idom(block);
+            if (!idom) continue;  // skip entry block
+            for (auto pred : cfg.pred.at(block)) {
+                auto runner = pred;
+                while (runner && runner != idom) {
+                    /// NOTE: runner dominates pred, and do not dominates block
+                    frontier_map[runner].insert(block);
+                    runner = dom_tree.idom(runner);
+                }
+            }
+        }
+    }
+
+private:
+    std::unordered_map<const Block*, std::unordered_set<const Block*>> frontier_map;
+};
+
 }  // namespace ir::optim
