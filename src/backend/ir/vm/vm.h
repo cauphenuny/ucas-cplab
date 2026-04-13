@@ -177,6 +177,37 @@ public:
         unary_ops[UnaryInstOp::NEG] = [this](View& dest, const View& operand) {
             eval_unary<std::negate>(dest, operand);
         };
+        unary_ops[UnaryInstOp::BORROW] = [this](View& dest, const View& operand) {
+            auto addr = operand.data;
+            assign(dest.type, dest.data, ir::type::Reference::pointer(operand.type, false),
+                   (std::byte*)&addr);
+        };
+        unary_ops[UnaryInstOp::BORROW_MUT] = [this](View& dest, const View& operand) {
+            auto addr = operand.data;
+            assign(dest.type, dest.data, ir::type::Reference::pointer(operand.type, true),
+                   (std::byte*)&addr);
+        };
+
+        auto check_ref = [](const Type& type, bool is_slice, const char* op_name) {
+            if (!(type.is<ir::type::Reference>() &&
+                  type.as<ir::type::Reference>().is_slice == is_slice)) {
+                throw COMPILER_ERROR(fmt::format("{} expected {} reference type, but got {}",
+                                                 op_name, is_slice ? "slice" : "non-slice", type));
+            }
+        };
+
+        unary_ops[UnaryInstOp::STORE] = [this, check_ref](View& dest, const View& operand) {
+            check_ref(dest.type, false, "store");
+            auto ref_type = dest.type.as<type::Reference>();
+            auto addr = *(std::byte**)dest.data;
+            assign(ref_type.elem, addr, operand.type, operand.data);
+        };
+        unary_ops[UnaryInstOp::LOAD] = [this, check_ref](View& dest, const View& operand) {
+            check_ref(operand.type, false, "load");
+            auto ref_type = operand.type.as<type::Reference>();
+            auto addr = *(std::byte**)operand.data;
+            assign(dest.type, dest.data, ref_type.elem, addr);
+        };
 
         binary_ops[InstOp::ADD] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_binary<std::plus>(dest, lhs, rhs);
@@ -217,42 +248,43 @@ public:
         binary_ops[InstOp::OR] = [this](View& dest, const View& lhs, const View& rhs) {
             eval_binary<std::logical_or>(dest, lhs, rhs);
         };
-        binary_ops[InstOp::LOAD] = [&](View& dest, const View& lhs, const View& rhs) {
+
+        auto check_indexing = [](const Type& base_type, const Type& offset_type) {
+            using namespace ir::type;
+            if (!offset_type.is<Primitive>() ||
+                !std::holds_alternative<Int>(offset_type.as<Primitive>())) {
+                throw COMPILER_ERROR(
+                    fmt::format("Offset must be an integer, but got {}", offset_type));
+            }
+            if (!base_type.is<Reference>() && !base_type.is<Array>()) {
+                throw COMPILER_ERROR(
+                    fmt::format("Expected slice reference or array type, but got {}", base_type));
+            }
+        };
+
+        binary_ops[InstOp::LOAD] = [this, check_ref, check_indexing](View& dest, const View& lhs,
+                                                                     const View& rhs) {
             // NOTE: lhs: pointer, rhs: offset
             using namespace ir::type;
-            if (!rhs.type.is<Primitive>() ||
-                !std::holds_alternative<Int>(rhs.type.as<Primitive>())) {
-                throw COMPILER_ERROR(
-                    fmt::format("Offset must be an integer, but got {}", rhs.type));
-            }
-            if (!lhs.type.is<Reference>() && !lhs.type.is<Array>()) {
-                throw COMPILER_ERROR(
-                    fmt::format("Expected pointer or array type, but got {}", lhs.type));
-            }
-            auto is_pointer = lhs.type.is<Reference>();
+            check_indexing(lhs.type, rhs.type);
+            auto is_ref = lhs.type.is<Reference>();
+            if (is_ref) check_ref(lhs.type, true, "binary load");
             auto offset = *(int*)rhs.data;
-            auto elem_type = is_pointer ? lhs.type.as<Reference>().elem : lhs.type.as<Array>().elem;
-            auto base = is_pointer ? *(std::byte**)lhs.data : lhs.data;
-            assign(dest.type, dest.data, elem_type, base + offset * ir::type::size_of(elem_type));
+            auto elem_type = is_ref ? lhs.type.as<Reference>().elem : lhs.type.as<Array>().elem;
+            auto base = is_ref ? *(std::byte**)lhs.data : lhs.data;
+            assign(dest.type, dest.data, elem_type, base + offset * size_of(elem_type));
         };
-        binary_ops[InstOp::STORE] = [this](View& dest, const View& lhs, const View& rhs) {
+        binary_ops[InstOp::STORE] = [this, check_ref, check_indexing](View& dest, const View& lhs,
+                                                                      const View& rhs) {
             // NOTE: dest: pointer, lhs: offset, rhs: value
             using namespace ir::type;
-            if (!lhs.type.is<Primitive>() ||
-                !std::holds_alternative<Int>(lhs.type.as<Primitive>())) {
-                throw COMPILER_ERROR(
-                    fmt::format("Offset must be an integer, but got {}", lhs.type));
-            }
-            if (!dest.type.is<Reference>() && !dest.type.is<Array>()) {
-                throw COMPILER_ERROR(
-                    fmt::format("Expected pointer or array type, but got {}", dest.type));
-            }
-            auto is_pointer = dest.type.is<Reference>();
+            check_indexing(dest.type, lhs.type);
+            auto is_ref = dest.type.is<Reference>();
+            if (is_ref) check_ref(dest.type, true, "binary store");
             auto offset = *(int*)lhs.data;
-            auto elem_type =
-                is_pointer ? dest.type.as<Reference>().elem : dest.type.as<Array>().elem;
-            auto base = is_pointer ? *(std::byte**)dest.data : dest.data;
-            assign(elem_type, base + offset * ir::type::size_of(elem_type), rhs.type, rhs.data);
+            auto elem_type = is_ref ? dest.type.as<Reference>().elem : dest.type.as<Array>().elem;
+            auto base = is_ref ? *(std::byte**)dest.data : dest.data;
+            assign(elem_type, base + offset * size_of(elem_type), rhs.type, rhs.data);
         };
     }
 };
