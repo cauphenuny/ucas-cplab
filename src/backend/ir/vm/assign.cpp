@@ -56,8 +56,8 @@ void VirtualMachine::assign(const ir::type::Array& dest_type, std::byte* dest,
     }
 }
 
-void VirtualMachine::assign(const ir::type::Pointer& dest_type, std::byte* dest,
-                            const ir::type::Pointer& src_type, const std::byte* src) const {
+void VirtualMachine::assign(const ir::type::Reference& dest_type, std::byte* dest,
+                            const ir::type::Reference& src_type, const std::byte* src) const {
     if (!(src_type.elem <= dest_type.elem)) {
         throw COMPILER_ERROR(fmt::format("Cannot assign pointer of type {} to pointer of type {}",
                                          src_type, dest_type));
@@ -65,7 +65,7 @@ void VirtualMachine::assign(const ir::type::Pointer& dest_type, std::byte* dest,
     memcpy(dest, src, ir::type::size_of(dest_type));
 }
 
-void VirtualMachine::assign(const ir::type::Pointer& dest_type, std::byte* dest,
+void VirtualMachine::assign(const ir::type::Reference& dest_type, std::byte* dest,
                             const ir::type::Array& src_type, const std::byte* src) const {
     if (!(src_type.elem <= dest_type.elem)) {
         throw COMPILER_ERROR(fmt::format("Cannot assign array of type {} to pointer of type {}",

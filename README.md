@@ -122,7 +122,7 @@ enum Type {
     Product(Vec<Type>),
     Func(Product, Box<Type>),
     Array(Box<Type>, usize),
-    Pointer(Box<Type>),
+    Reference(Box<Type>, bool, bool),
     Primitive(PrimitiveType),
 }
 ```

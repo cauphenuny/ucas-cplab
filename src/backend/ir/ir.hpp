@@ -157,7 +157,11 @@ struct UnaryInst {
     LeftValue result;
     Value operand;
 
-    SIMPLE_TO_STRING(fmt::format("{}: {} = {}{};", result, type_of(result), op, operand))
+    SIMPLE_TO_STRING(op == UnaryInstOp::LOAD
+                         ? fmt::format("{}: {} = *({})", result, type_of(result), operand)
+                     : op == UnaryInstOp::STORE
+                         ? fmt::format("*({}) = {};", result, operand)
+                         : fmt::format("{}: {} = {}{};", result, type_of(result), op, operand))
 };
 
 struct BinaryInst {

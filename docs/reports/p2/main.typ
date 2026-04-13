@@ -99,9 +99,9 @@ int main() {
 
 - 函数类型 `Func` ( e.g. `(i32, float) -> float` ) 包含参数类型（保证为 `Product`）和返回类型。
 - 数组类型 `Array` ( e.g. `[i32; 10]` ) 包含元素类型和长度信息
-- 指针类型 `Pointer` ( e.g. `&[i32]` (readonly), `&mut[i32]` (non-readonly) ) 包含目标类型和是否只读的flag
+- 指针类型 `Reference` ( e.g. `&[i32]` (readonly), `&mut[i32]` (non-readonly) ) 包含目标类型和是否只读的flag
 
-实现层面，我们使用 `using Type = std::variant<Primitive, Sum, Product, Top, Bottom, Func, Array, Pointer>` 来表示类型，同时创建 `TypeBox` 类包含一个 `Type` 提供一些方便的方法，如 `is<T>(), as<T>(), flatten(), decay()`
+实现层面，我们使用 `using Type = std::variant<Primitive, Sum, Product, Top, Bottom, Func, Array, Reference>` 来表示类型，同时创建 `TypeBox` 类包含一个 `Type` 提供一些方便的方法，如 `is<T>(), as<T>(), flatten(), decay()`
 
 === 子类型判断
 
@@ -193,16 +193,16 @@ int main() {
   }
   ```
 
-- 如果都是 Pointer 类型，from 是 to 的子类型当且仅当以下条件同时满足：
-
+- 如果都是 Reference 类型，from 是 to 的子类型当且仅当以下条件同时满足：
+  
   1. from 的只读属性不比 to 更宽松（即 from 不能是 `&mut` 而 to 是 `&`）
   2. from 的目标类型是 to 的目标类型的子类型  (covariance)
   3. 若 to 非只读，则 from 的目标类型与 to 的目标类型相同 (invariance)
-
+  
   实现上，目标类型指的是 `{from, to}.elem`#text(red)[`.decay()`] // TODO: 改成没有decay，把bug解释一下
-
+  
   ```cpp
-  inline bool operator<=(const Pointer& from, const Pointer& to) {
+  inline bool operator<=(const Reference& from, const Reference& to) {
       auto from_elem = from.elem.decay(from.readonly);
       auto to_elem = to.elem.decay(to.readonly);
       if (!(from_elem <= to_elem)) return false;
@@ -212,10 +212,10 @@ int main() {
   }
   ```
 
-- 如果 from 是 Array，并且 to 是 Pointer，则 from 是 to 的子类型当且仅当 from 产生的 可变 Pointer 是 to 的子类型
-
+- 如果 from 是 Array，并且 to 是 Pointer，则 from 是 to 的子类型当且仅当 from 产生的 可变 Reference 是 to 的子类型
+  
   ```cpp
-  inline bool operator<=(const Array& from, const Pointer& to) {
+  inline bool operator<=(const Array& from, const Reference& to) {
       return from.decay(/*readonly=*/false) <= to;
   }
   ```
@@ -273,13 +273,13 @@ int main() {
   }
   ```
 
-- 对于 Func 类型或者 Pointer 类型，大小是指针大小
+- 对于 Func 类型或者 Reference 类型，大小是指针大小
   
   ```cpp
   inline size_t size_of(const Func&) {
       return sizeof(void*);  // function pointer
   }
-  inline size_t size_of(const Pointer&) {
+  inline size_t size_of(const Reference&) {
       return sizeof(void*);
   }
   ```

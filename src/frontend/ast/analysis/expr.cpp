@@ -112,7 +112,9 @@ void SemanticAST::analysis(const BinaryExp* binary_exp, const Type& upperbound, 
     }
     analysis(right, rhs_bound, true);
     switch (binary_exp->op) {
-        case BinaryOp::INDEX: lhs_bound = ir::type::Pointer(upperbound, readonly).toBoxed(); break;
+        case BinaryOp::INDEX:
+            lhs_bound = ir::type::Reference::slice(upperbound, readonly).toBoxed();
+            break;
         case BinaryOp::AND:
         case BinaryOp::OR: lhs_bound = BOOL; break;
         default: lhs_bound = NUM; break;
@@ -135,7 +137,7 @@ void SemanticAST::analysis(const BinaryExp* binary_exp, const Type& upperbound, 
         case BinaryOp::LEQ:
         case BinaryOp::GEQ: types[binary_exp] = BOOL; break;
         case BinaryOp::INDEX: {
-            const auto& ptr = types[left].as<ir::type::Pointer>();  // already decayed
+            const auto& ptr = types[left].as<ir::type::Reference>();  // already decayed
             types[binary_exp] = ptr.elem;
             types[binary_exp] = types[binary_exp].decay(ptr.readonly);
             break;

@@ -82,9 +82,9 @@ private:
                 const std::byte* src) const;
     void assign(const ir::type::Array& dest_type, std::byte* dest, const ir::type::Array& src_type,
                 const std::byte* src) const;
-    void assign(const ir::type::Pointer& dest_type, std::byte* dest,
-                const ir::type::Pointer& src_type, const std::byte* src) const;
-    void assign(const ir::type::Pointer& dest_type, std::byte* dest,
+    void assign(const ir::type::Reference& dest_type, std::byte* dest,
+                const ir::type::Reference& src_type, const std::byte* src) const;
+    void assign(const ir::type::Reference& dest_type, std::byte* dest,
                 const ir::type::Array& src_type, const std::byte* src) const;
     void assign(const ir::type::Product& dest_type, std::byte* dest,
                 const ir::type::Product& src_type, const std::byte* src) const;
@@ -225,13 +225,13 @@ public:
                 throw COMPILER_ERROR(
                     fmt::format("Offset must be an integer, but got {}", rhs.type));
             }
-            if (!lhs.type.is<Pointer>() && !lhs.type.is<Array>()) {
+            if (!lhs.type.is<Reference>() && !lhs.type.is<Array>()) {
                 throw COMPILER_ERROR(
                     fmt::format("Expected pointer or array type, but got {}", lhs.type));
             }
-            auto is_pointer = lhs.type.is<Pointer>();
+            auto is_pointer = lhs.type.is<Reference>();
             auto offset = *(int*)rhs.data;
-            auto elem_type = is_pointer ? lhs.type.as<Pointer>().elem : lhs.type.as<Array>().elem;
+            auto elem_type = is_pointer ? lhs.type.as<Reference>().elem : lhs.type.as<Array>().elem;
             auto base = is_pointer ? *(std::byte**)lhs.data : lhs.data;
             assign(dest.type, dest.data, elem_type, base + offset * ir::type::size_of(elem_type));
         };
@@ -243,13 +243,14 @@ public:
                 throw COMPILER_ERROR(
                     fmt::format("Offset must be an integer, but got {}", lhs.type));
             }
-            if (!dest.type.is<Pointer>() && !dest.type.is<Array>()) {
+            if (!dest.type.is<Reference>() && !dest.type.is<Array>()) {
                 throw COMPILER_ERROR(
                     fmt::format("Expected pointer or array type, but got {}", dest.type));
             }
-            auto is_pointer = dest.type.is<Pointer>();
+            auto is_pointer = dest.type.is<Reference>();
             auto offset = *(int*)lhs.data;
-            auto elem_type = is_pointer ? dest.type.as<Pointer>().elem : dest.type.as<Array>().elem;
+            auto elem_type =
+                is_pointer ? dest.type.as<Reference>().elem : dest.type.as<Array>().elem;
             auto base = is_pointer ? *(std::byte**)dest.data : dest.data;
             assign(elem_type, base + offset * ir::type::size_of(elem_type), rhs.type, rhs.data);
         };

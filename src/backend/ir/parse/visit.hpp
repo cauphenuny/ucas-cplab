@@ -363,13 +363,13 @@ public:
         else if (ctx->children.size() >= 4 && ctx->children[0]->getText() == "&") {
             // pointer: '&' '[' type ']'
             if (ctx->MUT()) {
-                type = std::move(
-                           ir::type::Pointer(take<ir::type::TypeBox>(visit(ctx->type(0))), false))
+                type = std::move(ir::type::Reference::slice(
+                                     take<ir::type::TypeBox>(visit(ctx->type(0))), false))
                            .toBoxed();
             } else {
-                type =
-                    std::move(ir::type::Pointer(take<ir::type::TypeBox>(visit(ctx->type(0))), true))
-                        .toBoxed();
+                type = std::move(ir::type::Reference::slice(
+                                     take<ir::type::TypeBox>(visit(ctx->type(0))), true))
+                           .toBoxed();
             }
         } else if (ctx->children.size() >= 5 && ctx->children[0]->getText() == "[") {
             // array: '[' type ';' INT_LITERAL ']'

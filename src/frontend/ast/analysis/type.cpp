@@ -28,9 +28,9 @@ ir::type::TypeBox SemanticAST::calcType(const FuncParam* param) {
             param_type =
                 ir::type::Array(std::move(param_type), param->dims[i - 1].value()).toBoxed();
         }
-        param_type =
-            ir::type::Pointer(std::move(param_type)).toBoxed();  // NOTE: degrade sized array to
-                                                                 // pointer for function parameters
+        param_type = ir::type::Reference::slice(std::move(param_type))
+                         .toBoxed();  // NOTE: degrade sized array to
+                                      // reference for function parameters
     }
     return param_type;
 }

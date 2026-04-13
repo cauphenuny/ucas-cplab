@@ -29,14 +29,14 @@ using Primitive = std::variant<Int, Float, Double, Bool>;
 
 struct Func;
 struct Array;
-struct Pointer;
+struct Reference;
 
 struct Sum;
 struct Product;
 struct Top;
 struct Bottom;
 
-using Type = std::variant<Primitive, Sum, Product, Func, Array, Pointer, Top, Bottom>;
+using Type = std::variant<Primitive, Sum, Product, Func, Array, Reference, Top, Bottom>;
 
 struct TypeBox {
     std::unique_ptr<Type> item;
@@ -60,6 +60,7 @@ struct TypeBox {
 
     [[nodiscard]] auto decay(bool readonly = false) const -> TypeBox;
     [[nodiscard]] auto flatten() const -> TypeBox;
+    [[nodiscard]] auto borrow(bool readonly = false) const -> TypeBox;
 };
 
 struct Int : mixin::ToBoxed<Int, Type> {
@@ -163,11 +164,28 @@ struct Func : mixin::ToBoxed<Func, Type> {
 };
 
 /// Unsized array / pointer type: &[elem]
-struct Pointer : mixin::ToBoxed<Pointer, Type> {
+struct Reference : mixin::ToBoxed<Reference, Type> {
     TypeBox elem;
     bool readonly;
-    Pointer(TypeBox elem, bool readonly = false) : elem(std::move(elem)), readonly(readonly) {}
-    SIMPLE_TO_STRING(fmt::format("&{}[{}]", readonly ? "" : "mut", elem));
+    bool is_slice;
+    static Reference slice(TypeBox elem, bool readonly = false) {
+        Reference ref{
+            .elem = std::move(elem),
+            .readonly = readonly,
+            .is_slice = true,
+        };
+        return ref;
+    }
+    static Reference pointer(TypeBox elem, bool readonly = false) {
+        Reference ref{
+            .elem = std::move(elem),
+            .readonly = readonly,
+            .is_slice = false,
+        };
+        return ref;
+    }
+    SIMPLE_TO_STRING(is_slice ? fmt::format("&{}[{}]", readonly ? "" : "mut ", elem)
+                              : fmt::format("&{}{}", readonly ? "" : "mut ", elem));
 };
 
 /// Sized array type: [elem; size]
@@ -177,7 +195,7 @@ struct Array : mixin::ToBoxed<Array, Type> {
     Array(TypeBox elem, size_t size) : elem(std::move(elem)), size(size) {}
     SIMPLE_TO_STRING(fmt::format("[{}; {}]", elem, size));
     [[nodiscard]] auto flatten() const -> Array;
-    [[nodiscard]] auto decay(bool readonly = false) const -> Pointer;
+    [[nodiscard]] auto decay(bool readonly = false) const -> Reference;
 };
 
 inline std::string TypeBox::toString() const {
@@ -231,8 +249,8 @@ inline auto Array::flatten() const -> Array {
     return *this;
 }
 
-inline auto Array::decay(bool readonly) const -> Pointer {
-    return Pointer(elem, readonly);
+inline auto Array::decay(bool readonly) const -> Reference {
+    return Reference::slice(elem, readonly);
 }
 
 inline auto TypeBox::decay(bool readonly) const -> TypeBox {
@@ -243,6 +261,12 @@ inline auto TypeBox::decay(bool readonly) const -> TypeBox {
 inline auto TypeBox::flatten() const -> TypeBox {
     return Match{*item}([&](const Array& arr) -> TypeBox { return arr.flatten().toBoxed(); },
                         [&](const auto&) { return *this; });
+}
+
+inline auto TypeBox::borrow(bool readonly) const -> TypeBox {
+    return Match{*item}(
+        [&](const Array& arr) -> TypeBox { return arr.decay(readonly).toBoxed(); },
+        [&](const auto&) -> TypeBox { return Reference::pointer(*this, readonly).toBoxed(); });
 }
 
 inline size_t size_of(const Type& type);
@@ -286,7 +310,7 @@ inline size_t size_of(const Array& arr) {
     return arr.size * size_of(arr.elem);
 }
 
-inline size_t size_of(const Pointer&) {
+inline size_t size_of(const Reference&) {
     return sizeof(void*);
 }
 
@@ -359,7 +383,7 @@ template <typename... Args> struct construct_sum<std::variant<Args...>> {
  * - int -> Int
  * - float -> Float
  * - bool -> Bool
- * - T* -> Pointer
+ * - T* -> Reference
  * - T[N] -> Array
  * - void -> Product (empty)
  * - R(Args...) -> Func
@@ -381,9 +405,15 @@ template <typename T> TypeBox construct() {
     } else if constexpr (std::is_same_v<U, std::any>) {
         return Top{}.toBoxed();
     } else if constexpr (std::is_pointer_v<U>) {
-        return Pointer(construct<std::remove_pointer_t<Raw>>()).toBoxed();
+        return Reference::pointer(construct<std::remove_pointer_t<Raw>>()).toBoxed();
     } else if constexpr (std::is_array_v<U>) {
-        return Array(construct<std::remove_extent_t<Raw>>(), std::extent_v<U>).toBoxed();
+        // If the array has no extent (e.g. `int[]`), treat it as an unsized slice
+        // and map to `Reference::slice`. Sized arrays map to `Array`.
+        if constexpr (std::extent_v<U> == 0) {
+            return Reference::slice(construct<std::remove_extent_t<Raw>>()).toBoxed();
+        } else {
+            return Array(construct<std::remove_extent_t<Raw>>(), std::extent_v<U>).toBoxed();
+        }
     } else if constexpr (std::is_void_v<U>) {
         return Product{}.toBoxed();
     } else if constexpr (std::is_function_v<U>) {
@@ -476,7 +506,7 @@ inline bool operator<=(const Array& from, const Array& to) {
     return from.size == to.size;
 }
 
-inline bool operator<=(const Pointer& from, const Pointer& to) {
+inline bool operator<=(const Reference& from, const Reference& to) {
     auto from_elem = from.elem.decay(from.readonly);
     auto to_elem = to.elem.decay(to.readonly);
     if (!(from_elem <= to_elem)) return false;
@@ -485,7 +515,7 @@ inline bool operator<=(const Pointer& from, const Pointer& to) {
     return true;
 }
 
-inline bool operator<=(const Array& from, const Pointer& to) {
+inline bool operator<=(const Array& from, const Reference& to) {
     return from.decay(false) <= to;
 }
 
@@ -607,14 +637,14 @@ inline bool constructable(const TypeBox& from_box, const TypeBox& to_box) {
         }
         return constructable(from.elem, to.elem) && from.size <= to.size;
     }
-    if (from_box.is<Pointer>() && to_box.is<Pointer>()) {
-        const auto& from = from_box.as<Pointer>();
-        const auto& to = to_box.as<Pointer>();
+    if (from_box.is<Reference>() && to_box.is<Reference>()) {
+        const auto& from = from_box.as<Reference>();
+        const auto& to = to_box.as<Reference>();
         return constructable(from.elem, to.elem);
     }
-    // Array -> Pointer is not constructable (even though Array <= Pointer by subtyping)
-    if (from_box.is<Array>() && to_box.is<Pointer>()) return false;
-    if (from_box.is<Pointer>() && to_box.is<Array>()) return false;
+    // Array -> Reference is not constructable (even though Array <= Reference by subtyping)
+    if (from_box.is<Array>() && to_box.is<Reference>()) return false;
+    if (from_box.is<Reference>() && to_box.is<Array>()) return false;
     return from_box <= to_box;
 }
 
