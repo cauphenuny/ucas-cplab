@@ -1,6 +1,7 @@
 #include "backend/ir/ir.hpp"
 #include "backend/ir/optim/cfg.hpp"
-#include "backend/ir/optim/dataflow.hpp"
+#include "backend/ir/optim/dataflow/dominance.hpp"
+#include "backend/ir/optim/dataflow/framework.hpp"
 
 #include <unordered_map>
 
@@ -28,7 +29,7 @@ struct DominanceTree {
 
     // clang-format on
 
-    DominanceTree(const DataFlow<flows::Dominance>& dom_flow) {
+    DominanceTree(const DataFlow<flow::Dominance>& dom_flow) {
         auto& func = dom_flow.cfg.func;
         auto& dom = dom_flow.out;
         for (const auto& block_box : func.blocks()) {

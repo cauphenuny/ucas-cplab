@@ -15,14 +15,22 @@ namespace ir::optim {
 ///
 /// FlowTrait:
 ///   using Data = ...;                              // Data type of Data Flow, requires operator==
+///   using Context = ...;                           // optional context type for transfer function
 ///   static constexpr bool is_forward = true/false; // forward or backward analysis
 ///   static Data boundary();                        // initval of entry/exit nodes
 ///   static Data top();                             // initval of other nodes (identity element of meet)
 ///   static Data meet(const Data& a, const Data& b);
-///   static Data transfer(const Block& blk, const Data& in);
+///   static Data transfer(const Block& blk, const Data& in, Context& ctx);  // transfer function, context is optional
+///   static Context init(const ControlFlowGraph& cfg);  // optional context initializer
 ///
 
 // clang-format on
+
+template <typename T, typename = void> struct has_context : std::false_type {};
+template <typename T>
+struct has_context<
+    T, std::void_t<typename T::Context, decltype(T::init(std::declval<const ControlFlowGraph&>()))>>
+    : std::true_type {};
 
 template <typename T, typename = void> struct is_flow_trait : std::false_type {};
 
@@ -32,14 +40,23 @@ struct is_flow_trait<T, std::void_t<typename T::Data, decltype(T::is_forward),
                                              std::declval<const typename T::Data&>()),
                                     decltype(T::boundary()), decltype(T::top()),
                                     decltype(T::meet(std::declval<const typename T::Data&>(),
-                                                     std::declval<const typename T::Data&>())),
-                                    decltype(T::transfer(std::declval<const Block&>(),
-                                                         std::declval<const typename T::Data&>()))>>
+                                                     std::declval<const typename T::Data&>()))>>
     : std::true_type {};
 
 template <typename T> inline constexpr bool is_flow_trait_v = is_flow_trait<T>::value;
 
-template <typename Trait, typename = std::enable_if_t<is_flow_trait_v<Trait>>> struct DataFlow {
+template <typename Trait, bool HasContext = has_context<Trait>::value> struct DataFlowContext {
+    using Context = typename Trait::Context;
+    Context ctx;
+    DataFlowContext(const ControlFlowGraph& cfg) : ctx(Trait::init(cfg)) {}
+};
+
+template <typename Trait> struct DataFlowContext<Trait, false> {
+    DataFlowContext(const ControlFlowGraph&) {}
+};
+
+template <typename Trait, typename = std::enable_if_t<is_flow_trait_v<Trait>>>
+struct DataFlow : private DataFlowContext<Trait> {
     using Data = typename Trait::Data;
     static constexpr bool is_forward = Trait::is_forward;
 
@@ -47,11 +64,19 @@ template <typename Trait, typename = std::enable_if_t<is_flow_trait_v<Trait>>> s
     std::unordered_map<const Block*, Data> in;
     std::unordered_map<const Block*, Data> out;
 
-    explicit DataFlow(const ControlFlowGraph& cfg) : cfg(cfg) {
+    explicit DataFlow(const ControlFlowGraph& cfg) : DataFlowContext<Trait>(cfg), cfg(cfg) {
         solve();
     }
 
 private:
+    auto transfer(const Block& blk, const Data& in) {
+        if constexpr (has_context<Trait>::value) {
+            return Trait::transfer(blk, in, this->ctx);
+        } else {
+            return Trait::transfer(blk, in);
+        }
+    }
+
     void solve() {
         auto& blocks = cfg.func.blocks();
 
@@ -74,7 +99,7 @@ private:
             const Block* blk = blk_ptr.get();
             if (is_boundary(blk)) {
                 flow_in[blk] = Trait::boundary();
-                flow_out[blk] = Trait::transfer(*blk, flow_in[blk]);
+                flow_out[blk] = this->transfer(*blk, flow_in[blk]);
             } else {
                 flow_in[blk] = Trait::top();
                 flow_out[blk] = Trait::top();
@@ -101,7 +126,7 @@ private:
                 flow_in[blk] = std::move(new_in);
 
                 // flow_out[B] = transfer(B, flow_in[B])
-                Data new_out = Trait::transfer(*blk, flow_in[blk]);
+                Data new_out = this->transfer(*blk, flow_in[blk]);
                 if (!(new_out == flow_out[blk])) {
                     flow_out[blk] = std::move(new_out);
                     changed = true;
@@ -111,7 +136,7 @@ private:
     }
 };
 
-namespace flows {
+namespace flow {
 
 template <typename T> struct Set {
     bool is_universe = true;
@@ -129,6 +154,7 @@ template <typename T> struct Set {
     static Set empty() {
         return {false, {}};
     }
+
     static Set intersection_set(const Set& a, const Set& b) {
         if (a.is_universe) return b;
         if (b.is_universe) return a;
@@ -141,10 +167,25 @@ template <typename T> struct Set {
         }
         return res;
     }
+
     static Set union_set(const Set& a, const Set& b) {
         if (a.is_universe || b.is_universe) return universe();
         Set res{false, a.set};
         res.set.insert(b.set.begin(), b.set.end());
+        return res;
+    }
+
+    [[nodiscard]] Set difference(const Set& other) const {
+        if (is_universe && other.is_universe) return empty();
+        if (is_universe && other.set.empty()) return *this;
+        if (is_universe) {
+            throw COMPILER_ERROR("Cannot difference non-trivial set from universe set");
+        }
+        if (other.is_universe) return empty();
+        Set res{false, {}};
+        for (const auto& elem : set) {
+            if (!other.set.count(elem)) res.set.insert(elem);
+        }
         return res;
     }
 
@@ -154,6 +195,7 @@ template <typename T> struct Set {
         }
         return set.begin();
     }
+
     [[nodiscard]] auto end() const {
         if (is_universe) {
             throw COMPILER_ERROR("Cannot iterate over universe set");
@@ -167,26 +209,22 @@ template <typename T> struct Set {
         }
         return set.size();
     }
-};
 
-struct Dominance {
-    static constexpr bool is_forward = true;
-    using Data = Set<const Block*>;
+    [[nodiscard]] bool contains(const T& elem) const {
+        if (is_universe) return true;
+        return set.count(elem) > 0;
+    }
 
-    static constexpr auto boundary = Data::empty;
-    static constexpr auto top = Data::universe;
-    static constexpr auto meet = Data::intersection_set;
-
-    static Data transfer(const Block& blk, const Data& in) {
-        if (in.is_universe) return in;
-        Data res = in;
-        res.set.insert(&blk);
-        return res;
+    void insert(const T& elem) {
+        if (is_universe) return;
+        set.insert(elem);
+    }
+    void erase(const T& elem) {
+        if (is_universe) return;
+        set.erase(elem);
     }
 };
 
-static_assert(is_flow_trait_v<Dominance>);
-
-}  // namespace flows
+}  // namespace flow
 
 }  // namespace ir::optim
