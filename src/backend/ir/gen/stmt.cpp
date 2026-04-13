@@ -57,10 +57,12 @@ auto Generator::gen(const ast::BlockStmt* block_stmt, Func* func, Block* scope) 
                     } else {
                         auto init = std::move(alloc->init);
                         alloc->init = std::nullopt;
+                        auto val =
+                            NamedValue{.type = alloc->type,
+                                       .def = alloc.get()};  // note: use alloc->type before move it
                         func->addLocal(std::move(alloc));
                         // Local declaration initializers must execute when the declaration runs.
                         if (init) {
-                            auto val = NamedValue{.type = alloc->type, .def = alloc.get()};
                             scope->add(UnaryInst{UnaryInstOp::MOV, val, Value{std::move(*init)}});
                         }
                     }
@@ -116,7 +118,11 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
                 [&](const ast::LVal& lval) {
                     auto var = gen(&lval);
                     auto exp = gen(&assign_stmt.exp, func, scope);
-                    scope->add(UnaryInst{UnaryInstOp::MOV, std::move(var), std::move(exp)});
+                    if (var.type.isPointer()) {
+                        scope->add(UnaryInst{UnaryInstOp::STORE, std::move(var), std::move(exp)});
+                    } else {
+                        scope->add(UnaryInst{UnaryInstOp::MOV, std::move(var), std::move(exp)});
+                    }
                     return scope;
                 },
                 [&](const ast::BinaryExp& exp) {  // array indexing

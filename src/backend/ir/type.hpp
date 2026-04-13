@@ -53,6 +53,9 @@ struct TypeBox {
     template <typename T> [[nodiscard]] auto is() const -> bool;
     template <typename T> [[nodiscard]] auto as() const -> const T&;
 
+    [[nodiscard]] auto isPointer() const -> bool;
+    [[nodiscard]] auto isSlice() const -> bool;
+
     static auto match(const Type& type) -> Match<const Type&>;
     static auto match(const TypeBox& box) -> Match<const Type&>;
     template <typename T, typename... Rest>
@@ -267,6 +270,14 @@ inline auto TypeBox::borrow(bool readonly) const -> TypeBox {
     return Match{*item}(
         [&](const Array& arr) -> TypeBox { return arr.decay(readonly).toBoxed(); },
         [&](const auto&) -> TypeBox { return Reference::pointer(*this, readonly).toBoxed(); });
+}
+
+inline auto TypeBox::isPointer() const -> bool {
+    return is<Reference>() && !as<Reference>().is_slice;
+}
+
+inline auto TypeBox::isSlice() const -> bool {
+    return is<Reference>() && as<Reference>().is_slice;
 }
 
 inline size_t size_of(const Type& type);

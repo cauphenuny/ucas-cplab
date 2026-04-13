@@ -106,6 +106,7 @@ public:
         auto type = take<ir::type::TypeBox>(visit(ctx->type()));
         auto init = take<ir::ConstexprValue>(visit(ctx->constexpr_()));
         auto alloc = ir::Alloc::constant(name, std::move(type), std::move(init));
+        if (ctx->REF()) alloc->reference = true;
         if (current_func_) {
             local_symbol_map_[name] = alloc.get();
             current_func_->addLocal(std::move(alloc));
@@ -123,7 +124,9 @@ public:
         if (ctx->constexpr_()) {
             init = take<ir::ConstexprValue>(visit(ctx->constexpr_()));
         }
-        auto alloc = ir::Alloc::variable(name, std::move(type), std::move(init));
+        bool immutable = !ctx->MUT();
+        auto alloc = ir::Alloc::variable(name, std::move(type), std::move(init), immutable);
+        if (ctx->REF()) alloc->reference = true;
         if (current_func_) {
             local_symbol_map_[name] = alloc.get();
             current_func_->addLocal(std::move(alloc));
@@ -224,119 +227,129 @@ public:
         return {};
     }
 
-    std::any visitInst(IRParser::InstContext* ctx) override {
-        // More robust detection of LOAD/STORE
-        bool is_store = false;
-        if (ctx->children.size() >= 2 && ctx->children[1]->getText() == "[") {
-            is_store = true;
+    std::any visitSliceStoreInst(IRParser::SliceStoreInstContext* ctx) override {
+        // var [ index ] = value ;
+        auto base = resolveLValue(ctx->var());
+        auto index = take<ir::Value>(visit(ctx->value(0)));
+        auto val = take<ir::Value>(visit(ctx->value(1)));
+        current_block_->add(ir::BinaryInst{.op = ir::InstOp::STORE,
+                                           .result = std::move(base),
+                                           .lhs = std::move(index),
+                                           .rhs = std::move(val)});
+        return {};
+    }
+
+    std::any visitPointerStoreInst(IRParser::PointerStoreInstContext* ctx) override {
+        // *(var) = value ;
+        auto target = resolveLValue(ctx->var());
+        auto val = take<ir::Value>(visit(ctx->value()));
+        current_block_->add(ir::UnaryInst{
+            .op = ir::UnaryInstOp::STORE, .result = std::move(target), .operand = std::move(val)});
+        return {};
+    }
+
+    std::any visitCallInst(IRParser::CallInstContext* ctx) override {
+        // var : type = ID ( (argList)? ) ;
+        auto result = resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
+        auto func_name = ctx->ID()->getText();
+        auto func_def = resolveFunc(func_name);
+        if (!func_def)
+            throw SemanticError(get_loc(ctx), fmt::format("Function {} not found", func_name));
+        std::vector<ir::Value> args;
+        if (ctx->argList()) {
+            args = take_ptr<std::vector<ir::Value>>(visit(ctx->argList()));
+        }
+        current_block_->add(ir::CallInst{.result = std::move(result),
+                                         .func = ir::NamedValue{func_def->first, func_def->second},
+                                         .args = std::move(args)});
+        return {};
+    }
+
+    std::any visitSliceLoadInst(IRParser::SliceLoadInstContext* ctx) override {
+        // var : type = base [ index ] ;
+        auto result = resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
+        auto base = take<ir::Value>(visit(ctx->value(0)));
+        auto index = take<ir::Value>(visit(ctx->value(1)));
+        current_block_->add(ir::BinaryInst{.op = ir::InstOp::LOAD,
+                                           .result = std::move(result),
+                                           .lhs = std::move(base),
+                                           .rhs = std::move(index)});
+        return {};
+    }
+
+    std::any visitPointerLoadInst(IRParser::PointerLoadInstContext* ctx) override {
+        // var : type = *(var) ;
+        auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
+        auto operand = resolveLValue(ctx->var(1));
+        current_block_->add(ir::UnaryInst{.op = ir::UnaryInstOp::LOAD,
+                                          .result = std::move(result),
+                                          .operand = ir::Value(std::move(operand))});
+        return {};
+    }
+
+    std::any visitBinaryInst(IRParser::BinaryInstContext* ctx) override {
+        // var : type = lhs op rhs ;
+        auto result = resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
+        auto lhs = take<ir::Value>(visit(ctx->value(0)));
+        auto rhs = take<ir::Value>(visit(ctx->value(1)));
+        auto op = getBinOp(ctx->binop());
+        current_block_->add(ir::BinaryInst{
+            .op = op, .result = std::move(result), .lhs = std::move(lhs), .rhs = std::move(rhs)});
+        return {};
+    }
+
+    std::any visitUnaryInst(IRParser::UnaryInstContext* ctx) override {
+        // var : type = !val | -val | val ;
+        auto result = resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
+
+        bool has_not = false;
+        bool has_neg = false;
+        for (auto* child : ctx->children) {
+            if (child->getText() == "!") has_not = true;
+            if (child->getText() == "-") has_neg = true;
         }
 
-        bool is_load = false;
-        if (!is_store) {
-            // Find '=' and then see if '[' follows ctx->value(0)
-            size_t eq_idx = 0;
-            for (size_t i = 0; i < ctx->children.size(); ++i) {
-                if (ctx->children[i]->getText() == "=") {
-                    eq_idx = i;
-                    break;
-                }
-            }
-            if (eq_idx > 0 && eq_idx + 2 < ctx->children.size() &&
-                ctx->children[eq_idx + 2]->getText() == "[") {
-                is_load = true;
-            }
-        }
-
-        if (is_store) {
-            // var '[' value ']' '=' value ';' // store
-            auto base = resolveLValue(ctx->var(0));
-            auto index = take<ir::Value>(visit(ctx->value(0)));
-            auto val = take<ir::Value>(visit(ctx->value(1)));
-            current_block_->add(ir::BinaryInst{.op = ir::InstOp::STORE,
-                                               .result = std::move(base),
-                                               .lhs = std::move(index),
-                                               .rhs = std::move(val)});
-        } else if (ctx->ID()) {
-            // var ':' type '=' ID '(' (argList)? ')' ';' // call
-            auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
-            auto func_name = ctx->ID()->getText();
-            auto func_def = resolveFunc(func_name);
-            if (!func_def)
-                throw SemanticError(get_loc(ctx), fmt::format("Function {} not found", func_name));
-            std::vector<ir::Value> args;
-            if (ctx->argList()) {
-                args = take_ptr<std::vector<ir::Value>>(visit(ctx->argList()));
-            }
-            current_block_->add(
-                ir::CallInst{.result = std::move(result),
-                             .func = ir::NamedValue{func_def->first, func_def->second},
-                             .args = std::move(args)});
-        } else if (ctx->binop()) {
-            // var ':' type '=' value binop value ';' // binary op
-            auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
-            auto lhs = take<ir::Value>(visit(ctx->value(0)));
-            auto rhs = take<ir::Value>(visit(ctx->value(1)));
-            auto op = getBinOp(ctx->binop());
-            current_block_->add(ir::BinaryInst{.op = op,
-                                               .result = std::move(result),
-                                               .lhs = std::move(lhs),
-                                               .rhs = std::move(rhs)});
-        } else if (is_load) {
-            // var ':' type '=' value '[' value ']' ';' // load
-            auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
-            auto base = take<ir::Value>(visit(ctx->value(0)));
-            auto index = take<ir::Value>(visit(ctx->value(1)));
-            current_block_->add(ir::BinaryInst{.op = ir::InstOp::LOAD,
-                                               .result = std::move(result),
-                                               .lhs = std::move(base),
-                                               .rhs = std::move(index)});
+        if (has_not) {
+            auto val = take<ir::Value>(visit(ctx->value()));
+            current_block_->add(ir::UnaryInst{.op = ir::UnaryInstOp::NOT,
+                                              .result = std::move(result),
+                                              .operand = std::move(val)});
+        } else if (has_neg) {
+            auto val = take<ir::Value>(visit(ctx->value()));
+            current_block_->add(ir::UnaryInst{.op = ir::UnaryInstOp::NEG,
+                                              .result = std::move(result),
+                                              .operand = std::move(val)});
         } else {
-            // var ':' type '=' ('!' value | '-' var | value) ';' // unary or simple assign
-            auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
-            if (ctx->children.size() >= 7 &&
-                (ctx->children[4]->getText() == "!" || ctx->children[4]->getText() == "-")) {
-                // '!' value or '-' var
-                auto op_text = ctx->children[4]->getText();
-                if (op_text == "!") {
-                    auto val = take<ir::Value>(visit(ctx->value(0)));
-                    current_block_->add(ir::UnaryInst{.op = ir::UnaryInstOp::NOT,
-                                                      .result = std::move(result),
-                                                      .operand = std::move(val)});
-                } else if (op_text == "-") {
-                    auto operand = resolveLValue(ctx->var(1));  // grammar says '-' var
-                    current_block_->add(ir::UnaryInst{.op = ir::UnaryInstOp::NEG,
-                                                      .result = std::move(result),
-                                                      .operand = ir::Value(std::move(operand))});
-                }
-            } else {
-                // simple assign
-                auto val = take<ir::Value>(visit(ctx->value(0)));
-                current_block_->add(ir::UnaryInst{.op = ir::UnaryInstOp::MOV,
-                                                  .result = std::move(result),
-                                                  .operand = std::move(val)});
-            }
+            auto val = take<ir::Value>(visit(ctx->value()));
+            current_block_->add(ir::UnaryInst{.op = ir::UnaryInstOp::MOV,
+                                              .result = std::move(result),
+                                              .operand = std::move(val)});
         }
         return {};
     }
 
-    std::any visitExit(IRParser::ExitContext* ctx) override {
-        if (ctx->RETURN()) {
-            ir::Value val = ir::ConstexprValue();  // void return
-            if (ctx->value()) {
-                val = take<ir::Value>(visit(ctx->value()));
-            }
-            current_block_->setExit(ir::ReturnExit{.exp = std::move(val)});
-        } else if (ctx->BRANCH()) {
-            auto cond = take<ir::Value>(visit(ctx->value()));
-            auto true_label = ctx->label(0)->getText();
-            auto false_label = ctx->label(1)->getText();
-            current_block_->setExit(ir::BranchExit{.cond = std::move(cond),
-                                                   .true_target = block_map_.at(true_label),
-                                                   .false_target = block_map_.at(false_label)});
-        } else if (ctx->JUMP()) {
-            auto label = ctx->label(0)->getText();
-            current_block_->setExit(ir::JumpExit(block_map_.at(label)));
+    std::any visitReturnExit(IRParser::ReturnExitContext* ctx) override {
+        ir::Value val = ir::ConstexprValue();  // void return
+        if (ctx->value()) {
+            val = take<ir::Value>(visit(ctx->value()));
         }
+        current_block_->setExit(ir::ReturnExit{.exp = std::move(val)});
+        return {};
+    }
+
+    std::any visitBranchExit(IRParser::BranchExitContext* ctx) override {
+        auto cond = take<ir::Value>(visit(ctx->value()));
+        auto true_label = ctx->label(0)->getText();
+        auto false_label = ctx->label(1)->getText();
+        current_block_->setExit(ir::BranchExit{.cond = std::move(cond),
+                                               .true_target = block_map_.at(true_label),
+                                               .false_target = block_map_.at(false_label)});
+        return {};
+    }
+
+    std::any visitJumpExit(IRParser::JumpExitContext* ctx) override {
+        auto label = ctx->label()->getText();
+        current_block_->setExit(ir::JumpExit(block_map_.at(label)));
         return {};
     }
 
@@ -480,6 +493,11 @@ private:
     std::unordered_map<int, size_t> temp_map_;                            // $N -> internal id
     std::unordered_map<std::string, ir::Block*> block_map_;               // label -> block
 
+    static auto namedValueOf(const ir::Alloc* alloc) -> ir::NamedValue {
+        auto type = alloc->reference ? alloc->type.borrow(alloc->immutable) : alloc->type;
+        return ir::NamedValue{.type = type, .def = alloc};
+    }
+
     auto resolveLValue(IRParser::VarContext* ctx) -> ir::LeftValue {
         if (ctx->temp()) {
             int id = std::stoi(ctx->temp()->INT_LITERAL()->getText());
@@ -493,12 +511,10 @@ private:
         } else {
             auto name = ctx->ID()->getText();
             if (local_symbol_map_.count(name)) {
-                auto alloc = local_symbol_map_.at(name);
-                return ir::NamedValue{.type = alloc->type, .def = alloc};
+                return namedValueOf(local_symbol_map_.at(name));
             }
             if (symbol_map_.count(name)) {
-                auto alloc = symbol_map_.at(name);
-                return ir::NamedValue{.type = alloc->type, .def = alloc};
+                return namedValueOf(symbol_map_.at(name));
             }
             throw SemanticError(get_loc(ctx), fmt::format("Symbol {} not found", name));
         }
@@ -519,12 +535,10 @@ private:
             auto name = ctx->ID()->getText();
             // ID must be pre-defined in localDecl or paramList or be a global
             if (local_symbol_map_.count(name)) {
-                auto alloc = local_symbol_map_.at(name);
-                return ir::NamedValue{.type = alloc->type, .def = alloc};
+                return namedValueOf(local_symbol_map_.at(name));
             }
             if (symbol_map_.count(name)) {
-                auto alloc = symbol_map_.at(name);
-                return ir::NamedValue{.type = alloc->type, .def = alloc};
+                return namedValueOf(symbol_map_.at(name));
             }
             throw SemanticError(
                 get_loc(ctx),

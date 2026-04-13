@@ -140,8 +140,8 @@ private:
     }
 
     void alloc(StackFrame& frame, Alloc* alloc, std::byte* buffer) const;
-    void alloc(StackFrame& frame, Alloc* alloc, std::byte* buffer, const Type& src_type,
-               const std::byte* src_data) const;
+    [[nodiscard]] size_t stackSize(const std::unique_ptr<Alloc>& alloc) const;
+    [[nodiscard]] size_t stackSize(const Type& type) const;
 
     using BinaryOpFunc = std::function<void(View& dest, const View& lhs, const View& rhs)>;
     std::unordered_map<InstOp, BinaryOpFunc> binary_ops;

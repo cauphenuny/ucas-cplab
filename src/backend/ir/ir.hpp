@@ -158,7 +158,7 @@ struct UnaryInst {
     Value operand;
 
     SIMPLE_TO_STRING(op == UnaryInstOp::LOAD
-                         ? fmt::format("{}: {} = *({})", result, type_of(result), operand)
+                         ? fmt::format("{}: {} = *({});", result, type_of(result), operand)
                      : op == UnaryInstOp::STORE
                          ? fmt::format("*({}) = {};", result, operand)
                          : fmt::format("{}: {} = {}{};", result, type_of(result), op, operand))
@@ -274,14 +274,14 @@ struct Alloc {
     Type type;
     bool comptime{false};   // value known at compile time
     bool immutable{false};  // value cannot be assigned multiple times
-    bool only_ref{false};   // value can only accessed by ref's load/store operation
+    bool reference{false};  // value can only accessed by its ref's load/store operation
 
     std::optional<ConstexprValue> init;
 
     Alloc(std::string name, Type type, bool comptime = false, bool immutable = false,
-          bool only_ref = false, std::optional<ConstexprValue> init = std::nullopt)
+          bool reference = false, std::optional<ConstexprValue> init = std::nullopt)
         : name(std::move(name)), type(std::move(type)), comptime(comptime), immutable(immutable),
-          only_ref(only_ref), init(std::move(init)) {
+          reference(reference), init(std::move(init)) {
         if (comptime && !init) {
             throw COMPILER_ERROR(
                 fmt::format("comptime variable '{}' must have an initializer", this->name));
@@ -294,8 +294,9 @@ struct Alloc {
 
     [[nodiscard]] std::string toString() const {
         auto keyword = comptime ? "const" : "let";
-        std::string attr = immutable ? "" : "mut ";
-        attr += only_ref ? "ref " : "";
+        std::string attr;
+        attr += reference ? "ref " : "";
+        attr += immutable ? "" : "mut ";
         if (init) {
             return fmt::format("{} {}{}: {} = {};", keyword, attr, name, type, init);
         }

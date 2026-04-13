@@ -95,30 +95,40 @@ auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) -
 }
 
 void VirtualMachine::alloc(StackFrame& frame, Alloc* alloc, std::byte* buffer) const {
-    frame.vars[alloc] = View{.data = buffer, .type = alloc->type};
+    if (alloc->reference) {
+        // buffer layout: [actual data (size_of(type)) | ptr (sizeof(std::byte*))]
+        auto ref_type = alloc->type.borrow(alloc->immutable);
+        auto ptr = buffer + sizeof(alloc->type);
+        *(std::byte**)ptr = buffer;
+        frame.vars[alloc] = View{.data = ptr, .type = ref_type};
+    } else {
+        frame.vars[alloc] = View{.data = buffer, .type = alloc->type};
+    }
     if (alloc->init) {
         auto init_val = view_of(*alloc->init);
-        assign(alloc->type, frame.vars[alloc].data, init_val.type, init_val.data);
+        assign(alloc->type, buffer, init_val.type, init_val.data);
     }
 }
 
-void VirtualMachine::alloc(StackFrame& frame, Alloc* alloc, std::byte* buffer, const Type& src_type,
-                           const std::byte* src_data) const {
-    frame.vars[alloc] = View{.data = buffer, .type = alloc->type};
-    assign(alloc->type, frame.vars[alloc].data, src_type, src_data);
+size_t VirtualMachine::stackSize(const std::unique_ptr<Alloc>& alloc) const {
+    return ir::type::size_of(alloc->type) + (alloc->reference ? sizeof(void*) : 0);
+}
+
+size_t VirtualMachine::stackSize(const Type& type) const {
+    return ir::type::size_of(type);
 }
 
 void VirtualMachine::execute(const Func& func, const std::vector<View>& args, View& ret) {
 
     size_t stack_size = 0;
     for (const auto& local : func.locals()) {
-        stack_size += ir::type::size_of(local->type);
+        stack_size += stackSize(local);
     }
     for (const auto& temp : func.temps()) {
-        stack_size += ir::type::size_of(temp.type);
+        stack_size += stackSize(temp.type);
     }
     for (const auto& param : func.params) {
-        stack_size += ir::type::size_of(param->type);
+        stack_size += stackSize(param);
     }
 
     auto buffer = std::make_unique<std::byte[]>(stack_size);
@@ -135,17 +145,17 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
         auto& param = func.params[i];
         frame.vars[param.get()] = View{.data = cur, .type = param->type};
         assign(param->type, cur, args[i].type, args[i].data);
-        cur += ir::type::size_of(param->type);
+        cur += stackSize(param->type);
     }
     /// locals
     for (const auto& local : func.locals()) {
         alloc(frame, local.get(), cur);
-        cur += ir::type::size_of(local->type);
+        cur += stackSize(local->type);
     }
     /// temps
     for (const auto& temp : func.temps()) {
         frame.temps.push_back(View{.data = cur, .type = temp.type});
-        cur += ir::type::size_of(temp.type);
+        cur += stackSize(temp.type);
     }
 
     const Block* cur_block = func.entrance();
@@ -162,7 +172,7 @@ int VirtualMachine::execute(const Program& program) {
     size_t global_size = 0;
     /// global variables
     for (const auto& global : program.globals) {
-        global_size += ir::type::size_of(global->type);
+        global_size += stackSize(global->type);
     }
     /// return value
     global_size += sizeof(int);
@@ -172,7 +182,7 @@ int VirtualMachine::execute(const Program& program) {
     std::byte* cur = buffer.get();
     for (const auto& global : program.globals) {
         alloc(global_frame, global.get(), cur);
-        cur += ir::type::size_of(global->type);
+        cur += stackSize(global->type);
     }
 
     View ret{.data = cur, .type = ir::type::construct<int>()};

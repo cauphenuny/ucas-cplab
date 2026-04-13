@@ -72,7 +72,9 @@ auto Generator::gen(const ast::ConstDef* def) -> std::unique_ptr<Alloc> {
 
 auto Generator::gen(const ast::VarDef* def) -> std::unique_ptr<Alloc> {
     auto type = this->info->type_of(def);
-    auto alloc = Alloc::variable(this->name_of(def), type, def->val ? std::make_optional(gen(&*def->val, type)) : std::nullopt);
+    auto alloc =
+        Alloc::variable(this->name_of(def), type,
+                        def->val ? std::make_optional(gen(&*def->val, type)) : std::nullopt);
     this->ir_defs[def] = alloc.get();
     return alloc;
 }
@@ -138,6 +140,7 @@ auto Generator::generate(const ast::SemanticAST& info) -> Program {
             item,
             [&](const ast::Decl& decl) {
                 for (auto&& alloc : gen(&decl)) {
+                    alloc->reference = true;
                     prog.addGlobal(std::move(alloc));
                 }
             },

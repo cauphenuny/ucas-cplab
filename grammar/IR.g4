@@ -11,6 +11,7 @@ DOUBLE: 'f64';
 BOOL: 'bool';
 CONST: 'const';
 MUT: 'mut';
+REF: 'ref';
 TRUE: 'true';
 FALSE: 'false';
 RETURN: 'return';
@@ -40,8 +41,8 @@ WS: [ \t\r\n]+ -> skip;
 
 program: (constDecl | letDecl | funcDecl)* EOF;
 
-constDecl: CONST ID ':' type '=' constexpr ';';
-letDecl: LET ID ':' type ('=' constexpr)? ';';
+constDecl: CONST REF? ID ':' type '=' constexpr ';';
+letDecl: LET REF? MUT? ID ':' type ('=' constexpr)? ';';
 
 funcDecl:
 	FN ID '(' paramList? ')' ('->' type)? '{' (constDecl | letDecl)* block* '}';
@@ -55,18 +56,22 @@ value: var | constexpr;
 label: ID;
 
 exit:
-	RETURN value? ';'
-	| BRANCH value '?' label ':' label ';'
-	| JUMP label ';';
+	RETURN value? ';' # returnExit
+	| BRANCH value '?' label ':' label ';' # branchExit
+	| JUMP label ';' # jumpExit
+	;
 
 block: '.' label ':' inst* exit;
 
 inst:
-	var '[' value ']' '=' value ';' // store
-	| var ':' type '=' ID '(' (argList)? ')' ';' // call
-	| var ':' type '=' value '[' value ']' ';' // load
-	| var ':' type '=' value binop value ';' // binary op
-	| var ':' type '=' ('!' value | '-' var | value) ';'; // unary or simple assign
+	var '[' value ']' '=' value ';' # sliceStoreInst
+	| '*(' var ')' '=' value ';' # pointerStoreInst
+	| var ':' type '=' ID '(' (argList)? ')' ';' # callInst
+	| var ':' type '=' value '[' value ']' ';' # sliceLoadInst
+	| var ':' type '=' '*(' var ')' ';' # pointerLoadInst
+	| var ':' type '=' value binop value ';' # binaryInst
+	| var ':' type '=' ('!' value | '-' value | value) ';' # unaryInst
+	;
 
 argList: value (',' value)*;
 

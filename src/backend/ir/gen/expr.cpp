@@ -13,12 +13,27 @@
 namespace ir::gen {
 
 auto Generator::gen(const ast::LVal* lval) -> NamedValue {
-    return {this->info->type_of(lval), this->ir_defs.at(this->info->definition_of(lval))};
+    auto def = this->ir_defs.at(this->info->definition_of(lval));
+    auto type = this->info->type_of(lval);
+    if (auto* alloc_ptr = std::get_if<const Alloc*>(&def); alloc_ptr && (*alloc_ptr)->reference) {
+        type = (*alloc_ptr)->type.borrow((*alloc_ptr)->immutable);
+    }
+    return {type, def};
 }
 
 auto Generator::gen(const ast::LValExp* lval, Func* func, Block* scope) -> LeftValue {
     return match(
-        lval->val, [&](const ast::LVal& val) -> LeftValue { return gen(&val); },
+        lval->val,
+        [&](const ast::LVal& val) -> LeftValue {
+            auto named = gen(&val);
+            if (named.type.isPointer()) {
+                auto elem_type = named.type.as<ir::type::Reference>().elem;
+                auto temp = func->newTemp(elem_type, scope);
+                scope->add(UnaryInst{UnaryInstOp::LOAD, temp, Value{LeftValue{named}}});
+                return temp;
+            }
+            return named;
+        },
         [&](const ast::BinaryExp& exp) -> LeftValue {
             auto result = gen(&exp, func, scope);
             return match(
