@@ -7,7 +7,6 @@
 #include <exception>
 #include <iostream>
 #include <sstream>
-#include <utility>
 
 int main() {
     {
@@ -33,6 +32,47 @@ fn main() -> i32 {
   $0: i32 = 1;
   $1: i32 = 2;
   $0: i32 = $0 + $1;
+  return $0;
+}
+)";
+        auto ir_stream = std::istringstream(text);
+        try {
+            auto ir_code = ir::parse(ir_stream);
+            exit(1);  // expect to fail
+        } catch (const std::exception& e) {
+            fmt::println("Exception: {}", e.what());
+        }
+    }
+    {
+        /// NOTE: test variable's Single Assignment
+        auto text = R"(
+fn main() -> i32 {
+  let a: i32 = 0;
+.entry:
+  a: i32 = 1;
+  $0: i32 = a;
+  return $0;
+}
+)";
+        auto ir_stream = std::istringstream(text);
+        try {
+            auto ir_code = ir::parse(ir_stream);
+            exit(1);  // expect to fail
+        } catch (const std::exception& e) {
+            fmt::println("Exception: {}", e.what());
+        }
+    }
+    {
+        /// NOTE: test variable's Single Assignment
+        auto text = R"(
+fn main() -> i32 {
+  let a: i32;
+.entry:
+  a: i32 = 1;
+  jump assign;
+.assign:
+  a: i32 = 2;
+  $0: i32 = a;
   return $0;
 }
 )";

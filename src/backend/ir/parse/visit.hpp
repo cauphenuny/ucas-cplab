@@ -16,6 +16,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -109,6 +110,7 @@ public:
         if (ctx->REF()) alloc->reference = true;
         if (current_func_) {
             local_symbol_map_[name] = alloc.get();
+            assigned_defs_.insert(alloc.get());
             current_func_->addLocal(std::move(alloc));
         } else {
             symbol_map_[name] = alloc.get();
@@ -129,6 +131,9 @@ public:
         if (ctx->REF()) alloc->reference = true;
         if (current_func_) {
             local_symbol_map_[name] = alloc.get();
+            if (init.has_value()) {
+                assigned_defs_.insert(alloc.get());
+            }
             current_func_->addLocal(std::move(alloc));
         } else {
             symbol_map_[name] = alloc.get();
@@ -161,10 +166,13 @@ public:
         temp_map_.clear();
         block_map_.clear();
         local_symbol_map_.clear();
+        assigned_defs_.clear();
 
         // Add params to local symbol map
         for (const auto& param : current_func_->params) {
             local_symbol_map_[param->name] = param.get();
+            // Parameters are already initialized at function entry.
+            assigned_defs_.insert(param.get());
         }
 
         for (auto* cd : ctx->constDecl()) {
@@ -492,6 +500,7 @@ private:
     std::unordered_map<std::string, const ir::Alloc*> local_symbol_map_;  // locals/params
     std::unordered_map<int, size_t> temp_map_;                            // $N -> internal id
     std::unordered_map<std::string, ir::Block*> block_map_;               // label -> block
+    std::unordered_set<const ir::Alloc*> assigned_defs_;                  // SSA assigned defs
 
     static auto namedValueOf(const ir::Alloc* alloc) -> ir::NamedValue {
         auto type = alloc->reference ? alloc->type.borrow(alloc->immutable) : alloc->type;
@@ -524,9 +533,7 @@ private:
         if (ctx->temp()) {
             int id = std::stoi(ctx->temp()->INT_LITERAL()->getText());
             if (temp_map_.count(id)) {
-                throw SemanticError(
-                    get_loc(ctx),
-                    fmt::format("Temporary ${} redefined (Single Assignment violated)", id));
+                throw SemanticError(get_loc(ctx), fmt::format("Temporary ${} redefined", id));
             }
             auto temp = current_func_->newTemp(type, current_block_);
             temp_map_[id] = temp.id;
@@ -535,14 +542,26 @@ private:
             auto name = ctx->ID()->getText();
             // ID must be pre-defined in localDecl or paramList or be a global
             if (local_symbol_map_.count(name)) {
-                return namedValueOf(local_symbol_map_.at(name));
+                auto* alloc = local_symbol_map_.at(name);
+                if (assigned_defs_.count(alloc)) {
+                    throw SemanticError(get_loc(ctx),
+                                        fmt::format("Immutable variable `{}` reassigned", name));
+                }
+                assigned_defs_.insert(alloc);
+                return namedValueOf(alloc);
             }
             if (symbol_map_.count(name)) {
-                return namedValueOf(symbol_map_.at(name));
+                auto* alloc = symbol_map_.at(name);
+                if (assigned_defs_.count(alloc)) {
+                    throw SemanticError(get_loc(ctx),
+                                        fmt::format("Immutable variable `{}` reassigned", name));
+                }
+                assigned_defs_.insert(alloc);
+                return namedValueOf(alloc);
             }
             throw SemanticError(
                 get_loc(ctx),
-                fmt::format("Variable {} must be declared before use as a target", name));
+                fmt::format("Variable `{}` must be declared before use as a target", name));
         }
     }
 
