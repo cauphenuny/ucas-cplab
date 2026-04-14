@@ -10,6 +10,7 @@
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/syntax/visit.hpp"
 #include "utils/error.hpp"
+#include "utils/serialize.hpp"
 #include "utils/tui.h"
 
 #include <cstdint>
@@ -136,32 +137,47 @@ int main(int argc, const char* argv[]) {
                     using namespace ir::optim;
                     fmt::println("IR Analysis:\n");
                     for (auto& func : program.getFuncs()) {
+                        auto _ = fmt_indent::Guard();
+                        auto ind = fmt_indent::state.indent();
+
                         fmt::println("function {}:", func->name);
                         auto cfg = ControlFlowGraph(*func);
 
                         auto dom = DataFlow<flow::Dominance>(cfg);
-                        fmt::println("  (dominant blocks)\n{}", dom);
+                        {
+                            auto _ = fmt_indent::Guard();
+                            fmt::println("{}(dominant blocks)\n{}", ind, dom);
+                        }
 
                         auto dom_tree = DominanceTree(dom);
-                        fmt::println("  (immediate dominator)");
-                        for (const auto& block : func->blocks()) {
-                            fmt::println("    {}: {}", block->label,
-                                         dom_tree.idom(block.get())
-                                             ? dom_tree.idom(block.get())->label
-                                             : "<null>");
+                        {
+                            auto _ = fmt_indent::Guard();
+                            fmt::println("{}(immediate dominator)", ind);
+                            for (const auto& block : func->blocks()) {
+                                fmt::println("{}{}: {}", fmt_indent::state.indent(), block->label,
+                                             dom_tree.idom(block.get())
+                                                 ? dom_tree.idom(block.get())->label
+                                                 : "<null>");
+                            }
+                            fmt::print("\n");
                         }
-                        fmt::print("\n");
 
                         auto dom_frontier = DominanceFrontier(cfg, dom_tree);
-                        fmt::println("  (dominance frontier)");
-                        for (const auto& block : func->blocks()) {
-                            fmt::println("    {}: {}", block->label,
-                                         dom_frontier.frontier(block.get()));
+                        {
+                            auto _ = fmt_indent::Guard();
+                            fmt::println("{}(dominance frontier)", ind);
+                            for (const auto& block : func->blocks()) {
+                                fmt::println("{}{}: {}", fmt_indent::state.indent(), block->label,
+                                             dom_frontier.frontier(block.get()));
+                            }
+                            fmt::print("\n");
                         }
-                        fmt::print("\n");
 
                         auto active = DataFlow<flow::ActiveVariables>(cfg);
-                        fmt::println("  (active variables)\n{}", active);
+                        {
+                            auto _ = fmt_indent::Guard();
+                            fmt::println("{}(active variables)\n{}", ind, active);
+                        }
                     }
                 }
 

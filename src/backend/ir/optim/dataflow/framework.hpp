@@ -2,6 +2,7 @@
 
 #include "backend/ir/ir.hpp"
 #include "backend/ir/optim/cfg.hpp"
+#include "utils/serialize.hpp"
 
 #include <type_traits>
 #include <unordered_map>
@@ -69,10 +70,11 @@ struct DataFlow : private DataFlowContext<Trait> {
     }
 
     [[nodiscard]] auto toString() const -> std::string {
-        std::string res;
+        std::string res, ind = fmt_indent::state.indent();
         for (const auto& [blk, data] : in) {
-            res += fmt::format("    {}:\n      IN = {}\n      OUT = {}\n", blk->label,
-                               data.toString(), out.at(blk).toString());
+            res += fmt::format("{}{}:\n", ind, blk->label);
+            res += fmt::format("{}  in: {}\n", ind, data);
+            res += fmt::format("{}  out: {}\n", ind, out.at(blk));
         }
         return res;
     }

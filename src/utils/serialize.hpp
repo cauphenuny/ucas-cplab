@@ -14,7 +14,7 @@
 
 namespace fmt_indent {
 
-struct IndentState {
+struct State {
     int level = 0;
     [[nodiscard]] auto indent() const {
         return std::string(level * 2, ' ');
@@ -27,7 +27,16 @@ struct IndentState {
     }
 };
 
-inline thread_local IndentState state;
+inline thread_local State state;
+
+struct Guard {
+    Guard() {
+        state.push();
+    }
+    ~Guard() {
+        state.pop();
+    }
+};
 
 }  // namespace fmt_indent
 
