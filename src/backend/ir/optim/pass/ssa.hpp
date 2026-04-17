@@ -28,25 +28,26 @@ private:
         std::unordered_set<Block*> defs;
         auto val = alloc->value();
 
-        /// FIXME: maybe not all def is MOV op?
+        auto is_def = [&](const LeftValue& res) {
+            return match(
+                res, [&](const NamedValue& n) { return n == val; },
+                [](const auto&) { return false; });
+        };
 
-        for (const auto& block : func.blocks()) {
+        for (const auto& block_box : func.blocks()) {
+            auto block = block_box.get();
             for (const auto& inst : block->insts()) {
-                match(
-                    inst,
+                bool is_def_inst = match(
+                    inst, [&](const PhiInst& p) { return is_def(p.result); },
+                    [&](const BinaryInst& b) { return b.op != InstOp::STORE && is_def(b.result); },
                     [&](const UnaryInst& u) {
-                        if (u.op == UnaryInstOp::MOV) {
-                            match(
-                                u.result,
-                                [&](const NamedValue& n) {
-                                    if (n == val) {
-                                        defs.insert(block.get());
-                                    }
-                                },
-                                [](const auto&) {});
-                        }
+                        return u.op != UnaryInstOp::STORE && is_def(u.result);
                     },
-                    [](const auto& i) {});
+                    [&](const CallInst& c) { return is_def(c.result); });
+
+                if (is_def_inst) {
+                    defs.insert(block);
+                }
             }
         }
         return defs;
