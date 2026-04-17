@@ -543,7 +543,7 @@ private:
             // ID must be pre-defined in localDecl or paramList or be a global
             if (local_symbol_map_.count(name)) {
                 auto* alloc = local_symbol_map_.at(name);
-                if (assigned_defs_.count(alloc)) {
+                if (alloc->immutable && assigned_defs_.count(alloc)) {
                     throw SemanticError(get_loc(ctx),
                                         fmt::format("Immutable variable `{}` reassigned", name));
                 }
@@ -552,7 +552,7 @@ private:
             }
             if (symbol_map_.count(name)) {
                 auto* alloc = symbol_map_.at(name);
-                if (assigned_defs_.count(alloc)) {
+                if (alloc->immutable && assigned_defs_.count(alloc)) {
                     throw SemanticError(get_loc(ctx),
                                         fmt::format("Immutable variable `{}` reassigned", name));
                 }
