@@ -101,7 +101,7 @@ void VirtualMachine::alloc(StackFrame& frame, Alloc* alloc, std::byte* buffer) c
     if (alloc->reference) {
         // buffer layout: [actual data (size_of(type)) | ptr (sizeof(std::byte*))]
         auto ref_type = alloc->type.borrow(alloc->immutable);
-        auto ptr = buffer + sizeof(alloc->type);
+        auto ptr = buffer + ir::type::size_of(alloc->type);
         *(std::byte**)ptr = buffer;
         frame.vars[alloc] = View{.data = ptr, .type = ref_type};
     } else {
@@ -148,12 +148,12 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
         auto& param = func.params[i];
         frame.vars[param.get()] = View{.data = cur, .type = param->type};
         assign(param->type, cur, args[i].type, args[i].data);
-        cur += stackSize(param->type);
+        cur += stackSize(param);
     }
     /// locals
     for (const auto& local : func.locals()) {
         alloc(frame, local.get(), cur);
-        cur += stackSize(local->type);
+        cur += stackSize(local);
     }
     /// temps
     for (const auto& temp : func.temps()) {
@@ -175,7 +175,7 @@ int VirtualMachine::execute(const Program& program) {
     size_t global_size = 0;
     /// global variables
     for (const auto& global : program.globals) {
-        global_size += stackSize(global->type);
+        global_size += stackSize(global);
     }
     /// return value
     global_size += sizeof(int);
@@ -185,7 +185,7 @@ int VirtualMachine::execute(const Program& program) {
     std::byte* cur = buffer.get();
     for (const auto& global : program.globals) {
         alloc(global_frame, global.get(), cur);
-        cur += stackSize(global->type);
+        cur += stackSize(global);
     }
 
     View ret{.data = cur, .type = ir::type::construct<int>()};
