@@ -30,7 +30,8 @@ namespace ir::optim {
 template <typename T, typename = void> struct has_context : std::false_type {};
 template <typename T>
 struct has_context<
-    T, std::void_t<typename T::Context, decltype(T::init(std::declval<const ControlFlowGraph&>()))>>
+    T, std::void_t<typename T::Context, decltype(T::init(std::declval<const ControlFlowGraph&>(),
+                                                         std::declval<const Program&>()))>>
     : std::true_type {};
 
 template <typename T, typename = void> struct is_flow_trait : std::false_type {};
@@ -49,11 +50,12 @@ template <typename T> inline constexpr bool is_flow_trait_v = is_flow_trait<T>::
 template <typename Trait, bool HasContext = has_context<Trait>::value> struct DataFlowContext {
     using Context = typename Trait::Context;
     Context ctx;
-    DataFlowContext(const ControlFlowGraph& cfg) : ctx(Trait::init(cfg)) {}
+    DataFlowContext(const ControlFlowGraph& cfg, const Program& prog)
+        : ctx(Trait::init(cfg, prog)) {}
 };
 
 template <typename Trait> struct DataFlowContext<Trait, false> {
-    DataFlowContext(const ControlFlowGraph&) {}
+    DataFlowContext(const ControlFlowGraph&, const Program&) {}
 };
 
 template <typename Trait, typename = std::enable_if_t<is_flow_trait_v<Trait>>>
@@ -65,7 +67,8 @@ struct DataFlow : private DataFlowContext<Trait> {
     std::unordered_map<const Block*, Data> in;
     std::unordered_map<const Block*, Data> out;
 
-    explicit DataFlow(const ControlFlowGraph& cfg) : DataFlowContext<Trait>(cfg), cfg(cfg) {
+    DataFlow(const ControlFlowGraph& cfg, const Program& prog)
+        : DataFlowContext<Trait>(cfg, prog), cfg(cfg) {
         solve();
     }
 

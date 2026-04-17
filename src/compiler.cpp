@@ -1,9 +1,9 @@
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.hpp"
 #include "backend/ir/optim/cfg.hpp"
-#include "backend/ir/optim/dataflow/active_var.hpp"
 #include "backend/ir/optim/dataflow/dominance.hpp"
 #include "backend/ir/optim/dataflow/framework.hpp"
+#include "backend/ir/optim/dataflow/liveness.hpp"
 #include "backend/ir/optim/dominance.hpp"
 #include "backend/ir/vm/vm.h"
 #include "fmt/base.h"
@@ -30,13 +30,13 @@ enum : uint8_t {
     SUCCESS = 0,
     INVALID_ARGUMENT = 1,
     SYNTAX_ERROR = 2,
-    SEMANTIC_ERROR = 0,
+    SEMANTIC_ERROR = 4,
     RUNTIME_ERROR = 255,
 };
 
 auto usage(const char* prog_name, int ret = 0) -> std::string {
     fmt::print(
-        R"({} [--ast] [--ast-info] [--ir] [--exec] [--silent] files ... [--output <output file>] [--help]
+        R"({} [--ast] [--ast-info] [--ir] [--ir-info] [--exec] [--silent] files ... [--output <output file>] [--help]
     --ast       Print the AST of the input files
     --ast-info  Print the semantic analysis result of the AST
     --ir        Print the generated IR of the input files
@@ -143,7 +143,7 @@ int main(int argc, const char* argv[]) {
                         fmt::println("function {}:", func->name);
                         auto cfg = ControlFlowGraph(*func);
 
-                        auto dom = DataFlow<flow::Dominance>(cfg);
+                        auto dom = DataFlow<flow::Dominance>(cfg, program);
                         {
                             auto _ = fmt_indent::Guard();
                             fmt::println("{}(dominant blocks)\n{}", ind, dom);
@@ -173,10 +173,10 @@ int main(int argc, const char* argv[]) {
                             fmt::print("\n");
                         }
 
-                        auto active = DataFlow<flow::ActiveVariables>(cfg);
+                        auto live = DataFlow<flow::Liveness>(cfg, program);
                         {
                             auto _ = fmt_indent::Guard();
-                            fmt::println("{}(active variables)\n{}", ind, active);
+                            fmt::println("{}(live variables)\n{}", ind, live);
                         }
                     }
                 }

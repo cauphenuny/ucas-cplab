@@ -1,3 +1,4 @@
+/// @brief live variable analysis
 #pragma once
 
 #include "framework.hpp"
@@ -5,7 +6,7 @@
 
 namespace ir::optim::flow {
 
-struct ActiveVariables {
+struct Liveness {
     static constexpr bool is_forward = false;
     using ElemType = std::variant<size_t, NameDef>;
     static std::string print(const ElemType& elem) {
@@ -27,7 +28,7 @@ struct ActiveVariables {
         return Data::union_set(out.difference(ctx.kill[&blk]), ctx.gen[&blk]);
     }
 
-    static Context init(const ControlFlowGraph& cfg) {
+    static Context init(const ControlFlowGraph& cfg, const Program& prog) {
         Context ctx;
         // TODO
         auto convert = [](const Value& val) -> std::optional<ElemType> {
@@ -108,7 +109,7 @@ struct ActiveVariables {
     }
 };
 
-static_assert(has_context<ActiveVariables>::value);
-static_assert(is_flow_trait_v<ActiveVariables>);
+static_assert(has_context<Liveness>::value);
+static_assert(is_flow_trait_v<Liveness>);
 
 }  // namespace ir::optim::flow
