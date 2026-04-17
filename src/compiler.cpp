@@ -5,6 +5,7 @@
 #include "backend/ir/optim/dataflow/framework.hpp"
 #include "backend/ir/optim/dataflow/liveness.hpp"
 #include "backend/ir/optim/dominance.hpp"
+#include "backend/ir/optim/pass/ssa.hpp"
 #include "backend/ir/vm/vm.h"
 #include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"
@@ -41,6 +42,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --ast-info  Print the semantic analysis result of the AST
     --ir        Print the generated IR of the input files
     --ir-info   Print some analysis result of the generated IR
+    --ssa       Print the SSA form of the generated IR
     --exec      Execute the generated IR
     --silent    Suppress all compiler output except the return value when executing
     --output    Write the generated IR also to the specified file
@@ -59,6 +61,7 @@ int main(int argc, const char* argv[]) {
     bool print_ir_info = false;
     bool execute = false;
     bool silent = false;
+    bool print_ssa = false;
     FILE* output_file = nullptr;
     std::set<std::string> files;
 
@@ -72,6 +75,8 @@ int main(int argc, const char* argv[]) {
             print_ast_info = true;
         } else if (arg == "--ir-info") {
             print_ir_info = true;
+        } else if (arg == "--ssa") {
+            print_ssa = true;
         } else if (arg == "--exec") {
             execute = true;
         } else if (arg == "--silent") {
@@ -179,6 +184,12 @@ int main(int argc, const char* argv[]) {
                             fmt::println("{}(live variables)\n{}", ind, live);
                         }
                     }
+                }
+
+                if (print_ssa) {
+                    ir::optim::pass::ToSSA to_ssa;
+                    to_ssa.apply(program);
+                    fmt::println("SSA Form:\n{}", program);
                 }
 
                 if (execute) {
