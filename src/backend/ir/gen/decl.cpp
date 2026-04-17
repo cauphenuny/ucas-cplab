@@ -140,7 +140,9 @@ auto Generator::generate(const ast::SemanticAST& info) -> Program {
             item,
             [&](const ast::Decl& decl) {
                 for (auto&& alloc : gen(&decl)) {
-                    alloc->reference = true;
+                    if (!alloc->immutable) {
+                        alloc->reference = true;
+                    }
                     prog.addGlobal(std::move(alloc));
                 }
             },
