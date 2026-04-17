@@ -4,6 +4,7 @@
 #include "backend/ir/optim/cfg.hpp"
 #include "utils/serialize.hpp"
 
+#include <set>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -248,9 +249,13 @@ template <typename T, auto print> struct Set {
         if (is_universe) return "<universe>";
         std::string res = "{";
         bool first = true;
+        std::set<std::string> elems;
         for (const auto& elem : set) {
+            elems.insert(print(elem));
+        }
+        for (const auto& elem : elems) {
             if (!first) res += ", ";
-            res += print(elem);
+            res += elem;
             first = false;
         }
         res += "}";

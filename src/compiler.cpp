@@ -42,7 +42,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --ast-info  Print the semantic analysis result of the AST
     --ir        Print the generated IR of the input files
     --ir-info   Print some analysis result of the generated IR
-    --ssa       Print the SSA form of the generated IR
+    --ssa       Convert generated IR to SSA form
     --exec      Execute the generated IR
     --silent    Suppress all compiler output except the return value when executing
     --output    Write the generated IR also to the specified file
@@ -50,6 +50,53 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
 )",
         prog_name);
     exit(ret);
+}
+
+auto analysis(const ir::Program& program) {
+    using namespace ir::optim;
+    fmt::println("IR Analysis:\n");
+    for (auto& func : program.getFuncs()) {
+        auto _ = fmt_indent::Guard();
+        auto ind = fmt_indent::state.indent();
+
+        fmt::println("function {}:", func->name);
+        auto cfg = ControlFlowGraph(*func);
+
+        auto dom = DataFlow<flow::Dominance>(cfg, program);
+        {
+            auto _ = fmt_indent::Guard();
+            fmt::println("{}(dominant blocks)\n{}", ind, dom);
+        }
+
+        auto dom_tree = DominanceTree(dom);
+        {
+            auto _ = fmt_indent::Guard();
+            fmt::println("{}(immediate dominator)", ind);
+            for (const auto& block : func->blocks()) {
+                fmt::println("{}{}: {}", fmt_indent::state.indent(), block->label,
+                             dom_tree.idom(block.get()) ? dom_tree.idom(block.get())->label
+                                                        : "<null>");
+            }
+            fmt::print("\n");
+        }
+
+        auto dom_frontier = DominanceFrontier(cfg, dom_tree);
+        {
+            auto _ = fmt_indent::Guard();
+            fmt::println("{}(dominance frontier)", ind);
+            for (const auto& block : func->blocks()) {
+                fmt::println("{}{}: {}", fmt_indent::state.indent(), block->label,
+                             dom_frontier.frontier(block.get()));
+            }
+            fmt::print("\n");
+        }
+
+        auto live = DataFlow<flow::Liveness>(cfg, program);
+        {
+            auto _ = fmt_indent::Guard();
+            fmt::println("{}(live variables)\n{}", ind, live);
+        }
+    }
 }
 
 int main(int argc, const char* argv[]) {
@@ -132,65 +179,28 @@ int main(int argc, const char* argv[]) {
                         fmt::println("Generated IR:\n");
                     }
                     fmt::println("{}", program);
-                    if (output_file) {
-                        fmt::println(output_file, "{}", program);
-                    }
                     fmt::println("\n");
                 }
 
                 if (print_ir_info) {
-                    using namespace ir::optim;
-                    fmt::println("IR Analysis:\n");
-                    for (auto& func : program.getFuncs()) {
-                        auto _ = fmt_indent::Guard();
-                        auto ind = fmt_indent::state.indent();
-
-                        fmt::println("function {}:", func->name);
-                        auto cfg = ControlFlowGraph(*func);
-
-                        auto dom = DataFlow<flow::Dominance>(cfg, program);
-                        {
-                            auto _ = fmt_indent::Guard();
-                            fmt::println("{}(dominant blocks)\n{}", ind, dom);
-                        }
-
-                        auto dom_tree = DominanceTree(dom);
-                        {
-                            auto _ = fmt_indent::Guard();
-                            fmt::println("{}(immediate dominator)", ind);
-                            for (const auto& block : func->blocks()) {
-                                fmt::println("{}{}: {}", fmt_indent::state.indent(), block->label,
-                                             dom_tree.idom(block.get())
-                                                 ? dom_tree.idom(block.get())->label
-                                                 : "<null>");
-                            }
-                            fmt::print("\n");
-                        }
-
-                        auto dom_frontier = DominanceFrontier(cfg, dom_tree);
-                        {
-                            auto _ = fmt_indent::Guard();
-                            fmt::println("{}(dominance frontier)", ind);
-                            for (const auto& block : func->blocks()) {
-                                fmt::println("{}{}: {}", fmt_indent::state.indent(), block->label,
-                                             dom_frontier.frontier(block.get()));
-                            }
-                            fmt::print("\n");
-                        }
-
-                        auto live = DataFlow<flow::Liveness>(cfg, program);
-                        {
-                            auto _ = fmt_indent::Guard();
-                            fmt::println("{}(live variables)\n{}", ind, live);
-                        }
-                    }
+                    analysis(program);
                 }
 
                 if (optimize_ssa) {
                     ir::optim::pass::ToSSA to_ssa;
                     to_ssa.apply(program);
                     if (print_ir) {
-                        fmt::println("SSA Form:\n{}", program);
+                        fmt::println("SSA Form:\n{}\n", program);
+                    }
+                }
+
+                if (print_ir_info) {
+                    analysis(program);
+                }
+
+                if (output_file) {
+                    if (print_ir) {
+                        fmt::println(output_file, "{}", program);
                     }
                 }
 
@@ -219,7 +229,6 @@ int main(int argc, const char* argv[]) {
                 ret |= SEMANTIC_ERROR;
             }
         }
-
     } catch (const std::runtime_error& e) {
         std::cerr << e.what() << '\n';
         return RUNTIME_ERROR;
