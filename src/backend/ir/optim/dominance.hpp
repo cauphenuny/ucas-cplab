@@ -17,6 +17,12 @@ struct DominanceTree {
         return it->second;
     }
 
+    auto children(const Block* blk) const -> const std::vector<const Block*>& {
+        static const std::vector<const Block*> empty;
+        auto it = children_map.find(blk);
+        return it != children_map.end() ? it->second : empty;
+    }
+
     // clang-format off
 
     /// NOTE: the idom is the dominator which has the largest dominator set (closest to the block)
@@ -46,10 +52,14 @@ struct DominanceTree {
             }
             idom_map[block] = idom_block;
         }
+        for (auto& [child, parent] : idom_map) {
+            if (parent) children_map[parent].push_back(child);
+        }
     }
 
 private:
     std::unordered_map<const Block*, const Block*> idom_map;  // immediate dominator
+    std::unordered_map<const Block*, std::vector<const Block*>> children_map;
 };
 
 struct DominanceFrontier {
