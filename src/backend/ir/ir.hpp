@@ -279,6 +279,9 @@ struct Block {
     [[nodiscard]] const auto& exit() const {
         return *exit_;
     }
+    [[nodiscard]] auto& exit() {
+        return *exit_;
+    }
 
     Block(std::string label, std::vector<Inst> insts, Exit exit)
         : label(std::move(label)), insts_(std::move(insts)), exit_(std::move(exit)) {}

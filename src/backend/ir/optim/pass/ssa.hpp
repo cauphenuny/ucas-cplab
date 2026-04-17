@@ -147,7 +147,7 @@ private:
     std::unique_ptr<DominanceTree> dom_tree;
 
     void rename(Block& block) {
-        fmt::println(stderr, "Renaming block {}", block.label);
+        // fmt::println(stderr, "Renaming block {}", block.label);
         auto alloc_of = [](const LeftValue& v) -> const Alloc* {
             return match(
                 v,
@@ -183,11 +183,40 @@ private:
                 if (alloc && need_rename.count(alloc)) {
                     auto ssa_value = SSAValue(type_of(*def), alloc, version[alloc]++);
                     *def = ssa_value;
-                    fmt::println(stderr, "push {}", ssa_value);
+                    // fmt::println(stderr, "push {}", ssa_value);
                     rename_stack[alloc].push(ssa_value);
                     push_count[alloc]++;
                 }
             }
+        }
+        // 3. Rename uses in Exit
+        if (block.hasExit()) {
+            auto unwrap = [&](Value& v) -> LeftValue* {
+                return match(
+                    v,
+                    [&](LeftValue& n) -> LeftValue* {
+                        return match(
+                            n, [&](NamedValue& nv) { return &n; },
+                            [](auto&) -> LeftValue* { return nullptr; });
+                    },
+                    [](auto&) -> LeftValue* { return nullptr; });
+            };
+            auto update_val = [&](Value& v) {
+                if (auto lval = unwrap(v); lval) {
+                    auto alloc = alloc_of(*lval);
+                    if (alloc && need_rename.count(alloc)) {
+                        if (rename_stack[alloc].empty()) {
+                            throw COMPILER_ERROR(fmt::format(
+                                "SSA rename error: no definition found for {} in exit of block {}",
+                                alloc->name, block.label));
+                        }
+                        *lval = rename_stack[alloc].top();
+                    }
+                }
+            };
+            match(
+                block.exit(), [&](ReturnExit& e) { update_val(e.exp); },
+                [&](BranchExit& e) { update_val(e.cond); }, [&](auto&) {});
         }
         for (auto& succ : cfg->succ[&block]) {
             for (auto& inst : succ->insts()) {
