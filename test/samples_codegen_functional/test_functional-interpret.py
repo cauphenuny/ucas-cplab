@@ -16,12 +16,15 @@ from pathlib import Path
 import difflib
 
 
-def compare_outputs(source_path: Path, out_path: Path, executable: str, is_ir: bool) -> int:
+def compare_outputs(source_path: Path, out_path: Path, executable: str, is_ir: bool, use_ssa: bool) -> int:
     # run executable
     if is_ir:
         cmd = [executable, str(source_path), "--silent"]
     else:
         cmd = [executable, str(source_path), "--exec", "--silent"]
+        if use_ssa:
+            cmd.append("--ssa")
+
     in_path = source_path.with_suffix('.in')
     if in_path.exists():
         with in_path.open('r') as infile:
@@ -54,6 +57,7 @@ def main():
     parser = argparse.ArgumentParser(description="Test functional interpretation")
     parser.add_argument("executable", help="Path to compiler or interpreter")
     parser.add_argument("--ir", action="store_true", help="Test IR files instead of CACT files")
+    parser.add_argument("--ssa", action="store_true", help="Use SSA form")
     args = parser.parse_args()
 
     cwd = Path('.')
@@ -69,7 +73,7 @@ def main():
         if not out.exists():
             print(f"Skipping {source}: no corresponding {out.name}")
             continue
-        rc = compare_outputs(source, out, args.executable, args.ir)
+        rc = compare_outputs(source, out, args.executable, args.ir, args.ssa)
         if rc != 0:
             status = rc
 

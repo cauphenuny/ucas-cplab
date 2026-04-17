@@ -146,7 +146,7 @@ private:
     std::unique_ptr<DataFlow<flow::Dominance>> dom_flow;
     std::unique_ptr<DominanceTree> dom_tree;
 
-    void rename(Block& block) {
+    void rename(Block& block, const Func& func) {
         // fmt::println(stderr, "Renaming block {}", block.label);
         auto alloc_of = [](const LeftValue& v) -> const Alloc* {
             return match(
@@ -166,12 +166,9 @@ private:
                 for (auto& use : uses) {
                     auto alloc = alloc_of(*use);
                     if (alloc && need_rename.count(alloc)) {
-                        if (rename_stack[alloc].empty()) {
-                            throw COMPILER_ERROR(fmt::format(
-                                "SSA rename error: no definition found for {} in block {}",
-                                alloc->name, block.label));
+                        if (rename_stack[alloc].size()) {
+                            *use = rename_stack[alloc].top();
                         }
-                        *use = rename_stack[alloc].top();
                     }
                 }
             }
@@ -205,12 +202,9 @@ private:
                 if (auto lval = unwrap(v); lval) {
                     auto alloc = alloc_of(*lval);
                     if (alloc && need_rename.count(alloc)) {
-                        if (rename_stack[alloc].empty()) {
-                            throw COMPILER_ERROR(fmt::format(
-                                "SSA rename error: no definition found for {} in exit of block {}",
-                                alloc->name, block.label));
+                        if (rename_stack[alloc].size()) {
+                            *lval = rename_stack[alloc].top();
                         }
-                        *lval = rename_stack[alloc].top();
                     }
                 }
             };
@@ -226,13 +220,9 @@ private:
                             if (auto lval = std::get_if<LeftValue>(&arg); lval) {
                                 auto alloc = alloc_of(*lval);
                                 if (need_rename.count(alloc)) {
-                                    if (rename_stack[alloc].empty()) {
-                                        throw COMPILER_ERROR(
-                                            fmt::format("SSA rename error: no definition found for "
-                                                        "{} in block {}",
-                                                        alloc->name, block.label));
+                                    if (rename_stack[alloc].size()) {
+                                        arg = LeftValue{rename_stack[alloc].top()};
                                     }
-                                    arg = LeftValue{rename_stack[alloc].top()};
                                 }
                             }
                         }
@@ -243,7 +233,7 @@ private:
             }
         }
         for (auto& child : dom_tree->children(&block)) {
-            rename(*child);
+            rename(*child, func);
         }
         for (auto& [alloc, count] : push_count) {
             for (size_t i = 0; i < count; i++) {
@@ -266,7 +256,7 @@ private:
             }
         }
         if (need_rename.size()) {
-            rename(*func.entrance());
+            rename(*func.entrance(), func);
         }
         for (const auto& alloc : func.locals()) {
             alloc->immutable = true;  // after renaming, all allocs can be treated as immutable

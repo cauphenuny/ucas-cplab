@@ -61,7 +61,7 @@ int main(int argc, const char* argv[]) {
     bool print_ir_info = false;
     bool execute = false;
     bool silent = false;
-    bool print_ssa = false;
+    bool optimize_ssa = false;
     FILE* output_file = nullptr;
     std::set<std::string> files;
 
@@ -76,7 +76,7 @@ int main(int argc, const char* argv[]) {
         } else if (arg == "--ir-info") {
             print_ir_info = true;
         } else if (arg == "--ssa") {
-            print_ssa = true;
+            optimize_ssa = true;
         } else if (arg == "--exec") {
             execute = true;
         } else if (arg == "--silent") {
@@ -186,10 +186,12 @@ int main(int argc, const char* argv[]) {
                     }
                 }
 
-                if (print_ssa) {
+                if (optimize_ssa) {
                     ir::optim::pass::ToSSA to_ssa;
                     to_ssa.apply(program);
-                    fmt::println("SSA Form:\n{}", program);
+                    if (print_ir) {
+                        fmt::println("SSA Form:\n{}", program);
+                    }
                 }
 
                 if (execute) {
