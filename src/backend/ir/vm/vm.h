@@ -113,6 +113,11 @@ private:
                 [&](const TempValue& temp) -> std::optional<View> {
                     if (temp.id < frame.temps.size()) return frame.temps[temp.id];
                     return std::nullopt;
+                },
+                [&](const SSAValue& ssa) -> std::optional<View> {
+                    auto it = frame.vars.find(ssa.def);
+                    if (it != frame.vars.end()) return it->second;
+                    return std::nullopt;
                 });
         };
         auto local = fn(lval, frame);

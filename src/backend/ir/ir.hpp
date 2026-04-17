@@ -133,7 +133,18 @@ struct ConstexprValue {
     ConstexprValue& operator=(ConstexprValue&&) noexcept = default;
 };
 
-using LeftValue = std::variant<NamedValue, TempValue>;
+struct SSAValue {
+    Type type;
+    const Alloc* def;
+    size_t version;
+
+    friend bool operator==(const SSAValue& lhs, const SSAValue& rhs) {
+        return lhs.def == rhs.def && lhs.version == rhs.version;
+    }
+    [[nodiscard]] auto toString() const -> std::string;
+};
+
+using LeftValue = std::variant<NamedValue, TempValue, SSAValue>;
 using Value = std::variant<ConstexprValue, LeftValue>;
 
 inline LeftValue as_lvalue(const Value& value) {
@@ -195,7 +206,14 @@ struct CallInst {
     }
 };
 
-using Inst = std::variant<UnaryInst, BinaryInst, CallInst>;
+struct PhiInst {
+    LeftValue result;
+    std::vector<std::pair<const Block*, Value>> args;
+
+    [[nodiscard]] auto toString() const -> std::string;
+};
+
+using Inst = std::variant<PhiInst, UnaryInst, BinaryInst, CallInst>;
 
 struct ReturnExit {
     Value exp;
@@ -250,6 +268,12 @@ struct Block {
     [[nodiscard]] const auto& insts() const {
         return insts_;
     }
+    [[nodiscard]] auto& insts() {
+        return insts_;
+    }
+    void insertPhi(PhiInst phi) {
+        insts_.insert(insts_.begin(), Inst{std::move(phi)});
+    }
     [[nodiscard]] const auto& exit() const {
         return *exit_;
     }
@@ -270,6 +294,15 @@ inline auto BranchExit::toString() const -> std::string {
 
 inline auto JumpExit::toString() const -> std::string {
     return fmt::format("jump {};", target ? target->label : "<unknown>");
+}
+
+inline auto PhiInst::toString() const -> std::string {
+    std::string arg_str;
+    for (auto&& [block, val] : args) {
+        arg_str += fmt::format("{}: {}, ", block->label, val);
+    }
+    if (!arg_str.empty()) arg_str.pop_back(), arg_str.pop_back();
+    return fmt::format("{}: {} = $phi({});", result, type_of(result), arg_str);
 }
 
 // NOTE: non-comptime Alloc is always mutable, for immutable value, use TempValue
@@ -466,6 +499,10 @@ inline auto NamedValue::toString() const -> std::string {
     return match(def, [&](const auto* def) { return def->name; });
 }
 
+inline auto SSAValue::toString() const -> std::string {
+    return fmt::format("${}.{}", def->name, version);
+}
+
 struct Program {
     [[nodiscard]] auto toString() const {
         std::string str;
@@ -549,5 +586,14 @@ template <> struct std::hash<ir::TempValue> {
 template <> struct std::hash<ir::NamedValue> {
     auto operator()(const ir::NamedValue& v) const noexcept -> std::size_t {
         return std::hash<ir::NameDef>{}(v.def);
+    }
+};
+
+template <> struct std::hash<ir::SSAValue> {
+    auto operator()(const ir::SSAValue& v) const noexcept -> std::size_t {
+        std::size_t seed = 0;
+        ir::hash_combine(seed, v.def);
+        ir::hash_combine(seed, v.version);
+        return seed;
     }
 };

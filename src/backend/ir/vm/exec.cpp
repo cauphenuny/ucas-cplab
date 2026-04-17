@@ -71,6 +71,9 @@ auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) -
                     srcs.push_back(view_of(arg, frame));
                 }
                 execute(call, srcs, result);
+            },
+            [&](const PhiInst& phi) {
+                // no-op, SSA value is treat like normal named value in VM
             });
         perf_counter.num_insts++;
     }
