@@ -18,6 +18,7 @@ struct Liveness {
     struct Context {
         std::unordered_map<Block*, Data> gen, kill;
         Data global_variables;
+        std::unordered_map<Block*, std::unordered_map<Block*, Data>> phi_uses;
     };
 
     static Data boundary(Context& ctx) {
@@ -27,7 +28,14 @@ struct Liveness {
     static constexpr auto meet = Data::union_set;
 
     static Data transfer(Block& blk, const Data& out, Context& ctx) {
-        return Data::union_set(out.difference(ctx.kill[&blk]), ctx.gen[&blk]);
+        return Data::union_set(out.difference(ctx.kill.at(&blk)), ctx.gen.at(&blk));
+    }
+
+    static Data edge_transfer(Block* src, Block* dst, const Data& dst_in, Context& ctx) {
+        if (ctx.phi_uses.count(dst) && ctx.phi_uses.at(dst).count(src)) {
+            return Data::union_set(dst_in, ctx.phi_uses.at(dst).at(src));
+        }
+        return dst_in;
     }
 
     static Context init(const ControlFlowGraph& cfg, const Program& prog) {
@@ -61,9 +69,7 @@ struct Liveness {
                     }
                 },
                 [&](const PhiInst& p) {
-                    for (const auto& [block, val] : p.args) {
-                        if (auto use = convert(val); use) res.insert(*use);
-                    }
+                    // Phi uses are handled separately per edge
                 });
             return res;
         };
@@ -84,6 +90,14 @@ struct Liveness {
             auto gen = Data::empty(), kill = Data::empty();
             auto block = block_box.get();
             for (auto& inst : block->insts()) {
+                if (std::holds_alternative<PhiInst>(inst)) {
+                    auto& p = std::get<PhiInst>(inst);
+                    for (const auto& [pred, val] : p.args) {
+                        if (auto use = convert(val); use) {
+                            ctx.phi_uses[block][pred].insert(*use);
+                        }
+                    }
+                }
                 auto inst_uses = use(inst);
                 for (const auto& u : inst_uses) {
                     if (!kill.contains(u)) gen.insert(u);

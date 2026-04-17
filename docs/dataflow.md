@@ -47,3 +47,16 @@ struct Dominance {
 通过 context 保存预处理的全局变量集合和每个 block 的 gen/kill
 
 注意 boundary 是全局变量集合，不是空集
+
+#### SSA Phi 导致的活跃变量污染问题 (Bug Fix)
+
+在引入 SSA 形式后，最初的活跃变量分析实现中存在一个严重 bug：$\phi$ 指令的操作数（Uses）被错误地视为在包含该指令的基本块（Block）入口处统一使用。
+
+**影响**：
+- 活跃变量会被错误地传播到所有前驱块。
+- 甚至会导致函数定义中不存在的变量被认为在 `entry` 块入口处活跃。
+
+**解决方案**：
+1. **引入边转移 (Edge Transfer)**：在 `DataFlow` 求解器框架中增加了对 `edge_transfer` 的支持。对于逆向分析（如活跃变量），交汇运算（Meet）时会先针对每条边调用 `edge_transfer`。
+2. **特定的 Phi 处理**：在 `Liveness` 分析类中，将 $\phi$ 指令的操作数从通用的 `gen` 集合中移除，改为记录在 `phi_uses[dst_block][src_block]` 中。
+3. **按边激活**：实现 `edge_transfer(src, dst, data)`，当数据流从 `dst` 回传至 `src` 时，仅将对应于 `src` 分支的 $\phi$ 操作数加入到活跃变量集中。

@@ -48,6 +48,21 @@ struct is_flow_trait<T, std::void_t<typename T::Data, decltype(T::is_forward),
 
 template <typename T> inline constexpr bool is_flow_trait_v = is_flow_trait<T>::value;
 
+template <typename T, typename = void> struct has_edge_transfer_ctx : std::false_type {};
+template <typename T>
+struct has_edge_transfer_ctx<
+    T, std::void_t<decltype(T::edge_transfer(std::declval<Block*>(), std::declval<Block*>(),
+                                             std::declval<const typename T::Data&>(),
+                                             std::declval<typename T::Context&>()))>>
+    : std::true_type {};
+
+template <typename T, typename = void> struct has_edge_transfer_no_ctx : std::false_type {};
+template <typename T>
+struct has_edge_transfer_no_ctx<
+    T, std::void_t<decltype(T::edge_transfer(std::declval<Block*>(), std::declval<Block*>(),
+                                             std::declval<const typename T::Data&>()))>>
+    : std::true_type {};
+
 template <typename Trait, bool HasContext = has_context<Trait>::value> struct DataFlowContext {
     using Context = typename Trait::Context;
     Context ctx;
@@ -140,7 +155,16 @@ private:
                 Data new_in = Trait::top();
                 if (auto it = flow_pred.find(blk); it != flow_pred.end()) {
                     for (Block* p : it->second) {
-                        new_in = Trait::meet(new_in, flow_out[p]);
+                        Data edge_out = flow_out[p];
+                        if constexpr (has_edge_transfer_ctx<Trait>::value) {
+                            edge_out = is_forward
+                                           ? Trait::edge_transfer(p, blk, edge_out, this->ctx)
+                                           : Trait::edge_transfer(blk, p, edge_out, this->ctx);
+                        } else if constexpr (has_edge_transfer_no_ctx<Trait>::value) {
+                            edge_out = is_forward ? Trait::edge_transfer(p, blk, edge_out)
+                                                  : Trait::edge_transfer(blk, p, edge_out);
+                        }
+                        new_in = Trait::meet(new_in, edge_out);
                     }
                 }
                 if (is_boundary(blk)) {
@@ -160,7 +184,7 @@ private:
 };
 
 template <typename T, auto print> struct Set {
-    bool is_universe = true;
+    bool is_universe = false;
     std::unordered_set<T> set;
 
     bool operator==(const Set& other) const {

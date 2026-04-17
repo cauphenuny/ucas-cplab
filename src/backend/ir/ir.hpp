@@ -210,7 +210,7 @@ struct CallInst {
 
 struct PhiInst {
     LeftValue result;
-    std::vector<std::pair<const Block*, Value>> args;
+    std::vector<std::pair<Block*, Value>> args;
 
     [[nodiscard]] auto toString() const -> std::string;
 };
