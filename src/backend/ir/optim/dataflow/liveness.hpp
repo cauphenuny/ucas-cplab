@@ -1,6 +1,7 @@
 /// @brief live variable analysis
 #pragma once
 
+#include "backend/ir/ir.hpp"
 #include "framework.hpp"
 #include "utils/match.hpp"
 
@@ -8,11 +9,9 @@ namespace ir::optim::flow {
 
 struct Liveness {
     static constexpr bool is_forward = false;
-    using ElemType = std::variant<size_t, NameDef>;
+    using ElemType = LeftValue;
     static std::string print(const ElemType& elem) {
-        return match(
-            elem, [](size_t id) { return fmt::format("${}", id); },
-            [](const NameDef& def) { return match(def, [](const auto& d) { return d->name; }); });
+        return match(elem, [](const auto& val) { return fmt::format("{}", val); });
     }
 
     using Data = Set<ElemType, print>;
@@ -36,12 +35,7 @@ struct Liveness {
         // TODO
         auto convert = [](const Value& val) -> std::optional<ElemType> {
             return match(
-                val,
-                [](const LeftValue& v) -> std::optional<ElemType> {
-                    return match(
-                        v, [](const NamedValue& nv) -> ElemType { return nv.def; },
-                        [](const TempValue& tv) -> ElemType { return tv.id; });
-                },
+                val, [](const LeftValue& v) -> std::optional<ElemType> { return v; },
                 [](const auto& v) -> std::optional<ElemType> { return std::nullopt; });
         };
         auto use = [&](const Inst& inst) {
@@ -65,6 +59,11 @@ struct Liveness {
                     for (const auto& arg : i.args) {
                         if (auto use = convert(arg); use) res.insert(*use);
                     }
+                },
+                [&](const PhiInst& p) {
+                    for (const auto& [block, val] : p.args) {
+                        if (auto use = convert(val); use) res.insert(*use);
+                    }
                 });
             return res;
         };
@@ -78,7 +77,8 @@ struct Liveness {
                 [&](const BinaryInst& i) -> T {
                     return (i.op == InstOp::STORE) ? std::nullopt : convert(i.result);
                 },
-                [&](const CallInst& i) -> T { return convert(i.result); });
+                [&](const CallInst& i) -> T { return convert(i.result); },
+                [&](const PhiInst& p) -> T { return convert(p.result); });
         };
         for (auto& block_box : cfg.func.blocks()) {
             auto gen = Data::empty(), kill = Data::empty();
@@ -108,8 +108,7 @@ struct Liveness {
         }
         ctx.global_variables = Data::empty();
         for (auto& global_alloc : prog.getGlobals()) {
-            auto use = convert(
-                LeftValue{NamedValue{.type = global_alloc->type, .def = global_alloc.get()}});
+            auto use = convert(LeftValue{global_alloc->value()});
             ctx.global_variables.insert(*use);
         }
         return ctx;

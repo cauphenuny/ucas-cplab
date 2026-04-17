@@ -14,11 +14,10 @@ namespace ir::gen {
 
 auto Generator::gen(const ast::LVal* lval) -> NamedValue {
     auto def = this->ir_defs.at(this->info->definition_of(lval));
-    auto type = this->info->type_of(lval);
     if (auto* alloc_ptr = std::get_if<const Alloc*>(&def); alloc_ptr && (*alloc_ptr)->reference) {
-        type = (*alloc_ptr)->type.borrow((*alloc_ptr)->immutable);
+        return (*alloc_ptr)->value();
     }
-    return {type, def};
+    return {this->info->type_of(lval), def};
 }
 
 auto Generator::gen(const ast::LValExp* lval, Func* func, Block* scope) -> LeftValue {

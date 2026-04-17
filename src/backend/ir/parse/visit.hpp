@@ -502,11 +502,6 @@ private:
     std::unordered_map<std::string, ir::Block*> block_map_;               // label -> block
     std::unordered_set<const ir::Alloc*> assigned_defs_;                  // SSA assigned defs
 
-    static auto namedValueOf(const ir::Alloc* alloc) -> ir::NamedValue {
-        auto type = alloc->reference ? alloc->type.borrow(alloc->immutable) : alloc->type;
-        return ir::NamedValue{.type = type, .def = alloc};
-    }
-
     auto resolveLValue(IRParser::VarContext* ctx) -> ir::LeftValue {
         if (ctx->temp()) {
             int id = std::stoi(ctx->temp()->INT_LITERAL()->getText());
@@ -520,10 +515,10 @@ private:
         } else {
             auto name = ctx->ID()->getText();
             if (local_symbol_map_.count(name)) {
-                return namedValueOf(local_symbol_map_.at(name));
+                return local_symbol_map_.at(name)->value();
             }
             if (symbol_map_.count(name)) {
-                return namedValueOf(symbol_map_.at(name));
+                return symbol_map_.at(name)->value();
             }
             throw SemanticError(get_loc(ctx), fmt::format("Symbol {} not found", name));
         }
@@ -548,7 +543,7 @@ private:
                                         fmt::format("Immutable variable `{}` reassigned", name));
                 }
                 assigned_defs_.insert(alloc);
-                return namedValueOf(alloc);
+                return alloc->value();
             }
             if (symbol_map_.count(name)) {
                 auto* alloc = symbol_map_.at(name);
@@ -557,7 +552,7 @@ private:
                                         fmt::format("Immutable variable `{}` reassigned", name));
                 }
                 assigned_defs_.insert(alloc);
-                return namedValueOf(alloc);
+                return alloc->value();
             }
             throw SemanticError(
                 get_loc(ctx),

@@ -6,15 +6,14 @@
 #include "fmt/base.h"
 
 #include <functional>
-#include <iostream>
 #include <sstream>
 
 using namespace ir::optim;
 using Liveness = flow::Liveness;
 
-void test(
-    const std::string& name, const std::string& text,
-    std::function<void(const ir::Program&, const ir::Func&, const DataFlow<Liveness>&)> verify) {
+void test(const std::string& name, const std::string& text,
+          const std::function<void(const ir::Program&, const ir::Func&, const DataFlow<Liveness>&)>&
+              verify) {
     fmt::println("Test: {}", name);
     auto ir_stream = std::istringstream(text);
     try {
@@ -64,8 +63,8 @@ fn main() -> i32 {
          [&](const ir::Program& prog, const ir::Func& func, const DataFlow<Liveness>& live) {
              auto entry = func.findBlock("entry");
              if (func.name == "add") {
-                 auto a = func.findAlloc("a");
-                 auto b = func.findAlloc("b");
+                 auto a = func.findAlloc("a")->value();
+                 auto b = func.findAlloc("b")->value();
                  check(live.in.at(entry).contains(a), "add: a is live-in at entry");
                  check(live.in.at(entry).contains(b), "add: b is live-in at entry");
              } else if (func.name == "main") {
@@ -107,10 +106,10 @@ fn main() -> i32 {
                  auto entry = func.findBlock("entry");
                  auto then_blk = func.findBlock("then_blk");
                  auto else_blk = func.findBlock("else_blk");
-                 auto cond = func.findAlloc("cond");
-                 auto a = func.findAlloc("a");
-                 auto b = func.findAlloc("b");
-                 auto res = func.findAlloc("res");
+                 auto cond = func.findAlloc("cond")->value();
+                 auto a = func.findAlloc("a")->value();
+                 auto b = func.findAlloc("b")->value();
+                 auto res = func.findAlloc("res")->value();
 
                  check(live.in.at(entry).contains(cond), "branch_test: cond is live-in at entry");
                  check(live.in.at(entry).contains(a), "branch_test: a is live-in at entry");
@@ -154,9 +153,9 @@ fn loop_test(n: i32) -> i32 {
              if (func.name == "loop_test") {
                  auto loop_cond = func.findBlock("loop_cond");
                  auto loop_body = func.findBlock("loop_body");
-                 auto i = func.findAlloc("i");
-                 auto s = func.findAlloc("s");
-                 auto n = func.findAlloc("n");
+                 auto i = func.findAlloc("i")->value();
+                 auto s = func.findAlloc("s")->value();
+                 auto n = func.findAlloc("n")->value();
 
                  check(live.in.at(loop_cond).contains(i), "loop_test: i is live-in at loop_cond");
                  check(live.in.at(loop_cond).contains(s), "loop_test: s is live-in at loop_cond");
@@ -182,8 +181,8 @@ fn main() -> i32 {
          [&](const ir::Program& prog, const ir::Func& func, const DataFlow<Liveness>& live) {
              if (func.name == "main") {
                  auto entry = func.findBlock("entry");
-                 auto g1 = prog.findAlloc("g1");
-                 auto g2 = prog.findAlloc("g2");
+                 auto g1 = prog.findAlloc("g1")->value();
+                 auto g2 = prog.findAlloc("g2")->value();
 
                  check(live.in.at(entry).contains(g1), "global: g1 is live-in at entry");
                  check(live.in.at(entry).contains(g2), "global: g2 is live-in at entry");

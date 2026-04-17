@@ -57,9 +57,7 @@ auto Generator::gen(const ast::BlockStmt* block_stmt, Func* func, Block* scope) 
                     } else {
                         auto init = std::move(alloc->init);
                         alloc->init = std::nullopt;
-                        auto val =
-                            NamedValue{.type = alloc->type,
-                                       .def = alloc.get()};  // note: use alloc->type before move it
+                        auto val = alloc->value();
                         func->addLocal(std::move(alloc));
                         // Local declaration initializers must execute when the declaration runs.
                         if (init) {

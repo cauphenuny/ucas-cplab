@@ -43,6 +43,10 @@ struct TempValue {
     Type type;
     size_t id;
 
+    friend bool operator==(const TempValue& lhs, const TempValue& rhs) {
+        return lhs.id == rhs.id;
+    }
+
     SIMPLE_TO_STRING(fmt::format("${}", id));
 };
 
@@ -320,6 +324,13 @@ struct Alloc {
         return std::make_unique<Alloc>(std::move(name), std::move(type), false, immutable, true,
                                        std::move(init));
     }
+
+    [[nodiscard]] auto value() const -> NamedValue {
+        if (reference) {
+            return {type.borrow(immutable), this};
+        }
+        return {type, this};
+    }
 };
 
 struct Func {
@@ -514,9 +525,28 @@ private:
     std::vector<std::unique_ptr<BuiltinFunc>> builtin_funcs;
 };
 
+template <typename T> inline void hash_combine(std::size_t& seed, const T& v) {
+    seed ^= std::hash<T>{}(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
 }  // namespace ir
 
-template <> struct std::hash<ir::NamedValue> : std::hash<ir::NameDef> {
+template <typename T1, typename T2> struct std::hash<std::pair<T1, T2>> {
+    auto operator()(const std::pair<T1, T2>& p) const noexcept -> std::size_t {
+        std::size_t seed = 0;
+        ir::hash_combine(seed, p.first);
+        ir::hash_combine(seed, p.second);
+        return seed;
+    }
+};
+
+template <> struct std::hash<ir::TempValue> {
+    auto operator()(const ir::TempValue& v) const noexcept -> std::size_t {
+        return std::hash<std::size_t>{}(v.id);
+    }
+};
+
+template <> struct std::hash<ir::NamedValue> {
     auto operator()(const ir::NamedValue& v) const noexcept -> std::size_t {
         return std::hash<ir::NameDef>{}(v.def);
     }
