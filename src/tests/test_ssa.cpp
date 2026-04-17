@@ -10,12 +10,16 @@ void test(const std::string& name, const std::string& text) {
     auto ir_stream = std::istringstream(text);
     try {
         auto program = ir::parse(ir_stream);
-        fmt::println("Before AddPhi:\n{}", program.toString());
+        fmt::println("Before AddPhi:\n{}", program);
 
         ir::optim::pass::ssa::AddPhi add_phi;
         add_phi.apply(program);
 
-        fmt::println("After AddPhi:\n{}", program.toString());
+        fmt::println("After AddPhi:\n{}", program);
+
+        ir::optim::pass::ssa::Rename rename;
+        rename.apply(program);
+        fmt::println("After Rename:\n{}", program);
     } catch (const std::exception& e) {
         fmt::println("  Error during test '{}': {}", name, e.what());
     }

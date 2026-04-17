@@ -142,6 +142,8 @@ struct SSAValue {
         return lhs.def == rhs.def && lhs.version == rhs.version;
     }
     [[nodiscard]] auto toString() const -> std::string;
+    SSAValue(Type type, const Alloc* def, size_t version)
+        : type(std::move(type)), def(def), version(version) {}
 };
 
 using LeftValue = std::variant<NamedValue, TempValue, SSAValue>;
