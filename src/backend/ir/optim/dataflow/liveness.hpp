@@ -93,14 +93,18 @@ struct Liveness {
                 block->exit(),
                 [&](const BranchExit& exit) {
                     auto use = convert(exit.cond);
-                    if (!use) return;
-                    if (!kill.contains(*use)) gen.insert(*use);
+                    if (use && !kill.contains(*use)) gen.insert(*use);
                 },
                 [&](const JumpExit&) {},
                 [&](const ReturnExit& exit) {
+                    /// NOTE: add global variables
+                    for (auto& global_alloc : prog.getGlobals()) {
+                        auto use = convert(LeftValue{
+                            NamedValue{.type = global_alloc->type, .def = global_alloc.get()}});
+                        if (use && !kill.contains(*use)) gen.insert(*use);
+                    }
                     auto use = convert(exit.exp);
-                    if (!use) return;
-                    if (!kill.contains(*use)) gen.insert(*use);
+                    if (use && !kill.contains(*use)) gen.insert(*use);
                 });
             ctx.gen[block] = gen;
             ctx.kill[block] = kill;
