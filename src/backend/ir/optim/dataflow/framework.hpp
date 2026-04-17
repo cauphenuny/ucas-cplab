@@ -18,7 +18,7 @@ namespace ir::optim {
 ///   using Data = ...;                              // Data type of Data Flow, requires operator==
 ///   using Context = ...;                           // optional context type for transfer function
 ///   static constexpr bool is_forward = true/false; // forward or backward analysis
-///   static Data boundary();                        // initval of entry/exit nodes
+///   static Data boundary(Context& ctx);            // initval of entry/exit nodes, ctx is optional
 ///   static Data top();                             // initval of other nodes (identity element of meet)
 ///   static Data meet(const Data& a, const Data& b);
 ///   static Data transfer(const Block& blk, const Data& in, Context& ctx);  // transfer function, context is optional
@@ -40,7 +40,7 @@ template <typename T>
 struct is_flow_trait<T, std::void_t<typename T::Data, decltype(T::is_forward),
                                     decltype(std::declval<const typename T::Data&>() ==
                                              std::declval<const typename T::Data&>()),
-                                    decltype(T::boundary()), decltype(T::top()),
+                                    decltype(T::top()),
                                     decltype(T::meet(std::declval<const typename T::Data&>(),
                                                      std::declval<const typename T::Data&>()))>>
     : std::true_type {};
@@ -91,6 +91,14 @@ private:
         }
     }
 
+    auto boundary() {
+        if constexpr (has_context<Trait>::value) {
+            return Trait::boundary(this->ctx);
+        } else {
+            return Trait::boundary();
+        }
+    }
+
     void solve() {
         auto& blocks = cfg.func.blocks();
 
@@ -112,7 +120,7 @@ private:
         for (auto& blk_ptr : blocks) {
             const Block* blk = blk_ptr.get();
             if (is_boundary(blk)) {
-                flow_in[blk] = Trait::boundary();
+                flow_in[blk] = this->boundary();
                 flow_out[blk] = this->transfer(*blk, flow_in[blk]);
             } else {
                 flow_in[blk] = Trait::top();
@@ -135,7 +143,7 @@ private:
                     }
                 }
                 if (is_boundary(blk)) {
-                    new_in = Trait::meet(new_in, Trait::boundary());
+                    new_in = Trait::meet(new_in, this->boundary());
                 }
                 flow_in[blk] = std::move(new_in);
 

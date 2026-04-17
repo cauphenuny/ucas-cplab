@@ -187,6 +187,8 @@ fn main() -> i32 {
 
                  check(live.in.at(entry).contains(g1), "global: g1 is live-in at entry");
                  check(live.in.at(entry).contains(g2), "global: g2 is live-in at entry");
+                 check(live.out.at(entry).contains(g1), "global: g1 is live-out at entry");
+                 check(live.out.at(entry).contains(g2), "global: g2 is live-out at entry");
              }
          });
 
