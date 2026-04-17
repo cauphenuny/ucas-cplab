@@ -53,8 +53,8 @@ private:
         return gen(exp_box->exp.get(), func, scope);
     }
 
-    [[nodiscard]] auto branch(const ast::Exp* cond, Func* func, Block* scope,
-                              const Block* true_block, const Block* false_block) -> BranchExit;
+    [[nodiscard]] auto branch(const ast::Exp* cond, Func* func, Block* scope, Block* true_block,
+                              Block* false_block) -> BranchExit;
 };
 
 inline auto generate(const ast::SemanticAST& info) -> Program {

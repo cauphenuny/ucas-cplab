@@ -12,8 +12,8 @@
 
 namespace ir::gen {
 
-auto Generator::branch(const ast::Exp* cond, Func* func, Block* scope, const Block* true_block,
-                       const Block* false_block) -> BranchExit {
+auto Generator::branch(const ast::Exp* cond, Func* func, Block* scope, Block* true_block,
+                       Block* false_block) -> BranchExit {
     return match(
         *cond,
         [&](const ast::BinaryExp& binary_exp) -> BranchExit {

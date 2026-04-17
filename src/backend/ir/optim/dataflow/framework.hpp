@@ -21,7 +21,7 @@ namespace ir::optim {
 ///   static Data boundary(Context& ctx);            // initval of entry/exit nodes, ctx is optional
 ///   static Data top();                             // initval of other nodes (identity element of meet)
 ///   static Data meet(const Data& a, const Data& b);
-///   static Data transfer(const Block& blk, const Data& in, Context& ctx);  // transfer function, context is optional
+///   static Data transfer(Block& blk, const Data& in, Context& ctx);  // transfer function, context is optional
 ///   static Context init(const ControlFlowGraph& cfg);  // optional context initializer
 ///
 
@@ -64,8 +64,8 @@ struct DataFlow : private DataFlowContext<Trait> {
     static constexpr bool is_forward = Trait::is_forward;
 
     const ControlFlowGraph& cfg;
-    std::unordered_map<const Block*, Data> in;
-    std::unordered_map<const Block*, Data> out;
+    std::unordered_map<Block*, Data> in;
+    std::unordered_map<Block*, Data> out;
 
     DataFlow(const ControlFlowGraph& cfg, const Program& prog)
         : DataFlowContext<Trait>(cfg, prog), cfg(cfg) {
@@ -83,7 +83,7 @@ struct DataFlow : private DataFlowContext<Trait> {
     }
 
 private:
-    auto transfer(const Block& blk, const Data& in) {
+    auto transfer(Block& blk, const Data& in) {
         if constexpr (has_context<Trait>::value) {
             return Trait::transfer(blk, in, this->ctx);
         } else {
@@ -108,7 +108,7 @@ private:
         auto& flow_out = is_forward ? out : in;
 
         // determine if a block is a boundary (entry for forward, exit for backward)
-        auto is_boundary = [&](const Block* blk) {
+        auto is_boundary = [&](Block* blk) {
             if constexpr (is_forward) {
                 return blk == blocks.front().get();
             } else {
@@ -118,7 +118,7 @@ private:
 
         // init
         for (auto& blk_ptr : blocks) {
-            const Block* blk = blk_ptr.get();
+            Block* blk = blk_ptr.get();
             if (is_boundary(blk)) {
                 flow_in[blk] = this->boundary();
                 flow_out[blk] = this->transfer(*blk, flow_in[blk]);
@@ -133,12 +133,12 @@ private:
         while (changed) {
             changed = false;
             for (auto& blk_ptr : blocks) {
-                const Block* blk = blk_ptr.get();
+                Block* blk = blk_ptr.get();
 
                 // flow_in[B] = ⊓ flow_out[P], P ∈ flow_pred[B]
                 Data new_in = Trait::top();
                 if (auto it = flow_pred.find(blk); it != flow_pred.end()) {
-                    for (const Block* p : it->second) {
+                    for (Block* p : it->second) {
                         new_in = Trait::meet(new_in, flow_out[p]);
                     }
                 }

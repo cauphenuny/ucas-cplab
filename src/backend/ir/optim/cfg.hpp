@@ -7,14 +7,14 @@
 namespace ir::optim {
 
 struct ControlFlowGraph {
-    using Node = const Block*;
+    using Node = Block*;
     using NodeSet = std::unordered_set<Node>;
     std::unordered_map<Node, NodeSet> succ;
     std::unordered_map<Node, NodeSet> pred;
 
-    const Func& func;
+    Func& func;
 
-    ControlFlowGraph(const Func& func) : func(func) {
+    ControlFlowGraph(Func& func) : func(func) {
         for (const auto& blk_box : func.blocks()) {
             Node blk = blk_box.get();
             match(

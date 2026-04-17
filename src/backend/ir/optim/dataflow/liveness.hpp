@@ -16,7 +16,7 @@ struct Liveness {
 
     using Data = Set<ElemType, print>;
     struct Context {
-        std::unordered_map<const Block*, Data> gen, kill;
+        std::unordered_map<Block*, Data> gen, kill;
         Data global_variables;
     };
 
@@ -26,7 +26,7 @@ struct Liveness {
     static constexpr auto top = Data::empty;
     static constexpr auto meet = Data::union_set;
 
-    static Data transfer(const Block& blk, const Data& out, Context& ctx) {
+    static Data transfer(Block& blk, const Data& out, Context& ctx) {
         return Data::union_set(out.difference(ctx.kill[&blk]), ctx.gen[&blk]);
     }
 

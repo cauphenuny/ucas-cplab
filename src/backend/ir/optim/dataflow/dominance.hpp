@@ -6,16 +6,16 @@ namespace ir::optim::flow {
 
 struct Dominance {
     static constexpr bool is_forward = true;
-    static auto print(const Block* blk) -> std::string {
+    static auto print(Block* blk) -> std::string {
         return blk->label;
     }
-    using Data = Set<const Block*, print>;
+    using Data = Set<Block*, print>;
 
     static constexpr auto boundary = Data::empty;
     static constexpr auto top = Data::universe;
     static constexpr auto meet = Data::intersection_set;
 
-    static Data transfer(const Block& blk, const Data& in) {
+    static Data transfer(Block& blk, const Data& in) {
         if (in.is_universe) return in;
         Data res = in;
         res.set.insert(&blk);

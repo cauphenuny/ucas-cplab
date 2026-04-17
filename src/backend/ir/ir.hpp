@@ -223,13 +223,13 @@ struct ReturnExit {
 
 struct BranchExit {
     Value cond;
-    const Block *true_target, *false_target;
+    Block *true_target, *false_target;
     [[nodiscard]] auto toString() const -> std::string;
 };
 
 struct JumpExit {
-    const Block* target;
-    JumpExit(const Block* target) : target(target) {
+    Block* target;
+    JumpExit(Block* target) : target(target) {
         if (!target) {
             throw COMPILER_ERROR("target block cannot be null");
         }
@@ -256,6 +256,9 @@ struct Block {
     void add(Inst inst) {
         insts_.push_back(std::move(inst));
     }
+    void prepend(Inst inst) {
+        insts_.insert(insts_.begin(), std::move(inst));
+    }
     void setExit(Exit exit) {
         if (this->exit_) {
             throw COMPILER_ERROR(fmt::format("Block {} already has an exit instruction", label));
@@ -270,9 +273,6 @@ struct Block {
     }
     [[nodiscard]] auto& insts() {
         return insts_;
-    }
-    void insertPhi(PhiInst phi) {
-        insts_.insert(insts_.begin(), Inst{std::move(phi)});
     }
     [[nodiscard]] const auto& exit() const {
         return *exit_;
@@ -401,8 +401,14 @@ struct Func {
     [[nodiscard]] const auto& locals() const {
         return locals_;
     }
+    auto& locals() {
+        return locals_;
+    }
 
     [[nodiscard]] const auto& blocks() const {
+        return blocks_;
+    }
+    auto& blocks() {
         return blocks_;
     }
 
@@ -425,7 +431,7 @@ struct Func {
         return newBlock(fmt::format("L{}", temp_label_count++));
     }
 
-    [[nodiscard]] auto findBlock(const std::string& label) const -> const Block* {
+    [[nodiscard]] auto findBlock(const std::string& label) const -> Block* {
         for (const auto& block : blocks_) {
             if (block->label == label) {
                 return block.get();
@@ -448,7 +454,7 @@ struct Func {
         return blocks_.front().get();
     }
 
-    [[nodiscard]] auto entrance() const -> const Block* {
+    [[nodiscard]] auto entrance() const -> Block* {
         return blocks_.front().get();
     }
 
@@ -456,7 +462,7 @@ struct Func {
         locals_.push_back(std::move(alloc));
     }
 
-    void pushLoop(const Block* continue_target, const Block* break_target) {
+    void pushLoop(Block* continue_target, Block* break_target) {
         loops.push_back(LoopContext{continue_target, break_target});
     }
     void popLoop() {
@@ -480,8 +486,8 @@ private:
     std::vector<TempInfo> temps_;
 
     struct LoopContext {
-        const Block* continue_target;
-        const Block* break_target;
+        Block* continue_target;
+        Block* break_target;
     };
     std::vector<LoopContext> loops;  // for break/continue target
 
@@ -550,6 +556,9 @@ struct Program {
         return globals;
     }
     [[nodiscard]] const auto& getFuncs() const {
+        return funcs;
+    }
+    auto& getFuncs() {
         return funcs;
     }
     [[nodiscard]] const auto& getBuiltinFuncs() const {

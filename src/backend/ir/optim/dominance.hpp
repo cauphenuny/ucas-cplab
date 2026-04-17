@@ -9,7 +9,7 @@
 namespace ir::optim {
 
 struct DominanceTree {
-    auto idom(const Block* blk) const -> const Block* {
+    auto idom(Block* blk) const -> Block* {
         auto it = idom_map.find(blk);
         if (it == idom_map.end()) {
             throw COMPILER_ERROR(fmt::format("Block {} not found in dominance tree", blk->label));
@@ -17,8 +17,8 @@ struct DominanceTree {
         return it->second;
     }
 
-    auto children(const Block* blk) const -> const std::vector<const Block*>& {
-        static const std::vector<const Block*> empty;
+    auto children(Block* blk) const -> const std::vector<Block*>& {
+        static const std::vector<Block*> empty;
         auto it = children_map.find(blk);
         return it != children_map.end() ? it->second : empty;
     }
@@ -43,7 +43,7 @@ struct DominanceTree {
             auto block = block_box.get();
             if (block == func.entrance())
                 idom_map[block] = nullptr;  // entry block has no dominator
-            const Block* idom_block = nullptr;
+            Block* idom_block = nullptr;
             for (auto dom_block : dom.at(block)) {
                 if (dom_block == block) continue;
                 if (!idom_block || dom.at(dom_block).size() > dom.at(idom_block).size()) {
@@ -58,17 +58,17 @@ struct DominanceTree {
     }
 
 private:
-    std::unordered_map<const Block*, const Block*> idom_map;  // immediate dominator
-    std::unordered_map<const Block*, std::vector<const Block*>> children_map;
+    std::unordered_map<Block*, Block*> idom_map;  // immediate dominator
+    std::unordered_map<Block*, std::vector<Block*>> children_map;
 };
 
 struct DominanceFrontier {
-    static auto print(const Block* blk) -> std::string {
+    static auto print(Block* blk) -> std::string {
         return blk->label;
     }
-    using Data = Set<const Block*, print>;
+    using Data = Set<Block*, print>;
 
-    auto frontier(const Block* blk) const -> const Data& {
+    auto frontier(Block* blk) const -> const Data& {
         auto it = frontier_map.find(blk);
         if (it == frontier_map.end()) {
             throw COMPILER_ERROR(
@@ -82,7 +82,7 @@ struct DominanceFrontier {
         for (auto& block_box : cfg.func.blocks()) frontier_map[block_box.get()] = Data::empty();
 
         for (auto& block_box : cfg.func.blocks()) {
-            const Block* block = block_box.get();
+            Block* block = block_box.get();
             auto idom = dom_tree.idom(block);
             if (!idom) continue;  // skip entry block
             for (auto pred : cfg.pred.at(block)) {
@@ -97,7 +97,7 @@ struct DominanceFrontier {
     }
 
 private:
-    std::unordered_map<const Block*, Data> frontier_map;
+    std::unordered_map<Block*, Data> frontier_map;
 };
 
 }  // namespace ir::optim
