@@ -381,6 +381,25 @@ struct Func {
         return newBlock(fmt::format("L{}", temp_label_count++));
     }
 
+    [[nodiscard]] auto findBlock(const std::string& label) const -> const Block* {
+        for (const auto& block : blocks_) {
+            if (block->label == label) {
+                return block.get();
+            }
+        }
+        throw COMPILER_ERROR(fmt::format("block '{}' not found", label));
+    }
+
+    [[nodiscard]] auto findAlloc(const std::string& name) const -> const Alloc* {
+        for (const auto& param : params) {
+            if (param->name == name) return param.get();
+        }
+        for (const auto& local : locals_) {
+            if (local->name == name) return local.get();
+        }
+        throw COMPILER_ERROR(fmt::format("alloc '{}' not found", name));
+    }
+
     auto entrance() -> Block* {
         return blocks_.front().get();
     }
@@ -460,13 +479,20 @@ struct Program {
         builtin_funcs.push_back(std::move(func));
     }
 
-    [[nodiscard]] const Func& findFunc(const std::string& name) const {
+    [[nodiscard]] const auto& findFunc(const std::string& name) const {
         for (const auto& func : funcs) {
             if (func->name == name) {
                 return *func;
             }
         }
         throw COMPILER_ERROR(fmt::format("function '{}' not found", name));
+    }
+
+    [[nodiscard]] auto findAlloc(const std::string& name) const -> const Alloc* {
+        for (const auto& global : globals) {
+            if (global->name == name) return global.get();
+        }
+        throw COMPILER_ERROR(fmt::format("global alloc '{}' not found", name));
     }
 
     friend struct vm::VirtualMachine;
