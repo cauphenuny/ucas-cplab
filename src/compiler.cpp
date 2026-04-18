@@ -8,6 +8,7 @@
 #include "backend/ir/optim/const_propagation.hpp"
 #include "backend/ir/optim/copy_propagation.hpp"
 #include "backend/ir/optim/dead_alloc.hpp"
+#include "backend/ir/optim/dead_block.hpp"
 #include "backend/ir/optim/dead_def.hpp"
 #include "backend/ir/optim/ssa.hpp"
 #include "backend/ir/vm/vm.h"
@@ -55,9 +56,10 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
 
     --optimize-copy     Apply Copy Propagation optimization (requires --ssa)
     --optimize-const    Apply Const Propagation optimization (requires --ssa)
-    --optimize-dde      Apply Dead Definition Elimination optimization (requires --ssa)
-    --optimize-dae      Apply Dead Allocation Elimination optimization (requires --ssa, suggests --ssa2temp)
-    --optimize-cse      (TODO) Apply Common Subexpression Elimination optimization (requires --ssa)
+    --optimize-def      Apply Dead Definition Elimination optimization (requires --ssa)
+    --optimize-alloc    Apply Dead Allocation Elimination optimization (requires --ssa, suggests --ssa2temp)
+    --optimize-block    Apply Dead Block Elimination optimization (requires --ssa)
+    --optimize-exp      (TODO) Apply Common Subexpression Elimination optimization (requires --ssa)
     -O1, --optimize     Apply above optimizations
 
     --exec              Execute the generated IR
@@ -128,11 +130,12 @@ int main(int argc, const char* argv[]) {
     bool silent = false;
     bool to_ssa = false;
     bool ssa_to_temp = false;
-    bool optimize_dae = false;
-    bool optimize_dde = false;
-    bool optimize_cse = false;
+    bool optimize_alloc = false;
+    bool optimize_def = false;
+    bool optimize_exp = false;
     bool optimize_copy = false;
     bool optimize_const = false;
+    bool optimize_block = false;
     FILE* output_file = nullptr;
     std::set<std::string> files;
 
@@ -155,21 +158,24 @@ int main(int argc, const char* argv[]) {
         } else if (arg == "--silent") {
             silent = true;
         } else if (arg == "-O1" || arg == "--optimize") {
-            optimize_dae = true;
-            optimize_dde = true;
-            optimize_cse = true;
+            optimize_exp = true;
             optimize_copy = true;
             optimize_const = true;
-        } else if (arg == "--optimize-dae") {
-            optimize_dae = true;
-        } else if (arg == "--optimize-dde") {
-            optimize_dde = true;
-        } else if (arg == "--optimize-cse") {
-            optimize_cse = true;
+            optimize_def = true;
+            optimize_alloc = true;
+            optimize_block = true;
+        } else if (arg == "--optimize-alloc") {
+            optimize_alloc = true;
+        } else if (arg == "--optimize-def") {
+            optimize_def = true;
+        } else if (arg == "--optimize-exp") {
+            optimize_exp = true;
         } else if (arg == "--optimize-copy") {
             optimize_copy = true;
         } else if (arg == "--optimize-const") {
             optimize_const = true;
+        } else if (arg == "--optimize-block") {
+            optimize_block = true;
         } else if (arg == "--output") {
             if (i + 1 >= argc) {
                 usage(argv[0], INVALID_ARGUMENT);
@@ -189,7 +195,8 @@ int main(int argc, const char* argv[]) {
                 "overwritten.");
     }
 
-    bool optimize = optimize_dde || optimize_cse || optimize_copy || optimize_dae;
+    bool optimize =
+        optimize_def || optimize_exp || optimize_copy || optimize_alloc || optimize_const;
     if (optimize && !to_ssa) {
         warning("Optimization requires SSA form. Auto enabling SSA form.");
         to_ssa = true;
@@ -236,10 +243,12 @@ int main(int argc, const char* argv[]) {
                     [&](ir::Program& program,
                         const std::vector<std::pair<std::unique_ptr<ir::optim::Pass>, std::string>>&
                             passes) {
+                        bool changed = false;
                         for (auto& [pass, name] : passes) {
-                            pass->apply(program);
+                            changed |= pass->apply(program);
                             echo(program, name);
                         }
+                        return changed;
                     };
 
                 echo(program, "Generated IR");
@@ -269,14 +278,19 @@ int main(int argc, const char* argv[]) {
                         passes.emplace_back(std::make_unique<ConstPropagation>(),
                                             "Const Propagation");
                     }
-                    if (optimize_dde) {
+                    if (optimize_def) {
                         passes.emplace_back(std::make_unique<DeadDefElimination>(),
                                             "Dead Definition Elimination");
                     }
-                    if (optimize_dae) {
+                    if (optimize_alloc) {
                         passes.emplace_back(std::make_unique<DeadAllocElimination>(),
                                             "Dead Allocation Elimination");
                     }
+                    if (optimize_block) {
+                        passes.emplace_back(std::make_unique<TrivialBlockElimination>(),
+                                            "Trivial Block Elimination");
+                    }
+                    // while (apply(program, passes));
                     apply(program, passes);
                 }
 

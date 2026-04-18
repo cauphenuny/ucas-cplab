@@ -3,6 +3,7 @@
 #include "backend/ir/optim/const_propagation.hpp"
 #include "backend/ir/optim/copy_propagation.hpp"
 #include "backend/ir/optim/dead_alloc.hpp"
+#include "backend/ir/optim/dead_block.hpp"
 #include "backend/ir/optim/dead_def.hpp"
 #include "backend/ir/optim/framework.hpp"
 #include "backend/ir/optim/ssa.hpp"
@@ -55,11 +56,12 @@ int main(int argc, const char* argv[]) {
     using PassFactory = std::function<std::unique_ptr<ir::optim::Pass>()>;
     std::map<std::string, PassFactory> factories = {
         {"copy", []() { return std::make_unique<ir::optim::CopyPropagation>(); }},
-        {"dde", []() { return std::make_unique<ir::optim::DeadDefElimination>(); }},
-        {"dae", []() { return std::make_unique<ir::optim::DeadAllocElimination>(); }},
+        {"def", []() { return std::make_unique<ir::optim::DeadDefElimination>(); }},
+        {"alloc", []() { return std::make_unique<ir::optim::DeadAllocElimination>(); }},
         {"const", []() { return std::make_unique<ir::optim::ConstPropagation>(); }},
         {"ssa", []() { return std::make_unique<ir::optim::ToSSA>(); }},
-        {"ssa2temp", []() { return std::make_unique<ir::optim::SSAValue2TempValue>(); }}};
+        {"ssa2temp", []() { return std::make_unique<ir::optim::SSAValue2TempValue>(); }},
+        {"block", []() { return std::make_unique<ir::optim::TrivialBlockElimination>(); }}};
 
     fmt::println(stderr, "Using directory: {}\n", path.string());
 
