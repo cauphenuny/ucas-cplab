@@ -1,5 +1,5 @@
 #include "backend/ir/gen/irgen.h"
-#include "backend/ir/optim/pass/ssa.hpp"
+#include "backend/ir/optim/ssa.hpp"
 #include "backend/ir/parse/visit.hpp"
 #include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"

@@ -1,8 +1,8 @@
 /// @brief live variable analysis
 #pragma once
 
+#include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.hpp"
-#include "backend/ir/optim/utils.hpp"
 #include "framework.hpp"
 #include "utils/match.hpp"
 

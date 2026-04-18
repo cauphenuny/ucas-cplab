@@ -1,4 +1,4 @@
-#include "backend/ir/optim/pass/ssa.hpp"
+#include "backend/ir/optim/ssa.hpp"
 #include "backend/ir/parse/visit.hpp"
 #include "fmt/base.h"
 

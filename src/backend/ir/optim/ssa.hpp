@@ -2,13 +2,13 @@
 
 #pragma once
 
+#include "backend/ir/analysis/cfg.hpp"
+#include "backend/ir/analysis/dataflow/dominance.hpp"
+#include "backend/ir/analysis/dataflow/framework.hpp"
+#include "backend/ir/analysis/dataflow/liveness.hpp"
+#include "backend/ir/analysis/dominance.hpp"
+#include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.hpp"
-#include "backend/ir/optim/cfg.hpp"
-#include "backend/ir/optim/dataflow/dominance.hpp"
-#include "backend/ir/optim/dataflow/framework.hpp"
-#include "backend/ir/optim/dataflow/liveness.hpp"
-#include "backend/ir/optim/dominance.hpp"
-#include "backend/ir/optim/utils.hpp"
 #include "framework.hpp"
 
 #include <queue>
