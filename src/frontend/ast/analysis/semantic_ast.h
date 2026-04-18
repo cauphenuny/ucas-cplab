@@ -3,7 +3,7 @@
 #include "backend/ir/type.hpp"
 #include "frontend/ast/ast.hpp"
 #include "frontend/ast/op.hpp"
-#include "utils/error.hpp"
+#include "utils/diagnosis.hpp"
 
 #include <string>
 #include <unordered_map>

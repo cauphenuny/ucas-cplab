@@ -3,7 +3,7 @@
 
 #include "frontend/ast/ast.hpp"
 #include "frontend/syntax/error.hpp"
-#include "utils/error.hpp"
+#include "utils/diagnosis.hpp"
 
 #include <CACTBaseVisitor.h>
 #include <CACTLexer.h>

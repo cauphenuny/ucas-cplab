@@ -1,7 +1,7 @@
 #include "backend/ir/ir.hpp"
 #include "backend/ir/type.hpp"
 #include "backend/ir/vm/view.hpp"
-#include "utils/error.hpp"
+#include "utils/diagnosis.hpp"
 #include "utils/match.hpp"
 #include "vm.h"
 

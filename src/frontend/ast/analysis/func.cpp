@@ -1,7 +1,7 @@
 #include "backend/ir/type.hpp"
 #include "frontend/ast/ast.hpp"
 #include "semantic_ast.h"
-#include "utils/error.hpp"
+#include "utils/diagnosis.hpp"
 #include "utils/traits.hpp"
 
 #include <cstddef>

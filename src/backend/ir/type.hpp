@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "utils/error.hpp"
+#include "utils/diagnosis.hpp"
 #define FMT_HEADER_ONLY
 #include "fmt/format.h"
 #include "utils/serialize.hpp"

@@ -1,5 +1,5 @@
 #include "semantic_ast.h"
-#include "utils/error.hpp"
+#include "utils/diagnosis.hpp"
 #include "utils/match.hpp"
 #include "utils/traits.hpp"
 

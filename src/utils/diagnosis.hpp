@@ -45,3 +45,11 @@ struct CompilerError : std::logic_error {
 
 #define COMPILER_ERROR(desc)         CompilerError(std::string_view(__FILE__), __LINE__, desc)
 #define COMPILER_ERROR_T(desc, type) CompilerError(std::string_view(__FILE__), __LINE__, desc, type)
+
+inline void warning(const std::string& desc, const std::string& scope) {
+    if (scope.length() > 0) {
+        fmt::println(YELLOW BOLD "warning " NONE "in {}: {}", scope, desc);
+    } else {
+        fmt::println(YELLOW BOLD "warning: " NONE "{}", desc);
+    }
+}

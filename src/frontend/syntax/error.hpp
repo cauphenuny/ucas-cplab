@@ -2,7 +2,7 @@
 
 #include "BaseErrorListener.h"
 #include "Lexer.h"
-#include "utils/error.hpp"
+#include "utils/diagnosis.hpp"
 #include "utils/traits.hpp"
 
 #include <cstddef>

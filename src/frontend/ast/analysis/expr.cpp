@@ -2,7 +2,7 @@
 #include "frontend/ast/ast.hpp"
 #include "frontend/ast/op.hpp"
 #include "semantic_ast.h"
-#include "utils/error.hpp"
+#include "utils/diagnosis.hpp"
 #include "utils/match.hpp"
 #include "utils/traits.hpp"
 #include "utils/tui.h"

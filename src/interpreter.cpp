@@ -2,7 +2,7 @@
 #include "backend/ir/parse/visit.hpp"
 #include "backend/ir/vm/vm.h"
 #include "fmt/base.h"
-#include "utils/error.hpp"
+#include "utils/diagnosis.hpp"
 
 #include <cstdint>
 #include <cstdlib>

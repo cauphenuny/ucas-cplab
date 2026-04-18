@@ -2,7 +2,7 @@
 #include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/syntax/visit.hpp"
-#include "utils/error.hpp"
+#include "utils/diagnosis.hpp"
 
 #include <cassert>
 #include <sstream>

@@ -3,7 +3,7 @@
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/ast/ast.hpp"
 #include "irgen.h"
-#include "utils/error.hpp"
+#include "utils/diagnosis.hpp"
 #include "utils/match.hpp"
 
 #include <cstddef>
