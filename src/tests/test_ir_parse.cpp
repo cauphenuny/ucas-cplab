@@ -30,10 +30,10 @@ fn main() -> i32 {
         auto text = R"(
 fn main() -> i32 {
     'entry: {
-      $0: i32 = 1;
-      $1: i32 = 2;
-      $0: i32 = $0 + $1;
-      return $0;
+        $0: i32 = 1;
+        $1: i32 = 2;
+        $0: i32 = $0 + $1;
+        return $0;
     }
 }
 )";
@@ -50,7 +50,7 @@ fn main() -> i32 {
         auto text = R"(
 fn main() -> i32 {
     let a: i32 = 0;
-    .entry: {
+    'entry: {
         a: i32 = 1;
         $0: i32 = a;
         return $0;
@@ -72,7 +72,7 @@ fn main() -> i32 {
     let a: i32;
     'entry: {
         a: i32 = 1;
-        jump assign;
+        jump 'assign;
     }
     'assign: {
         a: i32 = 2;
@@ -101,8 +101,8 @@ fn a_1_2() -> i32 {
 fn main() -> i32 {
     let a_1_2: i32 = 3;
     'entry: {
-      $0: i32 = a_1_2();
-      return $0;
+        $0: i32 = a_1_2();
+        return $0;
     }
 }
 )";

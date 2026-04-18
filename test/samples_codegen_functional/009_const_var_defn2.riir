@@ -1,8 +1,8 @@
-const ref a_0: i32 = 10;
-const ref b_0: i32 = 5;
+const a_0: i32 = 10;
+const b_0: i32 = 5;
 
 fn main() -> i32 {
-.entry:
-  $0: i32 = *(b_0);
-  return $0;
+    'entry: {
+        return b_0;
+    }
 }

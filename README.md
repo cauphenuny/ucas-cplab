@@ -54,58 +54,6 @@ Pipeline:
 source -> IR(RIIR) -> target(rv64)
 ```
 
-e.g.
-
-example.cact
-
-```c
-int c = 2;
-
-int foo(int a[2], int b[2]) {
-    return a[0] + b[0];
-}
-
-int main() {
-    int a[2][2] = { {1, 2}, {4} };
-    const int b = 1;
-    if (b < c) {
-        foo(a[0], a[1]);
-    }
-    return 0;
-}
-```
-
-example.riir
-
-```rust 
-let ref mut c_0: i32 = 2;
-
-fn foo(a_0: &mut[i32], b_0: &mut[i32]) -> i32 {
-.entry:
-  $0: i32 = a_0[0];
-  $1: i32 = b_0[0];
-  $2: i32 = $0 + $1;
-  return $2;
-}
-
-fn main() -> i32 {
-  let mut a_1: [[i32; 2]; 2];
-  const b_1: i32 = 1;
-.entry:
-  a_1: [[i32; 2]; 2] = {1, 2, 4, 0};
-  $0: i32 = *(c_0);
-  $1: bool = b_1 < $0;
-  branch $1 ? if_true_10_4 : if_exit_10_4;
-.if_true_10_4:
-  $2: &mut[i32] = a_1[0];
-  $3: &mut[i32] = a_1[1];
-  $4: i32 = foo($2, $3);
-  jump if_exit_10_4;
-.if_exit_10_4:
-  return 0;
-}
-```
-
 ---
 
 IR Type System:

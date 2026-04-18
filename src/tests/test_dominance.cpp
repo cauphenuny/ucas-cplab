@@ -47,15 +47,19 @@ int main() {
     test("Simple Diamond",
          R"(
 fn main() -> i32 {
-.entry:
-  $0: bool = true;
-  branch $0 ? then_blk : else_blk;
-.then_blk:
-  jump exit_blk;
-.else_blk:
-  jump exit_blk;
-.exit_blk:
-  return 0;
+    'entry: {
+        $0: bool = true;
+        branch $0 ? 'then_blk : 'else_blk;
+    }
+    'then_blk: {
+        jump 'exit_blk;
+    }
+    'else_blk: {
+        jump 'exit_blk;
+    }
+    'exit_blk: {
+        return 0;
+    }
 }
 )",
          [&](const auto& prog, const auto& func, const auto& dom) {
@@ -77,15 +81,19 @@ fn main() -> i32 {
     test("Simple Loop",
          R"(
 fn main() -> i32 {
-.entry:
-  jump cond;
-.cond:
-  $0: bool = true;
-  branch $0 ? body : exit;
-.body:
-  jump cond;
-.exit:
-  return 0;
+    'entry: {
+        jump 'cond;
+    }
+    'cond: {
+        $0: bool = true;
+        branch $0 ? 'body : 'exit;
+    }
+    'body: {
+        jump 'cond;
+    }
+    'exit: {
+        return 0;
+    }
 }
 )",
          [&](const auto& prog, const auto& func, const auto& dom) {

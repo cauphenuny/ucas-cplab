@@ -1,11 +1,12 @@
 fn main() -> i32 {
-  let mut a_0: i32;
-  let mut b0_0: i32;
-  let mut _c_0: i32;
-.entry:
-  a_0: i32 = 1;
-  b0_0: i32 = 2;
-  _c_0: i32 = 3;
-  $0: i32 = b0_0 + _c_0;
-  return $0;
+    let mut a_0: i32;
+    let mut b0_0: i32;
+    let mut _c_0: i32;
+    'entry: {
+        a_0: i32 = 1;
+        b0_0: i32 = 2;
+        _c_0: i32 = 3;
+        $0: i32 = b0_0 + _c_0;
+        return $0;
+    }
 }

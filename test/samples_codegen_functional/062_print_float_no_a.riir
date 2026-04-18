@@ -1,6 +1,7 @@
 fn main() -> i32 {
-.entry:
-  $0: f32 = get_float();
-  $1: () = print_float($0);
-  return 0;
+    'entry: {
+        $0: f32 = get_float();
+        $1: () = print_float($0);
+        return 0;
+    }
 }

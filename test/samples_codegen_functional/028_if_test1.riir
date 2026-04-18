@@ -1,22 +1,27 @@
 fn ifElse() -> i32 {
-  let mut a_0: i32;
-.entry:
-  a_0: i32 = 5;
-  $0: bool = a_0 == 5;
-  branch $0 ? if_true_5_2 : if_false_5_2;
-.if_true_5_2:
-  a_0: i32 = 25;
-  jump if_exit_5_2;
-.if_exit_5_2:
-  return a_0;
-.if_false_5_2:
-  $1: i32 = a_0 * 2;
-  a_0: i32 = $1;
-  jump if_exit_5_2;
+    let mut a_0: i32;
+    'entry: {
+        a_0: i32 = 5;
+        $0: bool = a_0 == 5;
+        branch $0 ? 'if_true_5_2 : 'if_false_5_2;
+    }
+    'if_true_5_2: {
+        a_0: i32 = 25;
+        jump 'if_exit_5_2;
+    }
+    'if_exit_5_2: {
+        return a_0;
+    }
+    'if_false_5_2: {
+        $1: i32 = a_0 * 2;
+        a_0: i32 = $1;
+        jump 'if_exit_5_2;
+    }
 }
 
 fn main() -> i32 {
-.entry:
-  $0: i32 = ifElse();
-  return $0;
+    'entry: {
+        $0: i32 = ifElse();
+        return $0;
+    }
 }

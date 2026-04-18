@@ -1,10 +1,11 @@
 fn main() -> i32 {
-  let mut x_0: f64;
-  const y_0: f64 = 2.00000e-05;
-.entry:
-  $0: f64 = -13.0000;
-  x_0: f64 = $0;
-  $1: () = print_double(x_0);
-  $2: () = print_double(y_0);
-  return 0;
+    let mut x_0: f64;
+    const y_0: f64 = 2.00000e-05;
+    'entry: {
+        $0: f64 = -13.0000;
+        x_0: f64 = $0;
+        $1: () = print_double(x_0);
+        $2: () = print_double(y_0);
+        return 0;
+    }
 }

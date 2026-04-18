@@ -1,4 +1,3 @@
-#include "backend/ir/ir.hpp"
 #include "backend/ir/optim/pass/ssa.hpp"
 #include "backend/ir/parse/visit.hpp"
 #include "fmt/base.h"
@@ -29,38 +28,46 @@ void test(const std::string& name, const std::string& text) {
 int main() {
     test("Simple Diamond", R"(
 fn main() -> i32 {
-  let mut x: i32;
-.entry:
-  $0: bool = true;
-  branch $0 ? then_blk : else_blk;
-.then_blk:
-  x: i32 = 1;
-  jump exit_blk;
-.else_blk:
-  x: i32 = 2;
-  jump exit_blk;
-.exit_blk:
-  return x;
+    let mut x: i32;
+    'entry: {
+        $0: bool = true;
+        branch $0 ? 'then_blk : 'else_blk;
+    }
+    'then_blk: {
+        x: i32 = 1;
+        jump 'exit_blk;
+    }
+    'else_blk: {
+        x: i32 = 2;
+        jump 'exit_blk;
+    }
+    'exit_blk: {
+        return x;
+    }
 }
 )");
 
     test("Loop with redefined variable", R"(
 fn main() -> i32 {
-  let mut i: i32;
-  let mut sum: i32;
-.entry:
-  i: i32 = 0;
-  sum: i32 = 0;
-  jump cond;
-.cond:
-  $0: bool = i < 10;
-  branch $0 ? body : exit;
-.body:
-  sum: i32 = sum + i;
-  i: i32 = i + 1;
-  jump cond;
-.exit:
-  return sum;
+    let mut i: i32;
+    let mut sum: i32;
+    'entry: {
+        i: i32 = 0;
+        sum: i32 = 0;
+        jump 'cond;
+    }
+    'cond: {
+        $0: bool = i < 10;
+        branch $0 ? 'body : 'exit;
+    }
+    'body: {
+        sum: i32 = sum + i;
+        i: i32 = i + 1;
+        jump 'cond;
+    }
+    'exit: {
+        return sum;
+    }
 }
 )");
 

@@ -1,55 +1,68 @@
 let ref mut A_0: [[[[f32; 2]; 2]; 2]; 4] = {1.00000f, 2.00000f, 3.00000f, 4.00000f, 5.00000f, 6.00000f, 7.00000f, 8.00000f, 9.00000f, 10.0000f, 11.0000f, 12.0000f, 13.0000f, 14.0000f, 15.0000f, 16.0000f, 17.0000f, 18.0000f, 19.0000f, 20.0000f, 21.0000f, 22.0000f, 23.0000f, 24.0000f, 25.0000f, 26.0000f, 27.0000f, 28.0000f, 29.0000f, 30.0000f, 31.0000f, 32.0000f};
 
 fn main() -> i32 {
-  let mut i_0: i32;
-  let mut j_0: i32;
-  let mut k_0: i32;
-  let mut l_0: i32;
-.entry:
-  i_0: i32 = 0;
-  jump while_cond_10_4;
-.while_cond_10_4:
-  $0: bool = i_0 < 4;
-  branch $0 ? while_body_10_4 : while_exit_10_4;
-.while_body_10_4:
-  j_0: i32 = 0;
-  jump while_cond_12_8;
-.while_exit_10_4:
-  return 0;
-.while_cond_12_8:
-  $1: bool = j_0 < 2;
-  branch $1 ? while_body_12_8 : while_exit_12_8;
-.while_body_12_8:
-  k_0: i32 = 0;
-  jump while_cond_14_12;
-.while_exit_12_8:
-  $12: i32 = i_0 + 1;
-  i_0: i32 = $12;
-  jump while_cond_10_4;
-.while_cond_14_12:
-  $2: bool = k_0 < 2;
-  branch $2 ? while_body_14_12 : while_exit_14_12;
-.while_body_14_12:
-  l_0: i32 = 0;
-  jump while_cond_16_16;
-.while_exit_14_12:
-  $11: i32 = j_0 + 1;
-  j_0: i32 = $11;
-  jump while_cond_12_8;
-.while_cond_16_16:
-  $3: bool = l_0 < 2;
-  branch $3 ? while_body_16_16 : while_exit_16_16;
-.while_body_16_16:
-  $4: &mut[[[f32; 2]; 2]] = A_0[i_0];
-  $5: &mut[[f32; 2]] = $4[j_0];
-  $6: &mut[f32] = $5[k_0];
-  $7: f32 = $6[l_0];
-  $8: () = print_float($7);
-  $9: i32 = l_0 + 1;
-  l_0: i32 = $9;
-  jump while_cond_16_16;
-.while_exit_16_16:
-  $10: i32 = k_0 + 1;
-  k_0: i32 = $10;
-  jump while_cond_14_12;
+    let mut i_0: i32;
+    let mut j_0: i32;
+    let mut k_0: i32;
+    let mut l_0: i32;
+    'entry: {
+        i_0: i32 = 0;
+        jump 'while_cond_10_4;
+    }
+    'while_cond_10_4: {
+        $0: bool = i_0 < 4;
+        branch $0 ? 'while_body_10_4 : 'while_exit_10_4;
+    }
+    'while_body_10_4: {
+        j_0: i32 = 0;
+        jump 'while_cond_12_8;
+    }
+    'while_exit_10_4: {
+        return 0;
+    }
+    'while_cond_12_8: {
+        $1: bool = j_0 < 2;
+        branch $1 ? 'while_body_12_8 : 'while_exit_12_8;
+    }
+    'while_body_12_8: {
+        k_0: i32 = 0;
+        jump 'while_cond_14_12;
+    }
+    'while_exit_12_8: {
+        $12: i32 = i_0 + 1;
+        i_0: i32 = $12;
+        jump 'while_cond_10_4;
+    }
+    'while_cond_14_12: {
+        $2: bool = k_0 < 2;
+        branch $2 ? 'while_body_14_12 : 'while_exit_14_12;
+    }
+    'while_body_14_12: {
+        l_0: i32 = 0;
+        jump 'while_cond_16_16;
+    }
+    'while_exit_14_12: {
+        $11: i32 = j_0 + 1;
+        j_0: i32 = $11;
+        jump 'while_cond_12_8;
+    }
+    'while_cond_16_16: {
+        $3: bool = l_0 < 2;
+        branch $3 ? 'while_body_16_16 : 'while_exit_16_16;
+    }
+    'while_body_16_16: {
+        $4: &mut[[[f32; 2]; 2]] = A_0[i_0];
+        $5: &mut[[f32; 2]] = $4[j_0];
+        $6: &mut[f32] = $5[k_0];
+        $7: f32 = $6[l_0];
+        $8: () = print_float($7);
+        $9: i32 = l_0 + 1;
+        l_0: i32 = $9;
+        jump 'while_cond_16_16;
+    }
+    'while_exit_16_16: {
+        $10: i32 = k_0 + 1;
+        k_0: i32 = $10;
+        jump 'while_cond_14_12;
+    }
 }

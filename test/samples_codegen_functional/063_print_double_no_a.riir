@@ -1,6 +1,7 @@
 fn main() -> i32 {
-.entry:
-  $0: f64 = get_double();
-  $1: () = print_double($0);
-  return 0;
+    'entry: {
+        $0: f64 = get_double();
+        $1: () = print_double($0);
+        return 0;
+    }
 }

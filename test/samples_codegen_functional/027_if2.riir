@@ -1,13 +1,16 @@
 let ref mut a_0: i32;
 
 fn main() -> i32 {
-.entry:
-  *(a_0) = 10;
-  $0: i32 = *(a_0);
-  $1: bool = $0 > 0;
-  branch $1 ? if_true_4_1 : if_false_4_1;
-.if_true_4_1:
-  return 1;
-.if_false_4_1:
-  return 0;
+    'entry: {
+        *(a_0) = 10;
+        $0: i32 = *(a_0);
+        $1: bool = $0 > 0;
+        branch $1 ? 'if_true_4_1 : 'if_false_4_1;
+    }
+    'if_true_4_1: {
+        return 1;
+    }
+    'if_false_4_1: {
+        return 0;
+    }
 }

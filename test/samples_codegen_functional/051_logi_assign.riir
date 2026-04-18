@@ -2,26 +2,31 @@ let ref mut a_0: i32;
 let ref mut b_0: i32;
 
 fn main() -> i32 {
-  let mut c_0: i32;
-.entry:
-  $0: i32 = get_int();
-  *(a_0) = $0;
-  $1: i32 = get_int();
-  *(b_0) = $1;
-  $2: i32 = *(a_0);
-  $3: i32 = *(b_0);
-  $4: bool = $2 == $3;
-  branch $4 ? L0 : if_false_8_1;
-.if_true_8_1:
-  c_0: i32 = 1;
-  jump if_exit_8_1;
-.if_exit_8_1:
-  return c_0;
-.if_false_8_1:
-  c_0: i32 = 0;
-  jump if_exit_8_1;
-.L0:
-  $5: i32 = *(a_0);
-  $6: bool = $5 != 3;
-  branch $6 ? if_true_8_1 : if_false_8_1;
+    let mut c_0: i32;
+    'entry: {
+        $0: i32 = get_int();
+        *(a_0) = $0;
+        $1: i32 = get_int();
+        *(b_0) = $1;
+        $2: i32 = *(a_0);
+        $3: i32 = *(b_0);
+        $4: bool = $2 == $3;
+        branch $4 ? 'L0 : 'if_false_8_1;
+    }
+    'if_true_8_1: {
+        c_0: i32 = 1;
+        jump 'if_exit_8_1;
+    }
+    'if_exit_8_1: {
+        return c_0;
+    }
+    'if_false_8_1: {
+        c_0: i32 = 0;
+        jump 'if_exit_8_1;
+    }
+    'L0: {
+        $5: i32 = *(a_0);
+        $6: bool = $5 != 3;
+        branch $6 ? 'if_true_8_1 : 'if_false_8_1;
+    }
 }

@@ -1,247 +1,276 @@
-const ref maxn_0: i32 = 18;
-const ref mod_0: i32 = 1000000007;
+const maxn_0: i32 = 18;
+const mod_0: i32 = 1000000007;
 let ref mut dp_0: [[[[[[i32; 7]; 18]; 18]; 18]; 18]; 18];
 let ref mut list_0: [i32; 200];
 let ref mut cns_0: [i32; 20];
 
 fn equal(a_0: i32, b_0: i32) -> i32 {
-.entry:
-  $0: bool = a_0 == b_0;
-  branch $0 ? if_true_7_4 : if_exit_7_4;
-.if_true_7_4:
-  return 1;
-.if_exit_7_4:
-  return 0;
+    'entry: {
+        $0: bool = a_0 == b_0;
+        branch $0 ? 'if_true_7_4 : 'if_exit_7_4;
+    }
+    'if_true_7_4: {
+        return 1;
+    }
+    'if_exit_7_4: {
+        return 0;
+    }
 }
 
 fn dfs(a_1: i32, b_1: i32, c_0: i32, d_0: i32, e_0: i32, last_0: i32) -> i32 {
-  let mut ans_0: i32;
-.entry:
-  $0: &mut[[[[[i32; 7]; 18]; 18]; 18]] = dp_0[a_1];
-  $1: &mut[[[[i32; 7]; 18]; 18]] = $0[b_1];
-  $2: &mut[[[i32; 7]; 18]] = $1[c_0];
-  $3: &mut[[i32; 7]] = $2[d_0];
-  $4: &mut[i32] = $3[e_0];
-  $5: i32 = $4[last_0];
-  $6: i32 = -1;
-  $7: bool = $5 != $6;
-  branch $7 ? if_true_13_4 : if_exit_13_4;
-.if_true_13_4:
-  $8: &mut[[[[[i32; 7]; 18]; 18]; 18]] = dp_0[a_1];
-  $9: &mut[[[[i32; 7]; 18]; 18]] = $8[b_1];
-  $10: &mut[[[i32; 7]; 18]] = $9[c_0];
-  $11: &mut[[i32; 7]] = $10[d_0];
-  $12: &mut[i32] = $11[e_0];
-  $13: i32 = $12[last_0];
-  return $13;
-.if_exit_13_4:
-  $14: i32 = a_1 + b_1;
-  $15: i32 = $14 + c_0;
-  $16: i32 = $15 + d_0;
-  $17: i32 = $16 + e_0;
-  $18: bool = $17 == 0;
-  branch $18 ? if_true_15_4 : if_exit_15_4;
-.if_true_15_4:
-  return 1;
-.if_exit_15_4:
-  ans_0: i32 = 0;
-  $19: bool = a_1 != 0;
-  branch $19 ? if_true_18_4 : if_exit_18_4;
-.if_true_18_4:
-  $20: i32 = equal(last_0, 2);
-  $21: i32 = a_1 - $20;
-  $22: i32 = a_1 - 1;
-  $23: i32 = dfs($22, b_1, c_0, d_0, e_0, 1);
-  $24: i32 = $21 * $23;
-  $25: i32 = ans_0 + $24;
-  $26: i32 = *(mod_0);
-  $27: i32 = $25 % $26;
-  ans_0: i32 = $27;
-  jump if_exit_18_4;
-.if_exit_18_4:
-  $28: bool = b_1 != 0;
-  branch $28 ? if_true_19_4 : if_exit_19_4;
-.if_true_19_4:
-  $29: i32 = equal(last_0, 3);
-  $30: i32 = b_1 - $29;
-  $31: i32 = a_1 + 1;
-  $32: i32 = b_1 - 1;
-  $33: i32 = dfs($31, $32, c_0, d_0, e_0, 2);
-  $34: i32 = $30 * $33;
-  $35: i32 = ans_0 + $34;
-  $36: i32 = *(mod_0);
-  $37: i32 = $35 % $36;
-  ans_0: i32 = $37;
-  jump if_exit_19_4;
-.if_exit_19_4:
-  $38: bool = c_0 != 0;
-  branch $38 ? if_true_20_4 : if_exit_20_4;
-.if_true_20_4:
-  $39: i32 = equal(last_0, 4);
-  $40: i32 = c_0 - $39;
-  $41: i32 = b_1 + 1;
-  $42: i32 = c_0 - 1;
-  $43: i32 = dfs(a_1, $41, $42, d_0, e_0, 3);
-  $44: i32 = $40 * $43;
-  $45: i32 = ans_0 + $44;
-  $46: i32 = *(mod_0);
-  $47: i32 = $45 % $46;
-  ans_0: i32 = $47;
-  jump if_exit_20_4;
-.if_exit_20_4:
-  $48: bool = d_0 != 0;
-  branch $48 ? if_true_21_4 : if_exit_21_4;
-.if_true_21_4:
-  $49: i32 = equal(last_0, 5);
-  $50: i32 = d_0 - $49;
-  $51: i32 = c_0 + 1;
-  $52: i32 = d_0 - 1;
-  $53: i32 = dfs(a_1, b_1, $51, $52, e_0, 4);
-  $54: i32 = $50 * $53;
-  $55: i32 = ans_0 + $54;
-  $56: i32 = *(mod_0);
-  $57: i32 = $55 % $56;
-  ans_0: i32 = $57;
-  jump if_exit_21_4;
-.if_exit_21_4:
-  $58: bool = e_0 != 0;
-  branch $58 ? if_true_22_4 : if_exit_22_4;
-.if_true_22_4:
-  $59: i32 = d_0 + 1;
-  $60: i32 = e_0 - 1;
-  $61: i32 = dfs(a_1, b_1, c_0, $59, $60, 5);
-  $62: i32 = e_0 * $61;
-  $63: i32 = ans_0 + $62;
-  $64: i32 = *(mod_0);
-  $65: i32 = $63 % $64;
-  ans_0: i32 = $65;
-  jump if_exit_22_4;
-.if_exit_22_4:
-  $66: &mut[[[[[i32; 7]; 18]; 18]; 18]] = dp_0[a_1];
-  $67: &mut[[[[i32; 7]; 18]; 18]] = $66[b_1];
-  $68: &mut[[[i32; 7]; 18]] = $67[c_0];
-  $69: &mut[[i32; 7]] = $68[d_0];
-  $70: &mut[i32] = $69[e_0];
-  $71: i32 = *(mod_0);
-  $72: i32 = ans_0 % $71;
-  $70[last_0] = $72;
-  $73: &mut[[[[[i32; 7]; 18]; 18]; 18]] = dp_0[a_1];
-  $74: &mut[[[[i32; 7]; 18]; 18]] = $73[b_1];
-  $75: &mut[[[i32; 7]; 18]] = $74[c_0];
-  $76: &mut[[i32; 7]] = $75[d_0];
-  $77: &mut[i32] = $76[e_0];
-  $78: i32 = $77[last_0];
-  return $78;
+    let mut ans_0: i32;
+    'entry: {
+        $0: &mut[[[[[i32; 7]; 18]; 18]; 18]] = dp_0[a_1];
+        $1: &mut[[[[i32; 7]; 18]; 18]] = $0[b_1];
+        $2: &mut[[[i32; 7]; 18]] = $1[c_0];
+        $3: &mut[[i32; 7]] = $2[d_0];
+        $4: &mut[i32] = $3[e_0];
+        $5: i32 = $4[last_0];
+        $6: i32 = -1;
+        $7: bool = $5 != $6;
+        branch $7 ? 'if_true_13_4 : 'if_exit_13_4;
+    }
+    'if_true_13_4: {
+        $8: &mut[[[[[i32; 7]; 18]; 18]; 18]] = dp_0[a_1];
+        $9: &mut[[[[i32; 7]; 18]; 18]] = $8[b_1];
+        $10: &mut[[[i32; 7]; 18]] = $9[c_0];
+        $11: &mut[[i32; 7]] = $10[d_0];
+        $12: &mut[i32] = $11[e_0];
+        $13: i32 = $12[last_0];
+        return $13;
+    }
+    'if_exit_13_4: {
+        $14: i32 = a_1 + b_1;
+        $15: i32 = $14 + c_0;
+        $16: i32 = $15 + d_0;
+        $17: i32 = $16 + e_0;
+        $18: bool = $17 == 0;
+        branch $18 ? 'if_true_15_4 : 'if_exit_15_4;
+    }
+    'if_true_15_4: {
+        return 1;
+    }
+    'if_exit_15_4: {
+        ans_0: i32 = 0;
+        $19: bool = a_1 != 0;
+        branch $19 ? 'if_true_18_4 : 'if_exit_18_4;
+    }
+    'if_true_18_4: {
+        $20: i32 = equal(last_0, 2);
+        $21: i32 = a_1 - $20;
+        $22: i32 = a_1 - 1;
+        $23: i32 = dfs($22, b_1, c_0, d_0, e_0, 1);
+        $24: i32 = $21 * $23;
+        $25: i32 = ans_0 + $24;
+        $26: i32 = $25 % mod_0;
+        ans_0: i32 = $26;
+        jump 'if_exit_18_4;
+    }
+    'if_exit_18_4: {
+        $27: bool = b_1 != 0;
+        branch $27 ? 'if_true_19_4 : 'if_exit_19_4;
+    }
+    'if_true_19_4: {
+        $28: i32 = equal(last_0, 3);
+        $29: i32 = b_1 - $28;
+        $30: i32 = a_1 + 1;
+        $31: i32 = b_1 - 1;
+        $32: i32 = dfs($30, $31, c_0, d_0, e_0, 2);
+        $33: i32 = $29 * $32;
+        $34: i32 = ans_0 + $33;
+        $35: i32 = $34 % mod_0;
+        ans_0: i32 = $35;
+        jump 'if_exit_19_4;
+    }
+    'if_exit_19_4: {
+        $36: bool = c_0 != 0;
+        branch $36 ? 'if_true_20_4 : 'if_exit_20_4;
+    }
+    'if_true_20_4: {
+        $37: i32 = equal(last_0, 4);
+        $38: i32 = c_0 - $37;
+        $39: i32 = b_1 + 1;
+        $40: i32 = c_0 - 1;
+        $41: i32 = dfs(a_1, $39, $40, d_0, e_0, 3);
+        $42: i32 = $38 * $41;
+        $43: i32 = ans_0 + $42;
+        $44: i32 = $43 % mod_0;
+        ans_0: i32 = $44;
+        jump 'if_exit_20_4;
+    }
+    'if_exit_20_4: {
+        $45: bool = d_0 != 0;
+        branch $45 ? 'if_true_21_4 : 'if_exit_21_4;
+    }
+    'if_true_21_4: {
+        $46: i32 = equal(last_0, 5);
+        $47: i32 = d_0 - $46;
+        $48: i32 = c_0 + 1;
+        $49: i32 = d_0 - 1;
+        $50: i32 = dfs(a_1, b_1, $48, $49, e_0, 4);
+        $51: i32 = $47 * $50;
+        $52: i32 = ans_0 + $51;
+        $53: i32 = $52 % mod_0;
+        ans_0: i32 = $53;
+        jump 'if_exit_21_4;
+    }
+    'if_exit_21_4: {
+        $54: bool = e_0 != 0;
+        branch $54 ? 'if_true_22_4 : 'if_exit_22_4;
+    }
+    'if_true_22_4: {
+        $55: i32 = d_0 + 1;
+        $56: i32 = e_0 - 1;
+        $57: i32 = dfs(a_1, b_1, c_0, $55, $56, 5);
+        $58: i32 = e_0 * $57;
+        $59: i32 = ans_0 + $58;
+        $60: i32 = $59 % mod_0;
+        ans_0: i32 = $60;
+        jump 'if_exit_22_4;
+    }
+    'if_exit_22_4: {
+        $61: &mut[[[[[i32; 7]; 18]; 18]; 18]] = dp_0[a_1];
+        $62: &mut[[[[i32; 7]; 18]; 18]] = $61[b_1];
+        $63: &mut[[[i32; 7]; 18]] = $62[c_0];
+        $64: &mut[[i32; 7]] = $63[d_0];
+        $65: &mut[i32] = $64[e_0];
+        $66: i32 = ans_0 % mod_0;
+        $65[last_0] = $66;
+        $67: &mut[[[[[i32; 7]; 18]; 18]; 18]] = dp_0[a_1];
+        $68: &mut[[[[i32; 7]; 18]; 18]] = $67[b_1];
+        $69: &mut[[[i32; 7]; 18]] = $68[c_0];
+        $70: &mut[[i32; 7]] = $69[d_0];
+        $71: &mut[i32] = $70[e_0];
+        $72: i32 = $71[last_0];
+        return $72;
+    }
 }
 
 fn main() -> i32 {
-  let mut n_0: i32;
-  let mut i_0: i32;
-  let mut j_0: i32;
-  let mut k_0: i32;
-  let mut l_0: i32;
-  let mut m_0: i32;
-  let mut h_0: i32;
-  let mut ans_1: i32;
-.entry:
-  $0: i32 = get_int();
-  n_0: i32 = $0;
-  i_0: i32 = 0;
-  jump while_cond_34_4;
-.while_cond_34_4:
-  $1: i32 = *(maxn_0);
-  $2: bool = i_0 < $1;
-  branch $2 ? while_body_34_4 : while_exit_34_4;
-.while_body_34_4:
-  j_0: i32 = 0;
-  jump while_cond_36_8;
-.while_exit_34_4:
-  i_0: i32 = 0;
-  jump while_cond_60_4;
-.while_cond_36_8:
-  $3: i32 = *(maxn_0);
-  $4: bool = j_0 < $3;
-  branch $4 ? while_body_36_8 : while_exit_36_8;
-.while_body_36_8:
-  k_0: i32 = 0;
-  jump while_cond_38_12;
-.while_exit_36_8:
-  $23: i32 = i_0 + 1;
-  i_0: i32 = $23;
-  jump while_cond_34_4;
-.while_cond_38_12:
-  $5: i32 = *(maxn_0);
-  $6: bool = k_0 < $5;
-  branch $6 ? while_body_38_12 : while_exit_38_12;
-.while_body_38_12:
-  l_0: i32 = 0;
-  jump while_cond_40_16;
-.while_exit_38_12:
-  $22: i32 = j_0 + 1;
-  j_0: i32 = $22;
-  jump while_cond_36_8;
-.while_cond_40_16:
-  $7: i32 = *(maxn_0);
-  $8: bool = l_0 < $7;
-  branch $8 ? while_body_40_16 : while_exit_40_16;
-.while_body_40_16:
-  m_0: i32 = 0;
-  jump while_cond_42_20;
-.while_exit_40_16:
-  $21: i32 = k_0 + 1;
-  k_0: i32 = $21;
-  jump while_cond_38_12;
-.while_cond_42_20:
-  $9: i32 = *(maxn_0);
-  $10: bool = m_0 < $9;
-  branch $10 ? while_body_42_20 : while_exit_42_20;
-.while_body_42_20:
-  h_0: i32 = 0;
-  jump while_cond_44_24;
-.while_exit_42_20:
-  $20: i32 = l_0 + 1;
-  l_0: i32 = $20;
-  jump while_cond_40_16;
-.while_cond_44_24:
-  $11: bool = h_0 < 7;
-  branch $11 ? while_body_44_24 : while_exit_44_24;
-.while_body_44_24:
-  $12: &mut[[[[[i32; 7]; 18]; 18]; 18]] = dp_0[i_0];
-  $13: &mut[[[[i32; 7]; 18]; 18]] = $12[j_0];
-  $14: &mut[[[i32; 7]; 18]] = $13[k_0];
-  $15: &mut[[i32; 7]] = $14[l_0];
-  $16: &mut[i32] = $15[m_0];
-  $17: i32 = -1;
-  $16[h_0] = $17;
-  $18: i32 = h_0 + 1;
-  h_0: i32 = $18;
-  jump while_cond_44_24;
-.while_exit_44_24:
-  $19: i32 = m_0 + 1;
-  m_0: i32 = $19;
-  jump while_cond_42_20;
-.while_cond_60_4:
-  $24: bool = i_0 < n_0;
-  branch $24 ? while_body_60_4 : while_exit_60_4;
-.while_body_60_4:
-  $25: i32 = get_int();
-  list_0[i_0] = $25;
-  $26: i32 = list_0[i_0];
-  $27: i32 = list_0[i_0];
-  $28: i32 = cns_0[$27];
-  $29: i32 = $28 + 1;
-  cns_0[$26] = $29;
-  $30: i32 = i_0 + 1;
-  i_0: i32 = $30;
-  jump while_cond_60_4;
-.while_exit_60_4:
-  $31: i32 = cns_0[1];
-  $32: i32 = cns_0[2];
-  $33: i32 = cns_0[3];
-  $34: i32 = cns_0[4];
-  $35: i32 = cns_0[5];
-  $36: i32 = dfs($31, $32, $33, $34, $35, 0);
-  ans_1: i32 = $36;
-  $37: () = print_int(ans_1);
-  return ans_1;
+    let mut n_0: i32;
+    let mut i_0: i32;
+    let mut j_0: i32;
+    let mut k_0: i32;
+    let mut l_0: i32;
+    let mut m_0: i32;
+    let mut h_0: i32;
+    let mut ans_1: i32;
+    'entry: {
+        $0: i32 = get_int();
+        n_0: i32 = $0;
+        i_0: i32 = 0;
+        jump 'while_cond_34_4;
+    }
+    'while_cond_34_4: {
+        $1: bool = i_0 < maxn_0;
+        branch $1 ? 'while_body_34_4 : 'while_exit_34_4;
+    }
+    'while_body_34_4: {
+        j_0: i32 = 0;
+        jump 'while_cond_36_8;
+    }
+    'while_exit_34_4: {
+        i_0: i32 = 0;
+        jump 'while_cond_60_4;
+    }
+    'while_cond_36_8: {
+        $2: bool = j_0 < maxn_0;
+        branch $2 ? 'while_body_36_8 : 'while_exit_36_8;
+    }
+    'while_body_36_8: {
+        k_0: i32 = 0;
+        jump 'while_cond_38_12;
+    }
+    'while_exit_36_8: {
+        $18: i32 = i_0 + 1;
+        i_0: i32 = $18;
+        jump 'while_cond_34_4;
+    }
+    'while_cond_38_12: {
+        $3: bool = k_0 < maxn_0;
+        branch $3 ? 'while_body_38_12 : 'while_exit_38_12;
+    }
+    'while_body_38_12: {
+        l_0: i32 = 0;
+        jump 'while_cond_40_16;
+    }
+    'while_exit_38_12: {
+        $17: i32 = j_0 + 1;
+        j_0: i32 = $17;
+        jump 'while_cond_36_8;
+    }
+    'while_cond_40_16: {
+        $4: bool = l_0 < maxn_0;
+        branch $4 ? 'while_body_40_16 : 'while_exit_40_16;
+    }
+    'while_body_40_16: {
+        m_0: i32 = 0;
+        jump 'while_cond_42_20;
+    }
+    'while_exit_40_16: {
+        $16: i32 = k_0 + 1;
+        k_0: i32 = $16;
+        jump 'while_cond_38_12;
+    }
+    'while_cond_42_20: {
+        $5: bool = m_0 < maxn_0;
+        branch $5 ? 'while_body_42_20 : 'while_exit_42_20;
+    }
+    'while_body_42_20: {
+        h_0: i32 = 0;
+        jump 'while_cond_44_24;
+    }
+    'while_exit_42_20: {
+        $15: i32 = l_0 + 1;
+        l_0: i32 = $15;
+        jump 'while_cond_40_16;
+    }
+    'while_cond_44_24: {
+        $6: bool = h_0 < 7;
+        branch $6 ? 'while_body_44_24 : 'while_exit_44_24;
+    }
+    'while_body_44_24: {
+        $7: &mut[[[[[i32; 7]; 18]; 18]; 18]] = dp_0[i_0];
+        $8: &mut[[[[i32; 7]; 18]; 18]] = $7[j_0];
+        $9: &mut[[[i32; 7]; 18]] = $8[k_0];
+        $10: &mut[[i32; 7]] = $9[l_0];
+        $11: &mut[i32] = $10[m_0];
+        $12: i32 = -1;
+        $11[h_0] = $12;
+        $13: i32 = h_0 + 1;
+        h_0: i32 = $13;
+        jump 'while_cond_44_24;
+    }
+    'while_exit_44_24: {
+        $14: i32 = m_0 + 1;
+        m_0: i32 = $14;
+        jump 'while_cond_42_20;
+    }
+    'while_cond_60_4: {
+        $19: bool = i_0 < n_0;
+        branch $19 ? 'while_body_60_4 : 'while_exit_60_4;
+    }
+    'while_body_60_4: {
+        $20: i32 = get_int();
+        list_0[i_0] = $20;
+        $21: i32 = list_0[i_0];
+        $22: i32 = list_0[i_0];
+        $23: i32 = cns_0[$22];
+        $24: i32 = $23 + 1;
+        cns_0[$21] = $24;
+        $25: i32 = i_0 + 1;
+        i_0: i32 = $25;
+        jump 'while_cond_60_4;
+    }
+    'while_exit_60_4: {
+        $26: i32 = cns_0[1];
+        $27: i32 = cns_0[2];
+        $28: i32 = cns_0[3];
+        $29: i32 = cns_0[4];
+        $30: i32 = cns_0[5];
+        $31: i32 = dfs($26, $27, $28, $29, $30, 0);
+        ans_1: i32 = $31;
+        $32: () = print_int(ans_1);
+        return ans_1;
+    }
 }

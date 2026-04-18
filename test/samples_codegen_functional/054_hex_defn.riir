@@ -1,6 +1,7 @@
 fn main() -> i32 {
-  let mut a_0: i32;
-.entry:
-  a_0: i32 = 15;
-  return a_0;
+    let mut a_0: i32;
+    'entry: {
+        a_0: i32 = 15;
+        return a_0;
+    }
 }
