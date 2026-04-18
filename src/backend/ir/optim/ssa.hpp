@@ -17,7 +17,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <variant>
-#include <vector>
 
 namespace ir::optim {
 
@@ -201,7 +200,6 @@ struct SSAValue2TempValue : Pass {
     bool apply(Program& prog) override {
         for (auto& func : prog.getFuncs()) {
             std::unordered_map<SSAValue, TempValue> ssa_to_temp;
-            std::unordered_map<const Alloc*, bool> used;
             for (auto& block : func->blocks()) {
                 auto convert = [&](LeftValue* v) {
                     if (auto ssa = std::get_if<SSAValue>(v); ssa) {
@@ -209,10 +207,6 @@ struct SSAValue2TempValue : Pass {
                             ssa_to_temp[*ssa] = func->newTemp(ssa->type, block.get());
                         }
                         *v = ssa_to_temp[*ssa];
-                    } else if (auto named = std::get_if<NamedValue>(v); named) {
-                        if (auto alloc = std::get_if<const Alloc*>(&named->def); alloc) {
-                            used[*alloc] = true;
-                        }
                     }
                 };
                 for (auto& inst : block->insts()) {
@@ -224,13 +218,6 @@ struct SSAValue2TempValue : Pass {
                     convert(var);
                 }
             }
-            std::vector<std::unique_ptr<Alloc>> pruned_locals;
-            for (auto& alloc : func->locals()) {
-                if (used.count(alloc.get())) {
-                    pruned_locals.push_back(std::move(alloc));
-                }
-            }
-            func->locals() = std::move(pruned_locals);
         }
         return true;
     }

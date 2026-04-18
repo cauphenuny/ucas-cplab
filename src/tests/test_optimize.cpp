@@ -1,6 +1,7 @@
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.hpp"
 #include "backend/ir/optim/cp.hpp"
+#include "backend/ir/optim/dae.hpp"
 #include "backend/ir/optim/dde.hpp"
 #include "backend/ir/optim/framework.hpp"
 #include "backend/ir/optim/ssa.hpp"
@@ -53,6 +54,7 @@ int main(int argc, const char* argv[]) {
     std::map<std::string, PassFactory> factories = {
         {"cp", []() { return std::make_unique<ir::optim::CopyPropagation>(); }},
         {"dde", []() { return std::make_unique<ir::optim::DeadDefElimination>(); }},
+        {"dae", []() { return std::make_unique<ir::optim::DeadAllocElimination>(); }},
         {"ssa", []() { return std::make_unique<ir::optim::ToSSA>(); }},
         {"ssa2temp", []() { return std::make_unique<ir::optim::SSAValue2TempValue>(); }}};
 

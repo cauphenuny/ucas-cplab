@@ -6,6 +6,7 @@
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.hpp"
 #include "backend/ir/optim/cp.hpp"
+#include "backend/ir/optim/dae.hpp"
 #include "backend/ir/optim/dde.hpp"
 #include "backend/ir/optim/ssa.hpp"
 #include "backend/ir/vm/vm.h"
@@ -53,6 +54,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
 
     --optimize-cp   Apply Copy Propagation optimization (requires --ssa)
     --optimize-dde  Apply Dead Definition Elimination optimization (requires --ssa)
+    --optimize-dae  Apply Dead Allocation Elimination optimization (requires --ssa, suggests --ssa2temp)
     --optimize-cse  (TODO) Apply Common Subexpression Elimination optimization (requires --ssa)
     -O1, --optimize Apply above optimizations
 
@@ -124,6 +126,7 @@ int main(int argc, const char* argv[]) {
     bool silent = false;
     bool to_ssa = false;
     bool ssa_to_temp = false;
+    bool optimize_dae = false;
     bool optimize_dde = false;
     bool optimize_cse = false;
     bool optimize_cp = false;
@@ -149,9 +152,12 @@ int main(int argc, const char* argv[]) {
         } else if (arg == "--silent") {
             silent = true;
         } else if (arg == "-O1" || arg == "--optimize") {
+            optimize_dae = true;
             optimize_dde = true;
             optimize_cse = true;
             optimize_cp = true;
+        } else if (arg == "--optimize-dae") {
+            optimize_dae = true;
         } else if (arg == "--optimize-dde") {
             optimize_dde = true;
         } else if (arg == "--optimize-cse") {
@@ -177,7 +183,7 @@ int main(int argc, const char* argv[]) {
                 "overwritten.");
     }
 
-    bool optimize = optimize_dde || optimize_cse || optimize_cp;
+    bool optimize = optimize_dde || optimize_cse || optimize_cp || optimize_dae;
     if (optimize && !to_ssa) {
         warning("Optimization requires SSA form. Auto enabling SSA form.");
         to_ssa = true;
@@ -256,6 +262,10 @@ int main(int argc, const char* argv[]) {
                     if (optimize_dde) {
                         passes.emplace_back(std::make_unique<DeadDefElimination>(),
                                             "Dead Definition Elimination");
+                    }
+                    if (optimize_dae) {
+                        passes.emplace_back(std::make_unique<DeadAllocElimination>(),
+                                            "Dead Allocation Elimination");
                     }
                     apply(program, passes);
                 }
