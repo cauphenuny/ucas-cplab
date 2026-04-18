@@ -162,7 +162,7 @@ private:
         for (auto& block_box : func.blocks()) {
             auto block = block_box.get();
             if (cfg.pred[block].empty()) {
-                // fmt::println(stderr, "{} has no predecessor", block->label);
+                // no predecessor, would not modify any phi inst or any exit inst, so skip it
                 continue;
             }
             if (block->insts().size() == 0) {
@@ -249,12 +249,12 @@ private:
         bool changed = false;
         try {
             changed |= DeadBlockElimination().apply(prog);
-            fmt::println("--dead block elimination--\n{}\n", prog);
+            // fmt::println("--dead block elimination--\n{}\n", prog);
             changed |= TrivialBlockReplacement().apply(prog);
-            fmt::println("--trivial block replacement--\n{}\n", prog);
+            // fmt::println("--trivial block replacement--\n{}\n", prog);
         } catch (const CompilerError& e) {
-            fmt::println("TrivialBlockElimination failed: {}", e.what());
-            fmt::println("Current program:\n{}", prog);
+            fmt::println(stderr, "TrivialBlockElimination failed: {}", e.what());
+            fmt::println(stderr, "Current program:\n{}", prog);
             throw;
         }
         return changed;
