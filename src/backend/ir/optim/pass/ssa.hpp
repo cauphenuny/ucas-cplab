@@ -116,7 +116,7 @@ private:
                     if (!has_phi[frontier]) {
                         auto phi = PhiInst{.result = val};
                         for (auto pred : cfg.pred[frontier]) {
-                            phi.args.emplace_back(pred, LeftValue{val});
+                            phi.args[pred] = LeftValue{val};
                         }
                         frontier->prepend(Inst{std::move(phi)});
                         has_phi[frontier] = true;
@@ -267,5 +267,82 @@ private:
 }  // namespace ssa
 
 using ToSSA = Compose<ssa::AddPhi, ssa::Rename>;
+
+struct SSAValue2TempValue : Pass {
+    void apply(Program& prog) override {
+        std::unordered_map<SSAValue, TempValue> ssa_to_temp;
+        for (auto& func : prog.getFuncs()) {
+            std::unordered_map<const Alloc*, bool> used;
+            for (auto& block : func->blocks()) {
+                auto convert = [&](LeftValue* v) {
+                    if (auto ssa = std::get_if<SSAValue>(v); ssa) {
+                        if (!ssa_to_temp.count(*ssa)) {
+                            ssa_to_temp[*ssa] = func->newTemp(ssa->type, block.get());
+                        }
+                        *v = ssa_to_temp[*ssa];
+                    } else if (auto named = std::get_if<NamedValue>(v); named) {
+                        if (auto alloc = std::get_if<const Alloc*>(&named->def); alloc) {
+                            used[*alloc] = true;
+                        }
+                    }
+                };
+                for (auto& inst : block->insts()) {
+                    for (auto& val : values(inst)) {
+                        convert(val);
+                    }
+                }
+                for (auto& val : values(block->exit())) {
+                    convert(val);
+                }
+            }
+            std::vector<std::unique_ptr<Alloc>> pruned_locals;
+            for (auto& alloc : func->locals()) {
+                if (used.count(alloc.get())) {
+                    pruned_locals.push_back(std::move(alloc));
+                }
+            }
+            func->locals() = std::move(pruned_locals);
+        }
+    }
+
+private:
+    auto values(Inst& inst) -> std::vector<LeftValue*> {
+        std::vector<LeftValue*> vals;
+        Match{inst}(
+            [&](UnaryInst& u) {
+                if (auto lval = std::get_if<LeftValue>(&u.operand); lval) vals.push_back(lval);
+                vals.push_back(&u.result);
+            },
+            [&](BinaryInst& b) {
+                if (auto lval = std::get_if<LeftValue>(&b.lhs); lval) vals.push_back(lval);
+                if (auto lval = std::get_if<LeftValue>(&b.rhs); lval) vals.push_back(lval);
+                vals.push_back(&b.result);
+            },
+            [&](PhiInst& p) {
+                for (auto& [_, arg] : p.args) {
+                    if (auto lval = std::get_if<LeftValue>(&arg); lval) vals.push_back(lval);
+                }
+                vals.push_back(&p.result);
+            },
+            [&](CallInst& c) {
+                for (auto& arg : c.args) {
+                    if (auto lval = std::get_if<LeftValue>(&arg); lval) vals.push_back(lval);
+                }
+                vals.push_back(&c.result);
+            });
+        return vals;
+    }
+    auto values(Exit& exit) -> std::vector<LeftValue*> {
+        std::vector<LeftValue*> vals;
+        Match{exit}([](JumpExit&) {},
+                    [&](BranchExit& e) {
+                        if (auto lval = std::get_if<LeftValue>(&e.cond); lval) vals.push_back(lval);
+                    },
+                    [&](ReturnExit& e) {
+                        if (auto lval = std::get_if<LeftValue>(&e.exp); lval) vals.push_back(lval);
+                    });
+        return vals;
+    }
+};
 
 }  // namespace ir::optim::pass

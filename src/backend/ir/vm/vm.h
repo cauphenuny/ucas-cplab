@@ -97,7 +97,7 @@ private:
     void execute(const UnaryInst& inst, const View& operand, View& ret);
     void execute(const CallInst& inst, const std::vector<View>& srcs, View& ret);
 
-    auto execute(const Block& block, StackFrame& frame, View& ret) -> const Block*;
+    auto execute(Block& block, Block* prev, StackFrame& frame, View& ret) -> Block*;
     void execute(const Func& func, const std::vector<View>& args, View& ret);
     void execute(const vm::BuiltinFunc& func, const std::vector<View>& args, View& ret);
 

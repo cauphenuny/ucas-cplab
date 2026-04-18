@@ -37,16 +37,23 @@ enum : uint8_t {
 
 auto usage(const char* prog_name, int ret = 0) -> std::string {
     fmt::print(
-        R"({} [--ast] [--ast-info] [--ir] [--ir-info] [--ssa] [--exec] [--silent] files ... [--output <output file>] [--help]
+        R"({} [--ast] [--ast-info] [--ir] [--ir-info] [--ssa] [--to-temp] [--exec] [--silent] files ... [--output <output file>] [--help]
+
+    --help      Show this help message
+
     --ast       Print the AST of the input files
     --ast-info  Print the semantic analysis result of the AST
+
     --ir        Print the generated IR of the input files
     --ir-info   Print some analysis result of the generated IR
     --ssa       Convert generated IR to SSA form
+    --ssa2temp  Convert SSAValue in IR to TempValue, then prune useless allocation
+
     --exec      Execute the generated IR
     --silent    Suppress all compiler output except the return value when executing
+
     --output    Write the generated IR also to the specified file
-    --help      Show this help message
+
 )",
         prog_name);
     exit(ret);
@@ -108,7 +115,8 @@ int main(int argc, const char* argv[]) {
     bool print_ir_info = false;
     bool execute = false;
     bool silent = false;
-    bool optimize_ssa = false;
+    bool to_ssa = false;
+    bool ssa_to_temp = false;
     FILE* output_file = nullptr;
     std::set<std::string> files;
 
@@ -123,7 +131,9 @@ int main(int argc, const char* argv[]) {
         } else if (arg == "--ir-info") {
             print_ir_info = true;
         } else if (arg == "--ssa") {
-            optimize_ssa = true;
+            to_ssa = true;
+        } else if (arg == "--ssa2temp") {
+            ssa_to_temp = true;
         } else if (arg == "--exec") {
             execute = true;
         } else if (arg == "--silent") {
@@ -181,21 +191,30 @@ int main(int argc, const char* argv[]) {
                     fmt::println("{}", program);
                     fmt::println("\n");
                 }
-
                 if (print_ir_info) {
                     analysis(program);
                 }
 
-                if (optimize_ssa) {
-                    ir::optim::pass::ToSSA to_ssa;
-                    to_ssa.apply(program);
-                    if (print_ir) {
-                        fmt::println("SSA Form:\n{}\n", program);
+                {
+                    using namespace ir::optim::pass;
+                    std::vector<std::pair<std::unique_ptr<Pass>, std::string>> passes;
+                    if (to_ssa) {
+                        passes.emplace_back(std::make_unique<ToSSA>(), "SSA Form");
                     }
-                }
+                    if (ssa_to_temp) {
+                        passes.emplace_back(std::make_unique<SSAValue2TempValue>(),
+                                            "SSA Form (TempValue)");
+                    }
 
-                if (print_ir_info) {
-                    analysis(program);
+                    for (auto& [pass, name] : passes) {
+                        pass->apply(program);
+                        if (print_ir) {
+                            fmt::println("{}:\n{}\n", name, program);
+                        }
+                        if (print_ir_info) {
+                            analysis(program);
+                        }
+                    }
                 }
 
                 if (output_file) {

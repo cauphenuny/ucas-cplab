@@ -14,16 +14,22 @@ $ cmake --build build
 Usage:
 
 ```
-build/compiler [--ast] [--ast-info] [--ir] [--ir-info] [--ssa] [--exec] [--silent] files ... [--output <output file>] [--help]
+build/compiler [--ast] [--ast-info] [--ir] [--ir-info] [--ssa] [--to-temp] [--exec] [--silent] files ... [--output <output file>] [--help]
+
+    --help      Show this help message
+
     --ast       Print the AST of the input files
     --ast-info  Print the semantic analysis result of the AST
+
     --ir        Print the generated IR of the input files
     --ir-info   Print some analysis result of the generated IR
     --ssa       Convert generated IR to SSA form
+    --ssa2temp  Convert SSAValue in IR to TempValue, then prune useless allocation
+
     --exec      Execute the generated IR
     --silent    Suppress all compiler output except the return value when executing
+
     --output    Write the generated IR also to the specified file
-    --help      Show this help message
 
 
 build/interpreter [--help] [--silent] [--print] IR_file

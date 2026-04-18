@@ -47,7 +47,7 @@ void VirtualMachine::execute(const BuiltinFunc& func, const std::vector<View>& a
     func.apply(ret, args, input, output);
 }
 
-auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) -> const Block* {
+auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View& ret) -> Block* {
     for (const auto& inst : block.insts()) {
         // fmt::println(stderr, "-> {}", inst);
         match(
@@ -73,7 +73,9 @@ auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) -
                 execute(call, srcs, result);
             },
             [&](const PhiInst& phi) {
-                // no-op, SSA value is treat like normal named value in VM
+                auto operand = view_of(phi.args.at(prev), frame);
+                auto result = view_of(phi.result, frame);
+                assign(result, operand);
             });
         perf_counter.num_insts++;
     }
@@ -81,7 +83,7 @@ auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) -
     perf_counter.num_insts++;  // count exit instruction as well
     return match(
         exit,
-        [&](const BranchExit& branch) -> const Block* {
+        [&](const BranchExit& branch) -> Block* {
             View cond = view_of(branch.cond, frame);
             if (*(bool*)cond.data) {
                 return branch.true_target;
@@ -89,8 +91,8 @@ auto VirtualMachine::execute(const Block& block, StackFrame& frame, View& ret) -
                 return branch.false_target;
             }
         },
-        [&](const JumpExit& jump) -> const Block* { return jump.target; },
-        [&](const ReturnExit& ret_exit) -> const Block* {
+        [&](const JumpExit& jump) -> Block* { return jump.target; },
+        [&](const ReturnExit& ret_exit) -> Block* {
             View exp = view_of(ret_exit.exp, frame);
             assign(ret, exp);
             return nullptr;
@@ -161,9 +163,11 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
         cur += stackSize(temp.type);
     }
 
-    const Block* cur_block = func.entrance();
+    Block *cur_block = func.entrance(), *prev = nullptr;
     while (cur_block) {
-        cur_block = execute(*cur_block, frame, ret);
+        auto next = execute(*cur_block, prev, frame, ret);
+        prev = cur_block;
+        cur_block = next;
     }
 }
 
