@@ -5,6 +5,7 @@
 #include "backend/ir/analysis/dominance.hpp"
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.hpp"
+#include "backend/ir/optim/cp.hpp"
 #include "backend/ir/optim/dde.hpp"
 #include "backend/ir/optim/ssa.hpp"
 #include "backend/ir/vm/vm.h"
@@ -50,6 +51,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --ssa           Convert generated IR to SSA form
     --ssa2temp      Convert SSAValue in IR to TempValue, then prune useless allocation
 
+    --optimize-cp   Apply Copy Propagation optimization (requires --ssa)
     --optimize-dde  Apply Dead Definition Elimination optimization (requires --ssa)
     --optimize-cse  (TODO) Apply Common Subexpression Elimination optimization (requires --ssa)
     -O1, --optimize Apply above optimizations
@@ -124,6 +126,7 @@ int main(int argc, const char* argv[]) {
     bool ssa_to_temp = false;
     bool optimize_dde = false;
     bool optimize_cse = false;
+    bool optimize_cp = false;
     FILE* output_file = nullptr;
     std::set<std::string> files;
 
@@ -148,10 +151,13 @@ int main(int argc, const char* argv[]) {
         } else if (arg == "-O1" || arg == "--optimize") {
             optimize_dde = true;
             optimize_cse = true;
+            optimize_cp = true;
         } else if (arg == "--optimize-dde") {
             optimize_dde = true;
         } else if (arg == "--optimize-cse") {
             optimize_cse = true;
+        } else if (arg == "--optimize-cp") {
+            optimize_cp = true;
         } else if (arg == "--output") {
             if (i + 1 >= argc) {
                 usage(argv[0], INVALID_ARGUMENT);
@@ -171,7 +177,7 @@ int main(int argc, const char* argv[]) {
                              "Output will be overwritten.");
     }
 
-    bool optimize = optimize_dde || optimize_cse;
+    bool optimize = optimize_dde || optimize_cse || optimize_cp;
     if (optimize && !to_ssa) {
         fmt::println(stderr, "Optimization requires SSA form. Auto enabling SSA form.");
         to_ssa = true;
@@ -243,6 +249,10 @@ int main(int argc, const char* argv[]) {
                 if (optimize) {
                     using namespace ir::optim;
                     std::vector<std::pair<std::unique_ptr<Pass>, std::string>> passes;
+                    if (optimize_cp) {
+                        passes.emplace_back(std::make_unique<CopyPropagation>(),
+                                            "Copy Propagation");
+                    }
                     if (optimize_dde) {
                         passes.emplace_back(std::make_unique<DeadDefElimination>(),
                                             "Dead Definition Elimination");
