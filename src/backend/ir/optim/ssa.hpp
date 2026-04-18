@@ -53,9 +53,13 @@ private:
         auto dom_frontier = DominanceFrontier(cfg, dom_tree);
         auto live_vars = DataFlow<flow::Liveness>(cfg, prog);
 
-        for (auto& alloc : func.locals()) {
+        auto allocs = std::unordered_set<Alloc*>();
+        for (auto& alloc : func.locals()) allocs.insert(alloc.get());
+        for (auto& alloc : func.params) allocs.insert(alloc.get());
+
+        for (auto& alloc : allocs) {
             if (alloc->immutable) continue;  // immutable value does not need phi
-            auto in_worklist = definitions(func, alloc.get());
+            auto in_worklist = definitions(func, alloc);
             std::queue<Block*> worklist;
             for (auto block : in_worklist) worklist.push(block);
             std::unordered_map<Block*, bool> has_phi;
@@ -169,15 +173,19 @@ private:
         dom_flow = std::make_unique<DataFlow<flow::Dominance>>(*cfg, program);
         dom_tree = std::make_unique<DominanceTree>(*dom_flow);
 
-        for (const auto& alloc : func.locals()) {
+        auto allocs = std::unordered_set<Alloc*>();
+        for (auto& alloc : func.locals()) allocs.insert(alloc.get());
+        for (auto& alloc : func.params) allocs.insert(alloc.get());
+
+        for (const auto& alloc : allocs) {
             if (!alloc->immutable) {
-                need_rename.insert(alloc.get());
+                need_rename.insert(alloc);
             }
         }
         if (need_rename.size()) {
             rename(*func.entrance(), func);
         }
-        for (const auto& alloc : func.locals()) {
+        for (const auto& alloc : allocs) {
             alloc->immutable = true;  // after renaming, all allocs can be treated as immutable
         }
     }
