@@ -1,3 +1,4 @@
+#pragma once
 #include "backend/ir/ir.hpp"
 
 namespace ir::optim::pass {

@@ -2,6 +2,7 @@
 #pragma once
 
 #include "backend/ir/ir.hpp"
+#include "backend/ir/optim/utils.hpp"
 #include "framework.hpp"
 #include "utils/match.hpp"
 
@@ -41,89 +42,33 @@ struct Liveness {
     static Context init(const ControlFlowGraph& cfg, const Program& prog) {
         Context ctx;
         // TODO
-        auto convert = [](const Value& val) -> std::optional<ElemType> {
-            return match(
-                val, [](const LeftValue& v) -> std::optional<ElemType> { return v; },
-                [](const auto& v) -> std::optional<ElemType> { return std::nullopt; });
-        };
-        auto use = [&](const Inst& inst) {
-            std::unordered_set<ElemType> res;
-            match(
-                inst,
-                [&](const UnaryInst& i) {
-                    if (auto use = convert(i.operand); use) res.insert(*use);
-                    if (i.op == UnaryInstOp::STORE) {  // store uses 'result' as target
-                        if (auto use = convert(i.result); use) res.insert(*use);
-                    }
-                },
-                [&](const BinaryInst& i) {
-                    if (auto use = convert(i.lhs); use) res.insert(*use);
-                    if (auto use = convert(i.rhs); use) res.insert(*use);
-                    if (i.op == InstOp::STORE) {  // store uses 'result' as base address
-                        if (auto use = convert(i.result); use) res.insert(*use);
-                    }
-                },
-                [&](const CallInst& i) {
-                    for (const auto& arg : i.args) {
-                        if (auto use = convert(arg); use) res.insert(*use);
-                    }
-                },
-                [&](const PhiInst& p) {
-                    // Phi uses are handled separately per edge
-                });
-            return res;
-        };
-        auto defs = [&](const Inst& inst) -> std::optional<ElemType> {
-            using T = std::optional<ElemType>;
-            return match(
-                inst,
-                [&](const UnaryInst& i) -> T {
-                    return (i.op == UnaryInstOp::STORE) ? std::nullopt : convert(i.result);
-                },
-                [&](const BinaryInst& i) -> T {
-                    return (i.op == InstOp::STORE) ? std::nullopt : convert(i.result);
-                },
-                [&](const CallInst& i) -> T { return convert(i.result); },
-                [&](const PhiInst& p) -> T { return convert(p.result); });
-        };
         for (auto& block_box : cfg.func.blocks()) {
             auto gen = Data::empty(), kill = Data::empty();
             auto block = block_box.get();
             for (auto& inst : block->insts()) {
-                if (std::holds_alternative<PhiInst>(inst)) {
-                    auto& p = std::get<PhiInst>(inst);
-                    for (const auto& [pred, val] : p.args) {
-                        if (auto use = convert(val); use) {
-                            ctx.phi_uses[block][pred].insert(*use);
+                if (auto phi = std::get_if<PhiInst>(&inst); phi) {
+                    for (auto& [pred, val] : phi->args) {
+                        if (auto var = utils::as_var(val); var) {
+                            ctx.phi_uses[block][pred].insert(*var);
                         }
                     }
                 }
-                auto inst_uses = use(inst);
-                for (const auto& u : inst_uses) {
-                    if (!kill.contains(u)) gen.insert(u);
+                for (auto u : utils::used_vars(inst)) {
+                    if (!kill.contains(*u)) gen.insert(*u);
                 }
-                if (auto def = defs(inst); def) {
+                if (auto def = utils::defined_var(inst); def) {
                     kill.insert(*def);
                 }
             }
-            match(
-                block->exit(),
-                [&](const BranchExit& exit) {
-                    auto use = convert(exit.cond);
-                    if (use && !kill.contains(*use)) gen.insert(*use);
-                },
-                [&](const JumpExit&) {},
-                [&](const ReturnExit& exit) {
-                    auto use = convert(exit.exp);
-                    if (use && !kill.contains(*use)) gen.insert(*use);
-                });
+            if (auto exit_use = utils::used_var(block->exit()); exit_use) {
+                if (!kill.contains(*exit_use)) gen.insert(*exit_use);
+            }
             ctx.gen[block] = gen;
             ctx.kill[block] = kill;
         }
         ctx.global_variables = Data::empty();
         for (auto& global_alloc : prog.getGlobals()) {
-            auto use = convert(LeftValue{global_alloc->value()});
-            ctx.global_variables.insert(*use);
+            ctx.global_variables.insert(LeftValue{global_alloc->value()});
         }
         return ctx;
     }
