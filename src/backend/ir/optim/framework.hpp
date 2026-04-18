@@ -13,7 +13,9 @@ struct Pass {
 
 template <typename... Passes> struct Compose : Pass {
     bool apply(Program& prog) override {
-        return (Passes().apply(prog) || ...);
+        auto result = false;
+        ((result |= Passes().apply(prog)), ...);
+        return result;
     }
 };
 
