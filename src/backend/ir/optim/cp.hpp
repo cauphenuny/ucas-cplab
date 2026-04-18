@@ -3,6 +3,7 @@
 #pragma once
 #include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.hpp"
+#include "backend/ir/type.hpp"
 #include "framework.hpp"
 
 #include <unordered_map>
@@ -35,9 +36,11 @@ private:
             for (auto& inst : block->insts()) {
                 if (auto unary = std::get_if<UnaryInst>(&inst)) {
                     if (unary->op == UnaryInstOp::MOV) {
+                        if (type_of(unary->operand).is<type::Array>())
+                            continue;  // do not propagate array assignment
                         copies[unary->result] = unary->operand;
                     }
-                } else if (auto phi = std::get_if<PhiInst>(&inst)) {
+                } else if (auto phi = std::get_if<PhiInst>(&inst); phi) {
                     std::optional<Value> uniform_val;
                     bool possible = true;
                     for (auto& [_, val] : phi->args) {
@@ -72,6 +75,7 @@ private:
                     match(
                         use,
                         [&](Value* v) {
+                            if (type_of(*v).is<type::Array>()) return;
                             auto root = get_root(get_root, *v);
                             if (!(*v == root)) {
                                 *v = root;
@@ -79,6 +83,7 @@ private:
                             }
                         },
                         [&](LeftValue* v) {
+                            if (type_of(*v).is<type::Array>()) return;
                             auto root = get_root(get_root, *v);
                             auto lval = analysis::utils::as_var(root);
                             if (lval) {
@@ -96,10 +101,12 @@ private:
                 }
             }
             if (auto exit_use = analysis::utils::used(block->exit())) {
-                auto root = get_root(get_root, *exit_use);
-                if (!(*exit_use == root)) {
-                    *exit_use = root;
-                    changed = true;
+                if (!type_of(*exit_use).is<type::Array>()) {
+                    auto root = get_root(get_root, *exit_use);
+                    if (!(*exit_use == root)) {
+                        *exit_use = root;
+                        changed = true;
+                    }
                 }
             }
         }

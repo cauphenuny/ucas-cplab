@@ -156,6 +156,9 @@ struct ConstexprValue {
     }
 
     friend bool operator==(const ConstexprValue& lhs, const ConstexprValue& rhs) {
+        if (lhs.type.is<type::Array>() || rhs.type.is<type::Array>()) {
+            throw COMPILER_ERROR("Cannot compare array with ==");
+        }
         return lhs.val == rhs.val;
     }
 };
