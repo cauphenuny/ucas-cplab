@@ -197,7 +197,7 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
     }
 }
 
-int VirtualMachine::execute(const Program& program) {
+uint8_t VirtualMachine::execute(const Program& program) {
     this->program = &program;
     this->global_frame = StackFrame();
     this->perf_counter = {};

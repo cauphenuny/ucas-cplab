@@ -168,7 +168,7 @@ private:
     } perf_counter;
 
 public:
-    int execute(const Program& program);
+    uint8_t execute(const Program& program);
 
     [[nodiscard]] auto perf() const {
         return perf_counter;

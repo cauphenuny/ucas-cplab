@@ -94,7 +94,9 @@ int main(int argc, const char* argv[]) {
             auto run_program = [&](const ir::Program& prog) -> size_t {
                 // prepare input stream from .in if exists
                 std::filesystem::path in_path = file.path();
+                std::filesystem::path out_path = file.path();
                 in_path.replace_extension("in");
+                out_path.replace_extension("out");
                 std::string in_text;
                 if (std::filesystem::exists(in_path)) {
                     std::ifstream in_file(in_path);
@@ -104,7 +106,20 @@ int main(int argc, const char* argv[]) {
                 std::istringstream in_stream(in_text);
                 std::ostringstream out_stream;
                 ir::vm::VirtualMachine vm(in_stream, out_stream);
-                vm.execute(prog);
+                uint8_t ret = vm.execute(prog);
+                std::ifstream ans_file(out_path);
+                std::string first_line;
+                std::getline(ans_file, first_line);
+                auto ans_text = std::string{std::istreambuf_iterator<char>(ans_file),
+                                        std::istreambuf_iterator<char>()};
+                out_stream << (int)ret;
+                auto out_text = out_stream.str();
+                while (ans_text.back() == '\n') ans_text.pop_back();
+                while (out_text.back() == '\n') out_text.pop_back();
+                if (ans_text != out_text) {
+                    fmt::println(stderr, "Output mismatch: expect {}, get {}", ans_text, out_text);
+                    exit(1);
+                }
                 return vm.perf().num_insts;
             };
 
