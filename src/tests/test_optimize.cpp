@@ -59,7 +59,6 @@ int main(int argc, const char* argv[]) {
         {"def", []() { return std::make_unique<ir::optim::DeadDefElimination>(); }},
         {"alloc", []() { return std::make_unique<ir::optim::DeadAllocElimination>(); }},
         {"const", []() { return std::make_unique<ir::optim::ConstPropagation>(); }},
-        {"ssa", []() { return std::make_unique<ir::optim::ToSSA>(); }},
         {"ssa2temp", []() { return std::make_unique<ir::optim::SSAValue2TempValue>(); }},
         {"block", []() { return std::make_unique<ir::optim::TrivialBlockElimination>(); }}};
 
@@ -136,10 +135,17 @@ int main(int argc, const char* argv[]) {
                 }
             }
 
+            auto apply = [&](const std::vector<std::unique_ptr<ir::optim::Pass>>& passes) {
+                bool changed = false;
+                for (auto& pass : passes) {
+                    changed |= pass->apply(program);
+                }
+                return changed;
+            };
             // apply passes in order
-            for (auto& pass : passes) {
-                pass->apply(program);
-            }
+            ir::optim::ToSSA ssa;
+            ssa.apply(program);
+            while (apply(passes));
 
             size_t after = run_program(program);
 

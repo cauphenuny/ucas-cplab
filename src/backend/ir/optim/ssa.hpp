@@ -24,10 +24,11 @@ namespace ssa_impl {
 
 struct AddPhi : Pass {
     bool apply(Program& prog) override {
+        bool changed = false;
         for (auto& func : prog.getFuncs()) {
-            transform(*func, prog);
+            changed |= transform(*func, prog);
         }
-        return true;
+        return changed;
     }
 
 private:
@@ -46,7 +47,7 @@ private:
         return defs;
     }
 
-    void transform(Func& func, Program& prog) {
+    bool transform(Func& func, Program& prog) {
         auto cfg = ControlFlowGraph(func);
         auto dom_flow = DataFlow<flow::Dominance>(cfg, prog);
         auto dom_tree = DominanceTree(dom_flow);
@@ -57,8 +58,10 @@ private:
         for (auto& alloc : func.locals()) allocs.insert(alloc.get());
         for (auto& alloc : func.params) allocs.insert(alloc.get());
 
+        bool changed = false;
         for (auto& alloc : allocs) {
             if (alloc->immutable) continue;  // immutable value does not need phi
+            changed = true;
             auto in_worklist = definitions(func, alloc);
             std::queue<Block*> worklist;
             for (auto block : in_worklist) worklist.push(block);
@@ -90,15 +93,17 @@ private:
                 }
             }
         }
+        return changed;
     }
 };
 
 struct Rename : Pass {
     bool apply(Program& prog) override {
+        bool changed = false;
         for (auto& func : prog.getFuncs()) {
-            transform(*func, prog);
+            changed |= transform(*func, prog);
         }
-        return true;
+        return changed;
     }
 
 private:
@@ -168,7 +173,7 @@ private:
         }
     }
 
-    void transform(Func& func, Program& program) {
+    bool transform(Func& func, Program& program) {
         need_rename.clear();
         version.clear();
         rename_stack.clear();
@@ -185,12 +190,12 @@ private:
                 need_rename.insert(alloc);
             }
         }
-        if (need_rename.size()) {
-            rename(*func.entrance(), func);
-        }
+        if (need_rename.empty()) return false;
+        rename(*func.entrance(), func);
         for (const auto& alloc : allocs) {
             alloc->immutable = true;  // after renaming, all allocs can be treated as immutable
         }
+        return true;
     }
 };
 
@@ -200,6 +205,7 @@ using ToSSA = Compose<ssa_impl::AddPhi, ssa_impl::Rename>;
 
 struct SSAValue2TempValue : Pass {
     bool apply(Program& prog) override {
+        bool changed = false;
         for (auto& func : prog.getFuncs()) {
             std::unordered_map<SSAValue, TempValue> ssa_to_temp;
             for (auto& block : func->blocks()) {
@@ -207,6 +213,7 @@ struct SSAValue2TempValue : Pass {
                     if (auto ssa = std::get_if<SSAValue>(v); ssa) {
                         if (!ssa_to_temp.count(*ssa)) {
                             ssa_to_temp[*ssa] = func->newTemp(ssa->type, block.get());
+                            changed = true;
                         }
                         *v = ssa_to_temp[*ssa];
                     }
@@ -221,7 +228,7 @@ struct SSAValue2TempValue : Pass {
                 }
             }
         }
-        return true;
+        return changed;
     }
 };
 
