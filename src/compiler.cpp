@@ -58,7 +58,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --optimize-const    Apply Const Propagation optimization (requires --ssa)
     --optimize-def      Apply Dead Definition Elimination optimization (requires --ssa)
     --optimize-alloc    Apply Dead Allocation Elimination optimization (requires --ssa, suggests --ssa2temp)
-    --optimize-block    Apply Dead Block Elimination optimization (requires --ssa)
+    --optimize-block    Apply Trivial Block Elimination optimization (requires --ssa)
     --optimize-exp      (TODO) Apply Common Subexpression Elimination optimization (requires --ssa)
     -O1, --optimize     Apply above optimizations
 
@@ -239,6 +239,8 @@ int main(int argc, const char* argv[]) {
                     }
                 };
 
+                size_t pass_id = 0;
+
                 auto apply =
                     [&](ir::Program& program,
                         const std::vector<std::pair<std::unique_ptr<ir::optim::Pass>, std::string>>&
@@ -246,7 +248,7 @@ int main(int argc, const char* argv[]) {
                         bool changed = false;
                         for (auto& [pass, name] : passes) {
                             changed |= pass->apply(program);
-                            if (changed) echo(program, name);
+                            if (changed) echo(program, fmt::format("#{} {}", pass_id++, name));
                         }
                         return changed;
                     };

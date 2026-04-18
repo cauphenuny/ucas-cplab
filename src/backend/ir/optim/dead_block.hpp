@@ -18,6 +18,13 @@ namespace ir::optim {
 struct DeadBlockElimination : Pass {
     bool apply(Program& prog) override {
         bool pass_changed = false;
+        while (eliminate(prog)) pass_changed = true;
+        return pass_changed;
+    }
+
+private:
+    bool eliminate(Program& prog) {
+        bool pass_changed = false;
 
         for (auto& func_ptr : prog.getFuncs()) {
             ir::Func& func = *func_ptr;
@@ -33,23 +40,21 @@ struct DeadBlockElimination : Pass {
                 Block* curr = worklist.back();
                 worklist.pop_back();
 
-                if (curr->hasExit()) {
-                    match(
-                        curr->exit(), [](const ReturnExit&) {},
-                        [&](const JumpExit& j) {
-                            if (reachable.insert(j.target).second) {
-                                worklist.push_back(j.target);
-                            }
-                        },
-                        [&](const BranchExit& br) {
-                            if (reachable.insert(br.true_target).second) {
-                                worklist.push_back(br.true_target);
-                            }
-                            if (reachable.insert(br.false_target).second) {
-                                worklist.push_back(br.false_target);
-                            }
-                        });
-                }
+                match(
+                    curr->exit(), [](const ReturnExit&) {},
+                    [&](const JumpExit& j) {
+                        if (reachable.insert(j.target).second) {
+                            worklist.push_back(j.target);
+                        }
+                    },
+                    [&](const BranchExit& br) {
+                        if (reachable.insert(br.true_target).second) {
+                            worklist.push_back(br.true_target);
+                        }
+                        if (reachable.insert(br.false_target).second) {
+                            worklist.push_back(br.false_target);
+                        }
+                    });
             }
 
             auto& blocks = func.blocks();
@@ -98,6 +103,13 @@ struct DeadBlockElimination : Pass {
 
 struct TrivialBlockReplacement : Pass {
     bool apply(Program& prog) override {
+        bool changed = false;
+        while (replace(prog)) changed = true;
+        return changed;
+    }
+
+private:
+    bool replace(Program& prog) {
         bool pass_changed = false;
         for (auto& func_box : prog.getFuncs()) {
             pass_changed |= replace(*func_box, prog);
@@ -105,33 +117,63 @@ struct TrivialBlockReplacement : Pass {
         }
         return pass_changed;
     }
-
-private:
     // replace block by its predecessors in phi
     void refine_phi(PhiInst& inst, Block* replaced, ControlFlowGraph& cfg) {
         std::unordered_map<Block*, Value> new_args;
         for (auto& [block, arg] : inst.args) {
-            if (block == replaced) {
-                for (auto pred : cfg.pred[block]) {
-                    new_args[pred] = arg;
-                }
-            } else {
+            if (block != replaced) {
                 new_args[block] = arg;
             }
         }
+        for (auto& [block, arg] : inst.args) {
+            if (block == replaced) {
+                for (auto pred : cfg.pred[block]) {
+                    if (new_args.count(pred)) {
+                        throw COMPILER_ERROR(
+                            fmt::format("conflict phi args, caused by replacng {} to {} in {}",
+                                        block->label, pred->label, inst));
+                    }
+                    new_args[pred] = arg;
+                }
+            }
+        }
         inst.args = std::move(new_args);
+    }
+
+    bool conflicts(Block* replaced, Block* target, ControlFlowGraph& cfg) {
+        // Check: would any predecessor of `replaced` conflict with
+        // an existing phi source in `target`?
+        for (auto& inst : target->insts()) {
+            if (auto phi = std::get_if<PhiInst>(&inst); phi) {
+                for (auto pred : cfg.pred[replaced]) {
+                    if (phi->args.count(pred)) return true;
+                }
+            } else {
+                break;
+            }
+        }
+        return false;
     }
 
     // replace block by its target in exit
     bool replace(Func& func, Program& prog) {
         auto cfg = ControlFlowGraph(func);
         std::optional<std::pair<Block*, Block*>> replacement;
-        for (auto& block : func.blocks()) {
-            if (block.get() == func.entrance()) continue;
+        for (auto& block_box : func.blocks()) {
+            auto block = block_box.get();
+            if (cfg.pred[block].empty()) {
+                // fmt::println(stderr, "{} has no predecessor", block->label);
+                continue;
+            }
             if (block->insts().size() == 0) {
                 match(
                     block->exit(),
-                    [&](const JumpExit& j) { replacement = {block.get(), j.target}; },
+                    [&](const JumpExit& j) {
+                        if (block == j.target) return;
+                        if (!conflicts(block, j.target, cfg)) {
+                            replacement = {block, j.target};
+                        }
+                    },
                     [](const auto&) {});
             }
             if (replacement.has_value()) break;
@@ -205,8 +247,16 @@ struct TrivialBlockElimination : Pass {
 private:
     bool run(Program& prog) {
         bool changed = false;
-        changed |= TrivialBlockReplacement().apply(prog);
-        changed |= DeadBlockElimination().apply(prog);
+        try {
+            changed |= DeadBlockElimination().apply(prog);
+            fmt::println("--dead block elimination--\n{}\n", prog);
+            changed |= TrivialBlockReplacement().apply(prog);
+            fmt::println("--trivial block replacement--\n{}\n", prog);
+        } catch (const CompilerError& e) {
+            fmt::println("TrivialBlockElimination failed: {}", e.what());
+            fmt::println("Current program:\n{}", prog);
+            throw;
+        }
         return changed;
     }
 };
