@@ -16,7 +16,7 @@ from pathlib import Path
 import difflib
 
 
-def compare_outputs(source_path: Path, out_path: Path, executable: str, is_ir: bool, use_ssa: bool, use_ssa2temp: bool) -> int:
+def compare_outputs(source_path: Path, out_path: Path, executable: str, is_ir: bool, use_ssa: bool, use_ssa2temp: bool, use_optimize: bool) -> int:
     # run executable
     if is_ir:
         cmd = [executable, str(source_path), "--silent"]
@@ -26,6 +26,8 @@ def compare_outputs(source_path: Path, out_path: Path, executable: str, is_ir: b
             cmd.append("--ssa")
         if use_ssa2temp:
             cmd.append("--ssa2temp")
+        if use_optimize:
+            cmd.append("--optimize")
 
     in_path = source_path.with_suffix('.in')
     if in_path.exists():
@@ -61,6 +63,7 @@ def main():
     parser.add_argument("--ir", action="store_true", help="Test IR files instead of CACT files")
     parser.add_argument("--ssa", action="store_true", help="Use SSA form")
     parser.add_argument("--ssa2temp", action="store_true", help="convert SSA Value to Temp Value")
+    parser.add_argument("--optimize", action="store_true", help="Apply optimizations")
     args = parser.parse_args()
 
     cwd = Path('.')
@@ -76,7 +79,7 @@ def main():
         if not out.exists():
             print(f"Skipping {source}: no corresponding {out.name}")
             continue
-        rc = compare_outputs(source, out, args.executable, args.ir, args.ssa, args.ssa2temp)
+        rc = compare_outputs(source, out, args.executable, args.ir, args.ssa, args.ssa2temp, args.optimize)
         if rc != 0:
             status = rc
 

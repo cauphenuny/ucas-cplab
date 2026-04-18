@@ -5,6 +5,7 @@
 #include "backend/ir/analysis/dominance.hpp"
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.hpp"
+#include "backend/ir/optim/dde.hpp"
 #include "backend/ir/optim/ssa.hpp"
 #include "backend/ir/vm/vm.h"
 #include "fmt/base.h"
@@ -37,22 +38,26 @@ enum : uint8_t {
 
 auto usage(const char* prog_name, int ret = 0) -> std::string {
     fmt::print(
-        R"({} [--ast] [--ast-info] [--ir] [--ir-info] [--ssa] [--to-temp] [--exec] [--silent] files ... [--output <output file>] [--help]
+        R"({} [args]... files ...
 
-    --help      Show this help message
+    --help          Show this help message
 
-    --ast       Print the AST of the input files
-    --ast-info  Print the semantic analysis result of the AST
+    --ast           Print the AST of the input files
+    --ast-info      Print the semantic analysis result of the AST
 
-    --ir        Print the generated IR of the input files
-    --ir-info   Print some analysis result of the generated IR
-    --ssa       Convert generated IR to SSA form
-    --ssa2temp  Convert SSAValue in IR to TempValue, then prune useless allocation
+    --ir            Print the generated IR of the input files
+    --ir-info       Print some analysis result of the generated IR
+    --ssa           Convert generated IR to SSA form
+    --ssa2temp      Convert SSAValue in IR to TempValue, then prune useless allocation
 
-    --exec      Execute the generated IR
-    --silent    Suppress all compiler output except the return value when executing
+    --optimize-dde  Apply Dead Definition Elimination optimization (requires --ssa)
+    --optimize-cse  (TODO) Apply Common Subexpression Elimination optimization (requires --ssa)
+    -O1, --optimize Apply above optimizations
 
-    --output    Write the generated IR also to the specified file
+    --exec          Execute the generated IR
+    --silent        Suppress all compiler output except the return value when executing
+
+    --output <file> Write the generated IR also to the specified file
 
 )",
         prog_name);
@@ -117,6 +122,8 @@ int main(int argc, const char* argv[]) {
     bool silent = false;
     bool to_ssa = false;
     bool ssa_to_temp = false;
+    bool optimize_dde = false;
+    bool optimize_cse = false;
     FILE* output_file = nullptr;
     std::set<std::string> files;
 
@@ -138,6 +145,13 @@ int main(int argc, const char* argv[]) {
             execute = true;
         } else if (arg == "--silent") {
             silent = true;
+        } else if (arg == "-O1" || arg == "--optimize") {
+            optimize_dde = true;
+            optimize_cse = true;
+        } else if (arg == "--optimize-dde") {
+            optimize_dde = true;
+        } else if (arg == "--optimize-cse") {
+            optimize_cse = true;
         } else if (arg == "--output") {
             if (i + 1 >= argc) {
                 usage(argv[0], INVALID_ARGUMENT);
@@ -155,6 +169,12 @@ int main(int argc, const char* argv[]) {
     if (output_file && files.size() > 1) {
         fmt::println(stderr, "Warning: multiple input files, but only one output file specified. "
                              "Output will be overwritten.");
+    }
+
+    bool optimize = optimize_dde || optimize_cse;
+    if (optimize && !to_ssa) {
+        fmt::println(stderr, "Optimization requires SSA form. Auto enabling SSA form.");
+        to_ssa = true;
     }
 
     try {
@@ -184,16 +204,27 @@ int main(int argc, const char* argv[]) {
                 }
 
                 auto program = ir::gen::generate(code);
-                if (print_ir) {
-                    if (!silent) {
-                        fmt::println("Generated IR:\n");
+
+                auto echo = [&](const ir::Program& program, const std::string& name) {
+                    if (print_ir) {
+                        fmt::println("{}:\n{}\n", name, program);
                     }
-                    fmt::println("{}", program);
-                    fmt::println("\n");
-                }
-                if (print_ir_info) {
-                    analysis(program);
-                }
+                    if (print_ir_info) {
+                        analysis(program);
+                    }
+                };
+
+                auto apply =
+                    [&](ir::Program& program,
+                        const std::vector<std::pair<std::unique_ptr<ir::optim::Pass>, std::string>>&
+                            passes) {
+                        for (auto& [pass, name] : passes) {
+                            pass->apply(program);
+                            echo(program, name);
+                        }
+                    };
+
+                echo(program, "Generated IR");
 
                 {
                     using namespace ir::optim;
@@ -206,15 +237,17 @@ int main(int argc, const char* argv[]) {
                                             "SSA Form (TempValue)");
                     }
 
-                    for (auto& [pass, name] : passes) {
-                        pass->apply(program);
-                        if (print_ir) {
-                            fmt::println("{}:\n{}\n", name, program);
-                        }
-                        if (print_ir_info) {
-                            analysis(program);
-                        }
+                    apply(program, passes);
+                }
+
+                if (optimize) {
+                    using namespace ir::optim;
+                    std::vector<std::pair<std::unique_ptr<Pass>, std::string>> passes;
+                    if (optimize_dde) {
+                        passes.emplace_back(std::make_unique<DeadDefElimination>(),
+                                            "Dead Definition Elimination");
                     }
+                    apply(program, passes);
                 }
 
                 if (output_file) {

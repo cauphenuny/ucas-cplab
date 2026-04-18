@@ -492,8 +492,9 @@ public:
         int id = std::stoi(ctx->INT_LITERAL()->getText());
         if (temp_map_.count(id)) {
             size_t internal_id = temp_map_.at(id);
-            return wrap(
-                ir::TempValue{.type = current_func_->temps()[internal_id].type, .id = internal_id});
+            return wrap(ir::TempValue{.type = current_func_->temps()[internal_id].type,
+                                      .id = internal_id,
+                                      .func = current_func_});
         }
         throw SemanticError(get_loc(ctx), fmt::format("Temporary ${} used before definition", id));
     }
@@ -521,7 +522,8 @@ private:
             if (temp_map_.count(id)) {
                 size_t internal_id = temp_map_.at(id);
                 return ir::TempValue{.type = current_func_->temps()[internal_id].type,
-                                     .id = internal_id};
+                                     .id = internal_id,
+                                     .func = current_func_};
             }
             throw SemanticError(get_loc(ctx),
                                 fmt::format("Temporary ${} used before definition", id));

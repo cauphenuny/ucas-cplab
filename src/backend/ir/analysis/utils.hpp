@@ -73,4 +73,11 @@ auto vars(Inst& inst) {
     return ret;
 }
 
+bool has_side_effect(Inst& inst) {
+    return match(
+        inst, [&](const CallInst&) { return true; },  // function call may have side effects
+        [&](const UnaryInst& u) { return false; }, [&](const BinaryInst& b) { return false; },
+        [&](const auto&) { return false; });
+}
+
 }  // namespace ir::analysis::utils

@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstring>
 #include <functional>
+#include <list>
 #include <memory>
 #include <optional>
 #include <string>
@@ -46,9 +47,10 @@ struct NamedValue {
 struct TempValue {
     Type type;
     size_t id;
+    const Func* func;
 
     friend bool operator==(const TempValue& lhs, const TempValue& rhs) {
-        return lhs.id == rhs.id;
+        return lhs.func == rhs.func && lhs.id == rhs.id;
     }
 
     SIMPLE_TO_STRING(fmt::format("${}", id));
@@ -311,12 +313,12 @@ struct Block {
         return *exit_;
     }
 
-    Block(std::string label, std::vector<Inst> insts, Exit exit)
+    Block(std::string label, std::list<Inst> insts, Exit exit)
         : label(std::move(label)), insts_(std::move(insts)), exit_(std::move(exit)) {}
     explicit Block(std::string label) : label(std::move(label)) {}
 
 private:
-    std::vector<Inst> insts_;
+    std::list<Inst> insts_;
     std::optional<Exit> exit_;  // construct Block first, then assign exit instruction.
 };
 
@@ -451,7 +453,7 @@ struct Func {
     }
 
     auto newTemp(const Type& type, const Block* container) -> TempValue {
-        auto temp = TempValue{.type = type, .id = temps_.size()};
+        auto temp = TempValue{.type = type, .id = temps_.size(), .func = this};
         temps_.emplace_back(TempInfo{type, container});
         return temp;
     }
