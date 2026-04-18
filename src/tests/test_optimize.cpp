@@ -60,7 +60,10 @@ int main(int argc, const char* argv[]) {
         {"alloc", []() { return std::make_unique<ir::optim::DeadAllocElimination>(); }},
         {"const", []() { return std::make_unique<ir::optim::ConstPropagation>(); }},
         {"ssa2temp", []() { return std::make_unique<ir::optim::SSAValue2TempValue>(); }},
-        {"block", []() { return std::make_unique<ir::optim::TrivialBlockElimination>(); }}};
+        {"block", []() {
+             return std::make_unique<ir::optim::Compose<ir::optim::DeadBlockElimination,
+                                                        ir::optim::TrivialBlockReplacement>>();
+         }}};
 
     fmt::println(stderr, "Using directory: {}\n", path.string());
 
@@ -110,7 +113,7 @@ int main(int argc, const char* argv[]) {
                 std::string first_line;
                 std::getline(ans_file, first_line);
                 auto ans_text = std::string{std::istreambuf_iterator<char>(ans_file),
-                                        std::istreambuf_iterator<char>()};
+                                            std::istreambuf_iterator<char>()};
                 out_stream << (int)ret;
                 auto out_text = out_stream.str();
                 while (ans_text.back() == '\n') ans_text.pop_back();

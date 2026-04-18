@@ -58,7 +58,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --optimize-const    Apply Const Propagation optimization (requires --ssa)
     --optimize-def      Apply Dead Definition Elimination optimization (requires --ssa)
     --optimize-alloc    Apply Dead Allocation Elimination optimization (requires --ssa, suggests --ssa2temp)
-    --optimize-block    Apply Trivial Block Elimination optimization (requires --ssa)
+    --optimize-block    Apply Dead/Trivial Block Elimination optimization (requires --ssa)
     --optimize-exp      (TODO) Apply Common Subexpression Elimination optimization (requires --ssa)
     -O1, --optimize     Apply above optimizations
 
@@ -292,8 +292,10 @@ int main(int argc, const char* argv[]) {
                                             "Dead Allocation Elimination");
                     }
                     if (optimize_block) {
-                        passes.emplace_back(std::make_unique<TrivialBlockElimination>(),
-                                            "Trivial Block Elimination");
+                        passes.emplace_back(std::make_unique<DeadBlockElimination>(),
+                                            "Dead Block Elimination");
+                        passes.emplace_back(std::make_unique<TrivialBlockReplacement>(),
+                                            "Trivial Block Replacement");
                     }
                     while (apply(program, passes));
                 }

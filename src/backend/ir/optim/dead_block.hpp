@@ -236,30 +236,4 @@ private:
     }
 };
 
-struct TrivialBlockElimination : Pass {
-    bool apply(Program& prog) override {
-        bool changed = false;
-        while (run(prog)) {
-            changed = true;
-        }
-        return changed;
-    }
-
-private:
-    bool run(Program& prog) {
-        bool changed = false;
-        try {
-            changed |= DeadBlockElimination().apply(prog);
-            // fmt::println("--dead block elimination--\n{}\n", prog);
-            changed |= TrivialBlockReplacement().apply(prog);
-            // fmt::println("--trivial block replacement--\n{}\n", prog);
-        } catch (const CompilerError& e) {
-            fmt::println(stderr, "TrivialBlockElimination failed: {}", e.what());
-            fmt::println(stderr, "Current program:\n{}", prog);
-            throw;
-        }
-        return changed;
-    }
-};
-
 }  // namespace ir::optim
