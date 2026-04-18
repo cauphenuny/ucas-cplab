@@ -65,9 +65,15 @@ int main(int argc, const char* argv[]) {
 
     fmt::println(stderr, "Using directory: {}\n", path.string());
 
+    std::vector<std::filesystem::directory_entry> files;
     for (const auto& file : std::filesystem::directory_iterator(path)) {
         if (file.path().extension() != ".cact") continue;
+        files.push_back(file);
+    }
+    std::sort(files.begin(), files.end(),
+              [](const auto& a, const auto& b) { return a.path().string() < b.path().string(); });
 
+    for (const auto& file : files) {
         fmt::print(stderr, "{}: ", file.path().string());
 
         // read source file
