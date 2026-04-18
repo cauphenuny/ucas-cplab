@@ -59,13 +59,15 @@ private:
 
             auto& blocks = func.blocks();
 
+            pass_changed |= reachable.size() != blocks.size();
+
             for (auto& block_box : blocks) {
                 Block* blk = block_box.get();
                 if (reachable.find(blk) == reachable.end()) continue;
 
                 for (auto& inst : blk->insts()) {
                     if (auto phi = std::get_if<PhiInst>(&inst); phi) {
-                        pass_changed |= refine_phi(*phi, reachable);
+                        refine_phi(*phi, reachable);
                     } else {
                         break;
                     }
@@ -79,7 +81,6 @@ private:
 
             if (it != blocks.end()) {
                 blocks.erase(it, blocks.end());
-                pass_changed = true;
             }
         }
         return pass_changed;

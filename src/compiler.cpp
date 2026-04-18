@@ -245,12 +245,15 @@ int main(int argc, const char* argv[]) {
                     [&](ir::Program& program,
                         const std::vector<std::pair<std::unique_ptr<ir::optim::Pass>, std::string>>&
                             passes) {
-                        bool changed = false;
+                        bool any_changed = false;
                         for (auto& [pass, name] : passes) {
-                            changed |= pass->apply(program);
-                            if (changed) echo(program, fmt::format("#{} {}", pass_id++, name));
+                            bool pass_changed = pass->apply(program);
+                            if (pass_changed) {
+                                echo(program, fmt::format("#{} {}", pass_id++, name));
+                            }
+                            any_changed |= pass_changed;
                         }
-                        return changed;
+                        return any_changed;
                     };
 
                 echo(program, "Generated IR");
