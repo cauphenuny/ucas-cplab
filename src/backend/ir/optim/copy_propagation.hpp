@@ -16,14 +16,20 @@ struct CopyPropagation : Pass {
     bool apply(Program& prog) override {
         bool changed = false;
         for (auto& func : prog.getFuncs()) {
-            while (propagate(*func)) changed = true;
+            while (propagate(*func, prog)) changed = true;
         }
         return changed;
     }
 
 private:
-    bool propagate(Func& func) {
+    bool propagate(Func& func, Program& prog) {
         std::unordered_map<Value, Value> copies;
+
+        for (auto& global : prog.getGlobals()) {
+            if (global->comptime && !global->type.is<type::Array>()) {
+                copies[LeftValue{global->value()}] = *global->init;
+            }
+        }
 
         auto get_root = [&](auto self, Value v) -> Value {
             auto it = copies.find(v);
