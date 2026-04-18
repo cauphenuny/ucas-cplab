@@ -37,7 +37,7 @@ enum : uint8_t {
 
 auto usage(const char* prog_name, int ret = 0) -> std::string {
     fmt::print(
-        R"({} [--ast] [--ast-info] [--ir] [--ir-info] [--exec] [--silent] files ... [--output <output file>] [--help]
+        R"({} [--ast] [--ast-info] [--ir] [--ir-info] [--ssa] [--exec] [--silent] files ... [--output <output file>] [--help]
     --ast       Print the AST of the input files
     --ast-info  Print the semantic analysis result of the AST
     --ir        Print the generated IR of the input files
