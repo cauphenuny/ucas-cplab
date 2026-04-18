@@ -60,11 +60,44 @@ auto used_vars(Inst& inst) -> std::vector<LeftValue*> {
     return uses;
 }
 
+auto uses(Inst& inst) {
+    std::vector<std::variant<Value*, LeftValue*>> uses;
+    match(
+        inst,
+        [&](PhiInst& p) {
+            for (auto& [_, arg] : p.args) {
+                uses.emplace_back(&arg);
+            }
+        },
+        [&](BinaryInst& b) {
+            uses.emplace_back(&b.lhs);
+            uses.emplace_back(&b.rhs);
+            if (b.op == InstOp::STORE) uses.emplace_back(&b.result);
+        },
+        [&](UnaryInst& u) {
+            uses.emplace_back(&u.operand);
+            if (u.op == UnaryInstOp::STORE) uses.emplace_back(&u.result);
+        },
+        [&](CallInst& c) {
+            for (auto& arg : c.args) {
+                uses.emplace_back(&arg);
+            }
+        });
+    return uses;
+}
+
 auto used_var(Exit& exit) -> LeftValue* {
     return match(
         exit, [](JumpExit&) -> LeftValue* { return nullptr; },
         [](BranchExit& c) -> LeftValue* { return utils::as_var(c.cond); },
         [](ReturnExit& r) -> LeftValue* { return utils::as_var(r.exp); });
+}
+
+auto used(Exit& exit) -> Value* {
+    return match(
+        exit, [](JumpExit&) -> Value* { return nullptr; },
+        [](BranchExit& c) -> Value* { return &c.cond; },
+        [](ReturnExit& r) -> Value* { return &r.exp; });
 }
 
 auto vars(Inst& inst) {

@@ -20,9 +20,9 @@ struct CopyPropagation : Pass {
 
 private:
     bool propagate(Func& func) {
-        std::unordered_map<LeftValue, LeftValue> copies;
+        std::unordered_map<Value, Value> copies;
 
-        auto get_root = [&](auto self, LeftValue v) -> LeftValue {
+        auto get_root = [&](auto self, Value v) -> Value {
             auto it = copies.find(v);
             if (it != copies.end()) {
                 return it->second = self(self, it->second);
@@ -35,14 +35,10 @@ private:
             for (auto& inst : block->insts()) {
                 if (auto unary = std::get_if<UnaryInst>(&inst)) {
                     if (unary->op == UnaryInstOp::MOV) {
-                        if (auto operand = analysis::utils::as_var(unary->operand)) {
-                            if (!(*operand == unary->result)) {
-                                copies[unary->result] = *operand;
-                            }
-                        }
+                        copies[unary->result] = unary->operand;
                     }
                 } else if (auto phi = std::get_if<PhiInst>(&inst)) {
-                    std::optional<LeftValue> uniform_val;
+                    std::optional<Value> uniform_val;
                     bool possible = true;
                     for (auto& [_, val] : phi->args) {
                         auto var = analysis::utils::as_var(val);
@@ -51,7 +47,7 @@ private:
                             break;
                         }
                         auto root = get_root(get_root, *var);
-                        if (root == phi->result) continue;  // ignore self-loops in Phi
+                        if (root == Value{phi->result}) continue;  // ignore self-loops in Phi
                         if (!uniform_val) {
                             uniform_val = root;
                         } else if (!(*uniform_val == root)) {
@@ -72,15 +68,34 @@ private:
         bool changed = false;
         for (auto& block : func.blocks()) {
             for (auto& inst : block->insts()) {
-                for (auto use : analysis::utils::used_vars(inst)) {
-                    auto root = get_root(get_root, *use);
-                    if (!(*use == root)) {
-                        *use = root;
-                        changed = true;
-                    }
+                for (auto use : analysis::utils::uses(inst)) {
+                    match(
+                        use,
+                        [&](Value* v) {
+                            auto root = get_root(get_root, *v);
+                            if (!(*v == root)) {
+                                *v = root;
+                                changed = true;
+                            }
+                        },
+                        [&](LeftValue* v) {
+                            auto root = get_root(get_root, *v);
+                            auto lval = analysis::utils::as_var(root);
+                            if (lval) {
+                                if (!(*v == *lval)) {
+                                    *v = *lval;
+                                    changed = true;
+                                }
+                            } else {
+                                throw COMPILER_ERROR(
+                                    fmt::format("Copy propagation propagates constexpr value to "
+                                                "lval-only location: {}",
+                                                root));
+                            }
+                        });
                 }
             }
-            if (auto exit_use = analysis::utils::used_var(block->exit())) {
+            if (auto exit_use = analysis::utils::used(block->exit())) {
                 auto root = get_root(get_root, *exit_use);
                 if (!(*exit_use == root)) {
                     *exit_use = root;

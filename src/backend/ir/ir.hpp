@@ -154,6 +154,10 @@ struct ConstexprValue {
             throw COMPILER_ERROR(fmt::format("Unsupported type in zeros_like: {}", type));
         }
     }
+
+    friend bool operator==(const ConstexprValue& lhs, const ConstexprValue& rhs) {
+        return lhs.val == rhs.val;
+    }
 };
 
 struct SSAValue {
@@ -640,5 +644,13 @@ template <> struct std::hash<ir::SSAValue> {
         ir::hash_combine(seed, v.def);
         ir::hash_combine(seed, v.version);
         return seed;
+    }
+};
+
+template <> struct std::hash<ir::ConstexprValue> {
+    auto operator()(const ir::ConstexprValue& v) const noexcept -> std::size_t {
+        return std::hash<
+            std::variant<std::monostate, int, float, bool, double, std::unique_ptr<std::byte[]>>>{}(
+            v.val);
     }
 };
