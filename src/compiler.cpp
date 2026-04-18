@@ -173,13 +173,13 @@ int main(int argc, const char* argv[]) {
     }
 
     if (output_file && files.size() > 1) {
-        fmt::println(stderr, "Warning: multiple input files, but only one output file specified. "
-                             "Output will be overwritten.");
+        warning("multiple input files, but only one output file specified. Output will be "
+                "overwritten.");
     }
 
     bool optimize = optimize_dde || optimize_cse || optimize_cp;
     if (optimize && !to_ssa) {
-        fmt::println(stderr, "Optimization requires SSA form. Auto enabling SSA form.");
+        warning("Optimization requires SSA form. Auto enabling SSA form.");
         to_ssa = true;
     }
 
