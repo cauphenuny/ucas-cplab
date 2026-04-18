@@ -11,9 +11,13 @@
 #include "backend/ir/ir.hpp"
 #include "framework.hpp"
 
+#include <memory>
 #include <queue>
+#include <stack>
+#include <unordered_map>
 #include <unordered_set>
 #include <variant>
+#include <vector>
 
 namespace ir::optim {
 

@@ -6,9 +6,13 @@
 #include <cstddef>
 #include <cstring>
 #include <functional>
+#include <memory>
+#include <optional>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <variant>
+#include <vector>
 
 namespace ir {
 

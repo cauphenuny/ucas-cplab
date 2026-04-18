@@ -5,6 +5,7 @@
 #include "backend/ir/ir.hpp"
 
 #include <unordered_map>
+#include <vector>
 
 namespace ir::analysis {
 

@@ -7,9 +7,11 @@
 #include <cstddef>
 #include <cstring>
 #include <functional>
+#include <optional>
 #include <type_traits>
 #include <unordered_map>
 #include <variant>
+#include <vector>
 
 namespace ir::vm {
 

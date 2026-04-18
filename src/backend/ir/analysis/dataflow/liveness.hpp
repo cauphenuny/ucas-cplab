@@ -41,7 +41,6 @@ struct Liveness {
 
     static Context init(const ControlFlowGraph& cfg, const Program& prog) {
         Context ctx;
-        // TODO
         for (auto& block_box : cfg.func.blocks()) {
             auto gen = Data::empty(), kill = Data::empty();
             auto block = block_box.get();

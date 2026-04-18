@@ -4,7 +4,10 @@
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/ast/ast.hpp"
 
+#include <memory>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace ir::gen {
 
