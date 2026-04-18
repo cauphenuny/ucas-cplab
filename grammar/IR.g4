@@ -62,7 +62,7 @@ exit:
 	| JUMP label ';' # jumpExit
 	;
 
-block: label ':' '{' inst* exit '}';
+block: label ':' '{' phiInst* inst* exit '}';
 
 inst:
 	var '[' value ']' '=' value ';' # sliceStoreInst
@@ -72,9 +72,10 @@ inst:
 	| var ':' type '=' '*(' var ')' ';' # pointerLoadInst
 	| var ':' type '=' value binop value ';' # binaryInst
 	| var ':' type '=' ('!' value | '-' value | value) ';' # unaryInst
-	| var ':' type '=' PHI '(' (label ':' value (',' label ':' value)*)? ')' ';' #phiInst
 	;
 
+phiInst : var ':' type '=' PHI '(' (label ':' value (',' label ':' value)*)? ')' ';' ;
+	
 argList: value (',' value)*;
 
 binop:

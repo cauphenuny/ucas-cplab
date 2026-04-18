@@ -227,6 +227,9 @@ public:
     std::any visitBlock(IRParser::BlockContext* ctx) override {
         auto label = ctx->label()->ID()->getText();
         current_block_ = block_map_.at(label);
+        for (auto* phi : ctx->phiInst()) {
+            visit(phi);
+        }
         for (auto* inst : ctx->inst()) {
             visit(inst);
         }

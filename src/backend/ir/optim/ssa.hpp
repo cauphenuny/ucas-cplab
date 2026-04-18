@@ -153,6 +153,8 @@ private:
                             }
                         }
                     }
+                } else {
+                    break;
                 }
             }
         }
