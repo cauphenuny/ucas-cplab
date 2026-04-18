@@ -10,10 +10,12 @@
 namespace ir::optim {
 
 struct CopyPropagation : Pass {
-    void apply(Program& prog) override {
+    bool apply(Program& prog) override {
+        bool changed = false;
         for (auto& func : prog.getFuncs()) {
-            while (propagate(*func));
+            while (propagate(*func)) changed = true;
         }
+        return changed;
     }
 
 private:

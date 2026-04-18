@@ -24,10 +24,11 @@ namespace ir::optim {
 namespace ssa_impl {
 
 struct AddPhi : Pass {
-    void apply(Program& prog) override {
+    bool apply(Program& prog) override {
         for (auto& func : prog.getFuncs()) {
             transform(*func, prog);
         }
+        return true;
     }
 
 private:
@@ -94,10 +95,11 @@ private:
 };
 
 struct Rename : Pass {
-    void apply(Program& prog) override {
+    bool apply(Program& prog) override {
         for (auto& func : prog.getFuncs()) {
             transform(*func, prog);
         }
+        return true;
     }
 
 private:
@@ -196,7 +198,7 @@ private:
 using ToSSA = Compose<ssa_impl::AddPhi, ssa_impl::Rename>;
 
 struct SSAValue2TempValue : Pass {
-    void apply(Program& prog) override {
+    bool apply(Program& prog) override {
         for (auto& func : prog.getFuncs()) {
             std::unordered_map<SSAValue, TempValue> ssa_to_temp;
             std::unordered_map<const Alloc*, bool> used;
@@ -230,6 +232,7 @@ struct SSAValue2TempValue : Pass {
             }
             func->locals() = std::move(pruned_locals);
         }
+        return true;
     }
 };
 

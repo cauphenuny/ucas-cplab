@@ -8,12 +8,12 @@ using namespace ir::analysis;
 
 struct Pass {
     virtual ~Pass() = default;
-    virtual void apply(Program& prog) = 0;
+    virtual bool apply(Program& prog) = 0;
 };
 
 template <typename... Passes> struct Compose : Pass {
-    void apply(Program& prog) override {
-        (Passes().apply(prog), ...);
+    bool apply(Program& prog) override {
+        return (Passes().apply(prog) || ...);
     }
 };
 

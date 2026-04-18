@@ -8,8 +8,10 @@
 namespace ir::optim {
 
 struct DeadDefElimination : Pass {
-    void apply(Program& prog) override {
-        while (eliminate(prog));
+    bool apply(Program& prog) override {
+        bool changed = false;
+        while (eliminate(prog)) changed = true;
+        return changed;
     }
 
 private:
