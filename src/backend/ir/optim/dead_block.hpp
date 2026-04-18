@@ -80,11 +80,10 @@ struct TrivialBlockReplacement : Pass {
 
 private:
     // replace block by its predecessors in phi
-    void refine_phi(PhiInst& inst, const std::unordered_map<Block*, Block*>& replacement,
-                    ControlFlowGraph& cfg) {
+    void refine_phi(PhiInst& inst, Block* replaced, ControlFlowGraph& cfg) {
         std::unordered_map<Block*, Value> new_args;
         for (auto& [block, arg] : inst.args) {
-            if (replacement.count(block)) {
+            if (block == replaced) {
                 for (auto pred : cfg.pred[block]) {
                     new_args[pred] = arg;
                 }
@@ -95,40 +94,29 @@ private:
         inst.args = std::move(new_args);
     }
 
-    bool closure(std::unordered_map<Block*, Block*>& replacement) {
-        bool changed = false;
-        for (auto& [block, target] : replacement) {
-            if (replacement.count(target)) {
-                replacement[block] = replacement[target];
-                changed = true;
-            }
-        }
-        return changed;
-    }
-
     // replace block by its target in exit
     bool replace(Func& func, Program& prog) {
         auto cfg = ControlFlowGraph(func);
-        std::unordered_map<Block*, Block*> replacement;
+        std::optional<std::pair<Block*, Block*>> replacement;
         for (auto& block : func.blocks()) {
             if (block.get() == func.entrance()) continue;
             if (block->insts().size() == 0) {
                 match(
-                    block->exit(), [&](const JumpExit& j) { replacement[block.get()] = j.target; },
+                    block->exit(),
+                    [&](const JumpExit& j) { replacement = {block.get(), j.target}; },
                     [](const auto&) {});
             }
+            if (replacement.has_value()) break;
         }
-        // if (replacement.empty() && (func.entrance()->insts().size() != 0 ||
-        //                             !std::holds_alternative<JumpExit>(func.entrance()->exit())))
-        //     return false;
-        if (replacement.empty()) return false;
 
-        while (closure(replacement));
+        if (!replacement) return false;
+
+        auto replaced = replacement->first, target = replacement->second;
 
         for (auto& block : func.blocks()) {
             for (auto& inst : block->insts()) {
                 if (auto phi = std::get_if<PhiInst>(&inst); phi) {
-                    refine_phi(*phi, replacement, cfg);
+                    refine_phi(*phi, replaced, cfg);
                 } else {
                     break;
                 }
@@ -137,32 +125,36 @@ private:
             match(
                 block->exit(),
                 [&](JumpExit& j) {
-                    if (replacement.count(j.target)) {
-                        j.target = replacement[j.target];
+                    if (j.target == replaced) {
+                        j.target = target;
                     }
                 },
                 [&](BranchExit& b) {
-                    if (replacement.count(b.true_target)) {
-                        b.true_target = replacement[b.true_target];
+                    if (b.true_target == replaced) {
+                        b.true_target = target;
                     }
-                    if (replacement.count(b.false_target)) {
-                        b.false_target = replacement[b.false_target];
+                    if (b.false_target == replaced) {
+                        b.false_target = target;
                     }
                 },
                 [](ReturnExit&) {});
         }
 
-        // if (func.entrance()->insts().size() == 0 &&
-        //     std::holds_alternative<JumpExit>(func.entrance()->exit())) {
-        //     auto target = std::get<JumpExit>(func.entrance()->exit()).target;
-        //     for (auto& block : func.blocks()) {
-        //         if (block.get() == target) {
-        //             std::swap(func.blocks()[0], block);
-        //             std::swap(block, func.blocks().back());
-        //             func.blocks().pop_back();
-        //         }
-        //     }
-        // }
+        return true;
+    }
+
+    bool squash(Func& func, Program& prog) {
+        if (func.entrance()->insts().size() > 0 ||
+            !std::holds_alternative<JumpExit>(func.entrance()->exit()))
+            return false;
+        auto target = std::get<JumpExit>(func.entrance()->exit()).target;
+        for (auto& block : func.blocks()) {
+            if (block.get() == target) {
+                std::swap(func.blocks()[0], block);
+                std::swap(block, func.blocks().back());
+                func.blocks().pop_back();
+            }
+        }
         return true;
     }
 };
@@ -172,6 +164,7 @@ struct TrivialBlockElimination : Pass {
         bool changed = false;
         while (run(prog)) {
             changed = true;
+            fmt::println("---------\n{}", prog);
         }
         return changed;
     }
