@@ -53,7 +53,7 @@ param: ID ':' type;
 temp: '$' INT_LITERAL;
 var: temp | ID;
 value: var | constexpr;
-label: ID;
+label: '\'' ID;
 
 exit:
 	RETURN value? ';' # returnExit
@@ -61,7 +61,7 @@ exit:
 	| JUMP label ';' # jumpExit
 	;
 
-block: '.' label ':' inst* exit;
+block: label ':' '{' inst* exit '}';
 
 inst:
 	var '[' value ']' '=' value ';' # sliceStoreInst

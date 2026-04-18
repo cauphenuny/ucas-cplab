@@ -184,7 +184,7 @@ public:
 
         // Pre-create blocks to allow forward jumps
         for (auto* block_ctx : ctx->block()) {
-            auto label = block_ctx->label()->getText();
+            auto label = block_ctx->label()->ID()->getText();
             block_map_[label] = current_func_->newBlock(label);
         }
 
@@ -225,7 +225,7 @@ public:
     }
 
     std::any visitBlock(IRParser::BlockContext* ctx) override {
-        auto label = ctx->label()->getText();
+        auto label = ctx->label()->ID()->getText();
         current_block_ = block_map_.at(label);
         for (auto* inst : ctx->inst()) {
             visit(inst);
@@ -347,8 +347,8 @@ public:
 
     std::any visitBranchExit(IRParser::BranchExitContext* ctx) override {
         auto cond = take<ir::Value>(visit(ctx->value()));
-        auto true_label = ctx->label(0)->getText();
-        auto false_label = ctx->label(1)->getText();
+        auto true_label = ctx->label(0)->ID()->getText();
+        auto false_label = ctx->label(1)->ID()->getText();
         current_block_->setExit(ir::BranchExit{.cond = std::move(cond),
                                                .true_target = block_map_.at(true_label),
                                                .false_target = block_map_.at(false_label)});
@@ -356,7 +356,7 @@ public:
     }
 
     std::any visitJumpExit(IRParser::JumpExitContext* ctx) override {
-        auto label = ctx->label()->getText();
+        auto label = ctx->label()->ID()->getText();
         current_block_->setExit(ir::JumpExit(block_map_.at(label)));
         return {};
     }

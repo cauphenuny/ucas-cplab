@@ -13,11 +13,12 @@ int main() {
         /// NOTE: test remap
         auto text = R"(
 fn main() -> i32 {
-.entry:
-  $2: i32 = 1;
-  $1: i32 = 2;
-  $0: i32 = $2 + $1;
-  return $0;
+    'entry: {
+        $2: i32 = 1;
+        $1: i32 = 2;
+        $0: i32 = $2 + $1;
+        return $0;
+    }
 }
 )";
         auto ir_stream = std::istringstream(text);
@@ -28,11 +29,12 @@ fn main() -> i32 {
         /// NOTE: test Single Assignment
         auto text = R"(
 fn main() -> i32 {
-.entry:
-  $0: i32 = 1;
-  $1: i32 = 2;
-  $0: i32 = $0 + $1;
-  return $0;
+    'entry: {
+      $0: i32 = 1;
+      $1: i32 = 2;
+      $0: i32 = $0 + $1;
+      return $0;
+    }
 }
 )";
         auto ir_stream = std::istringstream(text);
@@ -47,11 +49,12 @@ fn main() -> i32 {
         /// NOTE: test variable's Single Assignment
         auto text = R"(
 fn main() -> i32 {
-  let a: i32 = 0;
-.entry:
-  a: i32 = 1;
-  $0: i32 = a;
-  return $0;
+    let a: i32 = 0;
+    .entry: {
+        a: i32 = 1;
+        $0: i32 = a;
+        return $0;
+    }
 }
 )";
         auto ir_stream = std::istringstream(text);
@@ -66,14 +69,16 @@ fn main() -> i32 {
         /// NOTE: test variable's Single Assignment
         auto text = R"(
 fn main() -> i32 {
-  let a: i32;
-.entry:
-  a: i32 = 1;
-  jump assign;
-.assign:
-  a: i32 = 2;
-  $0: i32 = a;
-  return $0;
+    let a: i32;
+    'entry: {
+        a: i32 = 1;
+        jump assign;
+    }
+    'assign: {
+        a: i32 = 2;
+        $0: i32 = a;
+        return $0;
+    }
 }
 )";
         auto ir_stream = std::istringstream(text);
@@ -88,15 +93,17 @@ fn main() -> i32 {
         /// NOTE: test same name
         auto text = R"(
 fn a_1_2() -> i32 {
-.entry:
-  $0: i32 = 1;
-  return $0;
+    'entry: {
+        $0: i32 = 1;
+        return $0;
+    }
 }
 fn main() -> i32 {
-  let a_1_2: i32 = 3;
-.entry:
-  $0: i32 = a_1_2();
-  return $0;
+    let a_1_2: i32 = 3;
+    'entry: {
+      $0: i32 = a_1_2();
+      return $0;
+    }
 }
 )";
         auto ir_stream = std::istringstream(text);

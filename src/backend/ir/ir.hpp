@@ -241,6 +241,12 @@ struct JumpExit {
 
 using Exit = std::variant<BranchExit, JumpExit, ReturnExit>;
 
+namespace {
+inline auto ind(size_t level) {  // indent
+    return std::string(level * 4, ' ');
+}
+}  // namespace
+
 struct Block {
     const std::string label;
     Block(Block&&) =
@@ -248,11 +254,12 @@ struct Block {
 
     [[nodiscard]] auto toString() const {
         std::string str;
-        str += fmt::format(".{}:\n", label);
+        str += ind(1) + fmt::format("'{}: {{\n", label);
         for (const auto& inst : insts_) {
-            str += fmt::format("  {}\n", inst);
+            str += ind(2) + fmt::format("{}\n", inst);
         }
-        str += exit_ ? fmt::format("  {}\n", *exit_) : fmt::format("  <noexit>\n");
+        str += ind(2) + (exit_ ? fmt::format("{}\n", *exit_) : fmt::format("<noexit>\n"));
+        str += ind(1) + "}\n";
         return str;
     }
     void add(Inst inst) {
@@ -293,18 +300,19 @@ private:
 };
 
 inline auto BranchExit::toString() const -> std::string {
-    return fmt::format("branch {} ? {} : {};", cond, true_target ? true_target->label : "<unknown>",
+    return fmt::format("branch {} ? '{} : '{};", cond,
+                       true_target ? true_target->label : "<unknown>",
                        false_target ? false_target->label : "<unknown>");
 }
 
 inline auto JumpExit::toString() const -> std::string {
-    return fmt::format("jump {};", target ? target->label : "<unknown>");
+    return fmt::format("jump '{};", target ? target->label : "<unknown>");
 }
 
 inline auto PhiInst::toString() const -> std::string {
     std::string arg_str;
     for (auto&& [block, val] : args) {
-        arg_str += fmt::format("{}: {}, ", block->label, val);
+        arg_str += fmt::format("'{}: {}, ", block->label, val);
     }
     if (!arg_str.empty()) arg_str.pop_back(), arg_str.pop_back();
     return fmt::format("{}: {} = $phi({});", result, type_of(result), arg_str);
@@ -394,7 +402,7 @@ struct Func {
             str += fmt::format("fn {}({}) -> {} {{\n", name, params, ret_type);
         }
         for (const auto& def : locals_) {
-            str += fmt::format("  {}\n", def);
+            str += ind(1) + fmt::format("{}\n", def);
         }
         for (const auto& block : blocks_) {
             str += fmt::format("{}", *block);
