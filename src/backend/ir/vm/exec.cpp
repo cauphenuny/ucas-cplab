@@ -48,8 +48,35 @@ void VirtualMachine::execute(const BuiltinFunc& func, const std::vector<View>& a
 }
 
 auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View& ret) -> Block* {
-    for (const auto& inst : block.insts()) {
-        // fmt::println(stderr, "-> {}", inst);
+    struct PhiUpdate {
+        View dest;
+        std::vector<std::byte> data;
+    };
+    std::vector<PhiUpdate> phi_updates;
+
+    auto it = block.insts().begin();
+    while (it != block.insts().end()) {
+        if (auto phi = std::get_if<PhiInst>(&*it)) {
+            auto operand = view_of(phi->args.at(prev), frame);
+            auto dest = view_of(phi->result, frame);
+            size_t size = ir::type::size_of(dest.type);
+            std::vector<std::byte> buffer(size);
+            memcpy(buffer.data(), operand.data, size);
+            phi_updates.push_back({dest, std::move(buffer)});
+            it++;
+            perf_counter.num_insts++;
+        } else {
+            break;
+        }
+    }
+
+    for (auto& update : phi_updates) {
+        View src_buffer_view{.data = update.data.data(), .type = update.dest.type};
+        assign(update.dest, src_buffer_view);
+    }
+
+    while (it != block.insts().end()) {
+        const auto& inst = *it;
         match(
             inst,
             [&](const UnaryInst& unary) {
@@ -73,11 +100,10 @@ auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View&
                 execute(call, srcs, result);
             },
             [&](const PhiInst& phi) {
-                auto operand = view_of(phi.args.at(prev), frame);
-                auto result = view_of(phi.result, frame);
-                assign(result, operand);
+                throw COMPILER_ERROR("Phi instruction must be at the beginning of a block");
             });
         perf_counter.num_insts++;
+        it++;
     }
     auto& exit = block.exit();
     perf_counter.num_insts++;  // count exit instruction as well
