@@ -72,25 +72,28 @@ inline auto toString(bool val) -> std::string {
 inline auto serializeArray(const Type& type, std::byte* buffer) -> std::string {
     std::string result;
     auto elem_type = type.as<ir::type::Array>().elem;
-    auto size = type.as<ir::type::Array>().size;
+    if (!elem_type.is<ir::type::Primitive>()) {
+        throw COMPILER_ERROR(
+            fmt::format("Unsupported type in ConstexprValue array: {}", elem_type));
+    }
+    auto prim = elem_type.as<ir::type::Primitive>();
+    size_t size = type.as<ir::type::Array>().size, len = 1;
     for (size_t i = 0; i < size; i++) {
-        result += match(
-                      elem_type.var(),
-                      [&](const ir::type::Primitive& prim) -> std::string {
-                          return match(prim, [&](auto v) {
-                              using type = typename decltype(v)::type;
-                              return toString(*(type*)buffer);
-                          });
-                      },
-                      [&](const ir::type::Array& arr) -> std::string {
-                          return serializeArray(elem_type, buffer);
-                      },
-                      [&](const auto&) -> std::string {
-                          throw COMPILER_ERROR(fmt::format(
-                              "Unsupported type in ConstexprValue array: {}", elem_type));
-                      }) +
+        if (match(prim, [&](auto v) {
+                using type = typename decltype(v)::type;
+                return (*(type*)buffer) != 0;
+            })) {
+            len = i;
+        }
+    }
+    for (size_t i = 0; i < len; i++) {
+        result += match(prim,
+                        [&](auto v) {
+                            using type = typename decltype(v)::type;
+                            return toString(*(type*)buffer);
+                        }) +
                   ", ";
-        buffer += ir::type::size_of(elem_type);
+        buffer += ir::type::size_of(prim);
     }
     if (result.size()) result.pop_back(), result.pop_back();
     return "{" + result + "}";

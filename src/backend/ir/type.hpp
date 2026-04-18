@@ -514,7 +514,7 @@ inline bool operator<=(const Func& from, const Func& to) {
 inline bool operator<=(const Array& from, const Array& to) {
     if (!(from.elem <= to.elem)) return false;
     if (!(to.elem <= from.elem)) return false;
-    return from.size == to.size;
+    return from.size <= to.size;
 }
 
 inline bool operator<=(const Reference& from, const Reference& to) {

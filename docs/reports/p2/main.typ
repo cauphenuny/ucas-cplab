@@ -235,13 +235,13 @@ int main() {
   }
   ```
 
-- 如果都是 Array 类型，from 是 to 的子类型当且仅当 from 和 to 的元素类型相同，并且 from 的长度等于 to 的长度
+- 如果都是 Array 类型，from 是 to 的子类型当且仅当 from 和 to 的元素类型相同，并且 from 的长度小于等于 to 的长度
 
   ```cpp
   inline bool operator<=(const Array& from, const Array& to) {
       if (!(from.elem <= to.elem)) return false;
       if (!(to.elem <= from.elem)) return false;
-      return from.size == to.size;
+      return from.size <= to.size;
   }
   ```
 

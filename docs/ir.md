@@ -30,7 +30,7 @@ A 是 B 的子类型，代表 A 的所有取值都可以在 B 中表示，即 A 
     `if to.readonly => (from.elem <: to.elem)` # 目标是只读指针则协变
     `else => (from.elem <: to.elem) and (to.elem <: from.elem)` # 目标不是只读则不变
 9. `{from, to} is array_type`:
-    `if to.size != from.size => false`
+    `if to.size < from.size => false`
     `else => (from.elem <: to.elem) and (to.elem <: from.elem)` # 数组元素不变
 10. `from is array_type, to is pointer_type`: `from.decay <: to`
 
