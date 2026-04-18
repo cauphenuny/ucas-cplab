@@ -11,12 +11,12 @@ void test(const std::string& name, const std::string& text) {
         auto program = ir::parse(ir_stream);
         fmt::println("Before AddPhi:\n{}", program);
 
-        ir::optim::pass::ssa::AddPhi add_phi;
+        ir::optim::ssa_impl::AddPhi add_phi;
         add_phi.apply(program);
 
         fmt::println("After AddPhi:\n{}", program);
 
-        ir::optim::pass::ssa::Rename rename;
+        ir::optim::ssa_impl::Rename rename;
         rename.apply(program);
         fmt::println("After Rename:\n{}", program);
     } catch (const std::exception& e) {

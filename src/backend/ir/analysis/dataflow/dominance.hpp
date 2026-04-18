@@ -2,7 +2,7 @@
 
 #include "framework.hpp"
 
-namespace ir::optim::flow {
+namespace ir::analysis::flow {
 
 struct Dominance {
     static constexpr bool is_forward = true;
@@ -26,4 +26,4 @@ struct Dominance {
 static_assert(!has_context<Dominance>::value);
 static_assert(is_flow_trait_v<Dominance>);
 
-}  // namespace ir::optim::flow
+}  // namespace ir::analysis::flow

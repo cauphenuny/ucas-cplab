@@ -6,7 +6,7 @@
 
 #include <unordered_map>
 
-namespace ir::optim {
+namespace ir::analysis {
 
 struct DominanceTree {
     auto idom(Block* blk) const -> Block* {
@@ -100,4 +100,4 @@ private:
     std::unordered_map<Block*, Data> frontier_map;
 };
 
-}  // namespace ir::optim
+}  // namespace ir::analysis

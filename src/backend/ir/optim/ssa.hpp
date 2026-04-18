@@ -15,9 +15,9 @@
 #include <unordered_set>
 #include <variant>
 
-namespace ir::optim::pass {
+namespace ir::optim {
 
-namespace ssa {
+namespace ssa_impl {
 
 struct AddPhi : Pass {
     void apply(Program& prog) override {
@@ -181,9 +181,9 @@ private:
     }
 };
 
-}  // namespace ssa
+}  // namespace ssa_impl
 
-using ToSSA = Compose<ssa::AddPhi, ssa::Rename>;
+using ToSSA = Compose<ssa_impl::AddPhi, ssa_impl::Rename>;
 
 struct SSAValue2TempValue : Pass {
     void apply(Program& prog) override {
@@ -223,4 +223,4 @@ struct SSAValue2TempValue : Pass {
     }
 };
 
-}  // namespace ir::optim::pass
+}  // namespace ir::optim

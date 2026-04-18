@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-namespace ir::optim {
+namespace ir::analysis {
 
 // clang-format off
 
@@ -287,4 +287,4 @@ template <typename T, auto print> struct Set {
     }
 };
 
-}  // namespace ir::optim
+}  // namespace ir::analysis

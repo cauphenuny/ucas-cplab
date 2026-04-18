@@ -6,7 +6,7 @@
 #include "framework.hpp"
 #include "utils/match.hpp"
 
-namespace ir::optim::flow {
+namespace ir::analysis::flow {
 
 struct Liveness {
     static constexpr bool is_forward = false;
@@ -77,4 +77,4 @@ struct Liveness {
 static_assert(has_context<Liveness>::value);
 static_assert(is_flow_trait_v<Liveness>);
 
-}  // namespace ir::optim::flow
+}  // namespace ir::analysis::flow

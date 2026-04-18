@@ -8,7 +8,7 @@
 #include <functional>
 #include <sstream>
 
-using namespace ir::optim;
+using namespace ir::analysis;
 using Liveness = flow::Liveness;
 
 void test(const std::string& name, const std::string& text,

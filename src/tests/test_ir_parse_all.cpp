@@ -52,11 +52,11 @@ int main() {
 
         reconstruct(fmt::format("{}\n", code), "Generated IR");
 
-        auto to_ssa = ir::optim::pass::ToSSA();
+        auto to_ssa = ir::optim::ToSSA();
         to_ssa.apply(code);
         reconstruct(fmt::format("{}\n", code), "SSA IR");
 
-        // auto ssa_to_temp = ir::optim::pass::SSAValue2TempValue();
+        // auto ssa_to_temp = ir::optim::SSAValue2TempValue();
         // ssa_to_temp.apply(code);
         // reconstruct(fmt::format("{}\n", code), "SSA IR, use TempValue");
     }

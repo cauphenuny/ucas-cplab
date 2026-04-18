@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-namespace ir::optim {
+namespace ir::analysis {
 
 struct ControlFlowGraph {
     using Node = Block*;
@@ -34,4 +34,4 @@ private:
     }
 };
 
-}  // namespace ir::optim
+}  // namespace ir::analysis

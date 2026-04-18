@@ -60,7 +60,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
 }
 
 auto analysis(const ir::Program& program) {
-    using namespace ir::optim;
+    using namespace ir::analysis;
     fmt::println("IR Analysis:\n");
     for (auto& func : program.getFuncs()) {
         auto _ = fmt_indent::Guard();
@@ -196,7 +196,7 @@ int main(int argc, const char* argv[]) {
                 }
 
                 {
-                    using namespace ir::optim::pass;
+                    using namespace ir::optim;
                     std::vector<std::pair<std::unique_ptr<Pass>, std::string>> passes;
                     if (to_ssa) {
                         passes.emplace_back(std::make_unique<ToSSA>(), "SSA Form");

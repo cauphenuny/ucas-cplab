@@ -2,7 +2,7 @@
 #include "backend/ir/ir.hpp"
 #include "utils/match.hpp"
 
-namespace ir::optim::utils {
+namespace ir::analysis::utils {
 
 auto is_named(const LeftValue& v) {
     return std::holds_alternative<NamedValue>(v);
@@ -73,4 +73,4 @@ auto vars(Inst& inst) {
     return ret;
 }
 
-}  // namespace ir::optim::utils
+}  // namespace ir::analysis::utils

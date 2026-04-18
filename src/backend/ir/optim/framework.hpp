@@ -1,7 +1,10 @@
 #pragma once
+#include "backend/ir/analysis/dataflow/framework.hpp"
 #include "backend/ir/ir.hpp"
 
-namespace ir::optim::pass {
+namespace ir::optim {
+
+using namespace ir::analysis;
 
 struct Pass {
     virtual ~Pass() = default;
@@ -14,4 +17,4 @@ template <typename... Passes> struct Compose : Pass {
     }
 };
 
-}  // namespace ir::optim::pass
+}  // namespace ir::optim
