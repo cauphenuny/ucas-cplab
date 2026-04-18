@@ -17,6 +17,7 @@ FALSE: 'false';
 RETURN: 'return';
 BRANCH: 'branch';
 JUMP: 'jump';
+PHI: '$phi';
 
 ID: [a-zA-Z_][a-zA-Z0-9_]*;
 
@@ -28,7 +29,6 @@ INT_LITERAL: DIGIT+;
 
 fragment FLOAT_NUMBER:
 	DIGIT+ '.' DIGIT* ([eE] [+-]? DIGIT+)?
-	| '.' DIGIT+ ([eE] [+-]? DIGIT+)?
 	| DIGIT+ [eE] [+-]? DIGIT+;
 
 FLOAT_LITERAL: FLOAT_NUMBER [fF];
@@ -51,7 +51,8 @@ paramList: param (',' param)*;
 param: ID ':' type;
 
 temp: '$' INT_LITERAL;
-var: temp | ID;
+ssa: '$' ID '.' INT_LITERAL;
+var: temp | ssa | ID;
 value: var | constexpr;
 label: '\'' ID;
 
@@ -71,6 +72,7 @@ inst:
 	| var ':' type '=' '*(' var ')' ';' # pointerLoadInst
 	| var ':' type '=' value binop value ';' # binaryInst
 	| var ':' type '=' ('!' value | '-' value | value) ';' # unaryInst
+	| var ':' type '=' PHI '(' (label ':' value (',' label ':' value)*)? ')' ';' #phiInst
 	;
 
 argList: value (',' value)*;

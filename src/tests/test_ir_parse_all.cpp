@@ -1,4 +1,5 @@
 #include "backend/ir/gen/irgen.h"
+#include "backend/ir/optim/pass/ssa.hpp"
 #include "backend/ir/parse/visit.hpp"
 #include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"
@@ -36,16 +37,28 @@ int main() {
         auto istream = std::istringstream(text);
         auto ast = ast::analysis(ast::parse(istream));
         auto code = ir::gen::generate(ast);
-        auto ir_text = fmt::format("{}\n", code);
-        fmt::println("Generated IR: \n{}\n", ir_text);
-        auto ir_stream = std::istringstream(ir_text);
-        try {
-            auto ir_code = ir::parse(ir_stream);
-            fmt::println("Reconstructed IR: \n{}\n", ir_code);
-        } catch (const std::exception& e) {
-            fmt::println("Exception: {}\n", e.what());
-            exit(1);
-        }
+
+        auto reconstruct = [](const std::string& ir_text, const std::string& name) {
+            fmt::println("{}: \n{}\n", name, ir_text);
+            auto ir_stream = std::istringstream(ir_text);
+            try {
+                auto ir_code = ir::parse(ir_stream);
+                fmt::println("Reconstructed IR: \n{}\n", ir_code);
+            } catch (const std::exception& e) {
+                fmt::println("Exception: {}\n", e.what());
+                exit(1);
+            }
+        };
+
+        reconstruct(fmt::format("{}\n", code), "Generated IR");
+
+        auto to_ssa = ir::optim::pass::ToSSA();
+        to_ssa.apply(code);
+        reconstruct(fmt::format("{}\n", code), "SSA IR");
+
+        // auto ssa_to_temp = ir::optim::pass::SSAValue2TempValue();
+        // ssa_to_temp.apply(code);
+        // reconstruct(fmt::format("{}\n", code), "SSA IR, use TempValue");
     }
     return 0;
 }

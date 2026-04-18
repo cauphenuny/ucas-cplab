@@ -306,6 +306,19 @@ public:
         return {};
     }
 
+    std::any visitPhiInst(IRParser::PhiInstContext* ctx) override {
+        // var ':' type '=' PHI '(' (label ':' value (',' label ':' value)*)? ')' ';'
+        auto result = resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
+        ir::PhiInst phi{.result = std::move(result)};
+        for (size_t i = 0; i < ctx->label().size(); ++i) {
+            auto label_str = ctx->label(i)->ID()->getText();
+            auto val = take<ir::Value>(visit(ctx->value(i)));
+            phi.args[block_map_.at(label_str)] = std::move(val);
+        }
+        current_block_->add(std::move(phi));
+        return {};
+    }
+
     std::any visitUnaryInst(IRParser::UnaryInstContext* ctx) override {
         // var : type = !val | -val | val ;
         auto result = resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
@@ -512,6 +525,20 @@ private:
             }
             throw SemanticError(get_loc(ctx),
                                 fmt::format("Temporary ${} used before definition", id));
+        } else if (ctx->ssa()) {
+            auto ssa_ctx = ctx->ssa();
+            auto name = ssa_ctx->ID()->getText();
+            size_t version = std::stoul(ssa_ctx->INT_LITERAL()->getText());
+            const ir::Alloc* alloc = nullptr;
+            if (local_symbol_map_.count(name)) {
+                alloc = local_symbol_map_.at(name);
+            } else if (symbol_map_.count(name)) {
+                alloc = symbol_map_.at(name);
+            } else {
+                throw SemanticError(get_loc(ssa_ctx),
+                                    fmt::format("Symbol {} for SSA value not found", name));
+            }
+            return ir::SSAValue(alloc->type, alloc, version);
         } else {
             auto name = ctx->ID()->getText();
             if (local_symbol_map_.count(name)) {
@@ -533,6 +560,20 @@ private:
             auto temp = current_func_->newTemp(type, current_block_);
             temp_map_[id] = temp.id;
             return temp;
+        } else if (ctx->ssa()) {
+            auto ssa_ctx = ctx->ssa();
+            auto name = ssa_ctx->ID()->getText();
+            size_t version = std::stoul(ssa_ctx->INT_LITERAL()->getText());
+            const ir::Alloc* alloc = nullptr;
+            if (local_symbol_map_.count(name)) {
+                alloc = local_symbol_map_.at(name);
+            } else if (symbol_map_.count(name)) {
+                alloc = symbol_map_.at(name);
+            } else {
+                throw SemanticError(get_loc(ssa_ctx),
+                                    fmt::format("Symbol {} for SSA value not found", name));
+            }
+            return ir::SSAValue(type, alloc, version);
         } else {
             auto name = ctx->ID()->getText();
             // ID must be pre-defined in localDecl or paramList or be a global
