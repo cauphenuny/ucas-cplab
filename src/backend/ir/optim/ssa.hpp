@@ -148,8 +148,6 @@ private:
                             }
                         }
                     }
-                } else {
-                    break;  // phi nodes are always at the beginning of the block
                 }
             }
         }
