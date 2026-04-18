@@ -1,8 +1,9 @@
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.hpp"
-#include "backend/ir/optim/cp.hpp"
-#include "backend/ir/optim/dae.hpp"
-#include "backend/ir/optim/dde.hpp"
+#include "backend/ir/optim/const_propagation.hpp"
+#include "backend/ir/optim/copy_propagation.hpp"
+#include "backend/ir/optim/dead_alloc.hpp"
+#include "backend/ir/optim/dead_def.hpp"
 #include "backend/ir/optim/framework.hpp"
 #include "backend/ir/optim/ssa.hpp"
 #include "backend/ir/vm/vm.h"
@@ -45,30 +46,32 @@ int main(int argc, const char* argv[]) {
         ++up;
     }
     if (!std::filesystem::exists(path)) {
-        fmt::println("Directory not found after searching {} levels: {}\n", max_up, base_path);
+        fmt::println(stderr, "Directory not found after searching {} levels: {}\n", max_up,
+                     base_path);
         return 1;
     }
 
     // factory mapping from short name -> Pass constructor
     using PassFactory = std::function<std::unique_ptr<ir::optim::Pass>()>;
     std::map<std::string, PassFactory> factories = {
-        {"cp", []() { return std::make_unique<ir::optim::CopyPropagation>(); }},
+        {"copy", []() { return std::make_unique<ir::optim::CopyPropagation>(); }},
         {"dde", []() { return std::make_unique<ir::optim::DeadDefElimination>(); }},
         {"dae", []() { return std::make_unique<ir::optim::DeadAllocElimination>(); }},
+        {"const", []() { return std::make_unique<ir::optim::ConstPropagation>(); }},
         {"ssa", []() { return std::make_unique<ir::optim::ToSSA>(); }},
         {"ssa2temp", []() { return std::make_unique<ir::optim::SSAValue2TempValue>(); }}};
 
-    fmt::println("Using directory: {}\n", path.string());
+    fmt::println(stderr, "Using directory: {}\n", path.string());
 
     for (const auto& file : std::filesystem::directory_iterator(path)) {
         if (file.path().extension() != ".cact") continue;
 
-        fmt::print("{}: ", file.path().string());
+        fmt::print(stderr, "{}: ", file.path().string());
 
         // read source file
         std::ifstream fstream(file.path());
         if (!fstream.is_open()) {
-            fmt::println("Failed to open file: {}\n", file.path().string());
+            fmt::println(stderr, "Failed to open file: {}\n", file.path().string());
             continue;
         }
         std::string text{std::istreambuf_iterator<char>(fstream), std::istreambuf_iterator<char>()};
@@ -106,7 +109,7 @@ int main(int argc, const char* argv[]) {
                 if (it != factories.end()) {
                     passes.push_back(it->second());
                 } else {
-                    fmt::println("Unknown pass: {} (skipping)", name);
+                    fmt::println(stderr, "Unknown pass: {} (skipping)", name);
                 }
             }
 
@@ -122,10 +125,11 @@ int main(int argc, const char* argv[]) {
                 improvement = ((ssize_t)before - (ssize_t)after) * 100.0 / before;
             }
 
-            fmt::println("{} -> {}, improvement: {:.2f}%", before, after, improvement);
+            fmt::println(stderr, "{} -> {}, improvement: {:.2f}%", before, after, improvement);
 
         } catch (const std::exception& e) {
-            fmt::println("Exception while processing {}: {}\n", file.path().string(), e.what());
+            fmt::println(stderr, "Exception while processing {}: {}\n", file.path().string(),
+                         e.what());
             continue;
         }
     }

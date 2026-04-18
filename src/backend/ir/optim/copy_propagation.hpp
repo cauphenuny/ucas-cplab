@@ -1,5 +1,7 @@
 /// @brief Copy Propagation Pass, must run after SSA construction
 
+/// @note propagates through non-array MOV operation
+
 #pragma once
 #include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.hpp"

@@ -5,9 +5,10 @@
 #include "backend/ir/analysis/dominance.hpp"
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.hpp"
-#include "backend/ir/optim/cp.hpp"
-#include "backend/ir/optim/dae.hpp"
-#include "backend/ir/optim/dde.hpp"
+#include "backend/ir/optim/const_propagation.hpp"
+#include "backend/ir/optim/copy_propagation.hpp"
+#include "backend/ir/optim/dead_alloc.hpp"
+#include "backend/ir/optim/dead_def.hpp"
 #include "backend/ir/optim/ssa.hpp"
 #include "backend/ir/vm/vm.h"
 #include "fmt/base.h"
@@ -42,26 +43,27 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     fmt::print(
         R"({} [args]... files ...
 
-    --help          Show this help message
+    --help              Show this help message
 
-    --ast           Print the AST of the input files
-    --ast-info      Print the semantic analysis result of the AST
+    --ast               Print the AST of the input files
+    --ast-info          Print the semantic analysis result of the AST
 
-    --ir            Print the generated IR of the input files
-    --ir-info       Print some analysis result of the generated IR
-    --ssa           Convert generated IR to SSA form
-    --ssa2temp      Convert SSAValue in IR to TempValue, then prune useless allocation
+    --ir                Print the generated IR of the input files
+    --ir-info           Print some analysis result of the generated IR
+    --ssa               Convert generated IR to SSA form
+    --ssa2temp          Convert SSAValue in IR to TempValue, then prune useless allocation
 
-    --optimize-cp   Apply Copy Propagation optimization (requires --ssa)
-    --optimize-dde  Apply Dead Definition Elimination optimization (requires --ssa)
-    --optimize-dae  Apply Dead Allocation Elimination optimization (requires --ssa, suggests --ssa2temp)
-    --optimize-cse  (TODO) Apply Common Subexpression Elimination optimization (requires --ssa)
-    -O1, --optimize Apply above optimizations
+    --optimize-copy     Apply Copy Propagation optimization (requires --ssa)
+    --optimize-const    Apply Const Propagation optimization (requires --ssa)
+    --optimize-dde      Apply Dead Definition Elimination optimization (requires --ssa)
+    --optimize-dae      Apply Dead Allocation Elimination optimization (requires --ssa, suggests --ssa2temp)
+    --optimize-cse      (TODO) Apply Common Subexpression Elimination optimization (requires --ssa)
+    -O1, --optimize     Apply above optimizations
 
-    --exec          Execute the generated IR
-    --silent        Suppress all compiler output except the return value when executing
+    --exec              Execute the generated IR
+    --silent            Suppress all compiler output except the return value when executing
 
-    --output <file> Write the generated IR also to the specified file
+    --output <file>     Write the generated IR also to the specified file
 
 )",
         prog_name);
@@ -129,7 +131,8 @@ int main(int argc, const char* argv[]) {
     bool optimize_dae = false;
     bool optimize_dde = false;
     bool optimize_cse = false;
-    bool optimize_cp = false;
+    bool optimize_copy = false;
+    bool optimize_const = false;
     FILE* output_file = nullptr;
     std::set<std::string> files;
 
@@ -155,15 +158,18 @@ int main(int argc, const char* argv[]) {
             optimize_dae = true;
             optimize_dde = true;
             optimize_cse = true;
-            optimize_cp = true;
+            optimize_copy = true;
+            optimize_const = true;
         } else if (arg == "--optimize-dae") {
             optimize_dae = true;
         } else if (arg == "--optimize-dde") {
             optimize_dde = true;
         } else if (arg == "--optimize-cse") {
             optimize_cse = true;
-        } else if (arg == "--optimize-cp") {
-            optimize_cp = true;
+        } else if (arg == "--optimize-copy") {
+            optimize_copy = true;
+        } else if (arg == "--optimize-const") {
+            optimize_const = true;
         } else if (arg == "--output") {
             if (i + 1 >= argc) {
                 usage(argv[0], INVALID_ARGUMENT);
@@ -183,7 +189,7 @@ int main(int argc, const char* argv[]) {
                 "overwritten.");
     }
 
-    bool optimize = optimize_dde || optimize_cse || optimize_cp || optimize_dae;
+    bool optimize = optimize_dde || optimize_cse || optimize_copy || optimize_dae;
     if (optimize && !to_ssa) {
         warning("Optimization requires SSA form. Auto enabling SSA form.");
         to_ssa = true;
@@ -255,9 +261,13 @@ int main(int argc, const char* argv[]) {
                 if (optimize) {
                     using namespace ir::optim;
                     std::vector<std::pair<std::unique_ptr<Pass>, std::string>> passes;
-                    if (optimize_cp) {
+                    if (optimize_copy) {
                         passes.emplace_back(std::make_unique<CopyPropagation>(),
                                             "Copy Propagation");
+                    }
+                    if (optimize_const) {
+                        passes.emplace_back(std::make_unique<ConstPropagation>(),
+                                            "Const Propagation");
                     }
                     if (optimize_dde) {
                         passes.emplace_back(std::make_unique<DeadDefElimination>(),
