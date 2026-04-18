@@ -53,6 +53,20 @@ struct DeadBlockElimination : Pass {
             }
 
             auto& blocks = func.blocks();
+
+            for (auto& block_box : blocks) {
+                Block* blk = block_box.get();
+                if (reachable.find(blk) == reachable.end()) continue;
+
+                for (auto& inst : blk->insts()) {
+                    if (auto phi = std::get_if<PhiInst>(&inst); phi) {
+                        pass_changed |= refine_phi(*phi, reachable);
+                    } else {
+                        break;
+                    }
+                }
+            }
+
             auto it = std::remove_if(blocks.begin(), blocks.end(),
                                      [&](const std::unique_ptr<Block>& blk) {
                                          return reachable.find(blk.get()) == reachable.end();
@@ -65,6 +79,19 @@ struct DeadBlockElimination : Pass {
         }
         return pass_changed;
     }
+
+    bool refine_phi(PhiInst& phi, const std::unordered_set<Block*>& reachable) {
+        bool changed = false;
+        for (auto it = phi.args.begin(); it != phi.args.end();) {
+            if (reachable.find(it->first) == reachable.end()) {
+                it = phi.args.erase(it);
+                changed = true;
+            } else {
+                ++it;
+            }
+        }
+        return changed;
+    }
 };
 
 /// @note: replace block with only a jump exit by its target
@@ -74,6 +101,7 @@ struct TrivialBlockReplacement : Pass {
         bool pass_changed = false;
         for (auto& func_box : prog.getFuncs()) {
             pass_changed |= replace(*func_box, prog);
+            pass_changed |= squash(*func_box, prog);
         }
         return pass_changed;
     }
@@ -148,11 +176,17 @@ private:
             !std::holds_alternative<JumpExit>(func.entrance()->exit()))
             return false;
         auto target = std::get<JumpExit>(func.entrance()->exit()).target;
+
+        if (target->insts().size() && std::holds_alternative<PhiInst>(target->insts().front()))
+            return false;
+        auto cfg = ControlFlowGraph(func);
+        if (cfg.pred[target].size() > 1) return false;
+
         for (auto& block : func.blocks()) {
             if (block.get() == target) {
+                std::swap(func.blocks()[0]->label, block->label);
                 std::swap(func.blocks()[0], block);
                 std::swap(block, func.blocks().back());
-                func.blocks().pop_back();
             }
         }
         return true;
@@ -164,7 +198,6 @@ struct TrivialBlockElimination : Pass {
         bool changed = false;
         while (run(prog)) {
             changed = true;
-            fmt::println("---------\n{}", prog);
         }
         return changed;
     }

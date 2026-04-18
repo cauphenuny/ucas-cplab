@@ -278,7 +278,7 @@ inline auto ind(size_t level) {  // indent
 }  // namespace
 
 struct Block {
-    const std::string label;
+    std::string label;
     Block(Block&&) =
         delete;  // NOTE: Block is not movable because some instructions may hold references to it.
 

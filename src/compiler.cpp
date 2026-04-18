@@ -246,7 +246,7 @@ int main(int argc, const char* argv[]) {
                         bool changed = false;
                         for (auto& [pass, name] : passes) {
                             changed |= pass->apply(program);
-                            echo(program, name);
+                            if (changed) echo(program, name);
                         }
                         return changed;
                     };
@@ -290,8 +290,7 @@ int main(int argc, const char* argv[]) {
                         passes.emplace_back(std::make_unique<TrivialBlockElimination>(),
                                             "Trivial Block Elimination");
                     }
-                    // while (apply(program, passes));
-                    apply(program, passes);
+                    while (apply(program, passes));
                 }
 
                 if (output_file) {
