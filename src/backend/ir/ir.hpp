@@ -138,6 +138,20 @@ struct ConstexprValue {
         return *this;
     }
     ConstexprValue& operator=(ConstexprValue&&) noexcept = default;
+
+    static ConstexprValue zeros_like(const Type& type) {
+        if (type.is<type::Primitive>()) {
+            return match(type.as<type::Primitive>(),
+                         [](auto v) { return ConstexprValue(typename decltype(v)::type(0)); });
+        } else if (type.is<type::Array>()) {
+            auto size = ir::type::size_of(type);
+            auto buf = std::make_unique<std::byte[]>(size);
+            std::memset(buf.get(), 0, size);
+            return {type.flatten(), std::move(buf)};
+        } else {
+            throw COMPILER_ERROR(fmt::format("Unsupported type in zeros_like: {}", type));
+        }
+    }
 };
 
 struct SSAValue {

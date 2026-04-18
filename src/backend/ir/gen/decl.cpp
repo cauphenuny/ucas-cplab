@@ -74,7 +74,7 @@ auto Generator::gen(const ast::VarDef* def) -> std::unique_ptr<Alloc> {
     auto type = this->info->type_of(def);
     auto alloc =
         Alloc::variable(this->name_of(def), type,
-                        def->val ? std::make_optional(gen(&*def->val, type)) : std::nullopt);
+                        def->val ? gen(&*def->val, type) : ConstexprValue::zeros_like(type));
     this->ir_defs[def] = alloc.get();
     return alloc;
 }

@@ -72,13 +72,13 @@ int main() {
                             fmt::println("  [OK] param '{}' is live-in at entry", alloc->name);
                         } else {
                             if (!alloc->init) {
-                                warning(fmt::format("local value '{}' is live-in at entry, maybe "
-                                                    "uninitialized?",
-                                                    alloc->name),
-                                        func.name);
-                            } else {
-                                fmt::println("  [OK] local value '{}' is initialized at entry",
+                                fmt::println("  [FAIL] local value '{}' is live-in at entry "
+                                             "without initializer",
                                              alloc->name);
+                                exit(1);
+                            } else {
+                                fmt::println("  [OK] {}local value '{}' is initialized at entry",
+                                             alloc->comptime ? "const " : "", alloc->name);
                             }
                         }
                     }

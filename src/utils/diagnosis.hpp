@@ -48,8 +48,8 @@ struct CompilerError : std::logic_error {
 
 inline void warning(const std::string& desc, const std::string& scope) {
     if (scope.length() > 0) {
-        fmt::println(YELLOW BOLD "warning " NONE "in {}: {}", scope, desc);
+        fmt::println(stderr, YELLOW BOLD "warning " NONE "in {}: {}", scope, desc);
     } else {
-        fmt::println(YELLOW BOLD "warning: " NONE "{}", desc);
+        fmt::println(stderr, YELLOW BOLD "warning: " NONE "{}", desc);
     }
 }
