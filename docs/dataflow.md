@@ -48,15 +48,19 @@ struct Dominance {
 
 注意 boundary 是全局变量集合，不是空集
 
-#### SSA Phi 导致的活跃变量污染问题 (Bug Fix)
+#### SSA Phi 导致的活跃变量泄漏问题 (Bug Fix)
 
-在引入 SSA 形式后，最初的活跃变量分析实现中存在一个严重 bug：$\phi$ 指令的操作数（Uses）被错误地视为在包含该指令的基本块（Block）入口处统一使用。
+在引入 SSA 形式后，活跃变量分析需要特殊处理 $\phi$ 指令。最初的实现中存在一个严重 bug：在计算基本块的 `gen` 集合（即在该块中先于定义而被使用的变量）时，错误地包含了 $\phi$ 指令的操作数。
 
-**影响**：
-- 活跃变量会被错误地传播到所有前驱块。
-- 甚至会导致函数定义中不存在的变量被认为在 `entry` 块入口处活跃。
+**Bug 表现**：
+- **活跃变量泄漏**：在 `while` 循环等结构中，循环内部定义的变量版本（如 `$i.2`）会被传播到 `entry` 块，导致测试报告 `[FAIL] live-in at entry`。
+- **原因分析**：在标准的活跃分析中，`gen` 集合中的变量被视为在基本块入口处活跃。但 SSA 的 $\phi$ 操作数实际上是“来自于特定前驱块”的使用。如果将其放入 `gen` 集合，该变量就会对所有前驱块都变为活跃，这违反了 SSA 语义。
 
 **解决方案**：
-1. **引入边转移 (Edge Transfer)**：在 `DataFlow` 求解器框架中增加了对 `edge_transfer` 的支持。对于逆向分析（如活跃变量），交汇运算（Meet）时会先针对每条边调用 `edge_transfer`。
-2. **特定的 Phi 处理**：在 `Liveness` 分析类中，将 $\phi$ 指令的操作数从通用的 `gen` 集合中移除，改为记录在 `phi_uses[dst_block][src_block]` 中。
-3. **按边激活**：实现 `edge_transfer(src, dst, data)`，当数据流从 `dst` 回传至 `src` 时，仅将对应于 `src` 分支的 $\phi$ 操作数加入到活跃变量集中。
+1. **使用边转移 (Edge Transfer)**：在 `DataFlow` 框架中支持 `edge_transfer` 机制。对于 $\phi$ 指令 $x = \phi(B_1: v_1, B_2: v_2)$，变量 $v_1$ 仅在从 $B_1$ 进入该块时才是活跃的。
+2. **特定的 Phi 处理**：
+   - 在 `Liveness::init` 中，遍历指令计算 `gen` 集合时，**跳过** $\phi$ 指令的操作数。
+   - 将 $\phi$ 的操作数映射记录在 `phi_uses[current_block][predecessor_block]` 中。
+3. **按边应用**：在 `edge_transfer(src, dst, data)` 中，根据具体的边 $(src \to dst)$，将对应的 $v_i$ 加入到传回给 $src$ 的活跃变量集中。
+
+通过这一改动，$\phi$ 操作数被正确地约束在特定的路径上，解决了非法泄漏到 `entry` 块的问题。

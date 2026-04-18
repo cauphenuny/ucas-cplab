@@ -51,9 +51,10 @@ struct Liveness {
                             ctx.phi_uses[block][pred].insert(*var);
                         }
                     }
-                }
-                for (auto u : utils::used_vars(inst)) {
-                    if (!kill.contains(*u)) gen.insert(*u);
+                } else {
+                    for (auto u : utils::used_vars(inst)) {
+                        if (!kill.contains(*u)) gen.insert(*u);
+                    }
                 }
                 if (auto def = utils::defined_var(inst); def) {
                     kill.insert(*def);
