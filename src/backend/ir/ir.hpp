@@ -73,20 +73,23 @@ inline auto toString(bool val) -> std::string {
 
 inline auto serializeArray(const Type& type, std::byte* buffer) -> std::string {
     std::string result;
-    auto elem_type = type.as<ir::type::Array>().elem;
+    auto flat_type = type.flatten().as<ir::type::Array>();
+    auto elem_type = flat_type.elem;
     if (!elem_type.is<ir::type::Primitive>()) {
         throw COMPILER_ERROR(
             fmt::format("Unsupported type in ConstexprValue array: {}", elem_type));
     }
     auto prim = elem_type.as<ir::type::Primitive>();
-    size_t size = type.as<ir::type::Array>().size, len = 1;
+    size_t size = flat_type.size, len = 1;
+    auto check_ptr = buffer;
     for (size_t i = 0; i < size; i++) {
         if (match(prim, [&](auto v) {
                 using type = typename decltype(v)::type;
-                return (*(type*)buffer) != 0;
+                return (*(type*)check_ptr) != 0;
             })) {
-            len = i;
+            len = i + 1;
         }
+        check_ptr += ir::type::size_of(prim);
     }
     for (size_t i = 0; i < len; i++) {
         result += match(prim,
@@ -156,10 +159,24 @@ struct ConstexprValue {
     }
 
     friend bool operator==(const ConstexprValue& lhs, const ConstexprValue& rhs) {
-        if (lhs.type.is<type::Array>() || rhs.type.is<type::Array>()) {
-            throw COMPILER_ERROR("Cannot compare array with ==");
+        if (!(lhs.type == rhs.type)) return false;
+        if (lhs.type.is<ir::type::Array>()) {
+            auto array_type = lhs.type.flatten().as<ir::type::Array>();
+            auto elem_type = array_type.elem;
+            auto size = array_type.size;
+            auto prim_type = elem_type.as<ir::type::Primitive>();
+            return Match{prim_type}([&](auto p) {
+                using T = typename decltype(p)::type;
+                auto lhs_array = (const T*)std::get<std::unique_ptr<std::byte[]>>(lhs.val).get();
+                auto rhs_array = (const T*)std::get<std::unique_ptr<std::byte[]>>(rhs.val).get();
+                for (size_t i = 0; i < size; i++) {
+                    if (lhs_array[i] != rhs_array[i]) return false;
+                }
+                return true;
+            });
+        } else {
+            return lhs.val == rhs.val;
         }
-        return lhs.val == rhs.val;
     }
 };
 
@@ -652,8 +669,30 @@ template <> struct std::hash<ir::SSAValue> {
 
 template <> struct std::hash<ir::ConstexprValue> {
     auto operator()(const ir::ConstexprValue& v) const noexcept -> std::size_t {
-        return std::hash<
-            std::variant<std::monostate, int, float, bool, double, std::unique_ptr<std::byte[]>>>{}(
-            v.val);
+        return Match{v.val}(
+            [&](const std::unique_ptr<std::byte[]>& buffer) {
+                auto array_type = v.type.flatten().as<ir::type::Array>();
+                return hash_array(array_type.elem, buffer.get(), array_type.size);
+            },
+            [&](const auto&) {
+                return std::hash<std::variant<std::monostate, int, float, bool, double,
+                                              std::unique_ptr<std::byte[]>>>{}(v.val);
+            });
+    }
+
+    auto hash_array(const ir::Type& elem_type, std::byte* buffer, size_t length) const -> size_t {
+        auto prim = elem_type.as<ir::type::Primitive>();
+        return Match{prim}([&](auto p) {
+            using T = typename decltype(p)::type;
+            auto array = (T*)buffer;
+            while (length > 0 && array[length - 1] == T{}) {
+                --length;
+            }
+            size_t h = 0;
+            for (size_t i = 0; i < length; ++i) {
+                h ^= std::hash<T>{}(array[i]) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            }
+            return h;
+        });
     }
 };
