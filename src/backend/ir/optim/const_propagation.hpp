@@ -4,7 +4,7 @@
 /// then invoke Copy Propagation to further propagate constants.
 
 #pragma once
-#include "backend/ir/ir.hpp"
+#include "backend/ir/ir.h"
 #include "backend/ir/optim/copy_propagation.hpp"
 #include "backend/ir/type.hpp"
 #include "copy_propagation.hpp"

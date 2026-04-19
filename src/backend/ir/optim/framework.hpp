@@ -1,6 +1,6 @@
 #pragma once
 #include "backend/ir/analysis/dataflow/framework.hpp"
-#include "backend/ir/ir.hpp"
+#include "backend/ir/ir.h"
 
 namespace ir::optim {
 

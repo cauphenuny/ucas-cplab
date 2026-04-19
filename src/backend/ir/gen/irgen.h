@@ -1,6 +1,6 @@
 #pragma once
 
-#include "backend/ir/ir.hpp"
+#include "backend/ir/ir.h"
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/ast/ast.hpp"
 

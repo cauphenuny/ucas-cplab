@@ -1,7 +1,7 @@
 #pragma once
 
 #include "backend/ir/analysis/cfg.hpp"
-#include "backend/ir/ir.hpp"
+#include "backend/ir/ir.h"
 #include "utils/serialize.hpp"
 
 #include <set>

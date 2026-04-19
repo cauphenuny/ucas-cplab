@@ -1,4 +1,4 @@
-#include "backend/ir/ir.hpp"
+#include "backend/ir/ir.h"
 #include "backend/ir/type.hpp"
 #include "backend/ir/vm/view.hpp"
 #include "utils/diagnosis.hpp"

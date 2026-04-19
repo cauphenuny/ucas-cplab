@@ -3,7 +3,7 @@
 #pragma once
 
 #include "backend/ir/analysis/cfg.hpp"
-#include "backend/ir/ir.hpp"
+#include "backend/ir/ir.h"
 #include "framework.hpp"
 
 #include <algorithm>

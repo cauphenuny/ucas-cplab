@@ -1,5 +1,5 @@
 #pragma once
-#include "backend/ir/ir.hpp"
+#include "backend/ir/ir.h"
 #include "utils/match.hpp"
 
 namespace ir::analysis::utils {

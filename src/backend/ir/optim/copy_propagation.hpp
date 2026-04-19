@@ -4,7 +4,7 @@
 
 #pragma once
 #include "backend/ir/analysis/utils.hpp"
-#include "backend/ir/ir.hpp"
+#include "backend/ir/ir.h"
 #include "backend/ir/type.hpp"
 #include "framework.hpp"
 

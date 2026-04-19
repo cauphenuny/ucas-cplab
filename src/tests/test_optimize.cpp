@@ -1,5 +1,5 @@
 #include "backend/ir/gen/irgen.h"
-#include "backend/ir/ir.hpp"
+#include "backend/ir/ir.h"
 #include "backend/ir/optim/const_propagation.hpp"
 #include "backend/ir/optim/copy_propagation.hpp"
 #include "backend/ir/optim/dead_alloc.hpp"

@@ -8,7 +8,7 @@
 #include "backend/ir/analysis/dataflow/liveness.hpp"
 #include "backend/ir/analysis/dominance.hpp"
 #include "backend/ir/analysis/utils.hpp"
-#include "backend/ir/ir.hpp"
+#include "backend/ir/ir.h"
 #include "framework.hpp"
 
 #include <memory>

@@ -1,4 +1,4 @@
-#include "backend/ir/ir.hpp"
+#include "backend/ir/ir.h"
 #include "backend/ir/parse/visit.hpp"
 #include "backend/ir/vm/vm.h"
 #include "fmt/base.h"

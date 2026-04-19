@@ -1,5 +1,5 @@
 #include "backend/ir/gen/irgen.h"
-#include "backend/ir/ir.hpp"
+#include "backend/ir/ir.h"
 #include "backend/ir/vm/vm.h"
 #include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"

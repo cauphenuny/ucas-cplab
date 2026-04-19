@@ -1,7 +1,7 @@
 #include "backend/ir/analysis/cfg.hpp"
 #include "backend/ir/analysis/dataflow/framework.hpp"
 #include "backend/ir/analysis/dataflow/liveness.hpp"
-#include "backend/ir/ir.hpp"
+#include "backend/ir/ir.h"
 #include "backend/ir/parse/visit.hpp"
 #include "fmt/base.h"
 
