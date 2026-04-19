@@ -159,10 +159,14 @@ auto Func::clone(const std::string& prefix) const -> std::unique_ptr<Func> {
                 alloc = alloc_map[alloc];
             }
         }
+        if (auto temp = std::get_if<TempValue>(var)) {
+            temp->func = func.get();
+        }
     }
     for (auto& target_ref : analysis::utils::targets(*func)) {
         target_ref.get() = block_map[target_ref.get()];
     }
+    func->locals() = std::move(new_locals);
     return func;
 }
 
