@@ -122,7 +122,8 @@ inline auto used(Exit& exit) -> Value* {
 inline auto used(Block& block) {
     std::vector<std::variant<Value*, LeftValue*>> uses;
     for (auto& inst : block.insts()) {
-        uses.insert(uses.end(), used(inst).begin(), used(inst).end());
+        auto inst_uses = used(inst);
+        uses.insert(uses.end(), inst_uses.begin(), inst_uses.end());
     }
     if (auto use = used(block.exit()); use) uses.emplace_back(use);
     return uses;
@@ -131,7 +132,8 @@ inline auto used(Block& block) {
 inline auto used_vars(Block& block) {
     std::vector<LeftValue*> uses;
     for (auto& inst : block.insts()) {
-        uses.insert(uses.end(), used_vars(inst).begin(), used_vars(inst).end());
+        auto inst_uses = used_vars(inst);
+        uses.insert(uses.end(), inst_uses.begin(), inst_uses.end());
     }
     if (auto use = used_var(block.exit()); use) uses.emplace_back(use);
     return uses;
@@ -140,7 +142,8 @@ inline auto used_vars(Block& block) {
 inline auto used(Func& func) {
     std::vector<std::variant<Value*, LeftValue*>> uses;
     for (auto& block : func.blocks()) {
-        uses.insert(uses.end(), used(*block).begin(), used(*block).end());
+        auto block_uses = used(*block);
+        uses.insert(uses.end(), block_uses.begin(), block_uses.end());
     }
     return uses;
 }
@@ -148,7 +151,8 @@ inline auto used(Func& func) {
 inline auto used_vars(Func& func) {
     std::vector<LeftValue*> uses;
     for (auto& block : func.blocks()) {
-        uses.insert(uses.end(), used_vars(*block).begin(), used_vars(*block).end());
+        auto block_uses = used_vars(*block);
+        uses.insert(uses.end(), block_uses.begin(), block_uses.end());
     }
     return uses;
 }
