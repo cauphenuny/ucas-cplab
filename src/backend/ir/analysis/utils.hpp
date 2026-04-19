@@ -171,7 +171,7 @@ inline auto targets(Exit& exit) {
         [](ReturnExit&) -> T { return {}; });
 }
 
-inline auto targets(Inst& inst) {
+inline auto sources(Inst& inst) {
     using T = std::vector<std::reference_wrapper<Block*>>;
     T ret;
     if (auto phi = std::get_if<PhiInst>(&inst); phi) {
@@ -182,16 +182,32 @@ inline auto targets(Inst& inst) {
     return ret;
 }
 
-inline auto targets(Func& func) {
+inline auto sources(Block& block) {
+    std::vector<std::reference_wrapper<Block*>> collected;
+    for (auto& inst : block.insts()) {
+        auto inst_sources = sources(inst);
+        collected.insert(collected.end(), inst_sources.begin(), inst_sources.end());
+    }
+    return collected;
+}
+
+inline auto sources(Func& func) {
+    std::vector<std::reference_wrapper<Block*>> collected;
+    for (auto& block : func.blocks()) {
+        auto block_sources = sources(*block);
+        collected.insert(collected.end(), block_sources.begin(), block_sources.end());
+    }
+    return collected;
+}
+
+inline auto labels(Func& func) {
     std::vector<std::reference_wrapper<Block*>> collected;
     for (auto& block : func.blocks()) {
         auto block_targets = targets(block->exit());
         collected.insert(collected.end(), block_targets.begin(), block_targets.end());
-        for (auto& inst : block->insts()) {
-            auto inst_targets = targets(inst);
-            collected.insert(collected.end(), inst_targets.begin(), inst_targets.end());
-        }
     }
+    auto func_sources = sources(func);
+    collected.insert(collected.end(), func_sources.begin(), func_sources.end());
     return collected;
 }
 

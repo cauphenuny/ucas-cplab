@@ -201,9 +201,6 @@ struct Block {
         return insts_;
     }
 
-    auto split(std::list<Inst>::iterator next_start, Exit prev_exit, std::string next_label)
-        -> std::unique_ptr<Block>;
-
     auto clone(const std::string& prefix) -> std::unique_ptr<Block>;
 
     Block(std::string label, std::list<Inst> insts, Exit exit);
@@ -290,6 +287,9 @@ struct Func {
 
     [[nodiscard]] bool hasRecursiveCall() const;
     [[nodiscard]] size_t numInsts() const;
+
+    auto split(Block* block, std::list<Inst>::iterator next_start, Exit prev_exit, std::string next_label)
+        -> std::unique_ptr<Block>;
 
 private:
     std::vector<std::unique_ptr<Alloc>> locals_;

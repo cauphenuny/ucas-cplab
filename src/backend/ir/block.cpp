@@ -49,15 +49,6 @@ Exit& Block::exit() {
     return *exit_;
 }
 
-auto Block::split(std::list<Inst>::iterator next_start, Exit prev_exit, std::string next_label)
-    -> std::unique_ptr<Block> {
-    std::unique_ptr<Block> next = std::make_unique<Block>(std::move(next_label));
-    next->insts_.splice(next->insts_.end(), insts_, next_start, insts_.end());
-    next->exit_ = std::move(*exit_);
-    exit_ = prev_exit;
-    return next;
-}
-
 auto Block::clone(const std::string& prefix) -> std::unique_ptr<Block> {
     auto block = std::make_unique<Block>(prefix + label);
     for (auto& inst : insts_) {

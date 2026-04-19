@@ -64,7 +64,7 @@ private:
             }
         }
 
-        auto remain = block->split(it, JumpExit{prologue.get()}, prefix + "return");
+        auto remain = caller->split(block, it, JumpExit{prologue.get()}, prefix + "return");
         auto call = std::get<CallInst>(remain->pop_front());
 
         for (size_t i = 0; i < call.args.size(); i++) {

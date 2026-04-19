@@ -148,6 +148,22 @@ auto Func::numInsts() const -> size_t {
     return count;
 }
 
+auto Func::split(Block* block, std::list<Inst>::iterator next_start, Exit prev_exit, std::string next_label)
+    -> std::unique_ptr<Block> {
+    std::unique_ptr<Block> next = std::make_unique<Block>(std::move(next_label));
+    next->insts().splice(next->insts().end(), block->insts(), next_start, block->insts().end());
+    next->setExit(std::move(block->exit()));
+    block->exit() = std::move(prev_exit);
+    for (auto source_ref : analysis::utils::sources(*this)) {
+        auto& source = source_ref.get();
+        if (source == block) {
+            source = next.get();
+        }
+    }
+    return next;
+}
+
+
 auto Func::clone(const std::string& prefix) const -> std::unique_ptr<Func> {
     std::vector<std::unique_ptr<Alloc>> new_params, new_locals;
     new_params.reserve(params.size());
@@ -184,7 +200,7 @@ auto Func::clone(const std::string& prefix) const -> std::unique_ptr<Func> {
             temp->func = func.get();
         }
     }
-    for (auto& target_ref : analysis::utils::targets(*func)) {
+    for (auto& target_ref : analysis::utils::labels(*func)) {
         target_ref.get() = block_map[target_ref.get()];
     }
     func->locals() = std::move(new_locals);
