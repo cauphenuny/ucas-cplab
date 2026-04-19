@@ -273,7 +273,7 @@ int main(int argc, const char* argv[]) {
                     using namespace ir::optim;
                     std::vector<std::pair<std::unique_ptr<Pass>, std::string>> passes;
                     if (to_ssa) {
-                        passes.emplace_back(std::make_unique<ToSSA>(), "SSA Form");
+                        passes.emplace_back(std::make_unique<ConstructSSA>(), "SSA Form");
                     }
                     if (ssa_to_temp) {
                         passes.emplace_back(std::make_unique<SSAValue2TempValue>(),

@@ -92,7 +92,7 @@ int main() {
 
         analysis(code, "Generated IR");
 
-        auto to_ssa = ir::optim::ToSSA();
+        auto to_ssa = ir::optim::ConstructSSA();
         to_ssa.apply(code);
         analysis(code, "SSA IR");
 

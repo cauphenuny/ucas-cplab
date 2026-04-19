@@ -9,6 +9,7 @@
 #include "backend/ir/type.hpp"
 #include "copy_propagation.hpp"
 #include "framework.hpp"
+#include "utils/diagnosis.hpp"
 
 namespace ir::optim {
 
@@ -110,6 +111,9 @@ struct ConstexprFolder {
 
 struct ConstPropagation : Pass {
     bool apply(Program& prog) override {
+        if (!prog.is_ssa) {
+            throw COMPILER_ERROR("ConstPropagation requires SSA form");
+        }
         bool result = false;
         bool changed;
         do {

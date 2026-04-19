@@ -12,6 +12,9 @@
 namespace ir::optim {
 struct DeadAllocElimination : Pass {
     bool apply(Program& prog) override {
+        if (!prog.is_ssa) {
+            throw COMPILER_ERROR("DeadAllocElimination requires SSA form");
+        }
         bool changed = false;
         for (auto& func : prog.getFuncs()) {
             std::unordered_map<const Alloc*, bool> used;

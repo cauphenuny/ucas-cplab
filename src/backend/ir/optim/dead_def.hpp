@@ -9,6 +9,9 @@ namespace ir::optim {
 
 struct DeadDefElimination : Pass {
     bool apply(Program& prog) override {
+        if (!prog.is_ssa) {
+            throw COMPILER_ERROR("DeadDefElimination requires SSA form");
+        }
         bool changed = false;
         while (eliminate(prog)) changed = true;
         return changed;

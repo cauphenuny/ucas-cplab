@@ -18,6 +18,9 @@ namespace ir::optim {
 
 struct DeadBlockElimination : Pass {
     bool apply(Program& prog) override {
+        if (!prog.is_ssa) {
+            throw COMPILER_ERROR("DeadBlockElimination requires SSA form");
+        }
         bool pass_changed = false;
         while (eliminate(prog)) pass_changed = true;
         return pass_changed;

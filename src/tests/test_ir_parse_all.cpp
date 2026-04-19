@@ -52,7 +52,7 @@ int main() {
 
         reconstruct(fmt::format("{}\n", code), "Generated IR");
 
-        auto to_ssa = ir::optim::ToSSA();
+        auto to_ssa = ir::optim::ConstructSSA();
         to_ssa.apply(code);
         reconstruct(fmt::format("{}\n", code), "SSA IR");
 

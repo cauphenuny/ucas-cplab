@@ -1,4 +1,4 @@
-/// @brief Pass Constructing SSA IR
+/// @brief SSA Construct Pass, set program's ssa flag
 
 #pragma once
 
@@ -20,7 +20,9 @@
 
 namespace ir::optim {
 
-namespace ssa_impl {
+/// @note: passes in minipass should not be used directly
+
+namespace minipass {
 
 struct AddPhi : Pass {
     bool apply(Program& prog) override {
@@ -193,6 +195,7 @@ private:
                 need_rename.insert(alloc);
             }
         }
+        program.is_ssa = true;
         if (need_rename.empty()) return false;
         rename(*func.entrance(), func);
         for (const auto& alloc : allocs) {
@@ -202,9 +205,9 @@ private:
     }
 };
 
-}  // namespace ssa_impl
+}  // namespace minipass
 
-using ToSSA = Compose<ssa_impl::AddPhi, ssa_impl::Rename>;
+using ConstructSSA = Compose<minipass::AddPhi, minipass::Rename>;
 
 struct SSAValue2TempValue : Pass {
     bool apply(Program& prog) override {

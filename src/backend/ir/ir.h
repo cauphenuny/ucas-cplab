@@ -313,6 +313,7 @@ struct BuiltinFunc {
 };
 
 struct Program {
+    bool is_ssa{false};
     [[nodiscard]] auto toString() const -> std::string;
 
     void addFunc(std::unique_ptr<Func> func);

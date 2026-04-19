@@ -148,7 +148,7 @@ int main(int argc, const char* argv[]) {
                 return changed;
             };
             // apply passes in order
-            ir::optim::ToSSA ssa;
+            ir::optim::ConstructSSA ssa;
             ssa.apply(program);
             while (apply(passes));
 

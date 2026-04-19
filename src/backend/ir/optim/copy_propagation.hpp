@@ -14,6 +14,9 @@ namespace ir::optim {
 
 struct CopyPropagation : Pass {
     bool apply(Program& prog) override {
+        if (!prog.is_ssa) {
+            throw COMPILER_ERROR("CopyPropagation requires SSA form");
+        }
         bool changed = false;
         for (auto& func : prog.getFuncs()) {
             while (propagate(*func, prog)) changed = true;
