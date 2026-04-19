@@ -10,6 +10,7 @@
 #include "backend/ir/optim/dead_alloc.hpp"
 #include "backend/ir/optim/dead_block.hpp"
 #include "backend/ir/optim/dead_def.hpp"
+#include "backend/ir/optim/inline.hpp"
 #include "backend/ir/optim/ssa.hpp"
 #include "backend/ir/vm/vm.h"
 #include "fmt/base.h"
@@ -59,7 +60,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --optimize-def      Apply Dead Definition Elimination optimization (triggers --ssa)
     --optimize-alloc    Apply Dead Allocation Elimination optimization (triggers --ssa, suggested to use with --ssa2temp)
     --optimize-block    Apply Dead/Trivial Block Elimination optimization (triggers --ssa)
-    --optimize-call     (TODO) Apply Function Call Inlining optimization (triggers --ssa)
+    --optimize-inline   Apply Function Call Inlining optimization (triggers --ssa)
     --optimize-exp      (TODO) Apply Common Subexpression Elimination optimization (triggers --ssa)
     -O1, --optimize     Apply above optimizations
 
@@ -137,7 +138,7 @@ int main(int argc, const char* argv[]) {
     bool optimize_copy = false;
     bool optimize_const = false;
     bool optimize_block = false;
-    bool optimize_call = false;
+    bool optimize_inline = false;
     FILE* output_file = nullptr;
     std::set<std::string> files;
 
@@ -178,8 +179,8 @@ int main(int argc, const char* argv[]) {
             optimize_const = true;
         } else if (arg == "--optimize-block") {
             optimize_block = true;
-        } else if (arg == "--optimize-call") {
-            optimize_call = true;
+        } else if (arg == "--optimize-inline") {
+            optimize_inline = true;
         } else if (arg == "--output") {
             if (i + 1 >= argc) {
                 usage(argv[0], INVALID_ARGUMENT);
@@ -200,7 +201,7 @@ int main(int argc, const char* argv[]) {
     }
 
     bool optimize = optimize_def || optimize_exp || optimize_copy || optimize_alloc ||
-                    optimize_const || optimize_call;
+                    optimize_const || optimize_inline;
     if (optimize && !to_ssa) {
         // warning("Optimization requires SSA form. Auto enabling SSA form.");
         to_ssa = true;
@@ -300,6 +301,9 @@ int main(int argc, const char* argv[]) {
                                             "Dead Block Elimination");
                         passes.emplace_back(std::make_unique<TrivialBlockReplacement>(),
                                             "Trivial Block Replacement");
+                    }
+                    if (optimize_inline) {
+                        passes.emplace_back(std::make_unique<Inlining>(), "Function Call Inlining");
                     }
                     while (apply(program, passes));
                 }

@@ -127,6 +127,27 @@ auto Func::exits() const -> std::vector<Block*> {
     return exit_blocks;
 }
 
+auto Func::hasRecursiveCall() const -> bool {
+    for (auto& block : blocks_) {
+        for (auto& inst : block->insts()) {
+            if (auto call = std::get_if<CallInst>(&inst)) {
+                if (call->func.def == NameDef{this}) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+auto Func::numInsts() const -> size_t {
+    size_t count = 0;
+    for (auto& block : blocks_) {
+        count += block->insts().size();
+    }
+    return count;
+}
+
 auto Func::clone(const std::string& prefix) const -> std::unique_ptr<Func> {
     std::vector<std::unique_ptr<Alloc>> new_params, new_locals;
     new_params.reserve(params.size());

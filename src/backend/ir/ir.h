@@ -287,6 +287,9 @@ struct Func {
 
     [[nodiscard]] std::unique_ptr<Func> clone(const std::string& prefix = "") const;
 
+    [[nodiscard]] bool hasRecursiveCall() const;
+    [[nodiscard]] size_t numInsts() const;
+
 private:
     std::vector<std::unique_ptr<Alloc>> locals_;
     std::vector<std::unique_ptr<Block>> blocks_;

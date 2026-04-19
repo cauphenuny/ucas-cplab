@@ -6,6 +6,7 @@
 #include "backend/ir/optim/dead_block.hpp"
 #include "backend/ir/optim/dead_def.hpp"
 #include "backend/ir/optim/framework.hpp"
+#include "backend/ir/optim/inline.hpp"
 #include "backend/ir/optim/ssa.hpp"
 #include "backend/ir/vm/vm.h"
 #include "fmt/base.h"
@@ -60,6 +61,7 @@ int main(int argc, const char* argv[]) {
         {"alloc", []() { return std::make_unique<ir::optim::DeadAllocElimination>(); }},
         {"const", []() { return std::make_unique<ir::optim::ConstPropagation>(); }},
         {"ssa2temp", []() { return std::make_unique<ir::optim::SSAValue2TempValue>(); }},
+        {"inline", []() { return std::make_unique<ir::optim::Inlining>(100); }},
         {"block", []() {
              return std::make_unique<ir::optim::Compose<ir::optim::DeadBlockElimination,
                                                         ir::optim::TrivialBlockReplacement>>();
