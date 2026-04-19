@@ -61,7 +61,7 @@ int main(int argc, const char* argv[]) {
         {"alloc", []() { return std::make_unique<ir::optim::DeadAllocElimination>(); }},
         {"const", []() { return std::make_unique<ir::optim::ConstPropagation>(); }},
         {"ssa2temp", []() { return std::make_unique<ir::optim::SSAValue2TempValue>(); }},
-        {"inline", []() { return std::make_unique<ir::optim::Inlining>(100); }},
+        {"inline", []() { return std::make_unique<ir::optim::Inlining>(); }},
         {"block", []() {
              return std::make_unique<ir::optim::Compose<ir::optim::DeadBlockElimination,
                                                         ir::optim::TrivialBlockReplacement>>();
