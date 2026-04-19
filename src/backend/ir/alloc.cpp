@@ -33,8 +33,8 @@ auto Alloc::toString() const -> std::string {
     return fmt::format("{} {}{}: {};", keyword, attr, name, type);
 }
 
-auto Alloc::clone() const -> std::unique_ptr<Alloc> {
-    return std::make_unique<Alloc>(name, type, comptime, immutable, reference, init);
+auto Alloc::clone(const std::string& prefix) const -> std::unique_ptr<Alloc> {
+    return std::make_unique<Alloc>(prefix + name, type, comptime, immutable, reference, init);
 }
 
 auto Alloc::constant(std::string name, Type type, ConstexprValue init) -> std::unique_ptr<Alloc> {

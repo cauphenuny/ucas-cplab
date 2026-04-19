@@ -229,7 +229,7 @@ struct Alloc {
     [[nodiscard]] std::string toString() const;
 
     Alloc(Alloc&&) = delete;
-    [[nodiscard]] std::unique_ptr<Alloc> clone() const;
+    [[nodiscard]] std::unique_ptr<Alloc> clone(const std::string& prefix) const;
 
     static auto constant(std::string name, Type type, ConstexprValue init)
         -> std::unique_ptr<Alloc>;
@@ -246,7 +246,7 @@ struct Alloc {
 struct Func {
     const Type ret_type;
     const std::string name;
-    const std::vector<std::unique_ptr<Alloc>> params;
+    std::vector<std::unique_ptr<Alloc>> params;
 
     struct LoopContext {
         Block* continue_target;

@@ -37,6 +37,22 @@ inline auto defined_var(Inst& inst) -> LeftValue* {
         [&](CallInst& c) { return &c.result; });
 }
 
+inline auto defined_vars(Block& block) -> std::vector<LeftValue*> {
+    std::vector<LeftValue*> defs;
+    for (auto& inst : block.insts()) {
+        if (auto def = defined_var(inst); def) defs.push_back(def);
+    }
+    return defs;
+}
+
+inline auto defined_vars(Func& func) -> std::vector<LeftValue*> {
+    std::vector<LeftValue*> defs;
+    for (auto& block : func.blocks()) {
+        defs.insert(defs.end(), defined_vars(*block).begin(), defined_vars(*block).end());
+    }
+    return defs;
+}
+
 inline auto used_vars(Inst& inst) -> std::vector<LeftValue*> {
     std::vector<LeftValue*> uses;
     match(
@@ -63,7 +79,7 @@ inline auto used_vars(Inst& inst) -> std::vector<LeftValue*> {
     return uses;
 }
 
-inline auto uses(Inst& inst) {
+inline auto used(Inst& inst) {
     std::vector<std::variant<Value*, LeftValue*>> uses;
     match(
         inst,
@@ -103,6 +119,40 @@ inline auto used(Exit& exit) -> Value* {
         [](ReturnExit& r) -> Value* { return &r.exp; });
 }
 
+inline auto used(Block& block) {
+    std::vector<std::variant<Value*, LeftValue*>> uses;
+    for (auto& inst : block.insts()) {
+        uses.insert(uses.end(), used(inst).begin(), used(inst).end());
+    }
+    if (auto use = used(block.exit()); use) uses.emplace_back(use);
+    return uses;
+}
+
+inline auto used_vars(Block& block) {
+    std::vector<LeftValue*> uses;
+    for (auto& inst : block.insts()) {
+        uses.insert(uses.end(), used_vars(inst).begin(), used_vars(inst).end());
+    }
+    if (auto use = used_var(block.exit()); use) uses.emplace_back(use);
+    return uses;
+}
+
+inline auto used(Func& func) {
+    std::vector<std::variant<Value*, LeftValue*>> uses;
+    for (auto& block : func.blocks()) {
+        uses.insert(uses.end(), used(*block).begin(), used(*block).end());
+    }
+    return uses;
+}
+
+inline auto used_vars(Func& func) {
+    std::vector<LeftValue*> uses;
+    for (auto& block : func.blocks()) {
+        uses.insert(uses.end(), used_vars(*block).begin(), used_vars(*block).end());
+    }
+    return uses;
+}
+
 inline auto targets(Exit& exit) {
     using T = std::vector<std::reference_wrapper<Block*>>;
     return match(
@@ -116,9 +166,34 @@ inline auto targets(Exit& exit) {
         [](ReturnExit&) -> T { return {}; });
 }
 
+inline auto targets(Func& func) {
+    std::vector<std::reference_wrapper<Block*>> collected;
+    for (auto& block : func.blocks()) {
+        collected.insert(collected.end(), targets(block->exit()).begin(), targets(block->exit()).end());
+    }
+    return collected;
+}
+
 inline auto vars(Inst& inst) {
     auto ret = used_vars(inst);
     if (auto def = defined_var(inst); def) ret.push_back(def);
+    return ret;
+}
+
+inline auto vars(Block& block) {
+    std::vector<LeftValue*> ret;
+    for (auto& inst : block.insts()) {
+        ret.insert(ret.end(), vars(inst).begin(), vars(inst).end());
+    }
+    if (auto use = used_var(block.exit()); use) ret.push_back(use);
+    return ret;
+}
+
+inline auto vars(Func& func) {
+    std::vector<LeftValue*> ret;
+    for (auto& block : func.blocks()) {
+        ret.insert(ret.end(), vars(*block).begin(), vars(*block).end());
+    }
     return ret;
 }
 

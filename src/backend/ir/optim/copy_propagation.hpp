@@ -79,7 +79,7 @@ private:
         bool changed = false;
         for (auto& block : func.blocks()) {
             for (auto& inst : block->insts()) {
-                for (auto use : analysis::utils::uses(inst)) {
+                for (auto use : analysis::utils::used(inst)) {
                     match(
                         use,
                         [&](Value* v) {

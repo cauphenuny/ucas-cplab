@@ -133,11 +133,11 @@ auto Func::clone(const std::string& prefix) const -> std::unique_ptr<Func> {
     new_locals.reserve(locals_.size());
     std::unordered_map<const Alloc*, const Alloc*> alloc_map;
     for (auto& param : params) {
-        new_params.push_back(param->clone());
+        new_params.push_back(param->clone(prefix));
         alloc_map[param.get()] = new_params.back().get();
     }
     for (auto& local : locals_) {
-        new_locals.push_back(local->clone());
+        new_locals.push_back(local->clone(prefix));
         alloc_map[local.get()] = new_locals.back().get();
     }
 
@@ -152,29 +152,17 @@ auto Func::clone(const std::string& prefix) const -> std::unique_ptr<Func> {
         func->newTemp(type, block_map[block]);
     }
 
-    for (auto& block : func->blocks_) {
-        std::vector<LeftValue*> vars;
-        if (auto var = analysis::utils::used_var(block->exit()); var) {
-            vars.emplace_back(var);
-        }
-        for (auto& inst : block->insts()) {
-            for (auto var : analysis::utils::used_vars(inst)) {
-                vars.emplace_back(var);
+    for (auto var : analysis::utils::vars(*func)) {
+        if (auto alloc_opt = analysis::utils::alloc_of(*var); alloc_opt) {
+            auto& alloc = alloc_opt->get();
+            if (alloc_map.count(alloc)) {
+                alloc = alloc_map[alloc];
             }
-        }
-        for (auto var : vars) {
-            if (auto alloc_opt = analysis::utils::alloc_of(*var); alloc_opt) {
-                auto& alloc = alloc_opt->get();
-                if (alloc_map.count(alloc)) {
-                    alloc = alloc_map[alloc];
-                }
-            }
-        }
-        for (auto& target_ref : analysis::utils::targets(block->exit())) {
-            target_ref.get() = block_map[target_ref.get()];
         }
     }
-
+    for (auto& target_ref : analysis::utils::targets(*func)) {
+        target_ref.get() = block_map[target_ref.get()];
+    }
     return func;
 }
 
