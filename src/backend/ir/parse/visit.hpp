@@ -316,7 +316,7 @@ public:
         for (size_t i = 0; i < ctx->label().size(); ++i) {
             auto label_str = ctx->label(i)->ID()->getText();
             auto val = take<ir::Value>(visit(ctx->value(i)));
-            phi.args[block_map_.at(label_str)] = std::move(val);
+            phi.args.emplace_back(block_map_.at(label_str), std::move(val));
         }
         current_block_->add(std::move(phi));
         return {};

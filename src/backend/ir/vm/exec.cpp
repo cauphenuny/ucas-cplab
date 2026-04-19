@@ -57,7 +57,7 @@ auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View&
     auto it = block.insts().begin();
     while (it != block.insts().end()) {
         if (auto phi = std::get_if<PhiInst>(&*it)) {
-            auto operand = view_of(phi->args.at(prev), frame);
+            auto operand = view_of((*phi)[prev], frame);
             auto dest = view_of(phi->result, frame);
             size_t size = ir::type::size_of(dest.type);
             std::vector<std::byte> buffer(size);

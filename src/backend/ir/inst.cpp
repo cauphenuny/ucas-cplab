@@ -6,8 +6,7 @@
 
 namespace ir {
 
-namespace {
-}  // namespace
+namespace {}  // namespace
 
 auto CallInst::toString() const -> std::string {
     std::string arg_str;
@@ -25,6 +24,20 @@ auto PhiInst::toString() const -> std::string {
     }
     if (!arg_str.empty()) arg_str.pop_back(), arg_str.pop_back();
     return fmt::format("{}: {} = $phi({});", result, type_of(result), arg_str);
+}
+auto PhiInst::operator[](Block* block) const -> const Value& {
+    for (auto& [b, v] : args) {
+        if (b == block) {
+            return v;
+        }
+    }
+    throw COMPILER_ERROR(fmt::format("Block {} not found in PhiInst", block->label));
+}
+bool PhiInst::contains(Block* block) const {
+    for (auto& [b, v] : args) {
+        if (b == block) return true;
+    }
+    return false;
 }
 
 auto BranchExit::toString() const -> std::string {

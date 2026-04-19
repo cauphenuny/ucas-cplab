@@ -81,7 +81,7 @@ private:
                     if (!has_phi[frontier]) {
                         auto phi = PhiInst{.result = val};
                         for (auto pred : cfg.pred[frontier]) {
-                            phi.args[pred] = LeftValue{val};
+                            phi.args.emplace_back(pred, LeftValue{val});
                         }
                         frontier->prepend(Inst{std::move(phi)});
                         has_phi[frontier] = true;

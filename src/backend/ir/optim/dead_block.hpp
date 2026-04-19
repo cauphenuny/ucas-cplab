@@ -112,21 +112,24 @@ private:
     }
     // replace block by its predecessors in phi
     void refine_phi(PhiInst& inst, Block* replaced, ControlFlowGraph& cfg) {
-        std::unordered_map<Block*, Value> new_args;
+        std::vector<std::pair<Block*, Value>> new_args;
+        std::unordered_set<Block*> preds;
         for (auto& [block, arg] : inst.args) {
             if (block != replaced) {
-                new_args[block] = arg;
+                new_args.emplace_back(block, arg);
+                preds.insert(block);
             }
         }
         for (auto& [block, arg] : inst.args) {
             if (block == replaced) {
                 for (auto pred : cfg.pred[block]) {
-                    if (new_args.count(pred)) {
+                    if (preds.count(pred)) {
                         throw COMPILER_ERROR(
                             fmt::format("conflict phi args, caused by replacng {} to {} in {}",
                                         block->label, pred->label, inst));
                     }
-                    new_args[pred] = arg;
+                    new_args.emplace_back(pred, arg);
+                    preds.insert(pred);
                 }
             }
         }
@@ -139,7 +142,7 @@ private:
         for (auto& inst : target->insts()) {
             if (auto phi = std::get_if<PhiInst>(&inst); phi) {
                 for (auto pred : cfg.pred[replaced]) {
-                    if (phi->args.count(pred)) return true;
+                    if (phi->contains(pred)) return true;
                 }
             } else {
                 break;

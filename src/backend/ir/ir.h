@@ -10,7 +10,6 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -150,7 +149,9 @@ struct CallInst {
 
 struct PhiInst {
     LeftValue result;
-    std::unordered_map<Block*, Value> args;
+    std::vector<std::pair<Block*, Value>> args;
+    auto operator[](Block* block) const -> const Value& ;
+    [[nodiscard]] bool contains(Block* block) const;
 
     [[nodiscard]] auto toString() const -> std::string;
 };
