@@ -48,7 +48,8 @@ inline auto defined_vars(Block& block) -> std::vector<LeftValue*> {
 inline auto defined_vars(Func& func) -> std::vector<LeftValue*> {
     std::vector<LeftValue*> defs;
     for (auto& block : func.blocks()) {
-        defs.insert(defs.end(), defined_vars(*block).begin(), defined_vars(*block).end());
+        auto block_defs = defined_vars(*block);
+        defs.insert(defs.end(), block_defs.begin(), block_defs.end());
     }
     return defs;
 }
@@ -170,10 +171,26 @@ inline auto targets(Exit& exit) {
         [](ReturnExit&) -> T { return {}; });
 }
 
+inline auto targets(Inst& inst) {
+    using T = std::vector<std::reference_wrapper<Block*>>;
+    T ret;
+    if (auto phi = std::get_if<PhiInst>(&inst); phi) {
+        for (auto& [block, _] : phi->args) {
+            ret.emplace_back(std::ref(block));
+        }
+    }
+    return ret;
+}
+
 inline auto targets(Func& func) {
     std::vector<std::reference_wrapper<Block*>> collected;
     for (auto& block : func.blocks()) {
-        collected.insert(collected.end(), targets(block->exit()).begin(), targets(block->exit()).end());
+        auto block_targets = targets(block->exit());
+        collected.insert(collected.end(), block_targets.begin(), block_targets.end());
+        for (auto& inst : block->insts()) {
+            auto inst_targets = targets(inst);
+            collected.insert(collected.end(), inst_targets.begin(), inst_targets.end());
+        }
     }
     return collected;
 }
@@ -187,7 +204,8 @@ inline auto vars(Inst& inst) {
 inline auto vars(Block& block) {
     std::vector<LeftValue*> ret;
     for (auto& inst : block.insts()) {
-        ret.insert(ret.end(), vars(inst).begin(), vars(inst).end());
+        auto inst_vars = vars(inst);
+        ret.insert(ret.end(), inst_vars.begin(), inst_vars.end());
     }
     if (auto use = used_var(block.exit()); use) ret.push_back(use);
     return ret;
@@ -196,7 +214,8 @@ inline auto vars(Block& block) {
 inline auto vars(Func& func) {
     std::vector<LeftValue*> ret;
     for (auto& block : func.blocks()) {
-        ret.insert(ret.end(), vars(*block).begin(), vars(*block).end());
+        auto block_vars = vars(*block);
+        ret.insert(ret.end(), block_vars.begin(), block_vars.end());
     }
     return ret;
 }

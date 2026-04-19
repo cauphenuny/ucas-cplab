@@ -167,6 +167,7 @@ int main(int argc, const char* argv[]) {
             optimize_def = true;
             optimize_alloc = true;
             optimize_block = true;
+            optimize_inline = true;
         } else if (arg == "--optimize-alloc") {
             optimize_alloc = true;
         } else if (arg == "--optimize-def") {

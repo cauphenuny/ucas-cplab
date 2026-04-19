@@ -47,7 +47,7 @@ private:
     void inline_site(const CallSite& site, Func* inline_func, size_t id, Program& prog) {
         auto& [it, block, caller] = site;
 
-        auto prefix = fmt::format("call_{}_{}_", inline_func->name, id);
+        auto prefix = fmt::format("inline_{}_{}_", inline_func->name, id);
         auto prologue = std::make_unique<Block>(prefix + "prologue");
         auto epilogue = std::make_unique<Block>(prefix + "epilogue");
 
@@ -64,7 +64,7 @@ private:
             }
         }
 
-        auto remain = block->split(it, JumpExit{epilogue.get()}, prefix + "return");
+        auto remain = block->split(it, JumpExit{prologue.get()}, prefix + "return");
         auto call = std::get<CallInst>(remain->pop_front());
 
         for (size_t i = 0; i < call.args.size(); i++) {
@@ -74,10 +74,10 @@ private:
         }
         prologue->setExit(JumpExit{callee->entrance()});
 
-        auto return_values = std::unordered_map<Block*, Value>();
+        auto return_values = std::vector<std::pair<Block*, Value>>();
         for (auto exit_block : callee->exits()) {
             auto exit = std::get<ReturnExit>(exit_block->exit());
-            return_values[exit_block] = exit.exp;
+            return_values.emplace_back(exit_block, exit.exp);
             exit_block->exit() = JumpExit{epilogue.get()};
         }
 
@@ -90,10 +90,10 @@ private:
         for (auto& local : callee->locals()) {
             caller->addLocal(std::move(local));
         }
+        caller->addBlock(std::move(prologue));
         for (auto& block : callee->blocks()) {
             caller->addBlock(std::move(block));
         }
-        caller->addBlock(std::move(prologue));
         caller->addBlock(std::move(epilogue));
         caller->addBlock(std::move(remain));
     }
