@@ -45,29 +45,29 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     fmt::print(
         R"({} [args]... files ...
 
-    --help              Show this help message
+    --help                  Show this help message
 
-    --ast               Print the AST of the input files
-    --ast-info          Print the semantic analysis result of the AST
+    --ast                   Print the AST of the input files
+    --ast-info              Print the semantic analysis result of the AST
 
-    --ir                Print the generated IR of the input files
-    --ir-info           Print some analysis result of the generated IR
-    --ssa               Convert generated IR to SSA form
-    --ssa2temp          Convert SSAValue in IR to TempValue
+    --ir                    Print the generated IR of the input files
+    --ir-info               Print some analysis result of the generated IR
+    --ssa                   Convert generated IR to SSA form
+    --ssa2temp              Convert SSAValue in IR to TempValue
 
-    --optimize-copy     Apply Copy Propagation optimization (triggers --ssa)
-    --optimize-const    Apply Const Propagation optimization (triggers --ssa)
-    --optimize-def      Apply Dead Definition Elimination optimization (triggers --ssa)
-    --optimize-alloc    Apply Dead Allocation Elimination optimization (triggers --ssa, suggested to use with --ssa2temp)
-    --optimize-block    Apply Dead/Trivial Block Elimination optimization (triggers --ssa)
-    --optimize-inline   Apply Function Call Inlining optimization (triggers --ssa)
-    --optimize-exp      (TODO) Apply Common Subexpression Elimination optimization (triggers --ssa)
-    -O1, --optimize     Apply above optimizations
+    --optimize-copy         Apply Copy Propagation optimization (triggers --ssa)
+    --optimize-const        Apply Const Propagation optimization (triggers --ssa)
+    --optimize-def          Apply Dead Definition Elimination optimization (triggers --ssa)
+    --optimize-alloc        Apply Dead Allocation Elimination optimization (triggers --ssa, suggested to use with --ssa2temp)
+    --optimize-block        Apply Dead/Trivial Block Elimination optimization (triggers --ssa)
+    --optimize-inline <n=8> Apply Function Call Inlining optimization with threshold n (triggers --ssa)
+    --optimize-exp          (TODO) Apply Common Subexpression Elimination optimization (triggers --ssa)
+    -O1, --optimize         Apply above optimizations
 
-    --exec              Execute the generated IR
-    --silent            Suppress all compiler output except the return value when executing
+    --exec                  Execute the generated IR
+    --silent                Suppress all compiler output except the return value when executing
 
-    --output <file>     Write the generated IR also to the specified file
+    --output <file>         Write the generated IR also to the specified file
 
 )",
         prog_name);
@@ -138,7 +138,8 @@ int main(int argc, const char* argv[]) {
     bool optimize_copy = false;
     bool optimize_const = false;
     bool optimize_block = false;
-    bool optimize_inline = false;
+    size_t optimize_inline = 0;
+    constexpr size_t default_inline_threshold = 8;
     FILE* output_file = nullptr;
     std::set<std::string> files;
 
@@ -167,7 +168,7 @@ int main(int argc, const char* argv[]) {
             optimize_def = true;
             optimize_alloc = true;
             optimize_block = true;
-            optimize_inline = true;
+            optimize_inline = default_inline_threshold;
         } else if (arg == "--optimize-alloc") {
             optimize_alloc = true;
         } else if (arg == "--optimize-def") {
@@ -181,7 +182,11 @@ int main(int argc, const char* argv[]) {
         } else if (arg == "--optimize-block") {
             optimize_block = true;
         } else if (arg == "--optimize-inline") {
-            optimize_inline = true;
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                optimize_inline = std::stoul(argv[++i]);
+            } else {
+                optimize_inline = default_inline_threshold;
+            }
         } else if (arg == "--output") {
             if (i + 1 >= argc) {
                 usage(argv[0], INVALID_ARGUMENT);
@@ -304,7 +309,7 @@ int main(int argc, const char* argv[]) {
                                             "Trivial Block Replacement");
                     }
                     if (optimize_inline) {
-                        passes.emplace_back(std::make_unique<Inlining>(), "Function Call Inlining");
+                        passes.emplace_back(std::make_unique<Inlining>(optimize_inline), "Function Call Inlining");
                     }
                     while (apply(program, passes));
                 }
