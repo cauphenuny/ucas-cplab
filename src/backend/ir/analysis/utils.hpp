@@ -15,8 +15,8 @@ inline auto alloc_of(LeftValue& v) -> std::optional<std::reference_wrapper<const
         v,
         [&](NamedValue& n) -> T {
             return match(
-                n.def, [&](const Alloc* a) -> T { return std::ref(a); },
-                [](auto) -> T { return std::nullopt; });
+                n.def, [&](const Alloc*& a) -> T { return std::ref(a); },
+                [](auto&) -> T { return std::nullopt; });
         },
         [&](SSAValue& s) -> T { return std::ref(s.def); },
         [](TempValue&) -> T { return std::nullopt; });
