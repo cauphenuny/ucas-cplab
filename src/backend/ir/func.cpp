@@ -143,7 +143,7 @@ auto Func::hasRecursiveCall() const -> bool {
 auto Func::numInsts() const -> size_t {
     size_t count = 0;
     for (auto& block : blocks_) {
-        count += block->insts().size();
+        count += block->insts().size() + 1;
     }
     return count;
 }
