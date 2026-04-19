@@ -150,7 +150,7 @@ struct CallInst {
 struct PhiInst {
     LeftValue result;
     std::vector<std::pair<Block*, Value>> args;
-    auto operator[](Block* block) const -> const Value& ;
+    auto operator[](Block* block) const -> const Value&;
     [[nodiscard]] bool contains(Block* block) const;
 
     [[nodiscard]] auto toString() const -> std::string;
@@ -288,8 +288,8 @@ struct Func {
     [[nodiscard]] bool hasRecursiveCall() const;
     [[nodiscard]] size_t numInsts() const;
 
-    auto split(Block* block, std::list<Inst>::iterator next_start, Exit prev_exit, std::string next_label)
-        -> std::unique_ptr<Block>;
+    auto split(Block* block, std::list<Inst>::iterator next_start, Exit prev_exit,
+               std::string next_label) -> std::unique_ptr<Block>;
 
 private:
     std::vector<std::unique_ptr<Alloc>> locals_;

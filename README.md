@@ -14,22 +14,30 @@ $ cmake --build build
 Usage:
 
 ```
-build/compiler [--ast] [--ast-info] [--ir] [--ir-info] [--ssa] [--to-temp] [--exec] [--silent] files ... [--output <output file>] [--help]
+build/compiler [args]... files ...
 
-    --help      Show this help message
+    --help                  Show this help message
 
-    --ast       Print the AST of the input files
-    --ast-info  Print the semantic analysis result of the AST
+    --ast                   Print the AST of the input files
+    --ast-info              Print the semantic analysis result of the AST
 
-    --ir        Print the generated IR of the input files
-    --ir-info   Print some analysis result of the generated IR
-    --ssa       Convert generated IR to SSA form
-    --ssa2temp  Convert SSAValue in IR to TempValue, then prune useless allocation
+    --ir                    Print the generated IR
+    --ir-info               Print analysis result of the generated IR
+    --ssa                   Convert generated IR to SSA form
+    --ssa2temp              Convert SSAValue in IR to TempValue
 
-    --exec      Execute the generated IR
-    --silent    Suppress all compiler output except the return value when executing
+    --optimize-copy         Apply Copy Propagation optimization (triggers --ssa)
+    --optimize-const        Apply Const Propagation optimization (triggers --ssa)
+    --optimize-def          Apply Dead Definition Elimination optimization (triggers --ssa)
+    --optimize-alloc        Apply Dead Allocation Elimination optimization (triggers --ssa, better with --ssa2temp)
+    --optimize-block        Apply Dead/Trivial Block Elimination optimization (triggers --ssa)
+    --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts) (triggers --ssa)
+    -O1, --optimize         Apply above optimizations
 
-    --output    Write the generated IR also to the specified file
+    --exec                  Execute the generated IR
+    --silent                Suppress all compiler output except the return value when executing
+
+    --output <file>         Write the generated IR also to the specified file
 
 
 build/interpreter [--help] [--silent] [--print] IR_file
@@ -41,6 +49,7 @@ build/interpreter [--help] [--silent] [--print] IR_file
 Examples:
 
 - print IR: `build/compiler --ir source.cact`
+- print optimized IR: `build/compiler --ir --optimize source.cact`
 - output IR to file: `build/compiler --ir source.cact --output ir_code.riir`
 - execute source program: `build/compiler --exec source.cact`
 - execute source program, sliently (without any output except program IO and return code): `build/compiler --exec --silent source.cact`
@@ -159,6 +168,7 @@ enum Inst {
     Unary(UnaryOp, Value, Value),
     Binary(BinaryOp, Value, Value, Value),
     Call(Value, Value, Vec<Value>),
+    Phi(Value, Vec<&Block, Value>)
 }
 enum Exit {
     Return(Value),

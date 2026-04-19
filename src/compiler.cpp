@@ -50,17 +50,17 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --ast                   Print the AST of the input files
     --ast-info              Print the semantic analysis result of the AST
 
-    --ir                    Print the generated IR of the input files
-    --ir-info               Print some analysis result of the generated IR
+    --ir                    Print the generated IR
+    --ir-info               Print analysis result of the generated IR
     --ssa                   Convert generated IR to SSA form
     --ssa2temp              Convert SSAValue in IR to TempValue
 
     --optimize-copy         Apply Copy Propagation optimization (triggers --ssa)
     --optimize-const        Apply Const Propagation optimization (triggers --ssa)
     --optimize-def          Apply Dead Definition Elimination optimization (triggers --ssa)
-    --optimize-alloc        Apply Dead Allocation Elimination optimization (triggers --ssa, suggested to use with --ssa2temp)
+    --optimize-alloc        Apply Dead Allocation Elimination optimization (triggers --ssa, better with --ssa2temp)
     --optimize-block        Apply Dead/Trivial Block Elimination optimization (triggers --ssa)
-    --optimize-inline <n=8> Apply Function Call Inlining optimization with threshold n (triggers --ssa)
+    --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts) (triggers --ssa)
     --optimize-exp          (TODO) Apply Common Subexpression Elimination optimization (triggers --ssa)
     -O1, --optimize         Apply above optimizations
 
@@ -309,7 +309,8 @@ int main(int argc, const char* argv[]) {
                                             "Trivial Block Replacement");
                     }
                     if (optimize_inline) {
-                        passes.emplace_back(std::make_unique<Inlining>(optimize_inline), "Function Call Inlining");
+                        passes.emplace_back(std::make_unique<Inlining>(optimize_inline),
+                                            "Function Call Inlining");
                     }
                     while (apply(program, passes));
                 }

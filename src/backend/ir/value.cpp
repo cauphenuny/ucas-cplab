@@ -1,7 +1,7 @@
 #include "backend/ir/ir.h"
-#include "utils/match.hpp"
 #include "op.hpp"
 #include "type.hpp"
+#include "utils/match.hpp"
 
 #include <cstddef>
 #include <cstring>
