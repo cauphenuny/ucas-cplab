@@ -3,6 +3,7 @@
 #pragma once
 
 #include "backend/ir/analysis/cfg.hpp"
+#include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.h"
 #include "framework.hpp"
 
@@ -40,21 +41,12 @@ private:
                 Block* curr = worklist.back();
                 worklist.pop_back();
 
-                match(
-                    curr->exit(), [](const ReturnExit&) {},
-                    [&](const JumpExit& j) {
-                        if (reachable.insert(j.target).second) {
-                            worklist.push_back(j.target);
-                        }
-                    },
-                    [&](const BranchExit& br) {
-                        if (reachable.insert(br.true_target).second) {
-                            worklist.push_back(br.true_target);
-                        }
-                        if (reachable.insert(br.false_target).second) {
-                            worklist.push_back(br.false_target);
-                        }
-                    });
+                for (auto target_ref : analysis::utils::targets(curr->exit())) {
+                    auto target = target_ref.get();
+                    if (reachable.insert(target).second) {
+                        worklist.push_back(target);
+                    }
+                }
             }
 
             auto& blocks = func.blocks();
@@ -193,22 +185,11 @@ private:
                 }
             }
 
-            match(
-                block->exit(),
-                [&](JumpExit& j) {
-                    if (j.target == replaced) {
-                        j.target = target;
-                    }
-                },
-                [&](BranchExit& b) {
-                    if (b.true_target == replaced) {
-                        b.true_target = target;
-                    }
-                    if (b.false_target == replaced) {
-                        b.false_target = target;
-                    }
-                },
-                [](ReturnExit&) {});
+            for (auto ref : analysis::utils::targets(block->exit())) {
+                if (ref.get() == replaced) {
+                    ref.get() = target;
+                }
+            }
         }
 
         return true;

@@ -59,26 +59,29 @@ int main() {
                 if (live.in.at(entry).size() == 0) {
                     fmt::println("  [OK] no live-in at entry\n");
                 } else {
-                    for (const auto& val : live.in.at(entry)) {
-                        auto alloc = ir::optim::utils::alloc_of(val);
+                    for (auto val : live.in.at(entry)) {
+                        auto alloc = ir::analysis::utils::alloc_of(val);
                         if (!alloc) {
                             fmt::println("  [FAIL] non-var live-in at entry: {}",
                                          live.in.at(entry));
                             exit(1);
                         }
-                        if (globals.count(alloc)) {
-                            fmt::println("  [OK] global '{}' is live-in at entry", alloc->name);
-                        } else if (params.count(alloc)) {
-                            fmt::println("  [OK] param '{}' is live-in at entry", alloc->name);
+                        if (globals.count(alloc->get())) {
+                            fmt::println("  [OK] global '{}' is live-in at entry",
+                                         alloc->get()->name);
+                        } else if (params.count(alloc->get())) {
+                            fmt::println("  [OK] param '{}' is live-in at entry",
+                                         alloc->get()->name);
                         } else {
-                            if (!alloc->init) {
+                            if (!alloc->get()->init) {
                                 fmt::println("  [FAIL] local value '{}' is live-in at entry "
                                              "without initializer",
-                                             alloc->name);
+                                             alloc->get()->name);
                                 exit(1);
                             } else {
                                 fmt::println("  [OK] {}local value '{}' is initialized at entry",
-                                             alloc->comptime ? "const " : "", alloc->name);
+                                             alloc->get()->comptime ? "const " : "",
+                                             alloc->get()->name);
                             }
                         }
                     }

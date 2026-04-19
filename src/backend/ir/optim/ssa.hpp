@@ -118,8 +118,10 @@ private:
         // fmt::println(stderr, "Renaming block {}", block.label);
         std::unordered_map<const Alloc*, size_t> push_count;
         auto rename_var = [&](LeftValue& v) {
-            auto alloc = utils::alloc_of(v);
-            if (alloc && need_rename.count(alloc)) {
+            if (!utils::is_named(v)) return;
+            auto alloc_opt = utils::alloc_of(v);
+            if (alloc_opt && need_rename.count(*alloc_opt)) {
+                auto& alloc = alloc_opt->get();
                 if (rename_stack[alloc].size()) {
                     v = rename_stack[alloc].top();
                 }
@@ -133,9 +135,10 @@ private:
 
             // 2. Rename definition
             auto def = utils::defined_var(inst);
-            if (def) {
-                auto alloc = utils::alloc_of(*def);
-                if (alloc && need_rename.count(alloc)) {
+            if (def && utils::is_named(*def)) {
+                auto alloc_opt = utils::alloc_of(*def);
+                if (alloc_opt && need_rename.count(*alloc_opt)) {
+                    auto& alloc = alloc_opt->get();
                     auto ssa_value = SSAValue(type_of(*def), alloc, version[alloc]++);
                     *def = ssa_value;
                     // fmt::println(stderr, "push {}", ssa_value);

@@ -1,3 +1,4 @@
+#include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.h"
 #include "type.hpp"
 
@@ -152,8 +153,25 @@ auto Func::clone(const std::string& prefix) const -> std::unique_ptr<Func> {
     }
 
     for (auto& block : func->blocks_) {
+        std::vector<LeftValue*> vars;
+        if (auto var = analysis::utils::used_var(block->exit()); var) {
+            vars.emplace_back(var);
+        }
         for (auto& inst : block->insts()) {
-            // TODO:
+            for (auto var : analysis::utils::used_vars(inst)) {
+                vars.emplace_back(var);
+            }
+        }
+        for (auto var : vars) {
+            if (auto alloc_opt = analysis::utils::alloc_of(*var); alloc_opt) {
+                auto& alloc = alloc_opt->get();
+                if (alloc_map.count(alloc)) {
+                    alloc = alloc_map[alloc];
+                }
+            }
+        }
+        for (auto& target_ref : analysis::utils::targets(block->exit())) {
+            target_ref.get() = block_map[target_ref.get()];
         }
     }
 

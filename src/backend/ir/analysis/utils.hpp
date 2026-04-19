@@ -4,29 +4,32 @@
 
 namespace ir::analysis::utils {
 
-auto is_named(const LeftValue& v) {
+inline auto is_named(const LeftValue& v) {
     return std::holds_alternative<NamedValue>(v);
 }
 
-auto alloc_of(const LeftValue& v) -> const Alloc* {
+/// @note: need to modify, so use reference wrapper, not just return const Alloc*
+inline auto alloc_of(LeftValue& v) -> std::optional<std::reference_wrapper<const Alloc*>> {
+    using T = std::optional<std::reference_wrapper<const Alloc*>>;
     return match(
         v,
-        [&](const NamedValue& n) -> const Alloc* {
+        [&](NamedValue& n) -> T {
             return match(
-                n.def, [&](const Alloc* a) { return a; },
-                [](auto) -> const Alloc* { return nullptr; });
+                n.def, [&](const Alloc* a) -> T { return std::ref(a); },
+                [](auto) -> T { return std::nullopt; });
         },
-        [](const auto&) -> const Alloc* { return nullptr; });
+        [&](SSAValue& s) -> T { return std::ref(s.def); },
+        [](TempValue&) -> T { return std::nullopt; });
 };
 
 // var: variable, a.k.a. LeftValue
-auto as_var(Value& v) -> LeftValue* {
+inline auto as_var(Value& v) -> LeftValue* {
     return match(
         v, [](LeftValue& lv) -> LeftValue* { return &lv; },
         [](ConstexprValue& cv) -> LeftValue* { return nullptr; });
 }
 
-auto defined_var(Inst& inst) -> LeftValue* {
+inline auto defined_var(Inst& inst) -> LeftValue* {
     return match(
         inst, [&](PhiInst& p) { return &p.result; },
         [&](BinaryInst& b) { return (b.op != InstOp::STORE) ? &b.result : nullptr; },
@@ -34,7 +37,7 @@ auto defined_var(Inst& inst) -> LeftValue* {
         [&](CallInst& c) { return &c.result; });
 }
 
-auto used_vars(Inst& inst) -> std::vector<LeftValue*> {
+inline auto used_vars(Inst& inst) -> std::vector<LeftValue*> {
     std::vector<LeftValue*> uses;
     match(
         inst,
@@ -60,7 +63,7 @@ auto used_vars(Inst& inst) -> std::vector<LeftValue*> {
     return uses;
 }
 
-auto uses(Inst& inst) {
+inline auto uses(Inst& inst) {
     std::vector<std::variant<Value*, LeftValue*>> uses;
     match(
         inst,
@@ -86,27 +89,40 @@ auto uses(Inst& inst) {
     return uses;
 }
 
-auto used_var(Exit& exit) -> LeftValue* {
+inline auto used_var(Exit& exit) -> LeftValue* {
     return match(
         exit, [](JumpExit&) -> LeftValue* { return nullptr; },
         [](BranchExit& c) -> LeftValue* { return utils::as_var(c.cond); },
         [](ReturnExit& r) -> LeftValue* { return utils::as_var(r.exp); });
 }
 
-auto used(Exit& exit) -> Value* {
+inline auto used(Exit& exit) -> Value* {
     return match(
         exit, [](JumpExit&) -> Value* { return nullptr; },
         [](BranchExit& c) -> Value* { return &c.cond; },
         [](ReturnExit& r) -> Value* { return &r.exp; });
 }
 
-auto vars(Inst& inst) {
+inline auto targets(Exit& exit) {
+    using T = std::vector<std::reference_wrapper<Block*>>;
+    return match(
+        exit, [](JumpExit& j) -> T { return {std::ref(j.target)}; },
+        [](BranchExit& b) -> T {
+            T targets;
+            if (b.true_target) targets.emplace_back(std::ref(b.true_target));
+            if (b.false_target) targets.emplace_back(std::ref(b.false_target));
+            return targets;
+        },
+        [](ReturnExit&) -> T { return {}; });
+}
+
+inline auto vars(Inst& inst) {
     auto ret = used_vars(inst);
     if (auto def = defined_var(inst); def) ret.push_back(def);
     return ret;
 }
 
-bool has_side_effect(Inst& inst) {
+inline bool has_side_effect(Inst& inst) {
     return match(
         inst, [&](const CallInst&) { return true; },  // function call may have side effects
         [&](const UnaryInst& u) { return false; }, [&](const BinaryInst& b) { return false; },
