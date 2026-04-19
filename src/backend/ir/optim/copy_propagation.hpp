@@ -77,42 +77,31 @@ private:
 
         /// Perform replacement
         bool changed = false;
-        for (auto& block : func.blocks()) {
-            for (auto& inst : block->insts()) {
-                for (auto use : analysis::utils::used(inst)) {
-                    match(
-                        use,
-                        [&](Value* v) {
-                            auto root = get_root(get_root, *v);
-                            if (!(*v == root)) {
-                                *v = root;
-                                changed = true;
-                            }
-                        },
-                        [&](LeftValue* v) {
-                            auto root = get_root(get_root, *v);
-                            auto lval = analysis::utils::as_var(root);
-                            if (lval) {
-                                if (!(*v == *lval)) {
-                                    *v = *lval;
-                                    changed = true;
-                                }
-                            } else {
-                                throw COMPILER_ERROR(
-                                    fmt::format("Copy propagation propagates constexpr value to "
-                                                "lval-only location: {}",
-                                                root));
-                            }
-                        });
-                }
-            }
-            if (auto exit_use = analysis::utils::used(block->exit())) {
-                auto root = get_root(get_root, *exit_use);
-                if (!(*exit_use == root)) {
-                    *exit_use = root;
-                    changed = true;
-                }
-            }
+        for (auto use : analysis::utils::used(func)) {
+            match(
+                use,
+                [&](Value* v) {
+                    auto root = get_root(get_root, *v);
+                    if (!(*v == root)) {
+                        *v = root;
+                        changed = true;
+                    }
+                },
+                [&](LeftValue* v) {
+                    auto root = get_root(get_root, *v);
+                    auto lval = analysis::utils::as_var(root);
+                    if (lval) {
+                        if (!(*v == *lval)) {
+                            *v = *lval;
+                            changed = true;
+                        }
+                    } else {
+                        throw COMPILER_ERROR(
+                            fmt::format("Copy propagation propagates constexpr value to "
+                                        "lval-only location: {}",
+                                        root));
+                    }
+                });
         }
 
         return changed;

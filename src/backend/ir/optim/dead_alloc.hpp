@@ -15,24 +15,14 @@ struct DeadAllocElimination : Pass {
         bool changed = false;
         for (auto& func : prog.getFuncs()) {
             std::unordered_map<const Alloc*, bool> used;
-            for (auto& block : func->blocks()) {
-                auto track = [&](LeftValue* v) {
-                    if (auto named = std::get_if<NamedValue>(v); named) {
-                        if (auto alloc = std::get_if<const Alloc*>(&named->def); alloc) {
-                            used[*alloc] = true;
-                        }
-                    }
-                    if (auto ssa = std::get_if<SSAValue>(v); ssa) {
-                        used[ssa->def] = true;
-                    }
-                };
-                for (auto& inst : block->insts()) {
-                    for (auto& var : utils::vars(inst)) {
-                        track(var);
+            for (auto use_var : analysis::utils::used_vars(*func)) {
+                if (auto named = std::get_if<NamedValue>(use_var); named) {
+                    if (auto alloc = std::get_if<const Alloc*>(&named->def); alloc) {
+                        used[*alloc] = true;
                     }
                 }
-                if (auto var = utils::used_var(block->exit()); var) {
-                    track(var);
+                if (auto ssa = std::get_if<SSAValue>(use_var); ssa) {
+                    used[ssa->def] = true;
                 }
             }
             std::vector<std::unique_ptr<Alloc>> kept_locals;
