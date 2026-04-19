@@ -52,14 +52,15 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --ir                Print the generated IR of the input files
     --ir-info           Print some analysis result of the generated IR
     --ssa               Convert generated IR to SSA form
-    --ssa2temp          Convert SSAValue in IR to TempValue, then prune useless allocation
+    --ssa2temp          Convert SSAValue in IR to TempValue
 
-    --optimize-copy     Apply Copy Propagation optimization (requires --ssa)
-    --optimize-const    Apply Const Propagation optimization (requires --ssa)
-    --optimize-def      Apply Dead Definition Elimination optimization (requires --ssa)
-    --optimize-alloc    Apply Dead Allocation Elimination optimization (requires --ssa, suggests --ssa2temp)
-    --optimize-block    Apply Dead/Trivial Block Elimination optimization (requires --ssa)
-    --optimize-exp      (TODO) Apply Common Subexpression Elimination optimization (requires --ssa)
+    --optimize-copy     Apply Copy Propagation optimization (triggers --ssa)
+    --optimize-const    Apply Const Propagation optimization (triggers --ssa)
+    --optimize-def      Apply Dead Definition Elimination optimization (triggers --ssa)
+    --optimize-alloc    Apply Dead Allocation Elimination optimization (triggers --ssa, suggested to use with --ssa2temp)
+    --optimize-block    Apply Dead/Trivial Block Elimination optimization (triggers --ssa)
+    --optimize-call     (TODO) Apply Function Call Inlining optimization (triggers --ssa)
+    --optimize-exp      (TODO) Apply Common Subexpression Elimination optimization (triggers --ssa)
     -O1, --optimize     Apply above optimizations
 
     --exec              Execute the generated IR
@@ -136,6 +137,7 @@ int main(int argc, const char* argv[]) {
     bool optimize_copy = false;
     bool optimize_const = false;
     bool optimize_block = false;
+    bool optimize_call = false;
     FILE* output_file = nullptr;
     std::set<std::string> files;
 
@@ -176,6 +178,8 @@ int main(int argc, const char* argv[]) {
             optimize_const = true;
         } else if (arg == "--optimize-block") {
             optimize_block = true;
+        } else if (arg == "--optimize-call") {
+            optimize_call = true;
         } else if (arg == "--output") {
             if (i + 1 >= argc) {
                 usage(argv[0], INVALID_ARGUMENT);
@@ -195,10 +199,10 @@ int main(int argc, const char* argv[]) {
                 "overwritten.");
     }
 
-    bool optimize =
-        optimize_def || optimize_exp || optimize_copy || optimize_alloc || optimize_const;
+    bool optimize = optimize_def || optimize_exp || optimize_copy || optimize_alloc ||
+                    optimize_const || optimize_call;
     if (optimize && !to_ssa) {
-        warning("Optimization requires SSA form. Auto enabling SSA form.");
+        // warning("Optimization requires SSA form. Auto enabling SSA form.");
         to_ssa = true;
     }
 

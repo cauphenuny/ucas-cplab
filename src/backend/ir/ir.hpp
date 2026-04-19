@@ -309,12 +309,19 @@ struct Block {
         str += ind(1) + "}\n";
         return str;
     }
+
     void add(Inst inst) {
         insts_.push_back(std::move(inst));
     }
     void prepend(Inst inst) {
         insts_.insert(insts_.begin(), std::move(inst));
     }
+    auto pop_front() -> Inst {
+        Inst inst = std::move(insts_.front());
+        insts_.pop_front();
+        return inst;
+    }
+
     void setExit(Exit exit) {
         if (this->exit_) {
             throw COMPILER_ERROR(fmt::format("Block {} already has an exit instruction", label));
@@ -324,17 +331,37 @@ struct Block {
     [[nodiscard]] bool hasExit() const {
         return exit_.has_value();
     }
+    [[nodiscard]] const auto& exit() const {
+        return *exit_;
+    }
+    [[nodiscard]] auto& exit() {
+        return *exit_;
+    }
+
     [[nodiscard]] const auto& insts() const {
         return insts_;
     }
     [[nodiscard]] auto& insts() {
         return insts_;
     }
-    [[nodiscard]] const auto& exit() const {
-        return *exit_;
+
+    auto split(std::list<Inst>::iterator next_start, Exit prev_exit, std::string next_label) -> std::unique_ptr<Block> {
+        std::unique_ptr<Block> next = std::make_unique<Block>(std::move(next_label));
+        next->insts_.splice(next->insts_.end(), insts_, next_start, insts_.end());
+        next->exit_ = std::move(*exit_);
+        exit_ = prev_exit;
+        return next;
     }
-    [[nodiscard]] auto& exit() {
-        return *exit_;
+
+    auto clone(const std::string& prefix) -> std::unique_ptr<Block> {
+        auto block = std::make_unique<Block>(prefix + label);
+        for (auto& inst : insts_) {
+            block->add(inst);
+        }
+        if (exit_) {
+            block->setExit(*exit_);
+        }
+        return block;
     }
 
     Block(std::string label, std::list<Inst> insts, Exit exit)
@@ -401,6 +428,10 @@ struct Alloc {
     }
 
     Alloc(Alloc&&) = delete;
+    [[nodiscard]] std::unique_ptr<Alloc> clone() const {
+        return std::make_unique<Alloc>(name, type, comptime, immutable, reference, init);
+    }
+
     static auto constant(std::string name, Type type, ConstexprValue init) {
         return std::make_unique<Alloc>(std::move(name), std::move(type), true, true, false,
                                        std::move(init));
@@ -476,7 +507,7 @@ struct Func {
         return temps_;
     }
 
-    auto newTemp(const Type& type, const Block* container) -> TempValue {
+    auto newTemp(const Type& type, Block* container) -> TempValue {
         auto temp = TempValue{.type = type, .id = temps_.size(), .func = this};
         temps_.emplace_back(TempInfo{type, container});
         return temp;
@@ -489,6 +520,15 @@ struct Func {
 
     auto newBlock() -> Block* {
         return newBlock(fmt::format("L{}", temp_label_count++));
+    }
+
+    void addBlock(std::unique_ptr<Block> block) {
+        for (auto& b : blocks_) {
+            if (b->label == block->label) {
+                throw COMPILER_ERROR(fmt::format("block '{}' already exists", b->label));
+            }
+        }
+        blocks_.push_back(std::move(block));
     }
 
     [[nodiscard]] auto findBlock(const std::string& label) const -> Block* {
@@ -514,6 +554,16 @@ struct Func {
         return blocks_.front().get();
     }
 
+    auto exits() -> std::vector<Block*> {
+        std::vector<Block*> exits;
+        for (const auto& block : blocks_) {
+            if (block->hasExit() && std::holds_alternative<ReturnExit>(block->exit())) {
+                exits.push_back(block.get());
+            }
+        }
+        return exits;
+    }
+
     [[nodiscard]] auto entrance() const -> Block* {
         return blocks_.front().get();
     }
@@ -535,13 +585,47 @@ struct Func {
         return loops.back();
     }
 
+    [[nodiscard]] std::unique_ptr<Func> clone(const std::string& prefix = "") const {
+        std::vector<std::unique_ptr<Alloc>> new_params, new_locals;
+        new_params.reserve(params.size());
+        new_locals.reserve(locals_.size());
+        std::unordered_map<const Alloc*, const Alloc*> alloc_map;
+        for (auto& param : params) {
+            new_params.push_back(param->clone());
+            alloc_map[param.get()] = new_params.back().get();
+        }
+        for (auto& local : locals_) {
+            new_locals.push_back(local->clone());
+            alloc_map[local.get()] = new_locals.back().get();
+        }
+
+        auto func = std::make_unique<Func>(ret_type, prefix + name, std::move(new_params));
+        std::unordered_map<Block*, Block*> block_map;
+        for (auto& block : blocks_) {
+            auto new_block = block->clone(prefix);
+            block_map[block.get()] = new_block.get();
+            func->blocks_.push_back(std::move(new_block));
+        }
+        for (auto& [type, block] : temps_) {
+            func->newTemp(type, block_map[block]);
+        }
+
+        for (auto& block : func->blocks_) {
+            for (auto& inst : block->insts()) {
+                // TODO:
+            }
+        }
+
+        return func;
+    }
+
 private:
     std::vector<std::unique_ptr<Alloc>> locals_;
     std::vector<std::unique_ptr<Block>> blocks_;
 
     struct TempInfo {
         Type type;
-        const Block* block;  // block where the temp is defined
+        Block* block;  // block where the temp is defined
     };
     std::vector<TempInfo> temps_;
 
