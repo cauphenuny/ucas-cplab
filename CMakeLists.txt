@@ -84,11 +84,14 @@ if(NOT PYTHON_EXECUTABLE)
     message(WARNING "python3 not found. Skipping gen_tree target.")
 else()
     add_custom_target(gen_tree ALL
-        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/gen_tree_with_brief.py
+        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_code_tree.py
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Generating code tree with briefs"
         VERBATIM
     )
+
+    # Add fetch_usage target after executables are defined
+    # But since this is inside if(PYTHON_EXECUTABLE), and executables are outside, we need to defer
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -200,3 +203,13 @@ foreach(EXEC_SOURCE ${SRC_EXECUTABLES})
         add_dependencies(${EXEC_NAME} format)
     endif()
 endforeach()
+
+if(PYTHON_EXECUTABLE AND TARGET compiler AND TARGET interpreter)
+    add_custom_target(update_usage ALL
+        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/fetch_usage.py $<TARGET_FILE:compiler> $<TARGET_FILE:interpreter>
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Updating README with usage information"
+        VERBATIM
+    )
+    add_dependencies(update_usage compiler interpreter)
+endif()

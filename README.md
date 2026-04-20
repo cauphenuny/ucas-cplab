@@ -13,8 +13,9 @@ during the build.
 
 Usage:
 
+<!--usage-->
 ```
-build/compiler [args]... files ...
+compiler [args]... files ...
 
     --help                  Show this help message
 
@@ -32,6 +33,7 @@ build/compiler [args]... files ...
     --optimize-alloc        Apply Dead Allocation Elimination optimization (triggers --ssa, better with --ssa2temp)
     --optimize-block        Apply Dead/Trivial Block Elimination optimization (triggers --ssa)
     --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts) (triggers --ssa)
+    --optimize-exp          (TODO) Apply Common Subexpression Elimination optimization (triggers --ssa)
     -O1, --optimize         Apply above optimizations
 
     --exec                  Execute the generated IR
@@ -39,12 +41,12 @@ build/compiler [args]... files ...
 
     --output <file>         Write the generated IR also to the specified file
 
-
-build/interpreter [--help] [--silent] [--print] IR_file
+interpreter [--help] [--silent] [--print] IR_file
     --help      Show this help message
     --print     Show reconstructed IR, without executing
     --silent    Suppress all compiler output except the return value when executing
 ```
+<!--/usage-->
 
 Examples:
 
