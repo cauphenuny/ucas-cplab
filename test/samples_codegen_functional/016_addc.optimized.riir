@@ -1,0 +1,7 @@
+const a_0: i32 = 10;
+
+fn main() -> i32 {
+    'entry: {
+        return 15;
+    }
+}

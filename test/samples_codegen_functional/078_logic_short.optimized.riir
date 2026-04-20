@@ -1,0 +1,45 @@
+let ref mut gx_0: i32 = 6;
+let ref mut dar_0: [f64; 3] = {1.20000, 1.10000, 1.00000};
+
+fn main() -> i32 {
+    'entry: {
+        $0: i32 = *(gx_0);
+        $1: bool = $0 > 2;
+        branch $1 ? 'if_true_13_1 : 'inline_sfx_0_return;
+    }
+    'if_true_13_1: {
+        $4: i32 = *(gx_0);
+        jump 'if_exit_13_1;
+    }
+    'if_exit_13_1: {
+        $19: i32 = $phi('inline_sfx_0_return: 0, 'if_true_13_1: $4);
+        $5: i32 = *(gx_0);
+        $6: bool = $5 < 9;
+        branch $6 ? 'inline_sfx_1_return : 'if_exit_17_1;
+    }
+    'if_true_15_1: {
+        $9: i32 = *(gx_0);
+        jump 'if_exit_17_1;
+    }
+    'if_exit_17_1: {
+        $21: i32 = $phi('inline_sfx_1_return: $19, 'if_true_15_1: $9, 'if_exit_13_1: $19);
+        $15: () = print_int($21);
+        return 0;
+    }
+    'inline_sfx_0_return: {
+        $24: i32 = *(gx_0);
+        $25: i32 = $24 + 2;
+        *(gx_0) = $25;
+        $26: i32 = *(gx_0);
+        $3: bool = $26 > 0;
+        branch $3 ? 'if_true_13_1 : 'if_exit_13_1;
+    }
+    'inline_sfx_1_return: {
+        $27: i32 = *(gx_0);
+        $28: i32 = $27 + 3;
+        *(gx_0) = $28;
+        $29: i32 = *(gx_0);
+        $8: bool = $29 > 0;
+        branch $8 ? 'if_true_15_1 : 'if_exit_17_1;
+    }
+}

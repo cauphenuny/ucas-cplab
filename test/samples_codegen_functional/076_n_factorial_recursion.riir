@@ -18,6 +18,8 @@ fn main() -> i32 {
     let mut n_1: i32;
     let mut result_0: i32;
     'entry: {
+        n_1: i32 = 0;
+        result_0: i32 = 0;
         $0: i32 = get_int();
         n_1: i32 = $0;
         $1: bool = n_1 > 1;

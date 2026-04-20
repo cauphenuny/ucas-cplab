@@ -7,6 +7,10 @@ fn main() -> i32 {
     let mut l_0: i32;
     'entry: {
         i_0: i32 = 0;
+        j_0: i32 = 0;
+        k_0: i32 = 0;
+        l_0: i32 = 0;
+        i_0: i32 = 0;
         jump 'while_cond_10_4;
     }
     'while_cond_10_4: {
@@ -51,9 +55,9 @@ fn main() -> i32 {
         branch $3 ? 'while_body_16_16 : 'while_exit_16_16;
     }
     'while_body_16_16: {
-        $4: &mut[[[f32; 2]; 2]] = A_0[i_0];
-        $5: &mut[[f32; 2]] = $4[j_0];
-        $6: &mut[f32] = $5[k_0];
+        $4: &mut[[[f32; 2]; 2]] = &mut A_0[i_0];
+        $5: &mut[[f32; 2]] = &mut $4[j_0];
+        $6: &mut[f32] = &mut $5[k_0];
         $7: f32 = $6[l_0];
         $8: () = print_float($7);
         $9: i32 = l_0 + 1;

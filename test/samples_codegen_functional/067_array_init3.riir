@@ -1,9 +1,11 @@
-let ref mut A_0: [[bool; 2]; 4] = {true, true, true, false, true, true, false, false};
+let ref mut A_0: [[bool; 2]; 4] = {true, true, true, false, true, true};
 
 fn main() -> i32 {
     let mut i_0: i32;
     let mut j_0: i32;
     'entry: {
+        i_0: i32 = 0;
+        j_0: i32 = 0;
         i_0: i32 = 0;
         jump 'while_cond_10_4;
     }
@@ -23,7 +25,7 @@ fn main() -> i32 {
         branch $1 ? 'while_body_12_8 : 'while_exit_12_8;
     }
     'while_body_12_8: {
-        $2: &mut[bool] = A_0[i_0];
+        $2: &mut[bool] = &mut A_0[i_0];
         $3: bool = $2[j_0];
         $4: () = print_bool($3);
         $5: i32 = j_0 + 1;

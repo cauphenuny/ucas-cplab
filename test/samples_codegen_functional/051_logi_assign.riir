@@ -1,5 +1,5 @@
-let ref mut a_0: i32;
-let ref mut b_0: i32;
+let ref mut a_0: i32 = 0;
+let ref mut b_0: i32 = 0;
 
 fn main() -> i32 {
     let mut c_0: i32;
@@ -8,6 +8,7 @@ fn main() -> i32 {
         *(a_0) = $0;
         $1: i32 = get_int();
         *(b_0) = $1;
+        c_0: i32 = 0;
         $2: i32 = *(a_0);
         $3: i32 = *(b_0);
         $4: bool = $2 == $3;

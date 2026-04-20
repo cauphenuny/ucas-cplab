@@ -3,6 +3,8 @@ fn ifWhile() -> i32 {
     let mut b_0: i32;
     'entry: {
         a_0: i32 = 0;
+        a_0: i32 = 0;
+        b_0: i32 = 0;
         b_0: i32 = 3;
         $0: bool = a_0 == 5;
         branch $0 ? 'if_true_6_2 : 'if_false_6_2;

@@ -1,0 +1,26 @@
+fn ifWhile() -> i32 {
+    'entry: {
+        jump 'while_cond_13_4;
+    }
+    'if_exit_6_2: {
+        return $11;
+    }
+    'while_cond_13_4: {
+        $17: i32 = $phi('while_body_13_4: $6, 'entry: 0);
+        $11: i32 = $phi('while_body_13_4: $5, 'entry: 3);
+        $4: bool = $17 < 5;
+        branch $4 ? 'while_body_13_4 : 'if_exit_6_2;
+    }
+    'while_body_13_4: {
+        $5: i32 = $11 * 2;
+        $6: i32 = $17 + 1;
+        jump 'while_cond_13_4;
+    }
+}
+
+fn main() -> i32 {
+    'entry: {
+        $0: i32 = ifWhile();
+        return $0;
+    }
+}

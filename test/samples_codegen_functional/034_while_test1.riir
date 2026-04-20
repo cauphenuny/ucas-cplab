@@ -2,7 +2,9 @@ fn doubleWhile() -> i32 {
     let mut i_0: i32;
     let mut j_0: i32;
     'entry: {
+        i_0: i32 = 0;
         i_0: i32 = 5;
+        j_0: i32 = 0;
         j_0: i32 = 7;
         jump 'while_cond_6_2;
     }

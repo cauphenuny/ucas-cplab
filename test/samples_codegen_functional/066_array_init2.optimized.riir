@@ -1,0 +1,51 @@
+let ref mut A_0: [[[[f32; 2]; 2]; 2]; 4] = {1.00000f, 2.00000f, 3.00000f, 4.00000f, 5.00000f, 6.00000f, 7.00000f, 8.00000f, 9.00000f, 10.0000f, 11.0000f, 12.0000f, 13.0000f, 14.0000f, 15.0000f, 16.0000f, 17.0000f, 18.0000f, 19.0000f, 20.0000f, 21.0000f, 22.0000f, 23.0000f, 24.0000f, 25.0000f, 26.0000f, 27.0000f, 28.0000f, 29.0000f, 30.0000f, 31.0000f, 32.0000f};
+
+fn main() -> i32 {
+    'entry: {
+        jump 'while_cond_10_4;
+    }
+    'while_cond_10_4: {
+        $19: i32 = $phi('while_exit_12_8: $12, 'entry: 0);
+        $0: bool = $19 < 4;
+        branch $0 ? 'while_cond_12_8 : 'while_exit_10_4;
+    }
+    'while_exit_10_4: {
+        return 0;
+    }
+    'while_cond_12_8: {
+        $22: i32 = $phi('while_exit_14_12: $11, 'while_cond_10_4: 0);
+        $1: bool = $22 < 2;
+        branch $1 ? 'while_cond_14_12 : 'while_exit_12_8;
+    }
+    'while_exit_12_8: {
+        $12: i32 = $19 + 1;
+        jump 'while_cond_10_4;
+    }
+    'while_cond_14_12: {
+        $25: i32 = $phi('while_exit_16_16: $10, 'while_cond_12_8: 0);
+        $2: bool = $25 < 2;
+        branch $2 ? 'while_cond_16_16 : 'while_exit_14_12;
+    }
+    'while_exit_14_12: {
+        $11: i32 = $22 + 1;
+        jump 'while_cond_12_8;
+    }
+    'while_cond_16_16: {
+        $28: i32 = $phi('while_body_16_16: $9, 'while_cond_14_12: 0);
+        $3: bool = $28 < 2;
+        branch $3 ? 'while_body_16_16 : 'while_exit_16_16;
+    }
+    'while_body_16_16: {
+        $4: &mut[[[f32; 2]; 2]] = &mut A_0[$19];
+        $5: &mut[[f32; 2]] = &mut $4[$22];
+        $6: &mut[f32] = &mut $5[$25];
+        $7: f32 = $6[$28];
+        $8: () = print_float($7);
+        $9: i32 = $28 + 1;
+        jump 'while_cond_16_16;
+    }
+    'while_exit_16_16: {
+        $10: i32 = $25 + 1;
+        jump 'while_cond_14_12;
+    }
+}

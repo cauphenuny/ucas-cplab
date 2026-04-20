@@ -1,0 +1,6 @@
+fn main() -> i32 {
+    'entry: {
+        $1: () = print_int(-5);
+        return 0;
+    }
+}

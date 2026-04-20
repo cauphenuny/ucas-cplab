@@ -65,11 +65,13 @@ exit:
 block: label ':' '{' phiInst* inst* exit '}';
 
 inst:
-	var '[' value ']' '=' value ';' # sliceStoreInst
-	| '*(' var ')' '=' value ';' # pointerStoreInst
-	| var ':' type '=' ID '(' (argList)? ')' ';' # callInst
-	| var ':' type '=' value '[' value ']' ';' # sliceLoadInst
-	| var ':' type '=' '*(' var ')' ';' # pointerLoadInst
+	var ':' type '=' ID '(' (argList)? ')' ';' # callInst
+	| '*(' var ')' '=' value ';' # storeInst
+	| var ':' type '=' '*(' var ')' ';' # loadInst
+	| var ':' type '=' '&' MUT? var ';' # borrowInst
+	| var '[' value ']' '=' value ';' # storeElemInst
+	| var ':' type '=' value '[' value ']' ';' # loadElemInst
+	| var ':' type '=' '&' MUT? var '[' value ']' ';' # borrowElemInst
 	| var ':' type '=' value binop value ';' # binaryInst
 	| var ':' type '=' ('!' value | '-' value | value) ';' # unaryInst
 	;

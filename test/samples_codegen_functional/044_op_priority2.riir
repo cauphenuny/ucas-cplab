@@ -4,6 +4,10 @@ fn main() -> i32 {
     let mut c_0: i32;
     let mut d_0: i32;
     'entry: {
+        a_0: i32 = 0;
+        b_0: i32 = 0;
+        c_0: i32 = 0;
+        d_0: i32 = 0;
         a_0: i32 = 10;
         b_0: i32 = 4;
         c_0: i32 = 2;

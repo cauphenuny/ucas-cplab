@@ -1,4 +1,4 @@
-let ref mut k_0: i32;
+let ref mut k_0: i32 = 0;
 const n_0: i32 = 10;
 
 fn main() -> i32 {

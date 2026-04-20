@@ -3,6 +3,8 @@ fn main() -> i32 {
     let mut sum_0: i32;
     'entry: {
         i_0: i32 = 0;
+        i_0: i32 = 0;
+        sum_0: i32 = 0;
         sum_0: i32 = 0;
         jump 'while_cond_7_4;
     }

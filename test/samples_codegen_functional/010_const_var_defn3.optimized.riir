@@ -1,0 +1,6 @@
+fn main() -> i32 {
+    const b_0: i32 = 5;
+    'entry: {
+        return b_0;
+    }
+}

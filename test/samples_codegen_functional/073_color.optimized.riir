@@ -1,0 +1,237 @@
+const maxn_0: i32 = 18;
+const mod_0: i32 = 1000000007;
+let ref mut dp_0: [[[[[[i32; 7]; 18]; 18]; 18]; 18]; 18] = {0};
+let ref mut list_0: [i32; 200] = {0};
+let ref mut cns_0: [i32; 20] = {0};
+
+fn dfs(a_1: i32, b_1: i32, c_0: i32, d_0: i32, e_0: i32, last_0: i32) -> i32 {
+    'entry: {
+        $0: &mut[[[[[i32; 7]; 18]; 18]; 18]] = &mut dp_0[a_1];
+        $1: &mut[[[[i32; 7]; 18]; 18]] = &mut $0[b_1];
+        $2: &mut[[[i32; 7]; 18]] = &mut $1[c_0];
+        $3: &mut[[i32; 7]] = &mut $2[d_0];
+        $4: &mut[i32] = &mut $3[e_0];
+        $5: i32 = $4[last_0];
+        $7: bool = $5 != -1;
+        branch $7 ? 'if_true_13_4 : 'if_exit_13_4;
+    }
+    'if_true_13_4: {
+        $13: i32 = $4[last_0];
+        return $13;
+    }
+    'if_exit_13_4: {
+        $14: i32 = a_1 + b_1;
+        $15: i32 = $14 + c_0;
+        $16: i32 = $15 + d_0;
+        $17: i32 = $16 + e_0;
+        $18: bool = $17 == 0;
+        branch $18 ? 'if_true_15_4 : 'if_exit_15_4;
+    }
+    'if_true_15_4: {
+        return 1;
+    }
+    'if_exit_15_4: {
+        $19: bool = a_1 != 0;
+        branch $19 ? 'inline_equal_0_entry : 'if_exit_18_4;
+    }
+    'if_exit_18_4: {
+        $75: i32 = $phi('inline_equal_0_return: $26, 'if_exit_15_4: 0);
+        $27: bool = b_1 != 0;
+        branch $27 ? 'inline_equal_1_entry : 'if_exit_19_4;
+    }
+    'if_exit_19_4: {
+        $77: i32 = $phi('inline_equal_1_return: $35, 'if_exit_18_4: $75);
+        $36: bool = c_0 != 0;
+        branch $36 ? 'inline_equal_2_entry : 'if_exit_20_4;
+    }
+    'if_exit_20_4: {
+        $79: i32 = $phi('inline_equal_2_return: $44, 'if_exit_19_4: $77);
+        $45: bool = d_0 != 0;
+        branch $45 ? 'inline_equal_3_entry : 'if_exit_21_4;
+    }
+    'if_exit_21_4: {
+        $81: i32 = $phi('inline_equal_3_return: $53, 'if_exit_20_4: $79);
+        $54: bool = e_0 != 0;
+        branch $54 ? 'if_true_22_4 : 'if_exit_22_4;
+    }
+    'if_true_22_4: {
+        $55: i32 = d_0 + 1;
+        $56: i32 = e_0 - 1;
+        $57: i32 = dfs(a_1, b_1, c_0, $55, $56, 5);
+        $58: i32 = e_0 * $57;
+        $59: i32 = $81 + $58;
+        $60: i32 = $59 % 1000000007;
+        jump 'if_exit_22_4;
+    }
+    'if_exit_22_4: {
+        $83: i32 = $phi('if_true_22_4: $60, 'if_exit_21_4: $81);
+        $66: i32 = $83 % 1000000007;
+        $4[last_0] = $66;
+        $72: i32 = $4[last_0];
+        return $72;
+    }
+    'inline_equal_0_entry: {
+        $84: bool = last_0 == 2;
+        branch $84 ? 'inline_equal_0_return : 'inline_equal_0_if_exit_7_4;
+    }
+    'inline_equal_0_if_exit_7_4: {
+        jump 'inline_equal_0_return;
+    }
+    'inline_equal_0_return: {
+        $20: i32 = $phi('inline_equal_0_if_exit_7_4: 0, 'inline_equal_0_entry: 1);
+        $21: i32 = a_1 - $20;
+        $22: i32 = a_1 - 1;
+        $23: i32 = dfs($22, b_1, c_0, d_0, e_0, 1);
+        $24: i32 = $21 * $23;
+        $25: i32 = 0 + $24;
+        $26: i32 = $25 % 1000000007;
+        jump 'if_exit_18_4;
+    }
+    'inline_equal_1_entry: {
+        $85: bool = last_0 == 3;
+        branch $85 ? 'inline_equal_1_return : 'inline_equal_1_if_exit_7_4;
+    }
+    'inline_equal_1_if_exit_7_4: {
+        jump 'inline_equal_1_return;
+    }
+    'inline_equal_1_return: {
+        $28: i32 = $phi('inline_equal_1_if_exit_7_4: 0, 'inline_equal_1_entry: 1);
+        $29: i32 = b_1 - $28;
+        $30: i32 = a_1 + 1;
+        $31: i32 = b_1 - 1;
+        $32: i32 = dfs($30, $31, c_0, d_0, e_0, 2);
+        $33: i32 = $29 * $32;
+        $34: i32 = $75 + $33;
+        $35: i32 = $34 % 1000000007;
+        jump 'if_exit_19_4;
+    }
+    'inline_equal_2_entry: {
+        $86: bool = last_0 == 4;
+        branch $86 ? 'inline_equal_2_return : 'inline_equal_2_if_exit_7_4;
+    }
+    'inline_equal_2_if_exit_7_4: {
+        jump 'inline_equal_2_return;
+    }
+    'inline_equal_2_return: {
+        $37: i32 = $phi('inline_equal_2_if_exit_7_4: 0, 'inline_equal_2_entry: 1);
+        $38: i32 = c_0 - $37;
+        $39: i32 = b_1 + 1;
+        $40: i32 = c_0 - 1;
+        $41: i32 = dfs(a_1, $39, $40, d_0, e_0, 3);
+        $42: i32 = $38 * $41;
+        $43: i32 = $77 + $42;
+        $44: i32 = $43 % 1000000007;
+        jump 'if_exit_20_4;
+    }
+    'inline_equal_3_entry: {
+        $87: bool = last_0 == 5;
+        branch $87 ? 'inline_equal_3_return : 'inline_equal_3_if_exit_7_4;
+    }
+    'inline_equal_3_if_exit_7_4: {
+        jump 'inline_equal_3_return;
+    }
+    'inline_equal_3_return: {
+        $46: i32 = $phi('inline_equal_3_if_exit_7_4: 0, 'inline_equal_3_entry: 1);
+        $47: i32 = d_0 - $46;
+        $48: i32 = c_0 + 1;
+        $49: i32 = d_0 - 1;
+        $50: i32 = dfs(a_1, b_1, $48, $49, e_0, 4);
+        $51: i32 = $47 * $50;
+        $52: i32 = $79 + $51;
+        $53: i32 = $52 % 1000000007;
+        jump 'if_exit_21_4;
+    }
+}
+
+fn main() -> i32 {
+    'entry: {
+        $0: i32 = get_int();
+        jump 'while_cond_34_4;
+    }
+    'while_cond_34_4: {
+        $38: i32 = $phi('while_exit_36_8: $18, 'entry: 0);
+        $1: bool = $38 < 18;
+        branch $1 ? 'while_cond_36_8 : 'while_cond_60_4;
+    }
+    'while_cond_36_8: {
+        $42: i32 = $phi('while_exit_38_12: $17, 'while_cond_34_4: 0);
+        $2: bool = $42 < 18;
+        branch $2 ? 'while_cond_38_12 : 'while_exit_36_8;
+    }
+    'while_exit_36_8: {
+        $18: i32 = $38 + 1;
+        jump 'while_cond_34_4;
+    }
+    'while_cond_38_12: {
+        $45: i32 = $phi('while_exit_40_16: $16, 'while_cond_36_8: 0);
+        $3: bool = $45 < 18;
+        branch $3 ? 'while_cond_40_16 : 'while_exit_38_12;
+    }
+    'while_exit_38_12: {
+        $17: i32 = $42 + 1;
+        jump 'while_cond_36_8;
+    }
+    'while_cond_40_16: {
+        $48: i32 = $phi('while_exit_42_20: $15, 'while_cond_38_12: 0);
+        $4: bool = $48 < 18;
+        branch $4 ? 'while_cond_42_20 : 'while_exit_40_16;
+    }
+    'while_exit_40_16: {
+        $16: i32 = $45 + 1;
+        jump 'while_cond_38_12;
+    }
+    'while_cond_42_20: {
+        $51: i32 = $phi('while_exit_44_24: $14, 'while_cond_40_16: 0);
+        $5: bool = $51 < 18;
+        branch $5 ? 'while_cond_44_24 : 'while_exit_42_20;
+    }
+    'while_exit_42_20: {
+        $15: i32 = $48 + 1;
+        jump 'while_cond_40_16;
+    }
+    'while_cond_44_24: {
+        $54: i32 = $phi('while_body_44_24: $13, 'while_cond_42_20: 0);
+        $6: bool = $54 < 7;
+        branch $6 ? 'while_body_44_24 : 'while_exit_44_24;
+    }
+    'while_body_44_24: {
+        $7: &mut[[[[[i32; 7]; 18]; 18]; 18]] = &mut dp_0[$38];
+        $8: &mut[[[[i32; 7]; 18]; 18]] = &mut $7[$42];
+        $9: &mut[[[i32; 7]; 18]] = &mut $8[$45];
+        $10: &mut[[i32; 7]] = &mut $9[$48];
+        $11: &mut[i32] = &mut $10[$51];
+        $11[$54] = -1;
+        $13: i32 = $54 + 1;
+        jump 'while_cond_44_24;
+    }
+    'while_exit_44_24: {
+        $14: i32 = $51 + 1;
+        jump 'while_cond_42_20;
+    }
+    'while_cond_60_4: {
+        $56: i32 = $phi('while_body_60_4: $25, 'while_cond_34_4: 0);
+        $19: bool = $56 < $0;
+        branch $19 ? 'while_body_60_4 : 'while_exit_60_4;
+    }
+    'while_body_60_4: {
+        $20: i32 = get_int();
+        list_0[$56] = $20;
+        $21: i32 = list_0[$56];
+        $22: i32 = list_0[$56];
+        $23: i32 = cns_0[$22];
+        $24: i32 = $23 + 1;
+        cns_0[$21] = $24;
+        $25: i32 = $56 + 1;
+        jump 'while_cond_60_4;
+    }
+    'while_exit_60_4: {
+        $26: i32 = cns_0[1];
+        $27: i32 = cns_0[2];
+        $28: i32 = cns_0[3];
+        $29: i32 = cns_0[4];
+        $30: i32 = cns_0[5];
+        $31: i32 = dfs($26, $27, $28, $29, $30, 0);
+        $32: () = print_int($31);
+        return $31;
+    }
+}

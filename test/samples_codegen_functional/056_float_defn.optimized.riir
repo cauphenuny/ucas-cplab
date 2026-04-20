@@ -1,0 +1,8 @@
+fn main() -> i32 {
+    const y_0: f32 = 2.00000e-05f;
+    'entry: {
+        $0: () = print_float(13.0000f);
+        $1: () = print_float(y_0);
+        return 0;
+    }
+}

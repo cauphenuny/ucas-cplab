@@ -3,6 +3,8 @@ fn whileIf() -> i32 {
     let mut b_0: i32;
     'entry: {
         a_0: i32 = 0;
+        a_0: i32 = 0;
+        b_0: i32 = 0;
         b_0: i32 = 0;
         jump 'while_cond_7_2;
     }

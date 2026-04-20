@@ -239,7 +239,7 @@ public:
         return {};
     }
 
-    std::any visitSliceStoreInst(IRParser::SliceStoreInstContext* ctx) override {
+    std::any visitStoreElemInst(IRParser::StoreElemInstContext* ctx) override {
         // var [ index ] = value ;
         auto base = resolveLValue(ctx->var());
         auto index = take<ir::Value>(visit(ctx->value(0)));
@@ -251,7 +251,7 @@ public:
         return {};
     }
 
-    std::any visitPointerStoreInst(IRParser::PointerStoreInstContext* ctx) override {
+    std::any visitStoreInst(IRParser::StoreInstContext* ctx) override {
         // *(var) = value ;
         auto target = resolveLValue(ctx->var());
         auto val = take<ir::Value>(visit(ctx->value()));
@@ -277,7 +277,7 @@ public:
         return {};
     }
 
-    std::any visitSliceLoadInst(IRParser::SliceLoadInstContext* ctx) override {
+    std::any visitLoadElemInst(IRParser::LoadElemInstContext* ctx) override {
         // var : type = base [ index ] ;
         auto result = resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
         auto base = take<ir::Value>(visit(ctx->value(0)));
@@ -289,7 +289,31 @@ public:
         return {};
     }
 
-    std::any visitPointerLoadInst(IRParser::PointerLoadInstContext* ctx) override {
+    std::any visitBorrowInst(IRParser::BorrowInstContext* ctx) override {
+        // var : type = & MUT? var ;
+        auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
+        auto operand = resolveLValue(ctx->var(1));
+        current_block_->add(
+            ir::UnaryInst{.op = ctx->MUT() ? ir::UnaryInstOp::BORROW_MUT : ir::UnaryInstOp::BORROW,
+                          .result = std::move(result),
+                          .operand = ir::Value(std::move(operand))});
+        return {};
+    }
+
+    std::any visitBorrowElemInst(IRParser::BorrowElemInstContext* ctx) override {
+        // var : type = & MUT? var [ value ] ;
+        auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
+        auto base = ir::Value(resolveLValue(ctx->var(1)));
+        auto index = take<ir::Value>(visit(ctx->value()));
+        current_block_->add(
+            ir::BinaryInst{.op = ctx->MUT() ? ir::InstOp::BORROW_ELEM_MUT : ir::InstOp::BORROW_ELEM,
+                           .result = std::move(result),
+                           .lhs = std::move(base),
+                           .rhs = std::move(index)});
+        return {};
+    }
+
+    std::any visitLoadInst(IRParser::LoadInstContext* ctx) override {
         // var : type = *(var) ;
         auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
         auto operand = resolveLValue(ctx->var(1));

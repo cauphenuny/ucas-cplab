@@ -1,5 +1,5 @@
 let ref mut a_0: [i32; 6] = {10, 1, 50, 50, 20, 5};
-let ref mut dp_0: [[i32; 10]; 10];
+let ref mut dp_0: [[i32; 10]; 10] = {0};
 
 fn main() -> i32 {
     let mut n_0: i32;
@@ -9,7 +9,13 @@ fn main() -> i32 {
     let mut j_0: i32;
     let mut aa_0: i32;
     'entry: {
+        n_0: i32 = 0;
         n_0: i32 = 6;
+        k_0: i32 = 0;
+        i_0: i32 = 0;
+        t_0: i32 = 0;
+        j_0: i32 = 0;
+        aa_0: i32 = 0;
         k_0: i32 = 3;
         jump 'while_cond_10_1;
     }
@@ -22,7 +28,7 @@ fn main() -> i32 {
         jump 'while_cond_13_2;
     }
     'while_exit_10_1: {
-        $29: &mut[i32] = dp_0[0];
+        $29: &mut[i32] = &mut dp_0[0];
         $30: i32 = n_0 - 1;
         $31: i32 = $29[$30];
         $32: () = print_int($31);
@@ -52,9 +58,9 @@ fn main() -> i32 {
         branch $7 ? 'while_body_17_3 : 'while_exit_17_3;
     }
     'while_body_17_3: {
-        $8: &mut[i32] = dp_0[i_0];
+        $8: &mut[i32] = &mut dp_0[i_0];
         $9: i32 = $8[t_0];
-        $10: &mut[i32] = dp_0[t_0];
+        $10: &mut[i32] = &mut dp_0[t_0];
         $11: i32 = $10[j_0];
         $12: i32 = $9 + $11;
         $13: i32 = a_0[i_0];
@@ -64,7 +70,7 @@ fn main() -> i32 {
         $17: i32 = $15 * $16;
         $18: i32 = $12 + $17;
         aa_0: i32 = $18;
-        $19: &mut[i32] = dp_0[i_0];
+        $19: &mut[i32] = &mut dp_0[i_0];
         $20: i32 = $19[j_0];
         $21: bool = $20 == 0;
         branch $21 ? 'if_true_20_4 : 'L0;
@@ -75,7 +81,7 @@ fn main() -> i32 {
         jump 'while_cond_13_2;
     }
     'if_true_20_4: {
-        $25: &mut[i32] = dp_0[i_0];
+        $25: &mut[i32] = &mut dp_0[i_0];
         $25[j_0] = aa_0;
         jump 'if_exit_20_4;
     }
@@ -85,7 +91,7 @@ fn main() -> i32 {
         jump 'while_cond_17_3;
     }
     'L0: {
-        $22: &mut[i32] = dp_0[i_0];
+        $22: &mut[i32] = &mut dp_0[i_0];
         $23: i32 = $22[j_0];
         $24: bool = aa_0 < $23;
         branch $24 ? 'if_true_20_4 : 'if_exit_20_4;

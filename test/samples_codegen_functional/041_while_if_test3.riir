@@ -3,6 +3,7 @@ fn deepWhileBr(a_0: i32, b_0: i32) -> i32 {
     let mut d_0: i32;
     let mut e_0: i32;
     'entry: {
+        c_0: i32 = 0;
         $0: i32 = a_0 + b_0;
         c_0: i32 = $0;
         jump 'while_cond_4_2;
@@ -12,6 +13,7 @@ fn deepWhileBr(a_0: i32, b_0: i32) -> i32 {
         branch $1 ? 'while_body_4_2 : 'while_exit_4_2;
     }
     'while_body_4_2: {
+        d_0: i32 = 0;
         d_0: i32 = 42;
         $2: bool = c_0 < 100;
         branch $2 ? 'if_true_7_4 : 'if_exit_7_4;
@@ -29,6 +31,7 @@ fn deepWhileBr(a_0: i32, b_0: i32) -> i32 {
         jump 'while_cond_4_2;
     }
     'if_true_9_6: {
+        e_0: i32 = 0;
         $5: i32 = d_0 * 2;
         e_0: i32 = $5;
         $6: bool = 1 == 1;
@@ -50,6 +53,7 @@ fn deepWhileBr(a_0: i32, b_0: i32) -> i32 {
 fn main() -> i32 {
     let mut p_0: i32;
     'entry: {
+        p_0: i32 = 0;
         p_0: i32 = 2;
         $0: i32 = deepWhileBr(p_0, p_0);
         return $0;
