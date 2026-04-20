@@ -2,6 +2,7 @@
 #include "backend/ir/op.hpp"
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/ast/ast.hpp"
+#include "frontend/ast/op.hpp"
 #include "irgen.h"
 #include "utils/diagnosis.hpp"
 #include "utils/match.hpp"
@@ -47,7 +48,15 @@ auto Generator::gen(const ast::BinaryExp* exp, Func* func, Block* scope) -> Valu
     auto left = gen(&exp->left, func, scope);
     auto right = gen(&exp->right, func, scope);
     auto result = func->newTemp(this->info->type_of(exp), scope);
-    scope->add(BinaryInst{convert_op(exp->op), result, std::move(left), std::move(right)});
+    if (exp->op != ast::BinaryOp::INDEX) {
+        scope->add(BinaryInst{convert_op(exp->op), result, std::move(left), std::move(right)});
+    } else {
+        auto ir_op = result.type.is<ir::type::Reference>()
+                         ? result.type.as<ir::type::Reference>().readonly ? InstOp::BORROW_ELEM
+                                                                          : InstOp::BORROW_ELEM_MUT
+                         : InstOp::LOAD_ELEM;
+        scope->add(BinaryInst{ir_op, result, std::move(left), std::move(right)});
+    }
     return LeftValue{result};
 }
 

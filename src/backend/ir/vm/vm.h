@@ -272,18 +272,20 @@ public:
             }
         };
 
-        binary_ops[InstOp::LOAD_ELEM] =
-            [this, check_ref, check_indexing](View& dest, const View& lhs, const View& rhs) {
-                // NOTE: lhs: pointer, rhs: offset
-                using namespace ir::type;
-                check_indexing(lhs.type, rhs.type);
-                auto is_ref = lhs.type.is<Reference>();
-                if (is_ref) check_ref(lhs.type, true, "binary load");
-                auto offset = *(int*)rhs.data;
-                auto elem_type = is_ref ? lhs.type.as<Reference>().elem : lhs.type.as<Array>().elem;
-                auto base = is_ref ? *(std::byte**)lhs.data : lhs.data;
-                assign(dest.type, dest.data, elem_type, base + offset * size_of(elem_type));
-            };
+        binary_ops[InstOp::LOAD_ELEM] = binary_ops[InstOp::BORROW_ELEM] =
+            binary_ops[InstOp::BORROW_ELEM_MUT] =
+                [this, check_ref, check_indexing](View& dest, const View& lhs, const View& rhs) {
+                    // NOTE: lhs: pointer, rhs: offset
+                    using namespace ir::type;
+                    check_indexing(lhs.type, rhs.type);
+                    auto is_ref = lhs.type.is<Reference>();
+                    if (is_ref) check_ref(lhs.type, true, "binary load");
+                    auto offset = *(int*)rhs.data;
+                    auto elem_type =
+                        is_ref ? lhs.type.as<Reference>().elem : lhs.type.as<Array>().elem;
+                    auto base = is_ref ? *(std::byte**)lhs.data : lhs.data;
+                    assign(dest.type, dest.data, elem_type, base + offset * size_of(elem_type));
+                };
         binary_ops[InstOp::STORE_ELEM] = [this, check_ref, check_indexing](
                                              View& dest, const View& lhs, const View& rhs) {
             // NOTE: dest: pointer, lhs: offset, rhs: value
