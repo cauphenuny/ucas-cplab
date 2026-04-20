@@ -259,11 +259,17 @@ int main(int argc, const char* argv[]) {
                             passes) {
                         bool any_changed = false;
                         for (auto& [pass, name] : passes) {
-                            bool pass_changed = pass->apply(program);
-                            if (pass_changed) {
-                                echo(program, fmt::format("#{} {}", pass_id++, name));
+                            try {
+
+                                bool pass_changed = pass->apply(program);
+                                if (pass_changed) {
+                                    echo(program, fmt::format("#{} {}", pass_id++, name));
+                                }
+                                any_changed |= pass_changed;
+                            } catch (const CompilerError& e) {
+                                fmt::println("Error during pass '{}': {}", name, e.what());
+                                exit(RUNTIME_ERROR);
                             }
-                            any_changed |= pass_changed;
                         }
                         return any_changed;
                     };
@@ -304,10 +310,9 @@ int main(int argc, const char* argv[]) {
                                             "Dead Allocation Elimination");
                     }
                     if (optimize_block) {
+                        passes.emplace_back(std::make_unique<SimplifyCFG>(), "CFG Simplification");
                         passes.emplace_back(std::make_unique<DeadBlockElimination>(),
                                             "Dead Block Elimination");
-                        passes.emplace_back(std::make_unique<TrivialBlockReplacement>(),
-                                            "Trivial Block Replacement");
                     }
                     if (optimize_inline) {
                         passes.emplace_back(std::make_unique<Inlining>(optimize_inline),

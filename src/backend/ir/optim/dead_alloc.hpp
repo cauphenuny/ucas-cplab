@@ -1,4 +1,4 @@
-/// @brief dead allocation elimination
+/// @brief Dead Allocation Elimination Pass
 
 #pragma once
 

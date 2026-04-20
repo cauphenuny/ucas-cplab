@@ -1,4 +1,4 @@
-/// @brief Dead Block Elimination Pass, requires SSA
+/// @brief CFG Simplification & Dead Block Elimination Pass, requires SSA
 
 #pragma once
 
@@ -8,6 +8,7 @@
 #include "framework.hpp"
 
 #include <algorithm>
+#include <list>
 #include <memory>
 #include <optional>
 #include <unordered_set>
@@ -98,9 +99,11 @@ private:
     }
 };
 
-/// @note: replace block with only a jump exit by its target
+/// @note:
+/// 1. replace block with only a jump exit by its target
+/// 2. redirect empty entrance to its target
 
-struct TrivialBlockReplacement : Pass {
+struct SimplifyCFG : Pass {
     bool apply(Program& prog) override {
         bool changed = false;
         while (replace(prog)) changed = true;
@@ -111,8 +114,8 @@ private:
     bool replace(Program& prog) {
         bool pass_changed = false;
         for (auto& func_box : prog.getFuncs()) {
-            pass_changed |= replace(*func_box, prog);
             pass_changed |= squash(*func_box, prog);
+            pass_changed |= redirect(*func_box, prog);
         }
         return pass_changed;
     }
@@ -157,8 +160,8 @@ private:
         return false;
     }
 
-    // replace block by its target in exit
-    bool replace(Func& func, Program& prog) {
+    // merge block to its target in jump-exit
+    bool squash(Func& func, Program& prog) {
         auto cfg = ControlFlowGraph(func);
         std::optional<std::pair<Block*, Block*>> replacement;
         for (auto& block_box : func.blocks()) {
@@ -167,23 +170,39 @@ private:
                 // no predecessor, would not modify any phi inst or any exit inst, so skip it
                 continue;
             }
-            if (block->insts().size() == 0) {
-                match(
-                    block->exit(),
-                    [&](const JumpExit& j) {
-                        if (block == j.target) return;
+            match(
+                block->exit(),
+                [&](const JumpExit& j) {
+                    if (block == j.target) return;
+                    if (block->insts().size() == 0 || cfg.pred[j.target].size() == 1) {
                         if (!conflicts(block, j.target, cfg)) {
                             replacement = {block, j.target};
                         }
-                    },
-                    [](const auto&) {});
-            }
+                    }
+                },
+                [](const auto&) {});
             if (replacement.has_value()) break;
         }
 
         if (!replacement) return false;
 
         auto replaced = replacement->first, target = replacement->second;
+
+        std::list<Inst> merged_phis, merged_insts;
+        auto add = [&](Block* block) {
+            for (auto& inst : block->insts()) {
+                if (auto phi = std::get_if<PhiInst>(&inst); phi) {
+                    merged_phis.push_back(inst);
+                } else {
+                    merged_insts.push_back(inst);
+                }
+            }
+        };
+        add(replaced), add(target);
+        replaced->insts().clear();
+        target->insts().clear();
+        target->insts().splice(target->insts().end(), merged_phis);
+        target->insts().splice(target->insts().end(), merged_insts);
 
         for (auto& block : func.blocks()) {
             for (auto& inst : block->insts()) {
@@ -204,7 +223,8 @@ private:
         return true;
     }
 
-    bool squash(Func& func, Program& prog) {
+    // redirect entrance to its target if possible
+    bool redirect(Func& func, Program& prog) {
         if (func.entrance()->insts().size() > 0 ||
             !std::holds_alternative<JumpExit>(func.entrance()->exit()))
             return false;

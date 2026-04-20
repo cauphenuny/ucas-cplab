@@ -63,8 +63,8 @@ int main(int argc, const char* argv[]) {
         {"ssa2temp", []() { return std::make_unique<ir::optim::SSAValue2TempValue>(); }},
         {"inline", []() { return std::make_unique<ir::optim::Inlining>(); }},
         {"block", []() {
-             return std::make_unique<ir::optim::Compose<ir::optim::DeadBlockElimination,
-                                                        ir::optim::TrivialBlockReplacement>>();
+             return std::make_unique<
+                 ir::optim::Compose<ir::optim::SimplifyCFG, ir::optim::DeadBlockElimination>>();
          }}};
 
     if (pass_names.empty()) {
