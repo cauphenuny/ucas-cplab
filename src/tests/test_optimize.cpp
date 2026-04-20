@@ -1,5 +1,6 @@
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.h"
+#include "backend/ir/optim/common_expr.hpp"
 #include "backend/ir/optim/const_propagation.hpp"
 #include "backend/ir/optim/copy_propagation.hpp"
 #include "backend/ir/optim/dead_alloc.hpp"
@@ -30,12 +31,18 @@ int main(int argc, const char* argv[]) {
     std::string passes_arg;
     if (argc > 1) passes_arg = argv[1];
 
-    std::vector<std::string> pass_names;
+    std::vector<std::string> pass_names, negative_passes;
     if (!passes_arg.empty()) {
         std::istringstream ss(passes_arg);
         std::string token;
         while (std::getline(ss, token, ',')) {
-            if (!token.empty()) pass_names.push_back(token);
+            if (!token.empty()) {
+                if (token[0] == '-') {
+                    negative_passes.push_back(token.substr(1));
+                } else {
+                    pass_names.push_back(token);
+                }
+            }
         }
     }
 
@@ -62,6 +69,11 @@ int main(int argc, const char* argv[]) {
         {"const", []() { return std::make_unique<ir::optim::ConstPropagation>(); }},
         {"ssa2temp", []() { return std::make_unique<ir::optim::SSAValue2TempValue>(); }},
         {"inline", []() { return std::make_unique<ir::optim::Inlining>(); }},
+        {"exp",
+         []() {
+             return std::make_unique<ir::optim::Compose<ir::optim::DeadBlockElimination,
+                                                        ir::optim::CommonSubexprElimination>>();
+         }},
         {"block", []() {
              return std::make_unique<
                  ir::optim::Compose<ir::optim::SimplifyCFG, ir::optim::DeadBlockElimination>>();
@@ -69,8 +81,13 @@ int main(int argc, const char* argv[]) {
 
     if (pass_names.empty()) {
         for (const auto& [name, _] : factories) {
-            pass_names.push_back(name);
-            fmt::println(stderr, "No passes specified, defaulting to all: {}", name);
+            if (std::find(negative_passes.begin(), negative_passes.end(), name) ==
+                negative_passes.end()) {
+                pass_names.push_back(name);
+                fmt::println(stderr, "add: {}", name);
+            } else {
+                fmt::println(stderr, "skip: {}", name);
+            }
         }
     }
 

@@ -33,8 +33,8 @@ compiler [args]... files ...
     --optimize-alloc        Apply Dead Allocation Elimination optimization (triggers --ssa, better with --ssa2temp)
     --optimize-block        Apply Dead/Trivial Block Elimination optimization (triggers --ssa)
     --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts) (triggers --ssa)
-    --optimize-exp          (TODO) Apply Common Subexpression Elimination optimization (triggers --ssa)
-    -O1, --optimize         Apply above optimizations
+    --optimize-exp          Apply Common Subexpression Elimination optimization (triggers --ssa)
+    -O1, --optimize         Apply above optimizations, --no-optimize-[...] to disable specific optimizations
 
     --exec                  Execute the generated IR
     --silent                Suppress all compiler output except the return value when executing
@@ -99,6 +99,7 @@ src/
 │   │   ├── ir.h
 │   │   ├── op.hpp
 │   │   ├── optim/
+│   │   │   ├── common_expr.hpp:	Common Subexpressions Elimination, requires SSA
 │   │   │   ├── const_propagation.hpp:	Const Propagation Pass, requires SSA
 │   │   │   ├── copy_propagation.hpp:	Copy Propagation Pass, requires SSA
 │   │   │   ├── dead_alloc.hpp:	Dead Allocation Elimination Pass
@@ -156,7 +157,7 @@ src/
     ├── traits.hpp
     └── tui.h
 
-15 directories, 63 files
+15 directories, 64 files
 ```
 <!--/source_tree-->
 

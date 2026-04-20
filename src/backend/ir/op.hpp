@@ -79,6 +79,11 @@ inline auto convert_op(ast::BinaryOp op) -> InstOp {
     }
 }
 
+inline bool commutative(InstOp op) {
+    return op == InstOp::MUL || op == InstOp::ADD || op == InstOp::AND || op == InstOp::OR ||
+           op == InstOp::EQ || op == InstOp::NEQ;
+}
+
 inline auto convert_op(ast::UnaryOp op) -> UnaryInstOp {
     switch (op) {
         case ast::UnaryOp::PLUS: return UnaryInstOp::MOV;

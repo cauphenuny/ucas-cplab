@@ -5,6 +5,7 @@
 #include "backend/ir/analysis/dominance.hpp"
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.h"
+#include "backend/ir/optim/common_expr.hpp"
 #include "backend/ir/optim/const_propagation.hpp"
 #include "backend/ir/optim/copy_propagation.hpp"
 #include "backend/ir/optim/dead_alloc.hpp"
@@ -24,6 +25,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <set>
@@ -62,8 +64,8 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --optimize-alloc        Apply Dead Allocation Elimination optimization (triggers --ssa, better with --ssa2temp)
     --optimize-block        Apply Dead/Trivial Block Elimination optimization (triggers --ssa)
     --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts) (triggers --ssa)
-    --optimize-exp          (TODO) Apply Common Subexpression Elimination optimization (triggers --ssa)
-    -O1, --optimize         Apply above optimizations
+    --optimize-exp          Apply Common Subexpression Elimination optimization (triggers --ssa)
+    -O1, --optimize         Apply above optimizations, --no-optimize-[...] to disable specific optimizations
 
     --exec                  Execute the generated IR
     --silent                Suppress all compiler output except the return value when executing
@@ -133,14 +135,22 @@ int main(int argc, const char* argv[]) {
     bool silent = false;
     bool to_ssa = false;
     bool ssa_to_temp = false;
+
     bool optimize_alloc = false;
     bool optimize_def = false;
     bool optimize_exp = false;
     bool optimize_copy = false;
     bool optimize_const = false;
     bool optimize_block = false;
+
+    std::vector<std::pair<std::string, std::reference_wrapper<bool>>> optimizations = {
+        {"alloc", optimize_alloc}, {"def", optimize_def},     {"exp", optimize_exp},
+        {"copy", optimize_copy},   {"const", optimize_const}, {"block", optimize_block},
+    };
+
     size_t optimize_inline = 0;
     constexpr size_t default_inline_threshold = 8;
+
     FILE* output_file = nullptr;
     std::set<std::string> files;
 
@@ -163,26 +173,18 @@ int main(int argc, const char* argv[]) {
         } else if (arg == "--silent") {
             silent = true;
         } else if (arg == "-O1" || arg == "--optimize") {
-            optimize_exp = true;
             optimize_copy = true;
             optimize_const = true;
             optimize_def = true;
             optimize_alloc = true;
+            optimize_exp = true;
             optimize_block = true;
             optimize_inline = default_inline_threshold;
-        } else if (arg == "--optimize-alloc") {
-            optimize_alloc = true;
-        } else if (arg == "--optimize-def") {
-            optimize_def = true;
-        } else if (arg == "--optimize-exp") {
-            optimize_exp = true;
-        } else if (arg == "--optimize-copy") {
-            optimize_copy = true;
-        } else if (arg == "--optimize-const") {
-            optimize_const = true;
-        } else if (arg == "--optimize-block") {
-            optimize_block = true;
-        } else if (arg == "--optimize-inline") {
+        } else if (arg == "--optimize-inline" || arg == "--no-optimize-inline") {
+            if (arg == "--no-optimize-inline") {
+                optimize_inline = 0;
+                continue;
+            }
             if (i + 1 < argc && argv[i + 1][0] != '-') {
                 optimize_inline = std::stoul(argv[++i]);
             } else {
@@ -196,7 +198,20 @@ int main(int argc, const char* argv[]) {
         } else if (arg == "--help") {
             usage(argv[0]);
         } else if (arg.length() > 1 && arg[0] == '-' && arg[1] == '-') {
-            usage(argv[0], INVALID_ARGUMENT);
+            bool recognized = false;
+            for (auto& [name, flag] : optimizations) {
+                if (arg == "--optimize-" + name) {
+                    flag.get() = true, recognized = true;
+                    break;
+                } else if (arg == "--no-optimize-" + name) {
+                    flag.get() = false, recognized = true;
+                    break;
+                }
+            }
+            if (!recognized) {
+                fmt::println(stderr, "unknown option: {}\n", arg);
+                usage(argv[0], INVALID_ARGUMENT);
+            }
         } else {
             files.insert(arg);
         }
@@ -212,6 +227,15 @@ int main(int argc, const char* argv[]) {
     if (optimize && !to_ssa) {
         // warning("Optimization requires SSA form. Auto enabling SSA form.");
         to_ssa = true;
+    }
+
+    if (optimize && !silent) {
+        fmt::print("optimizations: ");
+        for (auto& [name, flag] : optimizations) {
+            fmt::print("{}{} ", flag.get() ? "+" : "-", name);
+        }
+        fmt::println("{}{} ", optimize_inline > 0 ? "+" : "-", "inline");
+        fmt::print("\n");
     }
 
     try {
@@ -308,6 +332,12 @@ int main(int argc, const char* argv[]) {
                     if (optimize_alloc) {
                         passes.emplace_back(std::make_unique<DeadAllocElimination>(),
                                             "Dead Allocation Elimination");
+                    }
+                    if (optimize_exp) {
+                        passes.emplace_back(std::make_unique<DeadBlockElimination>(),
+                                            "Dead Block Elimination");
+                        passes.emplace_back(std::make_unique<CommonSubexprElimination>(),
+                                            "Common Subexpression Elimination");
                     }
                     if (optimize_block) {
                         passes.emplace_back(std::make_unique<SimplifyCFG>(), "CFG Simplification");
