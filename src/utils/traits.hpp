@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <utility>
 
 struct Location {
     int line{-1}, col{-1};

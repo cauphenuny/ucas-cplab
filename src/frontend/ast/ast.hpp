@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <utils/serialize.hpp>
 #include <utils/traits.hpp>
 #include <variant>

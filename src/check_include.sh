@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="${1:-src}"
 
-if ! command -v rg >/dev/null 2>&1; then
-    echo "error: 'rg' (ripgrep) is required for include checks." >&2
+if ! command -v grep >/dev/null 2>&1; then
+    echo "error: 'grep' is required for include checks." >&2
     exit 2
 fi
 
@@ -29,6 +29,7 @@ header_for_symbol() {
         any) echo "any" ;;
         tuple) echo "tuple" ;;
         pair) echo "utility" ;;
+        move|forward|swap|exchange|as_const|declval) echo "utility" ;;
 
         # Memory/resource
         unique_ptr|shared_ptr|weak_ptr|make_unique|make_shared) echo "memory" ;;
@@ -39,6 +40,9 @@ header_for_symbol() {
         function|reference_wrapper|ref|cref) echo "functional" ;;
         filesystem) echo "filesystem" ;;
 
+        # Type traits
+        is_same|is_base_of|is_convertible|is_constructible|is_default_constructible|is_copy_constructible|is_move_constructible|is_assignable|is_copy_assignable|is_move_assignable|is_destructible|is_trivial|is_trivially_constructible|is_trivially_default_constructible|is_trivially_copy_constructible|is_trivially_move_constructible|is_trivially_assignable|is_trivially_copy_assignable|is_trivially_move_assignable|is_trivially_destructible|is_nothrow_constructible|is_nothrow_default_constructible|is_nothrow_copy_constructible|is_nothrow_move_constructible|is_nothrow_assignable|is_nothrow_copy_assignable|is_nothrow_move_assignable|is_nothrow_destructible|has_virtual_destructor|alignment_of|rank|extent|is_abstract|is_final|is_aggregate|is_empty|is_polymorphic|is_abstract|is_final|underlying_type|result_of|invoke_result|is_invocable|is_invocable_r|is_nothrow_invocable|is_nothrow_invocable_r|enable_if|conditional|conjunction|disjunction|negation|void_t|type_identity|integral_constant|bool_constant|true_type|false_type) echo "type_traits" ;;
+
         *) echo "" ;;
     esac
 }
@@ -47,7 +51,7 @@ missing_files=0
 missing_headers=0
 
 while IFS= read -r file; do
-    symbols="$(rg -o 'std::[A-Za-z_][A-Za-z0-9_]*' "$file" | sed 's/^std:://' | sort -u || true)"
+    symbols="$(grep -o 'std::[A-Za-z_][A-Za-z0-9_]*' "$file" | sed 's/^std:://' | sort -u || true)"
 
     [[ -z "$symbols" ]] && continue
 
@@ -58,7 +62,7 @@ while IFS= read -r file; do
         header="$(header_for_symbol "$sym")"
         [[ -z "$header" ]] && continue
 
-        if ! rg -q "^[[:space:]]*#include[[:space:]]*<${header}>" "$file"; then
+        if ! grep -q "^[[:space:]]*#include[[:space:]]*<${header}>" "$file"; then
             missing_pairs+=("${header}:${sym}")
         fi
     done <<EOF
@@ -88,7 +92,7 @@ EOF
         header_count=$(printf '%s\n' "${missing_pairs[@]}" | cut -d: -f1 | sort -u | wc -l | tr -d ' ')
         ((missing_headers += header_count))
     fi
-done < <(rg --files "$ROOT_DIR" -g '*.h' -g '*.hpp' -g '*.c' -g '*.cc' -g '*.cpp')
+done < <(find "$ROOT_DIR" -name '*.h' -o -name '*.hpp' -o -name '*.c' -o -name '*.cc' -o -name '*.cpp')
 
 if (( missing_files > 0 )); then
     echo

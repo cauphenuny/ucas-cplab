@@ -2,6 +2,7 @@
 #include "../ir.h"
 
 #include <cstddef>
+#include <type_traits>
 
 namespace ir::vm {
 
