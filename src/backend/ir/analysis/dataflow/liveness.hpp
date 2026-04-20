@@ -1,4 +1,4 @@
-/// @brief live variable analysis
+/// @brief Live Variable Analysis
 #pragma once
 
 #include "backend/ir/analysis/utils.hpp"

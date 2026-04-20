@@ -1,4 +1,4 @@
-/// @brief Inline Pass, must run after SSA construction
+/// @brief Inline Pass, requires SSA
 
 #pragma once
 

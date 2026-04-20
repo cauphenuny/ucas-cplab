@@ -72,6 +72,94 @@ source -> IR(RIIR) -> target(rv64)
 
 ---
 
+<!--source_tree-->
+```
+src/
+├── backend/
+│   ├── ir/
+│   │   ├── alloc.cpp
+│   │   ├── analysis/
+│   │   │   ├── cfg.hpp:	Control Flow Graph
+│   │   │   ├── dataflow/
+│   │   │   │   ├── dominance.hpp
+│   │   │   │   ├── framework.hpp:	Unified Data Flow Equation Solver
+│   │   │   │   └── liveness.hpp:	Live Variable Analysis
+│   │   │   ├── dominance.hpp
+│   │   │   └── utils.hpp
+│   │   ├── block.cpp
+│   │   ├── func.cpp
+│   │   ├── gen/
+│   │   │   ├── decl.cpp
+│   │   │   ├── expr.cpp
+│   │   │   ├── irgen.h
+│   │   │   └── stmt.cpp
+│   │   ├── inst.cpp
+│   │   ├── ir.h
+│   │   ├── op.hpp
+│   │   ├── optim/
+│   │   │   ├── const_propagation.hpp:	Const Propagation Pass, requires SSA
+│   │   │   ├── copy_propagation.hpp:	Copy Propagation Pass, requires SSA
+│   │   │   ├── dead_alloc.hpp:	dead allocation elimination
+│   │   │   ├── dead_block.hpp:	Dead Block Elimination Pass, requires SSA
+│   │   │   ├── dead_def.hpp:	Dead Definition Elimination Pass, requires SSA
+│   │   │   ├── framework.hpp
+│   │   │   ├── inline.hpp:	Inline Pass, requires SSA
+│   │   │   └── ssa.hpp:	SSA Construct Pass
+│   │   ├── parse/
+│   │   │   └── visit.hpp
+│   │   ├── program.cpp
+│   │   ├── type.hpp:	algebraic data types for IR
+│   │   ├── value.cpp
+│   │   └── vm/
+│   │       ├── assign.cpp
+│   │       ├── exec.cpp
+│   │       ├── view.hpp
+│   │       └── vm.h
+│   └── rv64/
+│       └── inst.hpp
+├── compiler.cpp
+├── frontend/
+│   ├── ast/
+│   │   ├── analysis/
+│   │   │   ├── decl.cpp
+│   │   │   ├── expr.cpp
+│   │   │   ├── func.cpp
+│   │   │   ├── scope.cpp
+│   │   │   ├── semantic_ast.h
+│   │   │   ├── stmt.cpp
+│   │   │   └── type.cpp
+│   │   ├── ast.hpp
+│   │   └── op.hpp
+│   └── syntax/
+│       ├── error.hpp
+│       └── visit.hpp
+├── interpreter.cpp
+├── tests/
+│   ├── test_adt.cpp
+│   ├── test_ast.cpp
+│   ├── test_dominance.cpp
+│   ├── test_ir_parse.cpp
+│   ├── test_ir_parse_all.cpp
+│   ├── test_liveness.cpp
+│   ├── test_livenesss_all.cpp
+│   ├── test_optimize.cpp
+│   ├── test_sem.cpp
+│   ├── test_serialize.cpp
+│   ├── test_ssa.cpp
+│   └── test_vm.cpp
+└── utils/
+    ├── diagnosis.hpp
+    ├── match.hpp
+    ├── serialize.hpp
+    ├── traits.hpp
+    └── tui.h
+
+15 directories, 63 files
+```
+<!--/source_tree-->
+
+---
+
 IR Type System:
 
 ```rust

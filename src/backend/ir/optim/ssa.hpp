@@ -1,4 +1,4 @@
-/// @brief SSA Construct Pass, set program's ssa flag
+/// @brief SSA Construct Pass
 
 #pragma once
 

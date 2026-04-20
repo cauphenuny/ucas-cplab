@@ -14,4 +14,3 @@ grammar/*.tokens
 .antlr
 
 out
-scripts

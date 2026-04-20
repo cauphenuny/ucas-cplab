@@ -1,4 +1,4 @@
-/// @brief Copy Propagation Pass, must run after SSA construction
+/// @brief Copy Propagation Pass, requires SSA
 
 /// @note propagates through non-array MOV operation
 

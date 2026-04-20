@@ -1,3 +1,5 @@
+/// @brief Control Flow Graph
+
 #pragma once
 #include "backend/ir/ir.h"
 

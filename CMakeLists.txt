@@ -73,11 +73,23 @@ if(NOT BASH_EXECUTABLE)
 endif()
 
 add_custom_target(check_includes ALL
-    COMMAND ${BASH_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/check_include.sh ${CMAKE_CURRENT_SOURCE_DIR}/src
+    COMMAND ${BASH_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_include.sh ${CMAKE_CURRENT_SOURCE_DIR}/src
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Checking missing mapped standard includes under src/**"
     VERBATIM
 )
+
+find_program(PYTHON_EXECUTABLE python3)
+if(NOT PYTHON_EXECUTABLE)
+    message(WARNING "python3 not found. Skipping gen_tree target.")
+else()
+    add_custom_target(gen_tree ALL
+        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/gen_tree_with_brief.py
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Generating code tree with briefs"
+        VERBATIM
+    )
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -155,6 +167,10 @@ endif()
 
 add_dependencies(compiler_core generate_antlr)
 add_dependencies(compiler_core check_includes)
+
+if(TARGET gen_tree)
+    add_dependencies(compiler_core gen_tree)
+endif()
 
 if(ENABLE_FORMAT AND CLANG_FORMAT_EXECUTABLE)
     add_dependencies(compiler_core format)

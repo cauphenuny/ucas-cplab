@@ -1,4 +1,4 @@
-/// @brief Const Propagation Pass, must run after SSA construction
+/// @brief Const Propagation Pass, requires SSA
 
 /// @note converts constexpr expressions to MOV inst,
 /// then invoke Copy Propagation to further propagate constants.

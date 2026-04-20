@@ -1,3 +1,4 @@
+/// @brief Unified Data Flow Equation Solver
 #pragma once
 
 #include "backend/ir/analysis/cfg.hpp"

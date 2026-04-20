@@ -1,4 +1,4 @@
-/// @brief Dead Definition Elimination Pass, must run after SSA construction
+/// @brief Dead Definition Elimination Pass, requires SSA
 
 #pragma once
 #include "backend/ir/analysis/utils.hpp"

@@ -1,4 +1,4 @@
-/// @brief Dead Block Elimination Pass, must run after SSA construction
+/// @brief Dead Block Elimination Pass, requires SSA
 
 #pragma once
 
