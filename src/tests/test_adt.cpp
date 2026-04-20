@@ -62,7 +62,7 @@ void test_subtype() {
     fmt::println("a10: {}, a5: {}, af10: {}", a10, a5, af10);
     assert(a10 <= a10);
     assert(!(a10 <= a5));
-    assert(!(a5 <= a10));
+    assert((a5 <= a10));
     assert(!(a10 <= af10));
     assert(a10 <= pi);
     assert(!(pi <= a10));

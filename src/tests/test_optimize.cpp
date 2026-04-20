@@ -67,6 +67,13 @@ int main(int argc, const char* argv[]) {
                                                         ir::optim::TrivialBlockReplacement>>();
          }}};
 
+    if (pass_names.empty()) {
+        for (const auto& [name, _] : factories) {
+            pass_names.push_back(name);
+            fmt::println(stderr, "No passes specified, defaulting to all: {}", name);
+        }
+    }
+
     fmt::println(stderr, "Using directory: {}\n", path.string());
 
     std::vector<std::filesystem::directory_entry> files;
