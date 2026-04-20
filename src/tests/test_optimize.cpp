@@ -188,7 +188,7 @@ int main(int argc, const char* argv[]) {
         } catch (const std::exception& e) {
             fmt::println(stderr, "Exception while processing {}: {}\n", file.path().string(),
                          e.what());
-            continue;
+            exit(1);
         }
     }
 
