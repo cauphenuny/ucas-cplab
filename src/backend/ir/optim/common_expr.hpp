@@ -92,8 +92,9 @@ private:
             inst = Match{inst}(
                 [&](const auto&) { return inst; },
                 [&](const UnaryInst& unary) -> Inst {
-                    if (unary.op == UnaryInstOp::LOAD || unary.op == UnaryInstOp::STORE) {
-                        return unary;  // skip memory access
+                    if (unary.op == UnaryInstOp::LOAD || unary.op == UnaryInstOp::STORE ||
+                        unary.op == UnaryInstOp::MOV) {
+                        return unary;  // skip memory access and direct assignment
                     }
                     uint32_t operand_num = lookup(unary.operand);
                     return convert(encode(unary.op), operand_num, 0, unary);
