@@ -22,8 +22,10 @@ enum class InstOp : uint8_t {
     NEQ,  //
     AND,
     OR,
-    LOAD,
-    STORE,  //
+    LOAD_ELEM,
+    STORE_ELEM,  //
+    BORROW_ELEM,
+    BORROW_ELEM_MUT,
 };
 
 inline std::string toString(UnaryInstOp op) {
@@ -53,8 +55,10 @@ inline std::string toString(InstOp op) {
         case InstOp::NEQ: return "!=";
         case InstOp::AND: return "&&";
         case InstOp::OR: return "||";
-        case InstOp::LOAD: return "load";
-        case InstOp::STORE: return "store";
+        case InstOp::LOAD_ELEM: return "load";
+        case InstOp::STORE_ELEM: return "store";
+        case InstOp::BORROW_ELEM: return "&";
+        case InstOp::BORROW_ELEM_MUT: return "&mut ";
     }
 }
 
@@ -74,8 +78,8 @@ inline auto convert_op(ast::BinaryOp op) -> InstOp {
         case ast::BinaryOp::AND: return InstOp::AND;
         case ast::BinaryOp::OR: return InstOp::OR;
         case ast::BinaryOp::INDEX:
-            return InstOp::LOAD;  // NOTE: store operation will be generated in gen(const
-                                  // ast::AssignStmt*)
+            return InstOp::LOAD_ELEM;  // NOTE: store operation will be generated in gen(const
+                                       // ast::AssignStmt*)
     }
 }
 

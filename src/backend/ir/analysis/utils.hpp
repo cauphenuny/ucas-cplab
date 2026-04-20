@@ -37,7 +37,7 @@ inline auto as_var(Value& v) -> LeftValue* {
 inline auto defined_var(Inst& inst) -> LeftValue* {
     return match(
         inst, [&](PhiInst& p) { return &p.result; },
-        [&](BinaryInst& b) { return (b.op != InstOp::STORE) ? &b.result : nullptr; },
+        [&](BinaryInst& b) { return (b.op != InstOp::STORE_ELEM) ? &b.result : nullptr; },
         [&](UnaryInst& u) { return (u.op != UnaryInstOp::STORE) ? &u.result : nullptr; },
         [&](CallInst& c) { return &c.result; });
 }
@@ -71,7 +71,7 @@ inline auto used_vars(Inst& inst) -> std::vector<LeftValue*> {
         [&](BinaryInst& b) {
             if (auto lval = utils::as_var(b.lhs); lval) uses.push_back(lval);
             if (auto lval = utils::as_var(b.rhs); lval) uses.push_back(lval);
-            if (b.op == InstOp::STORE) uses.emplace_back(&b.result);
+            if (b.op == InstOp::STORE_ELEM) uses.emplace_back(&b.result);
         },
         [&](UnaryInst& u) {
             if (auto lval = utils::as_var(u.operand); lval) uses.push_back(lval);
@@ -97,7 +97,7 @@ inline auto used(Inst& inst) {
         [&](BinaryInst& b) {
             uses.emplace_back(&b.lhs);
             uses.emplace_back(&b.rhs);
-            if (b.op == InstOp::STORE) uses.emplace_back(&b.result);
+            if (b.op == InstOp::STORE_ELEM) uses.emplace_back(&b.result);
         },
         [&](UnaryInst& u) {
             uses.emplace_back(&u.operand);

@@ -89,28 +89,28 @@ private:
             }
         };
         for (auto& inst : block.insts()) {
-            inst = Match{inst}([&](const auto&) { return inst; },
-                               [&](const UnaryInst& unary) -> Inst {
-                                   if (unary.op == UnaryInstOp::LOAD ||
-                                       unary.op == UnaryInstOp::STORE) {
-                                       return unary;  // skip memory access
-                                   }
-                                   uint32_t operand_num = lookup(unary.operand);
-                                   return convert(encode(unary.op), operand_num, 0, unary);
-                               },
-                               [&](const BinaryInst& binary) -> Inst {
-                                   if (binary.op == InstOp::LOAD || binary.op == InstOp::STORE) {
-                                       return binary;  // skip memory access
-                                   }
-                                   uint32_t lhs_num = lookup(binary.lhs);
-                                   uint32_t rhs_num = lookup(binary.rhs);
-                                   auto inst = convert(encode(binary.op), lhs_num, rhs_num, binary);
-                                   if (commutative(binary.op)) {
-                                       ctx.expr_num[Expr{encode(binary.op), rhs_num, lhs_num}] =
-                                           ctx.expr_num[Expr{encode(binary.op), lhs_num, rhs_num}];
-                                   }
-                                   return inst;
-                               });
+            inst = Match{inst}(
+                [&](const auto&) { return inst; },
+                [&](const UnaryInst& unary) -> Inst {
+                    if (unary.op == UnaryInstOp::LOAD || unary.op == UnaryInstOp::STORE) {
+                        return unary;  // skip memory access
+                    }
+                    uint32_t operand_num = lookup(unary.operand);
+                    return convert(encode(unary.op), operand_num, 0, unary);
+                },
+                [&](const BinaryInst& binary) -> Inst {
+                    if (binary.op == InstOp::LOAD_ELEM || binary.op == InstOp::STORE_ELEM) {
+                        return binary;  // skip memory access
+                    }
+                    uint32_t lhs_num = lookup(binary.lhs);
+                    uint32_t rhs_num = lookup(binary.rhs);
+                    auto inst = convert(encode(binary.op), lhs_num, rhs_num, binary);
+                    if (commutative(binary.op)) {
+                        ctx.expr_num[Expr{encode(binary.op), rhs_num, lhs_num}] =
+                            ctx.expr_num[Expr{encode(binary.op), lhs_num, rhs_num}];
+                    }
+                    return inst;
+                });
         }
         for (auto& dom : dom_tree.children(&block)) {
             changed |= eliminate(*dom, ctx, dom_tree);

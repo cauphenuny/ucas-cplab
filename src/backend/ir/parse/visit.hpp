@@ -244,7 +244,7 @@ public:
         auto base = resolveLValue(ctx->var());
         auto index = take<ir::Value>(visit(ctx->value(0)));
         auto val = take<ir::Value>(visit(ctx->value(1)));
-        current_block_->add(ir::BinaryInst{.op = ir::InstOp::STORE,
+        current_block_->add(ir::BinaryInst{.op = ir::InstOp::STORE_ELEM,
                                            .result = std::move(base),
                                            .lhs = std::move(index),
                                            .rhs = std::move(val)});
@@ -282,7 +282,7 @@ public:
         auto result = resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
         auto base = take<ir::Value>(visit(ctx->value(0)));
         auto index = take<ir::Value>(visit(ctx->value(1)));
-        current_block_->add(ir::BinaryInst{.op = ir::InstOp::LOAD,
+        current_block_->add(ir::BinaryInst{.op = ir::InstOp::LOAD_ELEM,
                                            .result = std::move(result),
                                            .lhs = std::move(base),
                                            .rhs = std::move(index)});
