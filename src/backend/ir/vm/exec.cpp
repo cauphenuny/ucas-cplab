@@ -18,6 +18,23 @@
 
 namespace ir::vm {
 
+size_t padding_to(size_t original, size_t requirement) {
+    if (original % requirement == 0) return original;
+    return original + (requirement - original % requirement);
+}
+
+template <typename T> struct AlignedDeleter {
+    size_t alignment;
+    void operator()(T* p) const {
+        ::operator delete(p, std::align_val_t(alignment));
+    }
+};
+
+template <typename T> auto make_aligned_unique(size_t n, size_t alignment) {
+    void* p = ::operator new(sizeof(T) * n, std::align_val_t(alignment));
+    return std::unique_ptr<T, AlignedDeleter<T>>(static_cast<T*>(p), AlignedDeleter<T>{alignment});
+}
+
 void VirtualMachine::execute(const BinaryInst& inst, const View& lhs, const View& rhs, View& ret) {
     eval(inst.op, ret, lhs, rhs);
 }
@@ -130,7 +147,8 @@ void VirtualMachine::alloc(StackFrame& frame, Alloc* alloc, std::byte* buffer) c
     if (alloc->reference) {
         // buffer layout: [actual data (size_of(type)) | ptr (sizeof(std::byte*))]
         auto ref_type = alloc->type.borrow(alloc->immutable);
-        auto ptr = buffer + ir::type::size_of(alloc->type);
+        auto padded = padding_to(ir::type::size_of(alloc->type), alignof(void*));
+        auto ptr = buffer + padded;
         *(std::byte**)ptr = buffer;
         frame.vars[alloc] = View{.data = ptr, .type = ref_type};
     } else {
@@ -143,7 +161,8 @@ void VirtualMachine::alloc(StackFrame& frame, Alloc* alloc, std::byte* buffer) c
 }
 
 size_t VirtualMachine::stackSize(const std::unique_ptr<Alloc>& alloc) const {
-    return ir::type::size_of(alloc->type) + (alloc->reference ? sizeof(void*) : 0);
+    return padding_to(ir::type::size_of(alloc->type), alignof(void*)) +
+           (alloc->reference ? sizeof(void*) : 0);
 }
 
 size_t VirtualMachine::stackSize(const Type& type) const {
@@ -154,16 +173,16 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
 
     size_t stack_size = 0;
     for (const auto& local : func.locals()) {
-        stack_size += stackSize(local);
+        stack_size += padding_to(stackSize(local), alignof(std::max_align_t));
     }
     for (const auto& temp : func.temps()) {
-        stack_size += stackSize(temp.type);
+        stack_size += padding_to(stackSize(temp.type), alignof(std::max_align_t));
     }
     for (const auto& param : func.params) {
-        stack_size += stackSize(param);
+        stack_size += padding_to(stackSize(param), alignof(std::max_align_t));
     }
 
-    auto buffer = std::make_unique<std::byte[]>(stack_size);
+    auto buffer = make_aligned_unique<std::byte>(stack_size, alignof(std::max_align_t));
     memset(buffer.get(), 0, stack_size);
     StackFrame frame;
     std::byte* cur = buffer.get();
@@ -177,17 +196,17 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
         auto& param = func.params[i];
         frame.vars[param.get()] = View{.data = cur, .type = param->type};
         assign(param->type, cur, args[i].type, args[i].data);
-        cur += stackSize(param);
+        cur += padding_to(stackSize(param), alignof(std::max_align_t));
     }
     /// locals
     for (const auto& local : func.locals()) {
         alloc(frame, local.get(), cur);
-        cur += stackSize(local);
+        cur += padding_to(stackSize(local), alignof(std::max_align_t));
     }
     /// temps
     for (const auto& temp : func.temps()) {
         frame.temps.push_back(View{.data = cur, .type = temp.type});
-        cur += stackSize(temp.type);
+        cur += padding_to(stackSize(temp.type), alignof(std::max_align_t));
     }
 
     Block *cur_block = func.entrance(), *prev = nullptr;
@@ -206,17 +225,17 @@ uint8_t VirtualMachine::execute(const Program& program) {
     size_t global_size = 0;
     /// global variables
     for (const auto& global : program.globals) {
-        global_size += stackSize(global);
+        global_size += padding_to(stackSize(global), alignof(std::max_align_t));
     }
     /// return value
     global_size += sizeof(int);
 
-    auto buffer = std::make_unique<std::byte[]>(global_size);
+    auto buffer = make_aligned_unique<std::byte>(global_size, alignof(std::max_align_t));
     memset(buffer.get(), 0, global_size);
     std::byte* cur = buffer.get();
     for (const auto& global : program.globals) {
         alloc(global_frame, global.get(), cur);
-        cur += stackSize(global);
+        cur += padding_to(stackSize(global), alignof(std::max_align_t));
     }
 
     View ret{.data = cur, .type = ir::type::construct<int>()};
