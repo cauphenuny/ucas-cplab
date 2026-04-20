@@ -160,22 +160,18 @@ private:
         return false;
     }
 
+    bool mergable(Block* from, Block* to) {
+        if (from->insts().empty() || to->insts().empty()) return true;
+        if (std::holds_alternative<PhiInst>(to->insts().front()) && !from->insts().empty())
+            return false;
+        return true;
+    }
+
     void merge(Block* from, Block* to) {
-        std::list<Inst> merged_phis, merged_insts;
-        auto add = [&](Block* block) {
-            for (auto& inst : block->insts()) {
-                if (auto phi = std::get_if<PhiInst>(&inst); phi) {
-                    merged_phis.push_back(inst);
-                } else {
-                    merged_insts.push_back(inst);
-                }
-            }
-        };
-        add(from), add(to);
-        from->insts().clear();
-        to->insts().clear();
-        to->insts().splice(to->insts().end(), merged_phis);
-        to->insts().splice(to->insts().end(), merged_insts);
+        std::list<Inst> merged_insts;
+        merged_insts.splice(merged_insts.end(), from->insts());
+        merged_insts.splice(merged_insts.end(), to->insts());
+        to->insts() = std::move(merged_insts);
     }
 
     // merge block to its target in jump-exit
@@ -192,8 +188,14 @@ private:
                 block->exit(),
                 [&](const JumpExit& j) {
                     if (block == j.target) return;
-                    if (block->insts().size() == 0 || cfg.pred[j.target].size() == 1) {
+                    if (block->insts().size() == 0) {
                         if (!conflicts(block, j.target, cfg)) {
+                            replacement = {block, j.target};
+                        }
+                    } else if (cfg.pred[j.target].size() == 1) {
+                        // block has inst, can not be rearranged after target's phi inst, so target
+                        // must not have phi inst
+                        if (mergable(block, j.target)) {
                             replacement = {block, j.target};
                         }
                     }
@@ -232,8 +234,7 @@ private:
         if (!std::holds_alternative<JumpExit>(func.entrance()->exit())) return false;
         auto target = std::get<JumpExit>(func.entrance()->exit()).target;
 
-        if (target->insts().size() && std::holds_alternative<PhiInst>(target->insts().front()))
-            return false;
+        if (!mergable(func.entrance(), target)) return false;
         auto cfg = ControlFlowGraph(func);
         if (cfg.pred[target].size() > 1) return false;
         merge(func.entrance(), target);
