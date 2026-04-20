@@ -21,6 +21,7 @@
 #include "utils/serialize.hpp"
 #include "utils/tui.h"
 
+#include <cctype>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -185,7 +186,7 @@ int main(int argc, const char* argv[]) {
                 optimize_inline = 0;
                 continue;
             }
-            if (i + 1 < argc && argv[i + 1][0] != '-') {
+            if (i + 1 < argc && std::isdigit(argv[i + 1][0])) {
                 optimize_inline = std::stoul(argv[++i]);
             } else {
                 optimize_inline = default_inline_threshold;
