@@ -160,6 +160,24 @@ private:
         return false;
     }
 
+    void merge(Block* from, Block* to) {
+        std::list<Inst> merged_phis, merged_insts;
+        auto add = [&](Block* block) {
+            for (auto& inst : block->insts()) {
+                if (auto phi = std::get_if<PhiInst>(&inst); phi) {
+                    merged_phis.push_back(inst);
+                } else {
+                    merged_insts.push_back(inst);
+                }
+            }
+        };
+        add(from), add(to);
+        from->insts().clear();
+        to->insts().clear();
+        to->insts().splice(to->insts().end(), merged_phis);
+        to->insts().splice(to->insts().end(), merged_insts);
+    }
+
     // merge block to its target in jump-exit
     bool squash(Func& func, Program& prog) {
         auto cfg = ControlFlowGraph(func);
@@ -188,21 +206,7 @@ private:
 
         auto replaced = replacement->first, target = replacement->second;
 
-        std::list<Inst> merged_phis, merged_insts;
-        auto add = [&](Block* block) {
-            for (auto& inst : block->insts()) {
-                if (auto phi = std::get_if<PhiInst>(&inst); phi) {
-                    merged_phis.push_back(inst);
-                } else {
-                    merged_insts.push_back(inst);
-                }
-            }
-        };
-        add(replaced), add(target);
-        replaced->insts().clear();
-        target->insts().clear();
-        target->insts().splice(target->insts().end(), merged_phis);
-        target->insts().splice(target->insts().end(), merged_insts);
+        merge(replaced, target);
 
         for (auto& block : func.blocks()) {
             for (auto& inst : block->insts()) {
@@ -225,15 +229,14 @@ private:
 
     // redirect entrance to its target if possible
     bool redirect(Func& func, Program& prog) {
-        if (func.entrance()->insts().size() > 0 ||
-            !std::holds_alternative<JumpExit>(func.entrance()->exit()))
-            return false;
+        if (!std::holds_alternative<JumpExit>(func.entrance()->exit())) return false;
         auto target = std::get<JumpExit>(func.entrance()->exit()).target;
 
         if (target->insts().size() && std::holds_alternative<PhiInst>(target->insts().front()))
             return false;
         auto cfg = ControlFlowGraph(func);
         if (cfg.pred[target].size() > 1) return false;
+        merge(func.entrance(), target);
 
         for (auto& block : func.blocks()) {
             if (block.get() == target) {
