@@ -4,6 +4,57 @@ project(Compiler LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+find_program(JAVA_EXECUTABLE java)
+if(NOT JAVA_EXECUTABLE)
+    message(FATAL_ERROR "Java runtime not found. It is required to run ANTLR.")
+endif()
+
+set(ANTLR_JAR "${CMAKE_CURRENT_SOURCE_DIR}/deps/antlr-4.13.1-complete.jar")
+if(NOT EXISTS ${ANTLR_JAR})
+    message(FATAL_ERROR "ANTLR jar not found: ${ANTLR_JAR}")
+endif()
+
+set(ANTLR_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/antlr")
+
+function(add_antlr_grammar GRAMMAR_FILE GRAMMAR_PREFIX)
+    set(_generated_cpp
+        "${ANTLR_OUTPUT_DIR}/${GRAMMAR_PREFIX}Lexer.cpp"
+        "${ANTLR_OUTPUT_DIR}/${GRAMMAR_PREFIX}Parser.cpp"
+        "${ANTLR_OUTPUT_DIR}/${GRAMMAR_PREFIX}BaseVisitor.cpp"
+        "${ANTLR_OUTPUT_DIR}/${GRAMMAR_PREFIX}Visitor.cpp"
+    )
+    set(_generated_h
+        "${ANTLR_OUTPUT_DIR}/${GRAMMAR_PREFIX}Lexer.h"
+        "${ANTLR_OUTPUT_DIR}/${GRAMMAR_PREFIX}Parser.h"
+        "${ANTLR_OUTPUT_DIR}/${GRAMMAR_PREFIX}BaseVisitor.h"
+        "${ANTLR_OUTPUT_DIR}/${GRAMMAR_PREFIX}Visitor.h"
+    )
+
+    add_custom_command(
+        OUTPUT ${_generated_cpp} ${_generated_h}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${ANTLR_OUTPUT_DIR}
+        COMMAND ${JAVA_EXECUTABLE} -jar ${ANTLR_JAR}
+            -Dlanguage=Cpp
+            -visitor
+            -no-listener
+            -o ${ANTLR_OUTPUT_DIR}
+            ${GRAMMAR_FILE}
+        DEPENDS ${GRAMMAR_FILE} ${ANTLR_JAR}
+        COMMENT "Generating ANTLR parser for ${GRAMMAR_PREFIX}.g4"
+        VERBATIM
+    )
+
+    set(ANTLR_GENERATED_SOURCES
+        ${ANTLR_GENERATED_SOURCES}
+        ${_generated_cpp}
+        PARENT_SCOPE
+    )
+endfunction()
+
+add_antlr_grammar("${CMAKE_CURRENT_SOURCE_DIR}/grammar/CACT.g4" "CACT")
+add_antlr_grammar("${CMAKE_CURRENT_SOURCE_DIR}/grammar/IR.g4" "IR")
+add_custom_target(generate_antlr DEPENDS ${ANTLR_GENERATED_SOURCES})
+
 option(ENABLE_IWYU "Enable Include-What-You-Use (IWYU)" OFF)
 if(ENABLE_IWYU)
     find_program(IWYU_EXECUTABLE include-what-you-use)
@@ -22,6 +73,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 include_directories(deps/antlr4-runtime/)
 include_directories(grammar)
+include_directories(${ANTLR_OUTPUT_DIR})
 include_directories(src)
 include_directories(deps)
 
@@ -30,7 +82,6 @@ enable_testing()
 # Project sources excluding tests and src/*.cpp (directly in src/)
 FILE(GLOB_RECURSE ALL_SOURCES CONFIGURE_DEPENDS
     "src/*.cpp"
-    "grammar/*.cpp"
 )
 
 # Filter out tests and .cpp files directly in src/ from the core library sources
@@ -86,13 +137,15 @@ message("LIB_SOURCES: ${LIB_SOURCES}")
 
 # Compiler Core Library
 if(LIB_SOURCES)
-    add_library(compiler_core STATIC ${LIB_SOURCES})
+    add_library(compiler_core STATIC ${LIB_SOURCES} ${ANTLR_GENERATED_SOURCES})
 else()
     # Some older CMake versions error when given an empty source list.
     # Create a tiny dummy source file in the build dir so the target is valid.
     file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/empty_compiler_core.cpp "// dummy source for compiler_core\n")
     add_library(compiler_core STATIC ${CMAKE_CURRENT_BINARY_DIR}/empty_compiler_core.cpp)
 endif()
+
+add_dependencies(compiler_core generate_antlr)
 
 if(ENABLE_FORMAT)
     add_dependencies(compiler_core format)

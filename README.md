@@ -3,13 +3,13 @@
 Build:
 
 ```
-$ cd grammar
-$ java -jar ../deps/antlr-4.13.1-complete.jar -Dlanguage=Cpp CACT.g4 -visitor -no-listener
-$ java -jar ../deps/antlr-4.13.1-complete.jar -Dlanguage=Cpp IR.g4 -visitor -no-listener
-$ cd ..
 $ cmake -Bbuild -DCMAKE_BUILD_TYPE=Release
 $ cmake --build build
 ```
+
+ANTLR generation is integrated into CMake. As long as Java is available and
+`deps/antlr-4.13.1-complete.jar` exists, parser sources are generated automatically
+during the build.
 
 Usage:
 
