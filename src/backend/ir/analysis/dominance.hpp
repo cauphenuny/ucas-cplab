@@ -4,6 +4,7 @@
 #include "backend/ir/analysis/dataflow/framework.hpp"
 #include "backend/ir/ir.h"
 
+#include <string>
 #include <unordered_map>
 #include <vector>
 

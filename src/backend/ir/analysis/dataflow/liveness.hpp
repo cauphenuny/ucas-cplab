@@ -6,6 +6,9 @@
 #include "framework.hpp"
 #include "utils/match.hpp"
 
+#include <string>
+#include <unordered_map>
+
 namespace ir::analysis::flow {
 
 struct Liveness {

@@ -8,6 +8,7 @@
 #include "backend/ir/type.hpp"
 #include "framework.hpp"
 
+#include <optional>
 #include <unordered_map>
 
 namespace ir::optim {

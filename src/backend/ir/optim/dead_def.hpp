@@ -5,6 +5,11 @@
 #include "backend/ir/ir.h"
 #include "framework.hpp"
 
+#include <list>
+#include <queue>
+#include <unordered_map>
+#include <utility>
+
 namespace ir::optim {
 
 struct DeadDefElimination : Pass {

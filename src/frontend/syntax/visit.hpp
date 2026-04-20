@@ -10,8 +10,10 @@
 #include <CACTParser.h>
 #include <any>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 class ASTVisitor : public CACTBaseVisitor {
 public:

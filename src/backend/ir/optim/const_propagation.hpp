@@ -11,6 +11,9 @@
 #include "framework.hpp"
 #include "utils/diagnosis.hpp"
 
+#include <optional>
+#include <variant>
+
 namespace ir::optim {
 
 struct ConstexprFolder {

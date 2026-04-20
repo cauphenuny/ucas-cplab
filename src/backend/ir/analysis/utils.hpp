@@ -2,6 +2,11 @@
 #include "backend/ir/ir.h"
 #include "utils/match.hpp"
 
+#include <functional>
+#include <optional>
+#include <variant>
+#include <vector>
+
 namespace ir::analysis::utils {
 
 inline auto is_named(const LeftValue& v) {

@@ -12,6 +12,7 @@
 #include <iterator>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 
 int main() {
     std::string base_path = "test/samples_codegen_functional";

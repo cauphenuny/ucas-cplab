@@ -6,6 +6,7 @@
 #include "backend/ir/ir.h"
 #include "framework.hpp"
 
+#include <memory>
 #include <unordered_map>
 #include <vector>
 

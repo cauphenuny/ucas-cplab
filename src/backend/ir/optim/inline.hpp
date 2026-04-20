@@ -17,6 +17,13 @@
 #include "backend/ir/op.hpp"
 #include "framework.hpp"
 
+#include <list>
+#include <memory>
+#include <optional>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 namespace ir::optim {
 
 struct Inlining : Pass {

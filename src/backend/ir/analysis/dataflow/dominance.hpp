@@ -2,6 +2,8 @@
 
 #include "framework.hpp"
 
+#include <string>
+
 namespace ir::analysis::flow {
 
 struct Dominance {

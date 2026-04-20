@@ -3,6 +3,7 @@
 #include "fmt/base.h"
 
 #include <sstream>
+#include <string>
 
 void test(const std::string& name, const std::string& text) {
     fmt::println("Test: {}", name);

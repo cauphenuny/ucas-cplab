@@ -5,9 +5,13 @@
 #include "frontend/ast/op.hpp"
 #include "utils/diagnosis.hpp"
 
+#include <any>
+#include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <variant>
 #include <vector>
 

@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <sstream>
+#include <string>
 
 using namespace ir::analysis;
 using Liveness = flow::Liveness;

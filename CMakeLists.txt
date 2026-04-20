@@ -65,7 +65,19 @@ if(ENABLE_IWYU)
     endif()
 endif()
 
-option(ENABLE_FORMAT "Run clang-format before building other targets" OFF)
+option(ENABLE_FORMAT "Run clang-format before building other targets" ON)
+
+find_program(BASH_EXECUTABLE bash)
+if(NOT BASH_EXECUTABLE)
+    message(FATAL_ERROR "bash not found. It is required for include checks.")
+endif()
+
+add_custom_target(check_includes ALL
+    COMMAND ${BASH_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/check_include.sh ${CMAKE_CURRENT_SOURCE_DIR}/src
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Checking missing mapped standard includes under src/**"
+    VERBATIM
+)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -125,12 +137,8 @@ endif()
 add_definitions(-g -Wall) # Do not ignore warnings!
 add_library(antlr STATIC ${ANTLR_LIB_FILES})
 
-if(ENABLE_FORMAT)
-    if(CLANG_FORMAT_EXECUTABLE)
-        add_dependencies(antlr format)
-    else()
-        message(FATAL_ERROR "ENABLE_FORMAT is ON but clang-format was not found.")
-    endif()
+if(ENABLE_FORMAT AND CLANG_FORMAT_EXECUTABLE)
+    add_dependencies(antlr format)
 endif()
 
 message("LIB_SOURCES: ${LIB_SOURCES}")
@@ -146,8 +154,9 @@ else()
 endif()
 
 add_dependencies(compiler_core generate_antlr)
+add_dependencies(compiler_core check_includes)
 
-if(ENABLE_FORMAT)
+if(ENABLE_FORMAT AND CLANG_FORMAT_EXECUTABLE)
     add_dependencies(compiler_core format)
 endif()
 
@@ -159,7 +168,7 @@ foreach(TEST_SOURCE ${TEST_FILES})
     get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
     add_executable(${TEST_NAME} ${TEST_SOURCE})
     target_link_libraries(${TEST_NAME} compiler_core antlr Threads::Threads)
-    if(ENABLE_FORMAT)
+    if(ENABLE_FORMAT AND CLANG_FORMAT_EXECUTABLE)
         add_dependencies(${TEST_NAME} format)
     endif()
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
@@ -171,7 +180,7 @@ foreach(EXEC_SOURCE ${SRC_EXECUTABLES})
     get_filename_component(EXEC_NAME ${EXEC_SOURCE} NAME_WE)
     add_executable(${EXEC_NAME} ${EXEC_SOURCE})
     target_link_libraries(${EXEC_NAME} compiler_core antlr Threads::Threads)
-    if(ENABLE_FORMAT)
+    if(ENABLE_FORMAT AND CLANG_FORMAT_EXECUTABLE)
         add_dependencies(${EXEC_NAME} format)
     endif()
 endforeach()

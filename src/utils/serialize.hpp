@@ -5,12 +5,15 @@
 #include "utils/match.hpp"
 #include "utils/traits.hpp"
 
+#include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <utility>
 #include <variant>
+#include <vector>
 
 namespace fmt_indent {
 
