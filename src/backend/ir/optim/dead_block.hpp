@@ -235,6 +235,9 @@ private:
         auto target = std::get<JumpExit>(func.entrance()->exit()).target;
 
         if (!mergable(func.entrance(), target)) return false;
+        // entry block has no predecessor, so phi instructions cannot be resolved
+        if (!target->insts().empty() && std::holds_alternative<PhiInst>(target->insts().front()))
+            return false;
         auto cfg = ControlFlowGraph(func);
         if (cfg.pred[target].size() > 1) return false;
         merge(func.entrance(), target);
