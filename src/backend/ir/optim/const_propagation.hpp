@@ -121,7 +121,7 @@ struct ConstPropagation : Pass {
         bool changed;
         do {
             changed = false;
-            for (auto& func : prog.getFuncs()) {
+            for (auto& func : prog.funcs()) {
                 changed |= propagate(*func);
             }
             changed |= CopyPropagation().apply(prog);

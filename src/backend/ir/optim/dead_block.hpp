@@ -34,7 +34,7 @@ private:
     bool eliminate(Program& prog) {
         bool pass_changed = false;
 
-        for (auto& func_ptr : prog.getFuncs()) {
+        for (auto& func_ptr : prog.funcs()) {
             ir::Func& func = *func_ptr;
 
             std::unordered_set<Block*> reachable;
@@ -113,7 +113,7 @@ struct SimplifyCFG : Pass {
 private:
     bool replace(Program& prog) {
         bool pass_changed = false;
-        for (auto& func_box : prog.getFuncs()) {
+        for (auto& func_box : prog.funcs()) {
             pass_changed |= squash(*func_box, prog);
             pass_changed |= redirect(*func_box, prog);
         }

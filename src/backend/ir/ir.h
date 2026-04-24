@@ -329,15 +329,15 @@ struct Program {
     friend struct vm::VirtualMachine;
     friend class IRConstructVisitor;
 
-    [[nodiscard]] const std::vector<std::unique_ptr<Alloc>>& getGlobals() const;
-    [[nodiscard]] const std::vector<std::unique_ptr<Func>>& getFuncs() const;
-    std::vector<std::unique_ptr<Func>>& getFuncs();
-    [[nodiscard]] const std::vector<std::unique_ptr<BuiltinFunc>>& getBuiltinFuncs() const;
+    [[nodiscard]] const std::vector<std::unique_ptr<Alloc>>& globals() const;
+    [[nodiscard]] const std::vector<std::unique_ptr<Func>>& funcs() const;
+    std::vector<std::unique_ptr<Func>>& funcs();
+    [[nodiscard]] const std::vector<std::unique_ptr<BuiltinFunc>>& builtins() const;
 
 private:
-    std::vector<std::unique_ptr<Alloc>> globals;
-    std::vector<std::unique_ptr<Func>> funcs;
-    std::vector<std::unique_ptr<BuiltinFunc>> builtin_funcs;
+    std::vector<std::unique_ptr<Alloc>> globals_;
+    std::vector<std::unique_ptr<Func>> funcs_;
+    std::vector<std::unique_ptr<BuiltinFunc>> builtin_funcs_;
 };
 
 template <typename T> inline void hash_combine(std::size_t& seed, const T& v) {

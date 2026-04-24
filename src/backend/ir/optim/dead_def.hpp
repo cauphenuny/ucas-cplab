@@ -29,7 +29,7 @@ private:
 
         std::unordered_map<LeftValue, size_t> used_count;
 
-        for (auto& func : prog.getFuncs()) {
+        for (auto& func : prog.funcs()) {
             for (auto& block : func->blocks()) {
                 for (auto it = block->insts().begin(); it != block->insts().end(); ++it) {
                     auto& inst = *it;
@@ -51,7 +51,7 @@ private:
         }
 
         std::queue<DefSite> dead_queue;
-        for (auto& func : prog.getFuncs()) {
+        for (auto& func : prog.funcs()) {
             for (auto& block : func->blocks()) {
                 for (auto it = block->insts().begin(); it != block->insts().end(); ++it) {
                     auto& inst = *it;

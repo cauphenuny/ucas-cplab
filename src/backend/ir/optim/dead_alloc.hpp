@@ -18,7 +18,7 @@ struct DeadAllocElimination : Pass {
             throw COMPILER_ERROR("DeadAllocElimination requires SSA form");
         }
         bool changed = false;
-        for (auto& func : prog.getFuncs()) {
+        for (auto& func : prog.funcs()) {
             std::unordered_map<const Alloc*, bool> referenced;
             for (auto var : analysis::utils::vars(*func)) {
                 if (auto named = std::get_if<NamedValue>(var); named) {

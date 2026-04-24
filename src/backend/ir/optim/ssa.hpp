@@ -28,7 +28,7 @@ namespace minipass {
 struct AddPhi : Pass {
     bool apply(Program& prog) override {
         bool changed = false;
-        for (auto& func : prog.getFuncs()) {
+        for (auto& func : prog.funcs()) {
             changed |= transform(*func, prog);
         }
         return changed;
@@ -103,7 +103,7 @@ private:
 struct Rename : Pass {
     bool apply(Program& prog) override {
         bool changed = false;
-        for (auto& func : prog.getFuncs()) {
+        for (auto& func : prog.funcs()) {
             changed |= transform(*func, prog);
         }
         return changed;
@@ -213,7 +213,7 @@ using ConstructSSA = Compose<minipass::AddPhi, minipass::Rename>;
 struct SSAValue2TempValue : Pass {
     bool apply(Program& prog) override {
         bool changed = false;
-        for (auto& func : prog.getFuncs()) {
+        for (auto& func : prog.funcs()) {
             std::unordered_map<SSAValue, TempValue> ssa_to_temp;
             for (auto& block : func->blocks()) {
                 auto convert = [&](LeftValue* v) {

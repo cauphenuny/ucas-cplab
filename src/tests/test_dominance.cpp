@@ -19,7 +19,7 @@ void test(const std::string& name, const std::string& text,
     auto ir_stream = std::istringstream(text);
     try {
         auto program = ir::parse(ir_stream);
-        for (auto& func_ptr : program.getFuncs()) {
+        for (auto& func_ptr : program.funcs()) {
             auto& func = *func_ptr;
             fmt::println("  Function: {}", func.name);
             auto cfg = ControlFlowGraph(func);

@@ -20,7 +20,7 @@ struct CommonSubexprElimination : Pass {
             throw COMPILER_ERROR("CommonSubexprElimination requires SSA form");
         }
         bool changed = false;
-        for (auto& func : prog.getFuncs()) {
+        for (auto& func : prog.funcs()) {
             changed |= eliminate(*func, prog);
         }
         return changed;

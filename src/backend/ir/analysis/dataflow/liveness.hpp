@@ -70,7 +70,7 @@ struct Liveness {
             ctx.kill[block] = kill;
         }
         ctx.global_variables = Data::empty();
-        for (auto& global_alloc : prog.getGlobals()) {
+        for (auto& global_alloc : prog.globals()) {
             ctx.global_variables.insert(LeftValue{global_alloc->value()});
         }
         return ctx;

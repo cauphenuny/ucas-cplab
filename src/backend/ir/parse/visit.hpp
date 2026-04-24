@@ -146,7 +146,7 @@ public:
     std::any visitFuncDecl(IRParser::FuncDeclContext* ctx) override {
         auto name = ctx->ID()->getText();
         ir::Func* func = nullptr;
-        for (auto& f : program_.funcs) {
+        for (auto& f : program_.funcs_) {
             if (f->name == name) {
                 func = f.get();
                 break;
@@ -156,7 +156,7 @@ public:
             // Should not happen with visitProgram two-pass, but for robustness:
             auto [n, ret_type, params] = extractFuncSignature(ctx);
             program_.addFunc(std::make_unique<ir::Func>(std::move(ret_type), n, std::move(params)));
-            func = program_.funcs.back().get();
+            func = program_.funcs_.back().get();
         }
 
         // If body already defined (blocks not empty), skip
@@ -643,7 +643,7 @@ private:
                  (const ir::Func*)&func});
         } catch (...) {
             // Check builtins in our program
-            for (const auto& bf : program_.getBuiltinFuncs()) {
+            for (const auto& bf : program_.builtins()) {
                 if (bf->name == name) {
                     return std::make_optional<T>({bf->type, bf.get()});
                 }

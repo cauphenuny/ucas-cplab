@@ -224,7 +224,7 @@ uint8_t VirtualMachine::execute(const Program& program) {
 
     size_t global_size = 0;
     /// global variables
-    for (const auto& global : program.globals) {
+    for (const auto& global : program.globals_) {
         global_size += padding_to(stackSize(global), alignof(std::max_align_t));
     }
     /// return value
@@ -233,7 +233,7 @@ uint8_t VirtualMachine::execute(const Program& program) {
     auto buffer = make_aligned_unique<std::byte>(global_size, alignof(std::max_align_t));
     memset(buffer.get(), 0, global_size);
     std::byte* cur = buffer.get();
-    for (const auto& global : program.globals) {
+    for (const auto& global : program.globals_) {
         alloc(global_frame, global.get(), cur);
         cur += padding_to(stackSize(global), alignof(std::max_align_t));
     }

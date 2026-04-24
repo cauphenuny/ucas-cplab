@@ -19,7 +19,7 @@ struct CopyPropagation : Pass {
             throw COMPILER_ERROR("CopyPropagation requires SSA form");
         }
         bool changed = false;
-        for (auto& func : prog.getFuncs()) {
+        for (auto& func : prog.funcs()) {
             while (propagate(*func, prog)) changed = true;
         }
         return changed;
@@ -29,7 +29,7 @@ private:
     bool propagate(Func& func, Program& prog) {
         std::unordered_map<Value, Value> copies;
 
-        for (auto& global : prog.getGlobals()) {
+        for (auto& global : prog.globals()) {
             if (global->comptime && !global->type.is<type::Array>()) {
                 copies[LeftValue{global->value()}] = *global->init;
             }

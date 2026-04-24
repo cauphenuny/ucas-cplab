@@ -43,10 +43,10 @@ int main() {
             using namespace ir::analysis;
             fmt::println("{}: \n{}\n", name, program);
             std::unordered_set<const ir::Alloc*> globals;
-            for (const auto& global : program.getGlobals()) {
+            for (const auto& global : program.globals()) {
                 globals.insert(global.get());
             }
-            for (auto& func_box : program.getFuncs()) {
+            for (auto& func_box : program.funcs()) {
                 auto& func = *func_box;
                 fmt::println("Function {}: \n", func.name);
                 auto cfg = ControlFlowGraph(func);

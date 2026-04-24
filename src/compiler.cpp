@@ -81,7 +81,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
 auto analysis(const ir::Program& program) {
     using namespace ir::analysis;
     fmt::println("IR Analysis:\n");
-    for (auto& func : program.getFuncs()) {
+    for (auto& func : program.funcs()) {
         auto _ = fmt_indent::Guard();
         auto ind = fmt_indent::state.indent();
 

@@ -33,14 +33,14 @@ struct Inlining : Pass {
         if (!prog.is_ssa) {
             throw COMPILER_ERROR("Inlining requires SSA form");
         }
-        for (auto it = prog.getFuncs().begin(); it != prog.getFuncs().end(); ++it) {
+        for (auto it = prog.funcs().begin(); it != prog.funcs().end(); ++it) {
             if (inlinable(**it)) {
                 auto* target = it->get();
                 size_t id = 0;
                 while (auto site = find_site(target, prog)) {
                     inline_site(*site, target, id++, prog);
                 }
-                prog.getFuncs().erase(it);
+                prog.funcs().erase(it);
                 return true;
             }
         }
@@ -109,7 +109,7 @@ private:
     }
 
     std::optional<CallSite> find_site(Func* inline_func, Program& prog) {
-        for (auto& func : prog.getFuncs()) {
+        for (auto& func : prog.funcs()) {
             for (auto& block : func->blocks()) {
                 for (auto it = block->insts().begin(); it != block->insts().end(); ++it) {
                     if (auto call = std::get_if<CallInst>(&*it)) {
