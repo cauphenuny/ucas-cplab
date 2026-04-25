@@ -16,9 +16,10 @@ TRUE: 'true';
 FALSE: 'false';
 RETURN: 'return';
 BRANCH: 'branch';
+OR: 'or';
 JUMP: 'jump';
-PHI: '$phi';
-STORE: '$store';
+PHI: '%phi';
+STORE: '%store';
 
 ID: [a-zA-Z_][a-zA-Z0-9_]*;
 
@@ -54,8 +55,8 @@ funcDecl:
 paramList: param (',' param)*;
 param: MUT? ID ':' type;
 
-temp: '$' INT_LITERAL;
-ssa: '$' ID '.' INT_LITERAL;
+temp: '%' INT_LITERAL;
+ssa: '%' ID '.' INT_LITERAL;
 name: '@' ID;
 var: temp | ssa | name;
 value: var | constexpr;
@@ -63,7 +64,7 @@ label: '\'' ID;
 
 exit:
 	RETURN value? ';'						# returnExit
-	| BRANCH value '?' label ':' label ';'	# branchExit
+	| BRANCH value '?' label OR label ';'	# branchExit
 	| JUMP label ';'						# jumpExit;
 
 block: label ':' '{' phiInst* inst* exit '}';

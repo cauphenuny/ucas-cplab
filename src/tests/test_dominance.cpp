@@ -49,8 +49,8 @@ int main() {
          R"(
 fn main() -> i32 {
     'entry: {
-        $0: bool = true;
-        branch $0 ? 'then_blk : 'else_blk;
+        %0: bool = true;
+        branch %0 ? 'then_blk : 'else_blk;
     }
     'then_blk: {
         jump 'exit_blk;
@@ -86,8 +86,8 @@ fn main() -> i32 {
         jump 'cond;
     }
     'cond: {
-        $0: bool = true;
-        branch $0 ? 'body : 'exit;
+        %0: bool = true;
+        branch %0 ? 'body : 'exit;
     }
     'body: {
         jump 'cond;

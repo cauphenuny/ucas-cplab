@@ -31,8 +31,8 @@ int main() {
 fn main() -> i32 {
     let mut x: i32;
     'entry: {
-        $0: bool = true;
-        branch $0 ? 'then_blk : 'else_blk;
+        %0: bool = true;
+        branch %0 ? 'then_blk : 'else_blk;
     }
     'then_blk: {
         x: i32 = 1;
@@ -58,8 +58,8 @@ fn main() -> i32 {
         jump 'cond;
     }
     'cond: {
-        $0: bool = i < 10;
-        branch $0 ? 'body : 'exit;
+        %0: bool = i < 10;
+        branch %0 ? 'body : 'exit;
     }
     'body: {
         sum: i32 = sum + i;

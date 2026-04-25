@@ -242,7 +242,7 @@ public:
     }
 
     std::any visitStoreInst(IRParser::StoreInstContext* ctx) override {
-        // var: type = $store(var, value);
+        // var: type = %store(var, value);
         auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
         auto addr = resolveLValue(ctx->var(1));
         auto val = take<ir::Value>(visit(ctx->value()));
@@ -515,7 +515,7 @@ public:
                                       .id = internal_id,
                                       .func = current_func_});
         }
-        throw SemanticError(get_loc(ctx), fmt::format("Temporary ${} used before definition", id));
+        throw SemanticError(get_loc(ctx), fmt::format("Temporary %{} used before definition", id));
     }
 
 private:
@@ -531,7 +531,7 @@ private:
 
     std::unordered_map<std::string, const ir::Alloc*> symbol_map_;        // globals
     std::unordered_map<std::string, const ir::Alloc*> local_symbol_map_;  // locals/params
-    std::unordered_map<int, size_t> temp_map_;                            // $N -> internal id
+    std::unordered_map<int, size_t> temp_map_;                            // %N -> internal id
     std::unordered_map<std::string, ir::Block*> block_map_;               // label -> block
     std::unordered_set<const ir::Alloc*> assigned_defs_;                  // SSA assigned defs
 
@@ -545,7 +545,7 @@ private:
                                      .func = current_func_};
             }
             throw SemanticError(get_loc(ctx),
-                                fmt::format("Temporary ${} used before definition", id));
+                                fmt::format("Temporary %{} used before definition", id));
         } else if (ctx->ssa()) {
             auto ssa_ctx = ctx->ssa();
             auto name = ssa_ctx->ID()->getText();
@@ -576,7 +576,7 @@ private:
         if (ctx->temp()) {
             int id = std::stoi(ctx->temp()->INT_LITERAL()->getText());
             if (temp_map_.count(id)) {
-                throw SemanticError(get_loc(ctx), fmt::format("Temporary ${} redefined", id));
+                throw SemanticError(get_loc(ctx), fmt::format("Temporary %{} redefined", id));
             }
             auto temp = current_func_->newTemp(type, current_block_);
             temp_map_[id] = temp.id;
