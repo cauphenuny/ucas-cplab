@@ -35,10 +35,7 @@ inline auto as_var(Value& v) -> LeftValue* {
 }
 
 inline auto defined_var(Inst& inst) -> LeftValue* {
-    return match(
-        inst, [&](PhiInst& p) { return &p.result; }, [&](BinaryInst& b) { return &b.result; },
-        [&](UnaryInst& u) { return (u.op != UnaryInstOp::STORE) ? &u.result : nullptr; },
-        [&](CallInst& c) { return &c.result; });
+    return match(inst, [&](auto& i) { return &i.result; });
 }
 
 inline auto defined_vars(Block& block) -> std::vector<LeftValue*> {
@@ -70,11 +67,9 @@ inline auto used_vars(Inst& inst) -> std::vector<LeftValue*> {
         [&](BinaryInst& b) {
             if (auto lval = utils::as_var(b.lhs); lval) uses.push_back(lval);
             if (auto lval = utils::as_var(b.rhs); lval) uses.push_back(lval);
-            uses.emplace_back(&b.result);
         },
         [&](UnaryInst& u) {
             if (auto lval = utils::as_var(u.operand); lval) uses.push_back(lval);
-            if (u.op == UnaryInstOp::STORE) uses.emplace_back(&u.result);
         },
         [&](CallInst& c) {
             for (auto& arg : c.args) {
@@ -85,7 +80,7 @@ inline auto used_vars(Inst& inst) -> std::vector<LeftValue*> {
 }
 
 inline auto used(Inst& inst) {
-    std::vector<std::variant<Value*, LeftValue*>> uses;
+    std::vector<Value*> uses;
     match(
         inst,
         [&](PhiInst& p) {
@@ -96,12 +91,8 @@ inline auto used(Inst& inst) {
         [&](BinaryInst& b) {
             uses.emplace_back(&b.lhs);
             uses.emplace_back(&b.rhs);
-            uses.emplace_back(&b.result);
         },
-        [&](UnaryInst& u) {
-            uses.emplace_back(&u.operand);
-            if (u.op == UnaryInstOp::STORE) uses.emplace_back(&u.result);
-        },
+        [&](UnaryInst& u) { uses.emplace_back(&u.operand); },
         [&](CallInst& c) {
             for (auto& arg : c.args) {
                 uses.emplace_back(&arg);
@@ -125,7 +116,7 @@ inline auto used(Exit& exit) -> Value* {
 }
 
 inline auto used(Block& block) {
-    std::vector<std::variant<Value*, LeftValue*>> uses;
+    std::vector<Value*> uses;
     for (auto& inst : block.insts()) {
         auto inst_uses = used(inst);
         uses.insert(uses.end(), inst_uses.begin(), inst_uses.end());
@@ -145,7 +136,7 @@ inline auto used_vars(Block& block) {
 }
 
 inline auto used(Func& func) {
-    std::vector<std::variant<Value*, LeftValue*>> uses;
+    std::vector<Value*> uses;
     for (auto& block : func.blocks()) {
         auto block_uses = used(*block);
         uses.insert(uses.end(), block_uses.begin(), block_uses.end());
@@ -243,7 +234,8 @@ inline auto vars(Func& func) {
 inline bool has_side_effect(Inst& inst) {
     return match(
         inst, [&](const CallInst&) { return true; },  // function call may have side effects
-        [&](const UnaryInst& u) { return false; }, [&](const BinaryInst& b) { return false; },
+        [&](const UnaryInst& u) { return false; },
+        [&](const BinaryInst& b) { return b.op == ir::InstOp::STORE; },
         [&](const auto&) { return false; });
 }
 

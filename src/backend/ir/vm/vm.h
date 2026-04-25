@@ -208,12 +208,6 @@ public:
             }
         };
 
-        unary_ops[UnaryInstOp::STORE] = [this, check_ref](View& dest, const View& operand) {
-            check_ref(dest.type, false, "store");
-            auto ref_type = dest.type.as<type::Reference>();
-            auto addr = *(std::byte**)dest.data;
-            assign(ref_type.elem, addr, operand.type, operand.data);
-        };
         unary_ops[UnaryInstOp::LOAD] = [this, check_ref](View& dest, const View& operand) {
             check_ref(operand.type, false, "load");
             auto ref_type = operand.type.as<type::Reference>();
@@ -288,6 +282,14 @@ public:
                     auto base = is_ref ? *(std::byte**)lhs.data : lhs.data;
                     assign(dest.type, dest.data, elem_type, base + offset * size_of(elem_type));
                 };
+
+        binary_ops[InstOp::STORE] = [this, check_ref](View& dest, const View& lhs,
+                                                      const View& rhs) {
+            check_ref(lhs.type, false, "store");
+            auto ref_type = lhs.type.as<type::Reference>();
+            auto addr = *(std::byte**)lhs.data;
+            assign(ref_type.elem, addr, rhs.type, rhs.data);
+        };
     }
 };
 

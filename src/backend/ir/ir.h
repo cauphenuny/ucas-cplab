@@ -56,7 +56,7 @@ struct TempValue {
         return lhs.func == rhs.func && lhs.id == rhs.id;
     }
 
-    SIMPLE_TO_STRING(fmt::format(".{}", id));
+    SIMPLE_TO_STRING(fmt::format("${}", id));
 };
 
 struct ConstexprValue;
@@ -120,11 +120,7 @@ struct UnaryInst {
     LeftValue result;
     Value operand;
 
-    SIMPLE_TO_STRING(op == UnaryInstOp::LOAD
-                         ? fmt::format("{}: {} = *{};", result, type_of(result), operand)
-                     : op == UnaryInstOp::STORE
-                         ? fmt::format("*{} = {};", result, operand)
-                         : fmt::format("{}: {} = {}{};", result, type_of(result), op, operand))
+    SIMPLE_TO_STRING(fmt::format("{}: {} = {}{};", result, type_of(result), op, operand))
 };
 
 struct BinaryInst {
@@ -134,6 +130,9 @@ struct BinaryInst {
 
     SIMPLE_TO_STRING((op == InstOp::BORROW_ELEM || op == InstOp::BORROW_ELEM_MUT)
                          ? fmt::format("{}: {} = {}{}[{}];", result, type_of(result), op, lhs, rhs)
+                     : op == InstOp::STORE
+                         ? fmt::format("{}: {} = $store({}, {});", result, type_of(result), lhs,
+                                       rhs)  // store rhs to lhs
                      : op == InstOp::LOAD_ELEM
                          ? fmt::format("{}: {} = {}[{}];", result, type_of(result), lhs, rhs)
                          : fmt::format("{}: {} = {} {} {};", result, type_of(result), lhs, op, rhs))

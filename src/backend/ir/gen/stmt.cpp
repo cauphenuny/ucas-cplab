@@ -117,7 +117,9 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
                     auto var = gen(&lval);
                     auto exp = gen(&assign_stmt.exp, func, scope);
                     if (var.type.isPointer()) {
-                        scope->add(UnaryInst{UnaryInstOp::STORE, std::move(var), std::move(exp)});
+                        scope->add(BinaryInst{InstOp::STORE,
+                                              func->newTemp(type::construct<void>(), scope),
+                                              LeftValue{var}, std::move(exp)});
                     } else {
                         scope->add(UnaryInst{UnaryInstOp::MOV, std::move(var), std::move(exp)});
                     }
@@ -130,7 +132,9 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
                     auto addr = func->newTemp(type_of(exp_val).borrow(false), scope);
                     scope->add(BinaryInst{InstOp::BORROW_ELEM_MUT, addr, std::move(array),
                                           std::move(index)});
-                    scope->add(UnaryInst{UnaryInstOp::STORE, addr, std::move(exp_val)});
+                    scope->add(BinaryInst{InstOp::STORE,
+                                          func->newTemp(type::construct<void>(), scope),
+                                          LeftValue{addr}, std::move(exp_val)});
                     return scope;
                 });
         },

@@ -7,7 +7,7 @@
 
 namespace ir {
 
-enum class UnaryInstOp : uint8_t { MOV, NOT, NEG, LOAD, STORE, BORROW, BORROW_MUT };
+enum class UnaryInstOp : uint8_t { MOV, NOT, NEG, LOAD, BORROW, BORROW_MUT };
 
 enum class InstOp : uint8_t {
     MUL,
@@ -23,6 +23,7 @@ enum class InstOp : uint8_t {
     NEQ,  //
     AND,
     OR,
+    STORE,
     LOAD_ELEM,
     BORROW_ELEM,
     BORROW_ELEM_MUT,
@@ -33,8 +34,7 @@ inline std::string toString(UnaryInstOp op) {
         case UnaryInstOp::MOV: return "";
         case UnaryInstOp::NOT: return "!";
         case UnaryInstOp::NEG: return "-";
-        case UnaryInstOp::LOAD: return "load";
-        case UnaryInstOp::STORE: return "store";
+        case UnaryInstOp::LOAD: return "*";
         case UnaryInstOp::BORROW: return "&";
         case UnaryInstOp::BORROW_MUT: return "&mut ";
     }
@@ -55,6 +55,7 @@ inline std::string toString(InstOp op) {
         case InstOp::NEQ: return "!=";
         case InstOp::AND: return "&&";
         case InstOp::OR: return "||";
+        case InstOp::STORE: return "store";
         case InstOp::LOAD_ELEM: return "load";
         case InstOp::BORROW_ELEM: return "&";
         case InstOp::BORROW_ELEM_MUT: return "&mut ";

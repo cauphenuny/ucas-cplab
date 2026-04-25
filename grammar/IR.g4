@@ -18,6 +18,7 @@ RETURN: 'return';
 BRANCH: 'branch';
 JUMP: 'jump';
 PHI: '$phi';
+STORE: '$store';
 
 ID: [a-zA-Z_][a-zA-Z0-9_]*;
 
@@ -53,9 +54,10 @@ funcDecl:
 paramList: param (',' param)*;
 param: ID ':' type;
 
-temp: '.' INT_LITERAL;
-ssa: ID '.' INT_LITERAL;
-var: temp | ssa | ID;
+temp: '$' INT_LITERAL;
+ssa: '$' ID '.' INT_LITERAL;
+name: '@' ID;
+var: temp | ssa | name;
 value: var | constexpr;
 label: '\'' ID;
 
@@ -67,8 +69,8 @@ exit:
 block: label ':' '{' phiInst* inst* exit '}';
 
 inst:
-	var ':' type '=' ID '(' (argList)? ')' ';'				# callInst
-	| '*' var '=' value ';'									# storeInst
+	var ':' type '=' name '(' (argList)? ')' ';'			# callInst
+	| var ':' type '=' STORE '(' var ',' value ')' ';'		# storeInst
 	| var ':' type '=' '*' var ';'							# loadInst
 	| var ':' type '=' '&' MUT? var ';'						# borrowInst
 	| var ':' type '=' value '[' value ']' ';'				# loadElemInst
@@ -115,4 +117,4 @@ basicConstexpr:
 
 constexpr:
 	basicConstexpr
-	| '{' basicConstexpr (',' basicConstexpr)* '}' ; // array literal
+	| '{' basicConstexpr (',' basicConstexpr)* '}'; // array literal

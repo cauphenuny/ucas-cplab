@@ -241,18 +241,21 @@ public:
     }
 
     std::any visitStoreInst(IRParser::StoreInstContext* ctx) override {
-        // *(var) = value ;
-        auto target = resolveLValue(ctx->var());
+        // var: type = $store(var, value);
+        auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
+        auto addr = resolveLValue(ctx->var(1));
         auto val = take<ir::Value>(visit(ctx->value()));
-        current_block_->add(ir::UnaryInst{
-            .op = ir::UnaryInstOp::STORE, .result = std::move(target), .operand = std::move(val)});
+        current_block_->add(ir::BinaryInst{.op = ir::InstOp::STORE,
+                                           .result = std::move(result),
+                                           .lhs = std::move(addr),
+                                           .rhs = std::move(val)});
         return {};
     }
 
     std::any visitCallInst(IRParser::CallInstContext* ctx) override {
         // var : type = ID ( (argList)? ) ;
         auto result = resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
-        auto func_name = ctx->ID()->getText();
+        auto func_name = ctx->name()->ID()->getText();
         auto func_def = resolveFunc(func_name);
         if (!func_def)
             throw SemanticError(get_loc(ctx), fmt::format("Function {} not found", func_name));
@@ -557,7 +560,7 @@ private:
             }
             return ir::SSAValue(alloc->type, alloc, version);
         } else {
-            auto name = ctx->ID()->getText();
+            auto name = ctx->name()->ID()->getText();
             if (local_symbol_map_.count(name)) {
                 return local_symbol_map_.at(name)->value();
             }
@@ -592,7 +595,7 @@ private:
             }
             return ir::SSAValue(type, alloc, version);
         } else {
-            auto name = ctx->ID()->getText();
+            auto name = ctx->name()->ID()->getText();
             // ID must be pre-defined in localDecl or paramList or be a global
             if (local_symbol_map_.count(name)) {
                 auto* alloc = local_symbol_map_.at(name);
