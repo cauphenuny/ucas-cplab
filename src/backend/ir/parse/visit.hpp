@@ -241,18 +241,6 @@ public:
         return {};
     }
 
-    std::any visitStoreInst(IRParser::StoreInstContext* ctx) override {
-        // var: type = %store(var, value);
-        auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
-        auto addr = resolveLValue(ctx->var(1));
-        auto val = take<ir::Value>(visit(ctx->value()));
-        current_block_->add(ir::BinaryInst{.op = ir::InstOp::STORE,
-                                           .result = std::move(result),
-                                           .lhs = std::move(addr),
-                                           .rhs = std::move(val)});
-        return {};
-    }
-
     std::any visitCallInst(IRParser::CallInstContext* ctx) override {
         // var : type = ID ( (argList)? ) ;
         auto result = resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
@@ -658,6 +646,7 @@ private:
         if (t == "!=") return ir::InstOp::NEQ;
         if (t == "&&") return ir::InstOp::AND;
         if (t == "||") return ir::InstOp::OR;
+        if (t == "<-") return ir::InstOp::STORE;
         throw COMPILER_ERROR(fmt::format("Unknown binary op {}", t));
     }
 };

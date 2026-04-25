@@ -18,8 +18,7 @@ RETURN: 'return';
 JUMP: '=>';
 IF: 'if';
 ELSE: 'else';
-PHI: '%phi';
-STORE: '%store';
+PHI: 'phi';
 
 ID: [a-zA-Z_][a-zA-Z0-9_]*;
 
@@ -71,7 +70,6 @@ block: label ':' '{' phiInst* inst* exit '}';
 
 inst:
 	var ':' type '=' name '(' (argList)? ')' ';'			# callInst
-	| var ':' type '=' STORE '(' var ',' value ')' ';'		# storeInst
 	| var ':' type '=' '*' var ';'							# loadInst
 	| var ':' type '=' '&' MUT? var ';'						# borrowInst
 	| var ':' type '=' value '[' value ']' ';'				# loadElemInst
@@ -99,7 +97,8 @@ binop:
 	| '=='
 	| '!='
 	| '&&'
-	| '||';
+	| '||'
+	| '<-';
 
 type:
 	'&' MUT? type					# pointerType

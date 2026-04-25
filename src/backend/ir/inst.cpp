@@ -23,7 +23,7 @@ auto PhiInst::toString() const -> std::string {
         arg_str += fmt::format("'{}: {}, ", block->label, val);
     }
     if (!arg_str.empty()) arg_str.pop_back(), arg_str.pop_back();
-    return fmt::format("{}: {} = %phi({});", result, type_of(result), arg_str);
+    return fmt::format("{}: {} = phi({});", result, type_of(result), arg_str);
 }
 auto PhiInst::operator[](Block* block) const -> const Value& {
     for (auto& [b, v] : args) {

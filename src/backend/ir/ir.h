@@ -130,9 +130,6 @@ struct BinaryInst {
 
     SIMPLE_TO_STRING((op == InstOp::BORROW_ELEM || op == InstOp::BORROW_ELEM_MUT)
                          ? fmt::format("{}: {} = {}{}[{}];", result, type_of(result), op, lhs, rhs)
-                     : op == InstOp::STORE
-                         ? fmt::format("{}: {} = %store({}, {});", result, type_of(result), lhs,
-                                       rhs)  // store rhs to lhs
                      : op == InstOp::LOAD_ELEM
                          ? fmt::format("{}: {} = {}[{}];", result, type_of(result), lhs, rhs)
                          : fmt::format("{}: {} = {} {} {};", result, type_of(result), lhs, op, rhs))

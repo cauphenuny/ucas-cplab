@@ -55,8 +55,8 @@ inline std::string toString(InstOp op) {
         case InstOp::NEQ: return "!=";
         case InstOp::AND: return "&&";
         case InstOp::OR: return "||";
-        case InstOp::STORE: return "store";
-        case InstOp::LOAD_ELEM: return "load";
+        case InstOp::STORE: return "<-";
+        case InstOp::LOAD_ELEM: return "[]";
         case InstOp::BORROW_ELEM: return "& ";
         case InstOp::BORROW_ELEM_MUT: return "&mut ";
     }
