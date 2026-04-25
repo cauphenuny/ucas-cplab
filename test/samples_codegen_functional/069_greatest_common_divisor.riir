@@ -1,22 +1,22 @@
-fn fun(m_0: i32, n_0: i32) -> i32 {
+fn fun(mut m_0: i32, mut n_0: i32) -> i32 {
     let mut rem_0: i32;
     'entry: {
-        rem_0: i32 = 0;
+        @rem_0: i32 = 0;
         jump 'while_cond_3_1;
     }
     'while_cond_3_1: {
-        $0: bool = n_0 > 0;
-        branch $0 ? 'while_body_3_1 : 'while_exit_3_1;
+        %0: bool = @n_0 > 0;
+        branch %0 ? 'while_body_3_1 : 'while_exit_3_1;
     }
     'while_body_3_1: {
-        $1: i32 = m_0 % n_0;
-        rem_0: i32 = $1;
-        m_0: i32 = n_0;
-        n_0: i32 = rem_0;
+        %1: i32 = @m_0 % @n_0;
+        @rem_0: i32 = %1;
+        @m_0: i32 = @n_0;
+        @n_0: i32 = @rem_0;
         jump 'while_cond_3_1;
     }
     'while_exit_3_1: {
-        return m_0;
+        return @m_0;
     }
 }
 
@@ -25,16 +25,16 @@ fn main() -> i32 {
     let mut m_1: i32;
     let mut num_0: i32;
     'entry: {
-        n_1: i32 = 0;
-        m_1: i32 = 0;
-        num_0: i32 = 0;
-        $0: i32 = get_int();
-        m_1: i32 = $0;
-        $1: i32 = get_int();
-        n_1: i32 = $1;
-        $2: i32 = fun(m_1, n_1);
-        num_0: i32 = $2;
-        $3: () = print_int(num_0);
+        @n_1: i32 = 0;
+        @m_1: i32 = 0;
+        @num_0: i32 = 0;
+        %0: i32 = @get_int();
+        @m_1: i32 = %0;
+        %1: i32 = @get_int();
+        @n_1: i32 = %1;
+        %2: i32 = @fun(@m_1, @n_1);
+        @num_0: i32 = %2;
+        %3: () = @print_int(@num_0);
         return 0;
     }
 }

@@ -51,8 +51,8 @@ fn main() -> i32 {
 fn main() -> i32 {
     let a: i32 = 0;
     'entry: {
-        a: i32 = 1;
-        %0: i32 = a;
+        @a: i32 = 1;
+        %0: i32 = @a;
         return %0;
     }
 }
@@ -71,12 +71,12 @@ fn main() -> i32 {
 fn main() -> i32 {
     let a: i32;
     'entry: {
-        a: i32 = 1;
-        jump 'assign;
+        @a: i32 = 1;
+        => 'assign;
     }
     'assign: {
-        a: i32 = 2;
-        %0: i32 = a;
+        @a: i32 = 2;
+        %0: i32 = @a;
         return %0;
     }
 }
@@ -101,7 +101,7 @@ fn a_1_2() -> i32 {
 fn main() -> i32 {
     let a_1_2: i32 = 3;
     'entry: {
-        %0: i32 = a_1_2();
+        %0: i32 = @a_1_2();
         return %0;
     }
 }

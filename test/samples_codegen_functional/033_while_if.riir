@@ -1,55 +1,55 @@
-fn get_one(a_0: i32) -> i32 {
+fn get_one(mut a_0: i32) -> i32 {
     'entry: {
         return 1;
     }
 }
 
-fn deepWhileBr(a_1: i32, b_0: i32) -> i32 {
+fn deepWhileBr(mut a_1: i32, mut b_0: i32) -> i32 {
     let mut c_0: i32;
     let mut d_0: i32;
     let mut e_0: i32;
     'entry: {
-        c_0: i32 = 0;
-        $0: i32 = a_1 + b_0;
-        c_0: i32 = $0;
+        @c_0: i32 = 0;
+        %0: i32 = @a_1 + @b_0;
+        @c_0: i32 = %0;
         jump 'while_cond_8_2;
     }
     'while_cond_8_2: {
-        $1: bool = c_0 < 75;
-        branch $1 ? 'while_body_8_2 : 'while_exit_8_2;
+        %1: bool = @c_0 < 75;
+        branch %1 ? 'while_body_8_2 : 'while_exit_8_2;
     }
     'while_body_8_2: {
-        d_0: i32 = 0;
-        d_0: i32 = 42;
-        $2: bool = c_0 < 100;
-        branch $2 ? 'if_true_11_4 : 'if_exit_11_4;
+        @d_0: i32 = 0;
+        @d_0: i32 = 42;
+        %2: bool = @c_0 < 100;
+        branch %2 ? 'if_true_11_4 : 'if_exit_11_4;
     }
     'while_exit_8_2: {
-        return c_0;
+        return @c_0;
     }
     'if_true_11_4: {
-        $3: i32 = c_0 + d_0;
-        c_0: i32 = $3;
-        $4: bool = c_0 > 99;
-        branch $4 ? 'if_true_13_6 : 'if_exit_13_6;
+        %3: i32 = @c_0 + @d_0;
+        @c_0: i32 = %3;
+        %4: bool = @c_0 > 99;
+        branch %4 ? 'if_true_13_6 : 'if_exit_13_6;
     }
     'if_exit_11_4: {
         jump 'while_cond_8_2;
     }
     'if_true_13_6: {
-        e_0: i32 = 0;
-        $5: i32 = d_0 * 2;
-        e_0: i32 = $5;
-        $6: i32 = get_one(0);
-        $7: bool = $6 == 1;
-        branch $7 ? 'if_true_16_8 : 'if_exit_16_8;
+        @e_0: i32 = 0;
+        %5: i32 = @d_0 * 2;
+        @e_0: i32 = %5;
+        %6: i32 = @get_one(0);
+        %7: bool = %6 == 1;
+        branch %7 ? 'if_true_16_8 : 'if_exit_16_8;
     }
     'if_exit_13_6: {
         jump 'if_exit_11_4;
     }
     'if_true_16_8: {
-        $8: i32 = e_0 * 2;
-        c_0: i32 = $8;
+        %8: i32 = @e_0 * 2;
+        @c_0: i32 = %8;
         jump 'if_exit_16_8;
     }
     'if_exit_16_8: {
@@ -60,11 +60,11 @@ fn deepWhileBr(a_1: i32, b_0: i32) -> i32 {
 fn main() -> i32 {
     let mut p_0: i32;
     'entry: {
-        p_0: i32 = 0;
-        p_0: i32 = 2;
-        $0: i32 = deepWhileBr(p_0, p_0);
-        p_0: i32 = $0;
-        $1: () = print_int(p_0);
+        @p_0: i32 = 0;
+        @p_0: i32 = 2;
+        %0: i32 = @deepWhileBr(@p_0, @p_0);
+        @p_0: i32 = %0;
+        %1: () = @print_int(@p_0);
         return 0;
     }
 }

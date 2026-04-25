@@ -32,15 +32,15 @@ fn main() -> i32 {
     let mut x: i32;
     'entry: {
         %0: bool = true;
-        branch %0 ? 'then_blk : 'else_blk;
+        => if %0 { 'then_blk } else { 'else_blk };
     }
     'then_blk: {
         x: i32 = 1;
-        jump 'exit_blk;
+        => 'exit_blk;
     }
     'else_blk: {
         x: i32 = 2;
-        jump 'exit_blk;
+        => 'exit_blk;
     }
     'exit_blk: {
         return x;
@@ -55,16 +55,16 @@ fn main() -> i32 {
     'entry: {
         i: i32 = 0;
         sum: i32 = 0;
-        jump 'cond;
+        => 'cond;
     }
     'cond: {
         %0: bool = i < 10;
-        branch %0 ? 'body : 'exit;
+        => if %0 { 'body } else { 'exit };
     }
     'body: {
         sum: i32 = sum + i;
         i: i32 = i + 1;
-        jump 'cond;
+        => 'cond;
     }
     'exit: {
         return sum;

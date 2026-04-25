@@ -2,6 +2,6 @@ fn main() -> i32 {
     const a_0: i32 = 10;
     const b_0: i32 = 5;
     'entry: {
-        return b_0;
+        return @b_0;
     }
 }

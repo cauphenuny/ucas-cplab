@@ -1,21 +1,21 @@
 fn main() -> i32 {
     'entry: {
-        $0: i32 = get_int();
-        $1: i32 = get_int();
+        %0: i32 = @get_int();
+        %1: i32 = @get_int();
         jump 'inline_fun_0_while_cond_3_1;
     }
     'inline_fun_0_while_cond_3_1: {
-        $14: i32 = $phi('inline_fun_0_while_body_3_1: $11, 'entry: $1);
-        $16: i32 = $phi('inline_fun_0_while_body_3_1: $14, 'entry: $0);
-        $10: bool = $14 > 0;
-        branch $10 ? 'inline_fun_0_while_body_3_1 : 'inline_fun_0_return;
+        %14: i32 = %phi('inline_fun_0_while_body_3_1: %16, 'entry: %0);
+        %16: i32 = %phi('inline_fun_0_while_body_3_1: %11, 'entry: %1);
+        %10: bool = %16 > 0;
+        branch %10 ? 'inline_fun_0_while_body_3_1 : 'inline_fun_0_return;
     }
     'inline_fun_0_while_body_3_1: {
-        $11: i32 = $16 % $14;
+        %11: i32 = %14 % %16;
         jump 'inline_fun_0_while_cond_3_1;
     }
     'inline_fun_0_return: {
-        $3: () = print_int($16);
+        %3: () = @print_int(%14);
         return 0;
     }
 }

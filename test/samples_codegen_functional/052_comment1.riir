@@ -1,8 +1,8 @@
 fn main() -> i32 {
     let mut a_0: i32;
     'entry: {
-        a_0: i32 = 0;
-        a_0: i32 = 5;
-        return a_0;
+        @a_0: i32 = 0;
+        @a_0: i32 = 5;
+        return @a_0;
     }
 }

@@ -5,47 +5,48 @@ fn main() -> i32 {
         jump 'while_cond_10_4;
     }
     'while_cond_10_4: {
-        $19: i32 = $phi('while_exit_12_8: $12, 'entry: 0);
-        $0: bool = $19 < 4;
-        branch $0 ? 'while_cond_12_8 : 'while_exit_10_4;
+        %20: i32 = %phi('while_exit_12_8: %13, 'entry: 0);
+        %0: bool = %20 < 4;
+        branch %0 ? 'while_cond_12_8 : 'while_exit_10_4;
     }
     'while_exit_10_4: {
         return 0;
     }
     'while_cond_12_8: {
-        $22: i32 = $phi('while_exit_14_12: $11, 'while_cond_10_4: 0);
-        $1: bool = $22 < 2;
-        branch $1 ? 'while_cond_14_12 : 'while_exit_12_8;
+        %23: i32 = %phi('while_exit_14_12: %12, 'while_cond_10_4: 0);
+        %1: bool = %23 < 2;
+        branch %1 ? 'while_cond_14_12 : 'while_exit_12_8;
     }
     'while_exit_12_8: {
-        $12: i32 = $19 + 1;
+        %13: i32 = %20 + 1;
         jump 'while_cond_10_4;
     }
     'while_cond_14_12: {
-        $25: i32 = $phi('while_exit_16_16: $10, 'while_cond_12_8: 0);
-        $2: bool = $25 < 2;
-        branch $2 ? 'while_cond_16_16 : 'while_exit_14_12;
+        %26: i32 = %phi('while_exit_16_16: %11, 'while_cond_12_8: 0);
+        %2: bool = %26 < 2;
+        branch %2 ? 'while_cond_16_16 : 'while_exit_14_12;
     }
     'while_exit_14_12: {
-        $11: i32 = $22 + 1;
+        %12: i32 = %23 + 1;
         jump 'while_cond_12_8;
     }
     'while_cond_16_16: {
-        $28: i32 = $phi('while_body_16_16: $9, 'while_cond_14_12: 0);
-        $3: bool = $28 < 2;
-        branch $3 ? 'while_body_16_16 : 'while_exit_16_16;
+        %29: i32 = %phi('while_body_16_16: %10, 'while_cond_14_12: 0);
+        %3: bool = %29 < 2;
+        branch %3 ? 'while_body_16_16 : 'while_exit_16_16;
     }
     'while_body_16_16: {
-        $4: &mut[[[f32; 2]; 2]] = &mut A_0[$19];
-        $5: &mut[[f32; 2]] = &mut $4[$22];
-        $6: &mut[f32] = &mut $5[$25];
-        $7: f32 = $6[$28];
-        $8: () = print_float($7);
-        $9: i32 = $28 + 1;
+        %4: &mut[[[f32; 2]; 2]] = &mut @A_0[%20];
+        %5: &mut[[f32; 2]] = &mut %4[%23];
+        %6: &mut[f32] = &mut %5[%26];
+        %7: &f32 = & %6[%29];
+        %8: f32 = * %7;
+        %9: () = @print_float(%8);
+        %10: i32 = %29 + 1;
         jump 'while_cond_16_16;
     }
     'while_exit_16_16: {
-        $10: i32 = $25 + 1;
+        %11: i32 = %26 + 1;
         jump 'while_cond_14_12;
     }
 }

@@ -3,29 +3,29 @@
 ## 简单块消除
 
 ```
-TrivialBlockElimination failed: compiler error : conflict phi args, caused by replacng if_true_8_4 to entry in $a_0.4: i32 = $phi('entry: 5, 'if_true_8_4: 25); (at /Users/ycp/Source/Courses/cp-lab/main/src/backend/ir/optim/dead_block.hpp:124)
+TrivialBlockElimination failed: compiler error : conflict phi args, caused by replacng if_true_8_4 to entry in %a_0.4: i32 = %phi('entry: 5, 'if_true_8_4: 25); (at /Users/ycp/Source/Courses/cp-lab/main/src/backend/ir/optim/dead_block.hpp:124)
 Current program: fn if_if_Else() -> i32 {
     let a_0: i32;
     'entry: {
-        jump 'if_exit_8_4;
+        => 'if_exit_8_4;
     }
     'if_exit_7_2: {
-        $a_0.3: i32 = $phi('if_exit_8_4: $a_0.4);
-        return $a_0.3;
+        %a_0.3: i32 = %phi('if_exit_8_4: %a_0.4);
+        return %a_0.3;
     }
     'if_true_8_4: {
-        jump 'if_exit_8_4;
+        => 'if_exit_8_4;
     }
     'if_exit_8_4: {
-        $a_0.4: i32 = $phi('entry: 5, 'if_true_8_4: 25);
-        jump 'if_exit_7_2;
+        %a_0.4: i32 = %phi('entry: 5, 'if_true_8_4: 25);
+        => 'if_exit_7_2;
     }
 }
 
 fn main() -> i32 {
     'entry: {
-        $0: i32 = if_if_Else();
-        return $0;
+        %0: i32 = if_if_Else();
+        return %0;
     }
 }
 ```

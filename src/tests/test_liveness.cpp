@@ -31,6 +31,7 @@ void test(const std::string& name, const std::string& text,
         }
     } catch (const std::exception& e) {
         fmt::println("  Error during test '{}': {}", name, e.what());
+        exit(1);
     }
     fmt::println("------------------------------------------");
 }
@@ -49,8 +50,8 @@ int main() {
          R"(
 fn add(a: i32, b: i32) -> i32 {
     'entry: {
-        %0: i32 = a;
-        %1: i32 = b;
+        %0: i32 = @a;
+        %1: i32 = @b;
         %2: i32 = %0 + %1;
         return %2;
     }
@@ -58,7 +59,7 @@ fn add(a: i32, b: i32) -> i32 {
 
 fn main() -> i32 {
     'entry: {
-        %0: i32 = add(1, 2);
+        %0: i32 = @add(1, 2);
         return %0;
     }
 }
@@ -81,22 +82,22 @@ fn main() -> i32 {
 fn branch_test(cond: bool, a: i32, b: i32) -> i32 {
     let mut res: i32;
     'entry: {
-        branch cond ? 'then_blk : 'else_blk;
+        => if @cond { 'then_blk } else { 'else_blk };
     }
     'then_blk: {
-        %0: i32 = a;
+        %0: i32 = @a;
         %1: i32 = %0 + 10;
-        res: i32 = %1;
-        jump 'exit_blk;
+        @res: i32 = %1;
+        => 'exit_blk;
     }
     'else_blk: {
-        %2: i32 = b;
+        %2: i32 = @b;
         %3: i32 = %2 + 20;
-        res: i32 = %3;
-        jump 'exit_blk;
+        @res: i32 = %3;
+        => 'exit_blk;
     }
     'exit_blk: {
-        %4: i32 = res;
+        %4: i32 = @res;
         return %4;
     }
 }
@@ -104,7 +105,7 @@ fn branch_test(cond: bool, a: i32, b: i32) -> i32 {
 fn main() -> i32 {
     'entry: {
         %0: bool = true;
-        %1: i32 = branch_test(%0, 1, 2);
+        %1: i32 = @branch_test(%0, 1, 2);
         return %1;
     }
 }
@@ -136,27 +137,27 @@ fn loop_test(n: i32) -> i32 {
     let mut i: i32;
     let mut s: i32;
     'entry: {
-        i: i32 = 0;
-        s: i32 = 0;
-        jump 'loop_cond;
+        @i: i32 = 0;
+        @s: i32 = 0;
+        => 'loop_cond;
     }
     'loop_cond: {
-        %0: i32 = i;
-        %1: bool = %0 < n;
-        branch %1 ? 'loop_body : 'loop_exit;
+        %0: i32 = @i;
+        %1: bool = %0 < @n;
+        => if %1 { 'loop_body } else { 'loop_exit };
     }
     'loop_body: {
-        %2: i32 = s;
-        %3: i32 = i;
+        %2: i32 = @s;
+        %3: i32 = @i;
         %4: i32 = %2 + %3;
-        s: i32 = %4;
-        %5: i32 = i;
+        @s: i32 = %4;
+        %5: i32 = @i;
         %6: i32 = %5 + 1;
-        i: i32 = %6;
-        jump 'loop_cond;
+        @i: i32 = %6;
+        => 'loop_cond;
     }
     'loop_exit: {
-        %7: i32 = s;
+        %7: i32 = @s;
         return %7;
     }
 }
@@ -186,7 +187,7 @@ let ref mut g2: i32 = 0;
 
 fn main() -> i32 {
     'entry: {
-        %0: i32 = *(g1);
+        %0: i32 = * @g1;
         return %0;
     }
 }

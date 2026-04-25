@@ -4,30 +4,30 @@ const n_0: i32 = 10;
 fn main() -> i32 {
     let mut i_0: i32;
     'entry: {
-        i_0: i32 = 0;
-        *(k_0) = 1;
+        @i_0: i32 = 0;
+        %0: () = %store(@k_0, 1);
         jump 'while_cond_6_1;
     }
     'while_cond_6_1: {
-        $0: i32 = n_0 - 1;
-        $1: bool = i_0 <= $0;
-        branch $1 ? 'while_body_6_1 : 'while_exit_6_1;
+        %1: i32 = @n_0 - 1;
+        %2: bool = @i_0 <= %1;
+        branch %2 ? 'while_body_6_1 : 'while_exit_6_1;
     }
     'while_body_6_1: {
-        $2: i32 = i_0 + 1;
-        i_0: i32 = $2;
-        $3: i32 = *(k_0);
-        $4: i32 = $3 + 1;
-        $5: i32 = *(k_0);
-        $6: i32 = *(k_0);
-        $7: i32 = $5 + $6;
-        *(k_0) = $7;
+        %3: i32 = @i_0 + 1;
+        @i_0: i32 = %3;
+        %4: i32 = * @k_0;
+        %5: i32 = %4 + 1;
+        %6: i32 = * @k_0;
+        %7: i32 = * @k_0;
+        %8: i32 = %6 + %7;
+        %9: () = %store(@k_0, %8);
         jump 'while_cond_6_1;
     }
     'while_exit_6_1: {
-        $8: i32 = *(k_0);
-        $9: () = print_int($8);
-        $10: i32 = *(k_0);
-        return $10;
+        %10: i32 = * @k_0;
+        %11: () = @print_int(%10);
+        %12: i32 = * @k_0;
+        return %12;
     }
 }

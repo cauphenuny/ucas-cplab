@@ -1,6 +1,6 @@
 fn main() -> i32 {
     'entry: {
-        $6: () = print_int(4);
+        %6: () = @print_int(4);
         return 0;
     }
 }

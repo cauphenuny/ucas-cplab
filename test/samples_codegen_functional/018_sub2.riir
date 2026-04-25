@@ -3,9 +3,9 @@ const a_0: i32 = 10;
 fn main() -> i32 {
     let mut b_0: i32;
     'entry: {
-        b_0: i32 = 0;
-        b_0: i32 = 2;
-        $0: i32 = b_0 - a_0;
-        return $0;
+        @b_0: i32 = 0;
+        @b_0: i32 = 2;
+        %0: i32 = @b_0 - @a_0;
+        return %0;
     }
 }

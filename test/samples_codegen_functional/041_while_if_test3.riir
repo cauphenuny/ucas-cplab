@@ -1,48 +1,48 @@
-fn deepWhileBr(a_0: i32, b_0: i32) -> i32 {
+fn deepWhileBr(mut a_0: i32, mut b_0: i32) -> i32 {
     let mut c_0: i32;
     let mut d_0: i32;
     let mut e_0: i32;
     'entry: {
-        c_0: i32 = 0;
-        $0: i32 = a_0 + b_0;
-        c_0: i32 = $0;
+        @c_0: i32 = 0;
+        %0: i32 = @a_0 + @b_0;
+        @c_0: i32 = %0;
         jump 'while_cond_4_2;
     }
     'while_cond_4_2: {
-        $1: bool = c_0 < 75;
-        branch $1 ? 'while_body_4_2 : 'while_exit_4_2;
+        %1: bool = @c_0 < 75;
+        branch %1 ? 'while_body_4_2 : 'while_exit_4_2;
     }
     'while_body_4_2: {
-        d_0: i32 = 0;
-        d_0: i32 = 42;
-        $2: bool = c_0 < 100;
-        branch $2 ? 'if_true_7_4 : 'if_exit_7_4;
+        @d_0: i32 = 0;
+        @d_0: i32 = 42;
+        %2: bool = @c_0 < 100;
+        branch %2 ? 'if_true_7_4 : 'if_exit_7_4;
     }
     'while_exit_4_2: {
-        return c_0;
+        return @c_0;
     }
     'if_true_7_4: {
-        $3: i32 = c_0 + d_0;
-        c_0: i32 = $3;
-        $4: bool = c_0 > 99;
-        branch $4 ? 'if_true_9_6 : 'if_exit_9_6;
+        %3: i32 = @c_0 + @d_0;
+        @c_0: i32 = %3;
+        %4: bool = @c_0 > 99;
+        branch %4 ? 'if_true_9_6 : 'if_exit_9_6;
     }
     'if_exit_7_4: {
         jump 'while_cond_4_2;
     }
     'if_true_9_6: {
-        e_0: i32 = 0;
-        $5: i32 = d_0 * 2;
-        e_0: i32 = $5;
-        $6: bool = 1 == 1;
-        branch $6 ? 'if_true_12_8 : 'if_exit_12_8;
+        @e_0: i32 = 0;
+        %5: i32 = @d_0 * 2;
+        @e_0: i32 = %5;
+        %6: bool = 1 == 1;
+        branch %6 ? 'if_true_12_8 : 'if_exit_12_8;
     }
     'if_exit_9_6: {
         jump 'if_exit_7_4;
     }
     'if_true_12_8: {
-        $7: i32 = e_0 * 2;
-        c_0: i32 = $7;
+        %7: i32 = @e_0 * 2;
+        @c_0: i32 = %7;
         jump 'if_exit_12_8;
     }
     'if_exit_12_8: {
@@ -53,9 +53,9 @@ fn deepWhileBr(a_0: i32, b_0: i32) -> i32 {
 fn main() -> i32 {
     let mut p_0: i32;
     'entry: {
-        p_0: i32 = 0;
-        p_0: i32 = 2;
-        $0: i32 = deepWhileBr(p_0, p_0);
-        return $0;
+        @p_0: i32 = 0;
+        @p_0: i32 = 2;
+        %0: i32 = @deepWhileBr(@p_0, @p_0);
+        return %0;
     }
 }

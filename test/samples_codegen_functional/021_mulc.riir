@@ -2,7 +2,7 @@ const a_0: i32 = 5;
 
 fn main() -> i32 {
     'entry: {
-        $0: i32 = a_0 * 5;
-        return $0;
+        %0: i32 = @a_0 * 5;
+        return %0;
     }
 }
