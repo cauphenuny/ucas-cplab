@@ -13,11 +13,11 @@ fn main() -> i32 {
         @m_0: i32 = 2;
         @n_0: i32 = 3;
         @j_0: i32 = 0;
-        jump 'while_cond_7_4;
+        => 'while_cond_7_4;
     }
     'while_cond_7_4: {
         %0: bool = @j_0 < 5;
-        branch %0 ? 'while_body_7_4 : 'while_exit_7_4;
+        => if %0 { 'while_body_7_4 } else { 'while_exit_7_4 };
     }
     'while_body_7_4: {
         %1: i32 = @m_0 - 1;
@@ -32,14 +32,14 @@ fn main() -> i32 {
         %9: &i32 = & %8[@j_0];
         %10: i32 = * %9;
         %11: &mut i32 = &mut %6[@j_0];
-        %12: () = %store(%11, %10);
+        %12: () = %11 <- %10;
         %13: i32 = @n_0 - 1;
         %14: &mut[i32] = &mut @a_0[%13];
         %15: &mut i32 = &mut %14[@j_0];
-        %16: () = %store(%15, @i_0);
+        %16: () = %15 <- @i_0;
         %17: i32 = @j_0 + 1;
         @j_0: i32 = %17;
-        jump 'while_cond_7_4;
+        => 'while_cond_7_4;
     }
     'while_exit_7_4: {
         %18: &mut[i32] = &mut @a_0[2];

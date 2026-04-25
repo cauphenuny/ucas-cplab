@@ -2,49 +2,49 @@ let ref mut a_0: i32 = 7;
 
 fn main() -> i32 {
     'entry: {
-        jump 'while_cond_20_1;
+        => 'while_cond_20_1;
     }
     'while_cond_20_1: {
-        %11: i32 = %phi('if_exit_21_2: %10, 'entry: 0);
-        %13: i32 = %phi('if_exit_21_2: %4, 'entry: 0);
+        %11: i32 = phi('if_exit_21_2: %10, 'entry: 0);
+        %13: i32 = phi('if_exit_21_2: %4, 'entry: 0);
         %0: bool = %13 < 100;
-        branch %0 ? 'inline_func_0_entry : 'while_exit_20_1;
+        => if %0 { 'inline_func_0_entry } else { 'while_exit_20_1 };
     }
     'while_exit_20_1: {
         %5: bool = %11 < 100;
-        branch %5 ? 'if_true_25_1 : 'if_false_25_1;
+        => if %5 { 'if_true_25_1 } else { 'if_false_25_1 };
     }
     'if_true_21_2: {
         %3: i32 = %11 + 1;
-        jump 'if_exit_21_2;
+        => 'if_exit_21_2;
     }
     'if_exit_21_2: {
-        %10: i32 = %phi('if_true_21_2: %3, 'inline_func_0_return: %11);
+        %10: i32 = phi('if_true_21_2: %3, 'inline_func_0_return: %11);
         %4: i32 = %13 + 1;
-        jump 'while_cond_20_1;
+        => 'while_cond_20_1;
     }
     'if_true_25_1: {
         %6: () = @print_int(1);
-        jump 'if_exit_25_1;
+        => 'if_exit_25_1;
     }
     'if_exit_25_1: {
         return 0;
     }
     'if_false_25_1: {
         %7: () = @print_int(0);
-        jump 'if_exit_25_1;
+        => 'if_exit_25_1;
     }
     'inline_func_0_entry: {
         %15: i32 = * @a_0;
         %16: bool = 1 == %15;
-        branch %16 ? 'inline_func_0_return : 'inline_func_0_if_false_8_2;
+        => if %16 { 'inline_func_0_return } else { 'inline_func_0_if_false_8_2 };
     }
     'inline_func_0_if_false_8_2: {
-        jump 'inline_func_0_return;
+        => 'inline_func_0_return;
     }
     'inline_func_0_return: {
-        %1: i32 = %phi('inline_func_0_if_false_8_2: 0, 'inline_func_0_entry: 1);
+        %1: i32 = phi('inline_func_0_if_false_8_2: 0, 'inline_func_0_entry: 1);
         %2: bool = %1 == 1;
-        branch %2 ? 'if_true_21_2 : 'if_exit_21_2;
+        => if %2 { 'if_true_21_2 } else { 'if_exit_21_2 };
     }
 }

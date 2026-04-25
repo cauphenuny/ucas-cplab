@@ -12,16 +12,16 @@ fn FourWhile() -> i32 {
         @c_0: i32 = 7;
         @d_0: i32 = 0;
         @d_0: i32 = 10;
-        jump 'while_cond_10_2;
+        => 'while_cond_10_2;
     }
     'while_cond_10_2: {
         %0: bool = @a_0 < 20;
-        branch %0 ? 'while_body_10_2 : 'while_exit_10_2;
+        => if %0 { 'while_body_10_2 } else { 'while_exit_10_2 };
     }
     'while_body_10_2: {
         %1: i32 = @a_0 + 3;
         @a_0: i32 = %1;
-        jump 'while_cond_12_4;
+        => 'while_cond_12_4;
     }
     'while_exit_10_2: {
         %11: i32 = @b_0 + @d_0;
@@ -31,45 +31,45 @@ fn FourWhile() -> i32 {
     }
     'while_cond_12_4: {
         %2: bool = @b_0 < 10;
-        branch %2 ? 'while_body_12_4 : 'while_exit_12_4;
+        => if %2 { 'while_body_12_4 } else { 'while_exit_12_4 };
     }
     'while_body_12_4: {
         %3: i32 = @b_0 + 1;
         @b_0: i32 = %3;
-        jump 'while_cond_14_6;
+        => 'while_cond_14_6;
     }
     'while_exit_12_4: {
         %10: i32 = @b_0 - 2;
         @b_0: i32 = %10;
-        jump 'while_cond_10_2;
+        => 'while_cond_10_2;
     }
     'while_cond_14_6: {
         %4: bool = @c_0 == 7;
-        branch %4 ? 'while_body_14_6 : 'while_exit_14_6;
+        => if %4 { 'while_body_14_6 } else { 'while_exit_14_6 };
     }
     'while_body_14_6: {
         %5: i32 = @c_0 - 1;
         @c_0: i32 = %5;
-        jump 'while_cond_16_8;
+        => 'while_cond_16_8;
     }
     'while_exit_14_6: {
         %9: i32 = @c_0 + 1;
         @c_0: i32 = %9;
-        jump 'while_cond_12_4;
+        => 'while_cond_12_4;
     }
     'while_cond_16_8: {
         %6: bool = @d_0 < 20;
-        branch %6 ? 'while_body_16_8 : 'while_exit_16_8;
+        => if %6 { 'while_body_16_8 } else { 'while_exit_16_8 };
     }
     'while_body_16_8: {
         %7: i32 = @d_0 + 3;
         @d_0: i32 = %7;
-        jump 'while_cond_16_8;
+        => 'while_cond_16_8;
     }
     'while_exit_16_8: {
         %8: i32 = @d_0 - 1;
         @d_0: i32 = %8;
-        jump 'while_cond_14_6;
+        => 'while_cond_14_6;
     }
 }
 

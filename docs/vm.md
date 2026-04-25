@@ -32,8 +32,8 @@ View 是对于内存资源的引用，不持有所有权，包含类型 .type �
 
 例如：
 ```cpp
-%m_0 = %phi(..., body: %n_0)
-%n_0 = %phi(..., body: %1)
+%m_0 = phi(..., body: %n_0)
+%n_0 = phi(..., body: %1)
 ```
 
 原始优化过程：
@@ -91,8 +91,8 @@ fn fun(m_0: i32, n_0: i32) -> i32 {
         => 'while_cond_3_1;
     }
     'while_cond_3_1: {
-        %m_0.0: i32 = %phi('entry: m_0, 'while_body_3_1: %m_0.1);
-        %n_0.0: i32 = %phi('entry: n_0, 'while_body_3_1: %n_0.1);
+        %m_0.0: i32 = phi('entry: m_0, 'while_body_3_1: %m_0.1);
+        %n_0.0: i32 = phi('entry: n_0, 'while_body_3_1: %n_0.1);
         %0: bool = %n_0.0 > 0;
         => if %0 { 'while_body_3_1 } else { 'while_exit_3_1 };
     }
@@ -135,8 +135,8 @@ fn fun(m_0: i32, n_0: i32) -> i32 {
         => 'while_cond_3_1;
     }
     'while_cond_3_1: {
-        %4: i32 = %phi('entry: m_0, 'while_body_3_1: %3);
-        %6: i32 = %phi('entry: n_0, 'while_body_3_1: %5);
+        %4: i32 = phi('entry: m_0, 'while_body_3_1: %3);
+        %6: i32 = phi('entry: n_0, 'while_body_3_1: %5);
         %0: bool = %6 > 0;
         => if %0 { 'while_body_3_1 } else { 'while_exit_3_1 };
     }
@@ -179,8 +179,8 @@ fn fun(m_0: i32, n_0: i32) -> i32 {
         => 'while_cond_3_1;
     }
     'while_cond_3_1: {
-        %4: i32 = %phi('entry: m_0, 'while_body_3_1: %6);
-        %6: i32 = %phi('entry: n_0, 'while_body_3_1: %1);
+        %4: i32 = phi('entry: m_0, 'while_body_3_1: %6);
+        %6: i32 = phi('entry: n_0, 'while_body_3_1: %1);
         %0: bool = %6 > 0;
         => if %0 { 'while_body_3_1 } else { 'while_exit_3_1 };
     }
@@ -223,8 +223,8 @@ fn fun(m_0: i32, n_0: i32) -> i32 {
         => 'while_cond_3_1;
     }
     'while_cond_3_1: {
-        %4: i32 = %phi('entry: m_0, 'while_body_3_1: %6);
-        %6: i32 = %phi('entry: n_0, 'while_body_3_1: %1);
+        %4: i32 = phi('entry: m_0, 'while_body_3_1: %6);
+        %6: i32 = phi('entry: n_0, 'while_body_3_1: %1);
         %0: bool = %6 > 0;
         => if %0 { 'while_body_3_1 } else { 'while_exit_3_1 };
     }
@@ -266,8 +266,8 @@ fn fun(m_0: i32, n_0: i32) -> i32 {
         => 'while_cond_3_1;
     }
     'while_cond_3_1: {
-        %4: i32 = %phi('entry: m_0, 'while_body_3_1: %6);
-        %6: i32 = %phi('entry: n_0, 'while_body_3_1: %1);
+        %4: i32 = phi('entry: m_0, 'while_body_3_1: %6);
+        %6: i32 = phi('entry: n_0, 'while_body_3_1: %1);
         %0: bool = %6 > 0;
         => if %0 { 'while_body_3_1 } else { 'while_exit_3_1 };
     }
@@ -299,8 +299,8 @@ fn fun(m_0: i32, n_0: i32) -> i32 {
         => 'while_cond_3_1;
     }
     'while_cond_3_1: {
-        %4: i32 = %phi('entry: m_0, 'while_body_3_1: %6);
-        %6: i32 = %phi('entry: n_0, 'while_body_3_1: %1);
+        %4: i32 = phi('entry: m_0, 'while_body_3_1: %6);
+        %6: i32 = phi('entry: n_0, 'while_body_3_1: %1);
         %0: bool = %6 > 0;
         => if %0 { 'while_body_3_1 } else { 'while_exit_3_1 };
     }

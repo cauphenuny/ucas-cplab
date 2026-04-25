@@ -7,7 +7,7 @@ fn ifElseIf() -> i32 {
         @b_0: i32 = 0;
         @b_0: i32 = 10;
         %0: bool = @a_0 == 6;
-        branch %0 ? 'if_true_7_2 : 'L0;
+        => if %0 { 'if_true_7_2 } else { 'L0 };
     }
     'if_true_7_2: {
         return @a_0;
@@ -17,45 +17,45 @@ fn ifElseIf() -> i32 {
     }
     'if_false_7_2: {
         %2: bool = @b_0 == 10;
-        branch %2 ? 'L1 : 'if_false_11_4;
+        => if %2 { 'L1 } else { 'if_false_11_4 };
     }
     'L0: {
         %1: bool = @b_0 == 11;
-        branch %1 ? 'if_true_7_2 : 'if_false_7_2;
+        => if %1 { 'if_true_7_2 } else { 'if_false_7_2 };
     }
     'if_true_11_4: {
         @a_0: i32 = 25;
-        jump 'if_exit_11_4;
+        => 'if_exit_11_4;
     }
     'if_exit_11_4: {
-        jump 'if_exit_7_2;
+        => 'if_exit_7_2;
     }
     'if_false_11_4: {
         %4: bool = @b_0 == 10;
-        branch %4 ? 'L2 : 'if_false_13_9;
+        => if %4 { 'L2 } else { 'if_false_13_9 };
     }
     'L1: {
         %3: bool = @a_0 == 1;
-        branch %3 ? 'if_true_11_4 : 'if_false_11_4;
+        => if %3 { 'if_true_11_4 } else { 'if_false_11_4 };
     }
     'if_true_13_9: {
         %7: i32 = @a_0 + 15;
         @a_0: i32 = %7;
-        jump 'if_exit_13_9;
+        => 'if_exit_13_9;
     }
     'if_exit_13_9: {
-        jump 'if_exit_11_4;
+        => 'if_exit_11_4;
     }
     'if_false_13_9: {
         %8: i32 = @a_0;
         %9: i32 = - %8;
         @a_0: i32 = %9;
-        jump 'if_exit_13_9;
+        => 'if_exit_13_9;
     }
     'L2: {
         %5: i32 = - 5;
         %6: bool = @a_0 == %5;
-        branch %6 ? 'if_true_13_9 : 'if_false_13_9;
+        => if %6 { 'if_true_13_9 } else { 'if_false_13_9 };
     }
 }
 

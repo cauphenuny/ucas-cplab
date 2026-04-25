@@ -1,7 +1,7 @@
 fn climbStairs(n_0: i32) -> i32 {
     'entry: {
         %0: bool = @n_0 < 4;
-        branch %0 ? 'if_true_2_4 : 'if_exit_2_4;
+        => if %0 { 'if_true_2_4 } else { 'if_exit_2_4 };
     }
     'if_true_2_4: {
         return @n_0;
@@ -9,18 +9,18 @@ fn climbStairs(n_0: i32) -> i32 {
     'if_exit_2_4: {
         %21: [i32; 10] = {0};
         %1: &mut i32 = &mut %21[0];
-        %2: () = %store(%1, 0);
+        %2: () = %1 <- 0;
         %3: &mut i32 = &mut %21[1];
-        %4: () = %store(%3, 1);
+        %4: () = %3 <- 1;
         %5: &mut i32 = &mut %21[2];
-        %6: () = %store(%5, 2);
-        jump 'while_cond_10_4;
+        %6: () = %5 <- 2;
+        => 'while_cond_10_4;
     }
     'while_cond_10_4: {
-        %25: i32 = %phi('while_body_10_4: %18, 'if_exit_2_4: 3);
+        %25: i32 = phi('while_body_10_4: %18, 'if_exit_2_4: 3);
         %7: i32 = @n_0 + 1;
         %8: bool = %25 < %7;
-        branch %8 ? 'while_body_10_4 : 'while_exit_10_4;
+        => if %8 { 'while_body_10_4 } else { 'while_exit_10_4 };
     }
     'while_body_10_4: {
         %9: i32 = %25 - 1;
@@ -31,9 +31,9 @@ fn climbStairs(n_0: i32) -> i32 {
         %14: i32 = * %13;
         %15: i32 = %11 + %14;
         %16: &mut i32 = &mut %21[%25];
-        %17: () = %store(%16, %15);
+        %17: () = %16 <- %15;
         %18: i32 = %25 + 1;
-        jump 'while_cond_10_4;
+        => 'while_cond_10_4;
     }
     'while_exit_10_4: {
         %19: &i32 = & %21[@n_0];

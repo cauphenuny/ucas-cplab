@@ -2,7 +2,7 @@ let ref mut a_0: i32 = 0;
 
 fn main() -> i32 {
     'entry: {
-        %0: () = %store(@a_0, 10);
+        %0: () = @a_0 <- 10;
         %1: i32 = * @a_0;
         %5: i32 = %1 - 1;
         return %5;

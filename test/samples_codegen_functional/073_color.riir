@@ -7,7 +7,7 @@ let ref mut cns_0: [i32; 20] = {0};
 fn equal(mut a_0: i32, mut b_0: i32) -> i32 {
     'entry: {
         %0: bool = @a_0 == @b_0;
-        branch %0 ? 'if_true_7_4 : 'if_exit_7_4;
+        => if %0 { 'if_true_7_4 } else { 'if_exit_7_4 };
     }
     'if_true_7_4: {
         return 1;
@@ -29,7 +29,7 @@ fn dfs(mut a_1: i32, mut b_1: i32, mut c_0: i32, mut d_0: i32, mut e_0: i32, mut
         %6: i32 = * %5;
         %7: i32 = - 1;
         %8: bool = %6 != %7;
-        branch %8 ? 'if_true_13_4 : 'if_exit_13_4;
+        => if %8 { 'if_true_13_4 } else { 'if_exit_13_4 };
     }
     'if_true_13_4: {
         %9: &mut[[[[[i32; 7]; 18]; 18]; 18]] = &mut @dp_0[@a_1];
@@ -47,7 +47,7 @@ fn dfs(mut a_1: i32, mut b_1: i32, mut c_0: i32, mut d_0: i32, mut e_0: i32, mut
         %18: i32 = %17 + @d_0;
         %19: i32 = %18 + @e_0;
         %20: bool = %19 == 0;
-        branch %20 ? 'if_true_15_4 : 'if_exit_15_4;
+        => if %20 { 'if_true_15_4 } else { 'if_exit_15_4 };
     }
     'if_true_15_4: {
         return 1;
@@ -55,7 +55,7 @@ fn dfs(mut a_1: i32, mut b_1: i32, mut c_0: i32, mut d_0: i32, mut e_0: i32, mut
     'if_exit_15_4: {
         @ans_0: i32 = 0;
         %21: bool = @a_1 != 0;
-        branch %21 ? 'if_true_18_4 : 'if_exit_18_4;
+        => if %21 { 'if_true_18_4 } else { 'if_exit_18_4 };
     }
     'if_true_18_4: {
         %22: i32 = @equal(@last_0, 2);
@@ -66,11 +66,11 @@ fn dfs(mut a_1: i32, mut b_1: i32, mut c_0: i32, mut d_0: i32, mut e_0: i32, mut
         %27: i32 = @ans_0 + %26;
         %28: i32 = %27 % @mod_0;
         @ans_0: i32 = %28;
-        jump 'if_exit_18_4;
+        => 'if_exit_18_4;
     }
     'if_exit_18_4: {
         %29: bool = @b_1 != 0;
-        branch %29 ? 'if_true_19_4 : 'if_exit_19_4;
+        => if %29 { 'if_true_19_4 } else { 'if_exit_19_4 };
     }
     'if_true_19_4: {
         %30: i32 = @equal(@last_0, 3);
@@ -82,11 +82,11 @@ fn dfs(mut a_1: i32, mut b_1: i32, mut c_0: i32, mut d_0: i32, mut e_0: i32, mut
         %36: i32 = @ans_0 + %35;
         %37: i32 = %36 % @mod_0;
         @ans_0: i32 = %37;
-        jump 'if_exit_19_4;
+        => 'if_exit_19_4;
     }
     'if_exit_19_4: {
         %38: bool = @c_0 != 0;
-        branch %38 ? 'if_true_20_4 : 'if_exit_20_4;
+        => if %38 { 'if_true_20_4 } else { 'if_exit_20_4 };
     }
     'if_true_20_4: {
         %39: i32 = @equal(@last_0, 4);
@@ -98,11 +98,11 @@ fn dfs(mut a_1: i32, mut b_1: i32, mut c_0: i32, mut d_0: i32, mut e_0: i32, mut
         %45: i32 = @ans_0 + %44;
         %46: i32 = %45 % @mod_0;
         @ans_0: i32 = %46;
-        jump 'if_exit_20_4;
+        => 'if_exit_20_4;
     }
     'if_exit_20_4: {
         %47: bool = @d_0 != 0;
-        branch %47 ? 'if_true_21_4 : 'if_exit_21_4;
+        => if %47 { 'if_true_21_4 } else { 'if_exit_21_4 };
     }
     'if_true_21_4: {
         %48: i32 = @equal(@last_0, 5);
@@ -114,11 +114,11 @@ fn dfs(mut a_1: i32, mut b_1: i32, mut c_0: i32, mut d_0: i32, mut e_0: i32, mut
         %54: i32 = @ans_0 + %53;
         %55: i32 = %54 % @mod_0;
         @ans_0: i32 = %55;
-        jump 'if_exit_21_4;
+        => 'if_exit_21_4;
     }
     'if_exit_21_4: {
         %56: bool = @e_0 != 0;
-        branch %56 ? 'if_true_22_4 : 'if_exit_22_4;
+        => if %56 { 'if_true_22_4 } else { 'if_exit_22_4 };
     }
     'if_true_22_4: {
         %57: i32 = @d_0 + 1;
@@ -128,7 +128,7 @@ fn dfs(mut a_1: i32, mut b_1: i32, mut c_0: i32, mut d_0: i32, mut e_0: i32, mut
         %61: i32 = @ans_0 + %60;
         %62: i32 = %61 % @mod_0;
         @ans_0: i32 = %62;
-        jump 'if_exit_22_4;
+        => 'if_exit_22_4;
     }
     'if_exit_22_4: {
         %63: &mut[[[[[i32; 7]; 18]; 18]; 18]] = &mut @dp_0[@a_1];
@@ -138,7 +138,7 @@ fn dfs(mut a_1: i32, mut b_1: i32, mut c_0: i32, mut d_0: i32, mut e_0: i32, mut
         %67: &mut[i32] = &mut %66[@e_0];
         %68: i32 = @ans_0 % @mod_0;
         %69: &mut i32 = &mut %67[@last_0];
-        %70: () = %store(%69, %68);
+        %70: () = %69 <- %68;
         %71: &mut[[[[[i32; 7]; 18]; 18]; 18]] = &mut @dp_0[@a_1];
         %72: &mut[[[[i32; 7]; 18]; 18]] = &mut %71[@b_1];
         %73: &mut[[[i32; 7]; 18]] = &mut %72[@c_0];
@@ -165,75 +165,75 @@ fn main() -> i32 {
         @n_0: i32 = %0;
         @i_0: i32 = 0;
         @i_0: i32 = 0;
-        jump 'while_cond_34_4;
+        => 'while_cond_34_4;
     }
     'while_cond_34_4: {
         %1: bool = @i_0 < @maxn_0;
-        branch %1 ? 'while_body_34_4 : 'while_exit_34_4;
+        => if %1 { 'while_body_34_4 } else { 'while_exit_34_4 };
     }
     'while_body_34_4: {
         @j_0: i32 = 0;
-        jump 'while_cond_36_8;
+        => 'while_cond_36_8;
     }
     'while_exit_34_4: {
         @i_0: i32 = 0;
-        jump 'while_cond_60_4;
+        => 'while_cond_60_4;
     }
     'while_cond_36_8: {
         %2: bool = @j_0 < @maxn_0;
-        branch %2 ? 'while_body_36_8 : 'while_exit_36_8;
+        => if %2 { 'while_body_36_8 } else { 'while_exit_36_8 };
     }
     'while_body_36_8: {
         @k_0: i32 = 0;
-        jump 'while_cond_38_12;
+        => 'while_cond_38_12;
     }
     'while_exit_36_8: {
         %20: i32 = @i_0 + 1;
         @i_0: i32 = %20;
-        jump 'while_cond_34_4;
+        => 'while_cond_34_4;
     }
     'while_cond_38_12: {
         %3: bool = @k_0 < @maxn_0;
-        branch %3 ? 'while_body_38_12 : 'while_exit_38_12;
+        => if %3 { 'while_body_38_12 } else { 'while_exit_38_12 };
     }
     'while_body_38_12: {
         @l_0: i32 = 0;
-        jump 'while_cond_40_16;
+        => 'while_cond_40_16;
     }
     'while_exit_38_12: {
         %19: i32 = @j_0 + 1;
         @j_0: i32 = %19;
-        jump 'while_cond_36_8;
+        => 'while_cond_36_8;
     }
     'while_cond_40_16: {
         %4: bool = @l_0 < @maxn_0;
-        branch %4 ? 'while_body_40_16 : 'while_exit_40_16;
+        => if %4 { 'while_body_40_16 } else { 'while_exit_40_16 };
     }
     'while_body_40_16: {
         @m_0: i32 = 0;
-        jump 'while_cond_42_20;
+        => 'while_cond_42_20;
     }
     'while_exit_40_16: {
         %18: i32 = @k_0 + 1;
         @k_0: i32 = %18;
-        jump 'while_cond_38_12;
+        => 'while_cond_38_12;
     }
     'while_cond_42_20: {
         %5: bool = @m_0 < @maxn_0;
-        branch %5 ? 'while_body_42_20 : 'while_exit_42_20;
+        => if %5 { 'while_body_42_20 } else { 'while_exit_42_20 };
     }
     'while_body_42_20: {
         @h_0: i32 = 0;
-        jump 'while_cond_44_24;
+        => 'while_cond_44_24;
     }
     'while_exit_42_20: {
         %17: i32 = @l_0 + 1;
         @l_0: i32 = %17;
-        jump 'while_cond_40_16;
+        => 'while_cond_40_16;
     }
     'while_cond_44_24: {
         %6: bool = @h_0 < 7;
-        branch %6 ? 'while_body_44_24 : 'while_exit_44_24;
+        => if %6 { 'while_body_44_24 } else { 'while_exit_44_24 };
     }
     'while_body_44_24: {
         %7: &mut[[[[[i32; 7]; 18]; 18]; 18]] = &mut @dp_0[@i_0];
@@ -243,24 +243,24 @@ fn main() -> i32 {
         %11: &mut[i32] = &mut %10[@m_0];
         %12: i32 = - 1;
         %13: &mut i32 = &mut %11[@h_0];
-        %14: () = %store(%13, %12);
+        %14: () = %13 <- %12;
         %15: i32 = @h_0 + 1;
         @h_0: i32 = %15;
-        jump 'while_cond_44_24;
+        => 'while_cond_44_24;
     }
     'while_exit_44_24: {
         %16: i32 = @m_0 + 1;
         @m_0: i32 = %16;
-        jump 'while_cond_42_20;
+        => 'while_cond_42_20;
     }
     'while_cond_60_4: {
         %21: bool = @i_0 < @n_0;
-        branch %21 ? 'while_body_60_4 : 'while_exit_60_4;
+        => if %21 { 'while_body_60_4 } else { 'while_exit_60_4 };
     }
     'while_body_60_4: {
         %22: i32 = @get_int();
         %23: &mut i32 = &mut @list_0[@i_0];
-        %24: () = %store(%23, %22);
+        %24: () = %23 <- %22;
         %25: &i32 = & @list_0[@i_0];
         %26: i32 = * %25;
         %27: &i32 = & @list_0[@i_0];
@@ -269,10 +269,10 @@ fn main() -> i32 {
         %30: i32 = * %29;
         %31: i32 = %30 + 1;
         %32: &mut i32 = &mut @cns_0[%26];
-        %33: () = %store(%32, %31);
+        %33: () = %32 <- %31;
         %34: i32 = @i_0 + 1;
         @i_0: i32 = %34;
-        jump 'while_cond_60_4;
+        => 'while_cond_60_4;
     }
     'while_exit_60_4: {
         @ans_1: i32 = 0;

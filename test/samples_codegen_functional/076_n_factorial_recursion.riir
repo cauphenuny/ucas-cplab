@@ -1,7 +1,7 @@
 fn factorial(mut n_0: i32) -> i32 {
     'entry: {
         %0: bool = @n_0 == 1;
-        branch %0 ? 'if_true_5_4 : 'if_false_5_4;
+        => if %0 { 'if_true_5_4 } else { 'if_false_5_4 };
     }
     'if_true_5_4: {
         return @n_0;
@@ -23,12 +23,12 @@ fn main() -> i32 {
         %0: i32 = @get_int();
         @n_1: i32 = %0;
         %1: bool = @n_1 > 1;
-        branch %1 ? 'if_true_15_4 : 'if_false_15_4;
+        => if %1 { 'if_true_15_4 } else { 'if_false_15_4 };
     }
     'if_true_15_4: {
         %2: i32 = @factorial(@n_1);
         @result_0: i32 = %2;
-        jump 'if_exit_15_4;
+        => 'if_exit_15_4;
     }
     'if_exit_15_4: {
         %3: () = @print_int(@result_0);
@@ -36,6 +36,6 @@ fn main() -> i32 {
     }
     'if_false_15_4: {
         @result_0: i32 = 1;
-        jump 'if_exit_15_4;
+        => 'if_exit_15_4;
     }
 }

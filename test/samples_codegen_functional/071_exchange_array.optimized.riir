@@ -1,12 +1,12 @@
 fn main() -> i32 {
     'entry: {
         %21: [[i32; 5]; 5] = {1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5};
-        jump 'while_cond_7_4;
+        => 'while_cond_7_4;
     }
     'while_cond_7_4: {
-        %30: i32 = %phi('while_body_7_4: %17, 'entry: 0);
+        %30: i32 = phi('while_body_7_4: %17, 'entry: 0);
         %0: bool = %30 < 5;
-        branch %0 ? 'while_body_7_4 : 'while_exit_7_4;
+        => if %0 { 'while_body_7_4 } else { 'while_exit_7_4 };
     }
     'while_body_7_4: {
         %2: &mut[i32] = &mut %21[1];
@@ -16,11 +16,11 @@ fn main() -> i32 {
         %9: &i32 = & %8[%30];
         %10: i32 = * %9;
         %11: &mut i32 = &mut %2[%30];
-        %12: () = %store(%11, %10);
+        %12: () = %11 <- %10;
         %15: &mut i32 = &mut %8[%30];
-        %16: () = %store(%15, %4);
+        %16: () = %15 <- %4;
         %17: i32 = %30 + 1;
-        jump 'while_cond_7_4;
+        => 'while_cond_7_4;
     }
     'while_exit_7_4: {
         %18: &mut[i32] = &mut %21[2];

@@ -5,13 +5,13 @@ fn main() -> i32 {
     let mut i_0: i32;
     'entry: {
         @i_0: i32 = 0;
-        %0: () = %store(@k_0, 1);
-        jump 'while_cond_6_1;
+        %0: () = @k_0 <- 1;
+        => 'while_cond_6_1;
     }
     'while_cond_6_1: {
         %1: i32 = @n_0 - 1;
         %2: bool = @i_0 <= %1;
-        branch %2 ? 'while_body_6_1 : 'while_exit_6_1;
+        => if %2 { 'while_body_6_1 } else { 'while_exit_6_1 };
     }
     'while_body_6_1: {
         %3: i32 = @i_0 + 1;
@@ -21,8 +21,8 @@ fn main() -> i32 {
         %6: i32 = * @k_0;
         %7: i32 = * @k_0;
         %8: i32 = %6 + %7;
-        %9: () = %store(@k_0, %8);
-        jump 'while_cond_6_1;
+        %9: () = @k_0 <- %8;
+        => 'while_cond_6_1;
     }
     'while_exit_6_1: {
         %10: i32 = * @k_0;

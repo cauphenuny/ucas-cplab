@@ -4,24 +4,24 @@ let ref mut b_0: i32 = 0;
 fn main() -> i32 {
     'entry: {
         %0: i32 = @get_int();
-        %1: () = %store(@a_0, %0);
+        %1: () = @a_0 <- %0;
         %2: i32 = @get_int();
-        %3: () = %store(@b_0, %2);
+        %3: () = @b_0 <- %2;
         %4: i32 = * @a_0;
         %5: i32 = * @b_0;
         %6: bool = %4 == %5;
-        branch %6 ? 'L0 : 'if_false_8_1;
+        => if %6 { 'L0 } else { 'if_false_8_1 };
     }
     'if_exit_8_1: {
-        %12: i32 = %phi('if_false_8_1: 0, 'L0: 1);
+        %12: i32 = phi('if_false_8_1: 0, 'L0: 1);
         return %12;
     }
     'if_false_8_1: {
-        jump 'if_exit_8_1;
+        => 'if_exit_8_1;
     }
     'L0: {
         %7: i32 = * @a_0;
         %8: bool = %7 != 3;
-        branch %8 ? 'if_exit_8_1 : 'if_false_8_1;
+        => if %8 { 'if_exit_8_1 } else { 'if_false_8_1 };
     }
 }

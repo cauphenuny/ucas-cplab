@@ -6,27 +6,27 @@ fn main() -> i32 {
         @i_0: i32 = 0;
         @sum_0: i32 = 0;
         @sum_0: i32 = 0;
-        jump 'while_cond_7_4;
+        => 'while_cond_7_4;
     }
     'while_cond_7_4: {
         %0: bool = @i_0 < 100;
-        branch %0 ? 'while_body_7_4 : 'while_exit_7_4;
+        => if %0 { 'while_body_7_4 } else { 'while_exit_7_4 };
     }
     'while_body_7_4: {
         %1: bool = @i_0 == 50;
-        branch %1 ? 'if_true_8_8 : 'if_exit_8_8;
+        => if %1 { 'if_true_8_8 } else { 'if_exit_8_8 };
     }
     'while_exit_7_4: {
         return @sum_0;
     }
     'if_true_8_8: {
-        jump 'while_exit_7_4;
+        => 'while_exit_7_4;
     }
     'if_exit_8_8: {
         %2: i32 = @sum_0 + @i_0;
         @sum_0: i32 = %2;
         %3: i32 = @i_0 + 1;
         @i_0: i32 = %3;
-        jump 'while_cond_7_4;
+        => 'while_cond_7_4;
     }
 }

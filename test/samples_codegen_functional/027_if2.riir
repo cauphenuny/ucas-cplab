@@ -2,10 +2,10 @@ let ref mut a_0: i32 = 0;
 
 fn main() -> i32 {
     'entry: {
-        %0: () = %store(@a_0, 10);
+        %0: () = @a_0 <- 10;
         %1: i32 = * @a_0;
         %2: bool = %1 > 0;
-        branch %2 ? 'if_true_4_1 : 'if_false_4_1;
+        => if %2 { 'if_true_4_1 } else { 'if_false_4_1 };
     }
     'if_true_4_1: {
         return 1;

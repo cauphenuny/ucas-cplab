@@ -1,32 +1,32 @@
 fn doubleWhile() -> i32 {
     'entry: {
-        jump 'while_cond_6_2;
+        => 'while_cond_6_2;
     }
     'while_cond_6_2: {
-        %10: i32 = %phi('while_exit_8_4: %1, 'entry: 5);
-        %12: i32 = %phi('while_exit_8_4: %4, 'entry: 7);
+        %10: i32 = phi('while_exit_8_4: %1, 'entry: 5);
+        %12: i32 = phi('while_exit_8_4: %4, 'entry: 7);
         %0: bool = %10 < 100;
-        branch %0 ? 'while_body_6_2 : 'while_exit_6_2;
+        => if %0 { 'while_body_6_2 } else { 'while_exit_6_2 };
     }
     'while_body_6_2: {
         %1: i32 = %10 + 30;
-        jump 'while_cond_8_4;
+        => 'while_cond_8_4;
     }
     'while_exit_6_2: {
         return %12;
     }
     'while_cond_8_4: {
-        %14: i32 = %phi('while_body_8_4: %3, 'while_body_6_2: %12);
+        %14: i32 = phi('while_body_8_4: %3, 'while_body_6_2: %12);
         %2: bool = %14 < 100;
-        branch %2 ? 'while_body_8_4 : 'while_exit_8_4;
+        => if %2 { 'while_body_8_4 } else { 'while_exit_8_4 };
     }
     'while_body_8_4: {
         %3: i32 = %14 + 6;
-        jump 'while_cond_8_4;
+        => 'while_cond_8_4;
     }
     'while_exit_8_4: {
         %4: i32 = %14 - 100;
-        jump 'while_cond_6_2;
+        => 'while_cond_6_2;
     }
 }
 

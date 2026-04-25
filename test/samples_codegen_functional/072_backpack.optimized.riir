@@ -2,28 +2,28 @@ let ref mut V_0: [[i32; 200]; 200] = {0};
 
 fn KnapSack(n_0: i32, w_0: &mut[i32], v_0: &mut[i32], x_0: &mut[i32], C_0: i32) -> i32 {
     'entry: {
-        jump 'while_cond_6_4;
+        => 'while_cond_6_4;
     }
     'while_cond_6_4: {
-        %60: i32 = %phi('while_exit_9_5: %35, 'entry: 1);
+        %60: i32 = phi('while_exit_9_5: %35, 'entry: 1);
         %0: bool = %60 <= @n_0;
-        branch %0 ? 'while_cond_9_5 : 'while_cond_36_4;
+        => if %0 { 'while_cond_9_5 } else { 'while_cond_36_4 };
     }
     'while_cond_9_5: {
-        %65: i32 = %phi('if_exit_11_6: %34, 'while_cond_6_4: 0);
+        %65: i32 = phi('if_exit_11_6: %34, 'while_cond_6_4: 0);
         %1: i32 = @C_0 + 1;
         %2: bool = %65 < %1;
-        branch %2 ? 'while_body_9_5 : 'while_exit_9_5;
+        => if %2 { 'while_body_9_5 } else { 'while_exit_9_5 };
     }
     'while_body_9_5: {
         %3: &i32 = & @w_0[%60];
         %4: i32 = * %3;
         %5: bool = %65 < %4;
-        branch %5 ? 'if_true_11_6 : 'if_false_11_6;
+        => if %5 { 'if_true_11_6 } else { 'if_false_11_6 };
     }
     'while_exit_9_5: {
         %35: i32 = %60 + 1;
-        jump 'while_cond_6_4;
+        => 'while_cond_6_4;
     }
     'if_true_11_6: {
         %6: &mut[i32] = &mut @V_0[%60];
@@ -32,12 +32,12 @@ fn KnapSack(n_0: i32, w_0: &mut[i32], v_0: &mut[i32], x_0: &mut[i32], C_0: i32) 
         %9: &i32 = & %8[%65];
         %10: i32 = * %9;
         %11: &mut i32 = &mut %6[%65];
-        %12: () = %store(%11, %10);
-        jump 'if_exit_11_6;
+        %12: () = %11 <- %10;
+        => 'if_exit_11_6;
     }
     'if_exit_11_6: {
         %34: i32 = %65 + 1;
-        jump 'while_cond_9_5;
+        => 'while_cond_9_5;
     }
     'if_false_11_6: {
         %13: i32 = %60 - 1;
@@ -52,25 +52,25 @@ fn KnapSack(n_0: i32, w_0: &mut[i32], v_0: &mut[i32], x_0: &mut[i32], C_0: i32) 
         %25: i32 = * %24;
         %26: i32 = %23 + %25;
         %27: bool = %16 > %26;
-        branch %27 ? 'if_true_19_13 : 'if_false_19_13;
+        => if %27 { 'if_true_19_13 } else { 'if_false_19_13 };
     }
     'if_true_19_13: {
         %28: &mut[i32] = &mut @V_0[%60];
         %29: &mut i32 = &mut %28[%65];
-        %30: () = %store(%29, %16);
-        jump 'if_exit_11_6;
+        %30: () = %29 <- %16;
+        => 'if_exit_11_6;
     }
     'if_false_19_13: {
         %31: &mut[i32] = &mut @V_0[%60];
         %32: &mut i32 = &mut %31[%65];
-        %33: () = %store(%32, %26);
-        jump 'if_exit_11_6;
+        %33: () = %32 <- %26;
+        => 'if_exit_11_6;
     }
     'while_cond_36_4: {
-        %71: i32 = %phi('if_exit_38_5: %40, 'while_cond_6_4: @n_0);
-        %73: i32 = %phi('if_exit_38_5: %72, 'while_cond_6_4: @C_0);
+        %71: i32 = phi('if_exit_38_5: %40, 'while_cond_6_4: @n_0);
+        %73: i32 = phi('if_exit_38_5: %72, 'while_cond_6_4: @C_0);
         %36: bool = %71 >= 1;
-        branch %36 ? 'while_body_36_4 : 'while_exit_36_4;
+        => if %36 { 'while_body_36_4 } else { 'while_exit_36_4 };
     }
     'while_body_36_4: {
         %37: &mut[i32] = &mut @V_0[%71];
@@ -81,7 +81,7 @@ fn KnapSack(n_0: i32, w_0: &mut[i32], v_0: &mut[i32], x_0: &mut[i32], C_0: i32) 
         %42: &i32 = & %41[%73];
         %43: i32 = * %42;
         %44: bool = %39 > %43;
-        branch %44 ? 'if_true_38_5 : 'if_false_38_5;
+        => if %44 { 'if_true_38_5 } else { 'if_false_38_5 };
     }
     'while_exit_36_4: {
         %53: &mut[i32] = &mut @V_0[@n_0];
@@ -91,20 +91,20 @@ fn KnapSack(n_0: i32, w_0: &mut[i32], v_0: &mut[i32], x_0: &mut[i32], C_0: i32) 
     }
     'if_true_38_5: {
         %45: &mut i32 = &mut @x_0[%71];
-        %46: () = %store(%45, 1);
+        %46: () = %45 <- 1;
         %47: &i32 = & @w_0[%71];
         %48: i32 = * %47;
         %49: i32 = %73 - %48;
-        jump 'if_exit_38_5;
+        => 'if_exit_38_5;
     }
     'if_exit_38_5: {
-        %72: i32 = %phi('if_false_38_5: %73, 'if_true_38_5: %49);
-        jump 'while_cond_36_4;
+        %72: i32 = phi('if_false_38_5: %73, 'if_true_38_5: %49);
+        => 'while_cond_36_4;
     }
     'if_false_38_5: {
         %50: &mut i32 = &mut @x_0[%71];
-        %51: () = %store(%50, 0);
-        jump 'if_exit_38_5;
+        %51: () = %50 <- 0;
+        => 'if_exit_38_5;
     }
 }
 
