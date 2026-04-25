@@ -15,9 +15,9 @@ REF: 'ref';
 TRUE: 'true';
 FALSE: 'false';
 RETURN: 'return';
-BRANCH: 'branch';
-OR: 'or';
-JUMP: 'jump';
+JUMP: '=>';
+IF: 'if';
+ELSE: 'else';
 PHI: '%phi';
 STORE: '%store';
 
@@ -63,9 +63,9 @@ value: var | constexpr;
 label: '\'' ID;
 
 exit:
-	RETURN value? ';'						# returnExit
-	| BRANCH value '?' label OR label ';'	# branchExit
-	| JUMP label ';'						# jumpExit;
+	RETURN value? ';'										# returnExit
+	| JUMP IF value '{' label '}' ELSE '{' label '}' ';'	# branchExit
+	| JUMP label ';'										# jumpExit;
 
 block: label ':' '{' phiInst* inst* exit '}';
 

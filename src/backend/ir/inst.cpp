@@ -41,7 +41,7 @@ bool PhiInst::contains(Block* block) const {
 }
 
 auto BranchExit::toString() const -> std::string {
-    return fmt::format("branch {} ? '{} or '{};", cond,
+    return fmt::format("=> if {} {{ '{} }} else {{ '{} }};", cond,
                        true_target ? true_target->label : "<unknown>",
                        false_target ? false_target->label : "<unknown>");
 }
@@ -53,7 +53,7 @@ JumpExit::JumpExit(Block* target) : target(target) {
 }
 
 auto JumpExit::toString() const -> std::string {
-    return fmt::format("jump '{};", target ? target->label : "<unknown>");
+    return fmt::format("=> '{};", target ? target->label : "<unknown>");
 }
 
 }  // namespace ir
