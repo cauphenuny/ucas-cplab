@@ -20,8 +20,8 @@ namespace ir::optim {
 
 /// @note eliminate unreachable blocks.
 
-struct DeadBlockElimination : Pass {
-    bool apply(Program& prog) override {
+struct DeadBlockElimination : SSAPass {
+    bool apply(Program& prog, SSAPassContext& ctx) override {
         if (!prog.is_ssa) {
             throw COMPILER_ERROR("DeadBlockElimination requires SSA form");
         }
@@ -106,8 +106,8 @@ private:
 /// 1. replace block with only a jump exit by its target
 /// 2. redirect empty entrance to its target
 
-struct SimplifyCFG : Pass {
-    bool apply(Program& prog) override {
+struct SimplifyCFG : SSAPass {
+    bool apply(Program& prog, SSAPassContext& ctx) override {
         bool changed = false;
         while (replace(prog)) changed = true;
         return changed;

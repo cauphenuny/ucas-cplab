@@ -11,6 +11,7 @@
 #include "backend/ir/optim/dead_alloc.hpp"
 #include "backend/ir/optim/dead_block.hpp"
 #include "backend/ir/optim/dead_def.hpp"
+#include "backend/ir/optim/framework.hpp"
 #include "backend/ir/optim/inline.hpp"
 #include "backend/ir/optim/ssa.hpp"
 #include "backend/ir/vm/vm.h"
@@ -279,14 +280,14 @@ int main(int argc, const char* argv[]) {
                 size_t pass_id = 0;
 
                 auto apply =
-                    [&](ir::Program& program,
-                        const std::vector<std::pair<std::unique_ptr<ir::optim::Pass>, std::string>>&
-                            passes) {
+                    [&](ir::Program& program, ir::optim::SSAPassContext& ctx,
+                        const std::vector<
+                            std::pair<std::unique_ptr<ir::optim::SSAPass>, std::string>>& passes) {
                         bool any_changed = false;
                         for (auto& [pass, name] : passes) {
                             try {
 
-                                bool pass_changed = pass->apply(program);
+                                bool pass_changed = pass->apply(program, ctx);
                                 if (pass_changed) {
                                     echo(program, fmt::format("#{} {}", pass_id++, name));
                                 }
@@ -303,21 +304,20 @@ int main(int argc, const char* argv[]) {
 
                 {
                     using namespace ir::optim;
-                    std::vector<std::pair<std::unique_ptr<Pass>, std::string>> passes;
                     if (to_ssa) {
-                        passes.emplace_back(std::make_unique<ConstructSSA>(), "SSA Form");
+                        ConstructSSA().apply(program);
+                        echo(program, fmt::format("#{} SSA Form", pass_id++));
                     }
-                    if (ssa_to_temp) {
-                        passes.emplace_back(std::make_unique<SSAValue2TempValue>(),
-                                            "SSA Form (TempValue)");
-                    }
-
-                    apply(program, passes);
                 }
 
                 if (optimize) {
                     using namespace ir::optim;
-                    std::vector<std::pair<std::unique_ptr<Pass>, std::string>> passes;
+                    std::vector<std::pair<std::unique_ptr<SSAPass>, std::string>> passes;
+                    SSAPassContext ctx(program);
+                    if (ssa_to_temp) {
+                        passes.emplace_back(std::make_unique<SSAValue2TempValue>(),
+                                            "SSA Form (TempValue)");
+                    }
                     if (optimize_copy) {
                         passes.emplace_back(std::make_unique<CopyPropagation>(),
                                             "Copy Propagation");
@@ -349,7 +349,7 @@ int main(int argc, const char* argv[]) {
                         passes.emplace_back(std::make_unique<Inlining>(optimize_inline),
                                             "Function Call Inlining");
                     }
-                    while (apply(program, passes));
+                    while (apply(program, ctx, passes));
                 }
 
                 if (output_file) {

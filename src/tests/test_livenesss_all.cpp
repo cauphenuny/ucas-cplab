@@ -98,7 +98,8 @@ int main() {
         analysis(code, "SSA IR");
 
         auto ssa_to_temp = ir::optim::SSAValue2TempValue();
-        ssa_to_temp.apply(code);
+        auto ctx = ir::optim::SSAPassContext(code);
+        ssa_to_temp.apply(code, ctx);
         analysis(code, "SSA IR, use TempValue");
     }
     return 0;

@@ -12,8 +12,8 @@
 
 namespace ir::optim {
 
-struct DeadDefElimination : Pass {
-    bool apply(Program& prog) override {
+struct DeadDefElimination : SSAPass {
+    bool apply(Program& prog, SSAPassContext& ctx) override {
         if (!prog.is_ssa) {
             throw COMPILER_ERROR("DeadDefElimination requires SSA form");
         }

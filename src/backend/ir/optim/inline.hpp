@@ -26,10 +26,10 @@
 
 namespace ir::optim {
 
-struct Inlining : Pass {
+struct Inlining : SSAPass {
     Inlining(size_t threshold = 8) : threshold(threshold) {}
 
-    bool apply(Program& prog) override {
+    bool apply(Program& prog, SSAPassContext& ctx) override {
         if (!prog.is_ssa) {
             throw COMPILER_ERROR("Inlining requires SSA form");
         }

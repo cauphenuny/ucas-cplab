@@ -112,8 +112,8 @@ struct ConstexprFolder {
     }
 };
 
-struct ConstPropagation : Pass {
-    bool apply(Program& prog) override {
+struct ConstPropagation : SSAPass {
+    bool apply(Program& prog, SSAPassContext& ctx) override {
         if (!prog.is_ssa) {
             throw COMPILER_ERROR("ConstPropagation requires SSA form");
         }
@@ -124,7 +124,7 @@ struct ConstPropagation : Pass {
             for (auto& func : prog.funcs()) {
                 changed |= propagate(*func);
             }
-            changed |= CopyPropagation().apply(prog);
+            changed |= CopyPropagation().apply(prog, ctx);
             result |= changed;
         } while (changed);
         return result;

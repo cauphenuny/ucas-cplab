@@ -61,7 +61,7 @@ int main(int argc, const char* argv[]) {
     }
 
     // factory mapping from short name -> Pass constructor
-    using PassFactory = std::function<std::unique_ptr<ir::optim::Pass>()>;
+    using PassFactory = std::function<std::unique_ptr<ir::optim::SSAPass>()>;
     std::map<std::string, PassFactory> factories = {
         {"copy", []() { return std::make_unique<ir::optim::CopyPropagation>(); }},
         {"def", []() { return std::make_unique<ir::optim::DeadDefElimination>(); }},
@@ -71,12 +71,14 @@ int main(int argc, const char* argv[]) {
         {"inline", []() { return std::make_unique<ir::optim::Inlining>(); }},
         {"exp",
          []() {
-             return std::make_unique<ir::optim::Compose<ir::optim::DeadBlockElimination,
-                                                        ir::optim::CommonSubexprElimination>>();
+             return std::make_unique<
+                 ir::optim::Compose<ir::optim::SSAPassContext, ir::optim::DeadBlockElimination,
+                                    ir::optim::CommonSubexprElimination>>();
          }},
         {"block", []() {
              return std::make_unique<
-                 ir::optim::Compose<ir::optim::SimplifyCFG, ir::optim::DeadBlockElimination>>();
+                 ir::optim::Compose<ir::optim::SSAPassContext, ir::optim::SimplifyCFG,
+                                    ir::optim::DeadBlockElimination>>();
          }}};
 
     if (pass_names.empty()) {
@@ -154,7 +156,7 @@ int main(int argc, const char* argv[]) {
             size_t before = run_program(program);
 
             // build passes list from requested names
-            std::vector<std::unique_ptr<ir::optim::Pass>> passes;
+            std::vector<std::unique_ptr<ir::optim::SSAPass>> passes;
             for (const auto& name : pass_names) {
                 auto it = factories.find(name);
                 if (it != factories.end()) {
@@ -164,17 +166,19 @@ int main(int argc, const char* argv[]) {
                 }
             }
 
-            auto apply = [&](const std::vector<std::unique_ptr<ir::optim::Pass>>& passes) {
+            auto apply = [&](ir::optim::SSAPassContext& ctx,
+                             const std::vector<std::unique_ptr<ir::optim::SSAPass>>& passes) {
                 bool changed = false;
                 for (auto& pass : passes) {
-                    changed |= pass->apply(program);
+                    changed |= pass->apply(program, ctx);
                 }
                 return changed;
             };
             // apply passes in order
             ir::optim::ConstructSSA ssa;
             ssa.apply(program);
-            while (apply(passes));
+            ir::optim::SSAPassContext ctx(program);
+            while (apply(ctx, passes));
 
             size_t after = run_program(program);
 

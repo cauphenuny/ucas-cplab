@@ -25,7 +25,7 @@ namespace ir::optim {
 
 namespace minipass {
 
-struct AddPhi : Pass {
+struct AddPhi : Pass<void> {
     bool apply(Program& prog) override {
         bool changed = false;
         for (auto& func : prog.funcs()) {
@@ -100,7 +100,7 @@ private:
     }
 };
 
-struct Rename : Pass {
+struct Rename : Pass<void> {
     bool apply(Program& prog) override {
         bool changed = false;
         for (auto& func : prog.funcs()) {
@@ -208,10 +208,10 @@ private:
 
 }  // namespace minipass
 
-using ConstructSSA = Compose<minipass::AddPhi, minipass::Rename>;
+using ConstructSSA = Compose<void, minipass::AddPhi, minipass::Rename>;
 
-struct SSAValue2TempValue : Pass {
-    bool apply(Program& prog) override {
+struct SSAValue2TempValue : SSAPass {
+    bool apply(Program& prog, SSAPassContext& ctx) override {
         bool changed = false;
         for (auto& func : prog.funcs()) {
             std::unordered_map<SSAValue, TempValue> ssa_to_temp;

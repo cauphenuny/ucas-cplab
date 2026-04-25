@@ -15,8 +15,8 @@
 
 namespace ir::optim {
 
-struct CommonSubexprElimination : Pass {
-    bool apply(Program& prog) override {
+struct CommonSubexprElimination : SSAPass {
+    bool apply(Program& prog, SSAPassContext& ctx) override {
         if (!prog.is_ssa) {
             throw COMPILER_ERROR("CommonSubexprElimination requires SSA form");
         }
