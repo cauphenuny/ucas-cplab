@@ -65,7 +65,8 @@ int main(int argc, const char* argv[]) {
         }
 
         try {
-            auto program = ir::parse(stream);
+            auto program_box = ir::parse(stream);
+            auto& program = *program_box;
 
             if (print) {
                 fmt::println("{}", program);

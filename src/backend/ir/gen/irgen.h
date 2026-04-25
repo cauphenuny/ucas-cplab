@@ -12,7 +12,7 @@
 namespace ir::gen {
 
 struct Generator {
-    Program generate(const ast::SemanticAST& info);
+    std::unique_ptr<Program> generate(const ast::SemanticAST& info);
 
 private:
     const ast::SemanticAST* info;
@@ -60,7 +60,7 @@ private:
                               Block* false_block) -> BranchExit;
 };
 
-inline auto generate(const ast::SemanticAST& info) -> Program {
+inline auto generate(const ast::SemanticAST& info) {
     return Generator().generate(info);
 }
 

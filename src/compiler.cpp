@@ -266,7 +266,8 @@ int main(int argc, const char* argv[]) {
                     fmt::println("\n");
                 }
 
-                auto program = ir::gen::generate(code);
+                auto program_box = ir::gen::generate(code);
+                auto& program = *program_box;
 
                 auto echo = [&](const ir::Program& program, const std::string& name) {
                     if (print_ir) {

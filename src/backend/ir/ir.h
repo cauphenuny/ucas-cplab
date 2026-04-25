@@ -325,6 +325,9 @@ struct Callback {
 
 struct Program {
     bool is_ssa{false};
+    Program() = default;
+    Program(Program&&) = delete;
+
     [[nodiscard]] auto toString() const -> std::string;
 
     void after_add(Inst* it);

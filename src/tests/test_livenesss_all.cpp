@@ -37,7 +37,8 @@ int main() {
         fmt::println("Code: \n{}\n", text);
         auto istream = std::istringstream(text);
         auto ast = ast::analysis(ast::parse(istream));
-        auto code = ir::gen::generate(ast);
+        auto code_box = ir::gen::generate(ast);
+        auto& code = *code_box;
 
         auto analysis = [](ir::Program& program, const std::string& name) {
             using namespace ir::analysis;

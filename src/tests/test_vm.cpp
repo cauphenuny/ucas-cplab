@@ -20,7 +20,8 @@ int main() {
     fmt::println("Code: {}\n", text);
     auto stream = std::istringstream(text);
     auto code = ast::analysis(ast::parse(stream));
-    auto prog = ir::gen::generate(code);
+    auto prog_box = ir::gen::generate(code);
+    auto& prog = *prog_box;
     fmt::println("Generated IR:\n{}\n", prog);
     auto out_stream = std::ostringstream{};
     auto env = ir::vm::VirtualMachine(std::cin, out_stream);
@@ -40,7 +41,8 @@ int main() {
     auto stream = std::istringstream(text);
     fmt::println("Code: {}", text);
     auto code = ast::analysis(ast::parse(stream));
-    auto prog = ir::gen::generate(code);
+    auto prog_box = ir::gen::generate(code);
+    auto& prog = *prog_box;
     fmt::println("Generated IR:\n{}\n", prog);
     auto out_stream = std::ostringstream{};
     auto env = ir::vm::VirtualMachine(std::cin, out_stream);
@@ -86,7 +88,8 @@ int main() {
     auto stream = std::istringstream(text);
     fmt::println("Code: {}", text);
     auto code = ast::analysis(ast::parse(stream));
-    auto prog = ir::gen::generate(code);
+    auto prog_box = ir::gen::generate(code);
+    auto& prog = *prog_box;
     fmt::println("Generated IR:\n{}", prog);
     auto out_stream = std::ostringstream{};
     auto env = ir::vm::VirtualMachine(std::cin, out_stream);
@@ -113,7 +116,8 @@ int main() {
     auto stream = std::istringstream(text);
     fmt::println("Code: {}", text);
     auto code = ast::analysis(ast::parse(stream));
-    auto prog = ir::gen::generate(code);
+    auto prog_box = ir::gen::generate(code);
+    auto& prog = *prog_box;
     fmt::println("Generated IR:\n{}", prog);
     auto out_stream = std::ostringstream{};
     auto env = ir::vm::VirtualMachine(std::cin, out_stream);
@@ -143,7 +147,8 @@ int main() {
     auto stream = std::istringstream(text);
     fmt::println("Code: {}", text);
     auto code = ast::analysis(ast::parse(stream));
-    auto prog = ir::gen::generate(code);
+    auto prog_box = ir::gen::generate(code);
+    auto& prog = *prog_box;
     fmt::println("Generated IR:\n{}", prog);
     auto out_stream = std::ostringstream{};
     auto env = ir::vm::VirtualMachine(std::cin, out_stream);

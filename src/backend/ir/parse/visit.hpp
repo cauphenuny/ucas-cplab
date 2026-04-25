@@ -28,7 +28,7 @@ template <typename T> using node_ptr = std::shared_ptr<T>;
 
 class IRConstructVisitor : public IRBaseVisitor {
 public:
-    IRConstructVisitor() {
+    IRConstructVisitor() : program_box_(std::make_unique<Program>()), program_(*program_box_) {
         // Populate standard builtins to allow resolution during parsing
         auto addBuiltin = [&](const std::string& name, ir::type::Product params,
                               ir::type::TypeBox ret) {
@@ -56,8 +56,8 @@ public:
         addGet("get_double", ir::type::construct<double>());
     }
 
-    auto takeProgram() && -> ir::Program {
-        return std::move(program_);
+    auto takeProgram() && -> std::unique_ptr<ir::Program> {
+        return std::move(program_box_);
     }
 
     template <typename T> static T take(std::any a) {
@@ -507,7 +507,8 @@ public:
     }
 
 private:
-    ir::Program program_;
+    std::unique_ptr<Program> program_box_;
+    ir::Program& program_;
     ir::Func* current_func_{nullptr};
     ir::Block* current_block_{nullptr};
 
@@ -664,7 +665,7 @@ public:
     }
 };
 
-auto parse(std::istream& input) -> ir::Program {
+auto parse(std::istream& input) {
     using namespace antlr4;
     ANTLRInputStream input_stream(input);
     IRLexer lexer(&input_stream);

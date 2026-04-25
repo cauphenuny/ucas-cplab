@@ -118,7 +118,8 @@ int main(int argc, const char* argv[]) {
             // parse & semantic analysis -> generate IR
             auto istream = std::istringstream(text);
             auto ast = ast::analysis(ast::parse(istream));
-            auto program = ir::gen::generate(ast);
+            auto program_box = ir::gen::generate(ast);
+            auto& program = *program_box;
 
             // helper to run program and return executed instruction count
             auto run_program = [&](const ir::Program& prog) -> size_t {

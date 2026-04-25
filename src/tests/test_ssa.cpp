@@ -9,7 +9,8 @@ void test(const std::string& name, const std::string& text) {
     fmt::println("Test: {}", name);
     auto ir_stream = std::istringstream(text);
     try {
-        auto program = ir::parse(ir_stream);
+        auto program_box = ir::parse(ir_stream);
+        auto& program = *program_box;
         fmt::println("Before AddPhi:\n{}", program);
 
         ir::optim::minipass::AddPhi add_phi;

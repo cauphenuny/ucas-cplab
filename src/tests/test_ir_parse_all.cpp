@@ -36,7 +36,8 @@ int main() {
         fmt::println("Code: \n{}\n", text);
         auto istream = std::istringstream(text);
         auto ast = ast::analysis(ast::parse(istream));
-        auto code = ir::gen::generate(ast);
+        auto code_box = ir::gen::generate(ast);
+        auto& code = *code_box;
 
         auto reconstruct = [](const std::string& ir_text, const std::string& name) {
             fmt::println("{}: \n{}\n", name, ir_text);

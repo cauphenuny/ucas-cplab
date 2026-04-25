@@ -22,7 +22,8 @@ fn main() -> i32 {
 }
 )";
         auto ir_stream = std::istringstream(text);
-        auto ir_code = ir::parse(ir_stream);
+        auto ir_code_box = ir::parse(ir_stream);
+        auto& ir_code = *ir_code_box;
         fmt::println("Reconstructed IR: \n{}", ir_code);
     }
     {
@@ -110,7 +111,7 @@ fn main() -> i32 {
         auto ir_code = ir::parse(ir_stream);
         fmt::println("Reconstructed IR: \n{}", ir_code);
         ir::vm::VirtualMachine env(std::cin, std::cout);
-        auto ret = env.execute(ir_code);
+        auto ret = env.execute(*ir_code);
         assert(ret == 1);
     }
     return 0;

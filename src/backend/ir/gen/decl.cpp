@@ -118,11 +118,12 @@ auto Generator::gen(const ast::FuncDef* func) -> std::unique_ptr<Func> {
     return ir_func;
 }
 
-auto Generator::generate(const ast::SemanticAST& info) -> Program {
+auto Generator::generate(const ast::SemanticAST& info) -> std::unique_ptr<Program> {
     this->info = &info;
     this->ast = &info.ast();
 
-    auto prog = Program();
+    auto program = std::make_unique<Program>();
+    auto& prog = *program;
 
     this->ir_defs = std::unordered_map<ast::SymDefNode, ir::NameDef>{};
     for (const auto& func : ast::BUILTIN_FUNCS) {
@@ -151,7 +152,7 @@ auto Generator::generate(const ast::SemanticAST& info) -> Program {
                 prog.addFunc(std::move(f));
             });
     }
-    return prog;
+    return program;
 }
 
 }  // namespace ir::gen
