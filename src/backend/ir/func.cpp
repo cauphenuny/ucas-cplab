@@ -93,11 +93,12 @@ auto Func::findBlock(const std::string& label) const -> Block* {
     throw COMPILER_ERROR(fmt::format("block '{}' not found", label));
 }
 
-auto Func::removeBlock(std::vector<std::unique_ptr<Block>>::iterator iter) -> void {
+auto Func::removeBlock(std::vector<std::unique_ptr<Block>>::iterator iter)
+    -> std::vector<std::unique_ptr<Block>>::iterator {
     if (program) {
         program->before_erase(iter->get());
     }
-    blocks_.erase(iter);
+    return blocks_.erase(iter);
 }
 
 auto Func::findAlloc(const std::string& name) const -> const Alloc* {
@@ -163,18 +164,20 @@ auto Func::numInsts() const -> size_t {
 }
 
 auto Func::split(Block* block, std::list<Inst>::iterator next_start, Exit prev_exit,
-                 std::string next_label) -> std::unique_ptr<Block> {
+                 std::string next_label) -> Block* {
     std::unique_ptr<Block> next = std::make_unique<Block>(std::move(next_label));
+    next->program = program;
     next->insts().splice(next->insts().end(), block->insts(), next_start, block->insts().end());
     next->setExit(std::move(block->exit()));
-    block->exit() = std::move(prev_exit);
+    block->setExit(std::move(prev_exit));
     for (auto source_ref : analysis::utils::sources(*this)) {
         auto& source = source_ref.get();
         if (source == block) {
             source = next.get();
         }
     }
-    return next;
+    blocks_.push_back(std::move(next));
+    return blocks_.back().get();
 }
 
 auto Func::clone(const std::string& prefix) const -> std::unique_ptr<Func> {

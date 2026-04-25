@@ -66,7 +66,10 @@ private:
 
                 for (auto& inst : blk->insts()) {
                     if (auto phi = std::get_if<PhiInst>(&inst); phi) {
-                        refine_phi(*phi, reachable);
+                        auto [changed, new_phi] = refine_phi(*phi, reachable);
+                        if (changed) {
+                            blk->replace(&inst, new_phi);
+                        }
                     } else {
                         break;
                     }
@@ -78,14 +81,14 @@ private:
                                          return reachable.find(blk.get()) == reachable.end();
                                      });
 
-            if (it != blocks.end()) {
-                blocks.erase(it, blocks.end());
+            while (it != blocks.end()) {
+                it = func.removeBlock(it);
             }
         }
         return pass_changed;
     }
 
-    bool refine_phi(PhiInst& phi, const std::unordered_set<Block*>& reachable) {
+    std::pair<bool, PhiInst> refine_phi(PhiInst phi, const std::unordered_set<Block*>& reachable) {
         bool changed = false;
         for (auto it = phi.args.begin(); it != phi.args.end();) {
             if (reachable.find(it->first) == reachable.end()) {
@@ -95,7 +98,7 @@ private:
                 ++it;
             }
         }
-        return changed;
+        return {changed, phi};
     }
 };
 

@@ -40,7 +40,7 @@ struct Inlining : Pass {
                 while (auto site = find_site(target, prog)) {
                     inline_site(*site, target, id++, prog);
                 }
-                prog.funcs().erase(it);
+                prog.removeFunc(it);
                 return true;
             }
         }
@@ -92,7 +92,7 @@ private:
         }
 
         epilogue->add(PhiInst{.result = call.result, .args = return_values});
-        epilogue->setExit(JumpExit{remain.get()});
+        epilogue->setExit(JumpExit{remain});
 
         for (auto& param : callee->params) {
             caller->addLocal(std::move(param));
@@ -105,7 +105,6 @@ private:
             caller->addBlock(std::move(block));
         }
         caller->addBlock(std::move(epilogue));
-        caller->addBlock(std::move(remain));
     }
 
     std::optional<CallSite> find_site(Func* inline_func, Program& prog) {

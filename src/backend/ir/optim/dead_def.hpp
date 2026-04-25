@@ -82,7 +82,7 @@ private:
                 }
             }
 
-            block->insts().erase(inst_it);
+            block->erase(inst_it);
         }
         return true;
     }

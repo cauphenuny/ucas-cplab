@@ -275,7 +275,8 @@ struct Func {
     Block* newBlock();
     void addBlock(std::unique_ptr<Block> block);
     [[nodiscard]] Block* findBlock(const std::string& label) const;
-    void removeBlock(std::vector<std::unique_ptr<Block>>::iterator iter);
+    auto removeBlock(std::vector<std::unique_ptr<Block>>::iterator iter)
+        -> std::vector<std::unique_ptr<Block>>::iterator;
 
     [[nodiscard]] const Alloc* findAlloc(const std::string& name) const;
 
@@ -292,7 +293,7 @@ struct Func {
     [[nodiscard]] size_t numInsts() const;
 
     auto split(Block* block, std::list<Inst>::iterator next_start, Exit prev_exit,
-               std::string next_label) -> std::unique_ptr<Block>;
+               std::string next_label) -> Block*;
 
 private:
     std::vector<std::unique_ptr<Alloc>> locals_;
@@ -381,7 +382,7 @@ template <typename T1, typename T2> struct std::hash<std::pair<T1, T2>> {
 
 template <> struct std::hash<ir::TempValue> {
     auto operator()(const ir::TempValue& v) const noexcept -> std::size_t {
-        return std::hash<std::size_t>{}(v.id);
+        return std::hash<std::size_t>{}(v.id) ^ std::hash<const ir::Func*>{}(v.func);
     }
 };
 

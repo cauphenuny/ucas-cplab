@@ -49,7 +49,7 @@ void Block::setExit(Exit exit) {
         this->program->before_erase(this);
     }
     this->exit_ = std::move(exit);
-    this->program->after_add(this);
+    if (this->program) this->program->after_add(this);
 }
 
 bool Block::hasExit() const {

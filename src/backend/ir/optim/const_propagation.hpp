@@ -179,7 +179,7 @@ private:
                     if (c->type.is<type::Primitive>() &&
                         std::holds_alternative<type::Bool>(c->type.as<type::Primitive>())) {
                         bool cond = std::get<bool>(c->val);
-                        block->exit() = JumpExit{cond ? branch->true_target : branch->false_target};
+                        block->setExit(JumpExit{cond ? branch->true_target : branch->false_target});
                         changed = true;
                     }
                 }

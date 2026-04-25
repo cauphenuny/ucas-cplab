@@ -90,7 +90,8 @@ private:
             }
         };
         for (auto& inst : block.insts()) {
-            inst =
+            block.replace(
+                &inst,
                 Match{inst}([&](const auto&) { return inst; },
                             [&](const UnaryInst& unary) -> Inst {
                                 if (unary.op == UnaryInstOp::LOAD || unary.op == UnaryInstOp::MOV) {
@@ -111,7 +112,7 @@ private:
                                         ctx.expr_num[Expr{encode(binary.op), lhs_num, rhs_num}];
                                 }
                                 return inst;
-                            });
+                            }));
         }
         for (auto& dom : dom_tree.children(&block)) {
             changed |= eliminate(*dom, ctx, dom_tree);
