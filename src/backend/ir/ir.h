@@ -56,7 +56,7 @@ struct TempValue {
         return lhs.func == rhs.func && lhs.id == rhs.id;
     }
 
-    SIMPLE_TO_STRING(fmt::format("${}", id));
+    SIMPLE_TO_STRING(fmt::format(".{}", id));
 };
 
 struct ConstexprValue;
@@ -121,9 +121,9 @@ struct UnaryInst {
     Value operand;
 
     SIMPLE_TO_STRING(op == UnaryInstOp::LOAD
-                         ? fmt::format("{}: {} = *({});", result, type_of(result), operand)
+                         ? fmt::format("{}: {} = *{};", result, type_of(result), operand)
                      : op == UnaryInstOp::STORE
-                         ? fmt::format("*({}) = {};", result, operand)
+                         ? fmt::format("*{} = {};", result, operand)
                          : fmt::format("{}: {} = {}{};", result, type_of(result), op, operand))
 };
 
@@ -136,8 +136,6 @@ struct BinaryInst {
                          ? fmt::format("{}: {} = {}{}[{}];", result, type_of(result), op, lhs, rhs)
                      : op == InstOp::LOAD_ELEM
                          ? fmt::format("{}: {} = {}[{}];", result, type_of(result), lhs, rhs)
-                     : op == InstOp::STORE_ELEM
-                         ? fmt::format("{}[{}] = {};", result, lhs, rhs)
                          : fmt::format("{}: {} = {} {} {};", result, type_of(result), lhs, op, rhs))
 };
 
@@ -312,6 +310,15 @@ struct BuiltinFunc {
     Type type;
     BuiltinFunc(BuiltinFunc&&) = delete;
     BuiltinFunc(std::string name, Type type) : name(std::move(name)), type(std::move(type)) {}
+};
+
+struct Callback {
+    virtual void after_inst_add(Block* block, std::list<Inst>::iterator it) = 0;
+    virtual void before_inst_erase(Block* block, std::list<Inst>::iterator it) = 0;
+    virtual void after_exit_add(Block* block) = 0;
+    virtual void before_exit_erase(Block* block) = 0;
+    virtual void after_block_add(Func* func, Block* block) = 0;
+    virtual void before_block_erase(Func* func, Block* block) = 0;
 };
 
 struct Program {

@@ -45,39 +45,42 @@ constDecl: CONST REF? ID ':' type '=' constexpr ';';
 letDecl: LET REF? MUT? ID ':' type ('=' constexpr)? ';';
 
 funcDecl:
-	FN ID '(' paramList? ')' ('->' type)? '{' (constDecl | letDecl)* block* '}';
+	FN ID '(' paramList? ')' ('->' type)? '{' (
+		constDecl
+		| letDecl
+	)* block* '}';
 
 paramList: param (',' param)*;
 param: ID ':' type;
 
-temp: '$' INT_LITERAL;
-ssa: '$' ID '.' INT_LITERAL;
+temp: '.' INT_LITERAL;
+ssa: ID '.' INT_LITERAL;
 var: temp | ssa | ID;
 value: var | constexpr;
 label: '\'' ID;
 
 exit:
-	RETURN value? ';' # returnExit
-	| BRANCH value '?' label ':' label ';' # branchExit
-	| JUMP label ';' # jumpExit
-	;
+	RETURN value? ';'						# returnExit
+	| BRANCH value '?' label ':' label ';'	# branchExit
+	| JUMP label ';'						# jumpExit;
 
 block: label ':' '{' phiInst* inst* exit '}';
 
 inst:
-	var ':' type '=' ID '(' (argList)? ')' ';' # callInst
-	| '*(' var ')' '=' value ';' # storeInst
-	| var ':' type '=' '*(' var ')' ';' # loadInst
-	| var ':' type '=' '&' MUT? var ';' # borrowInst
-	| var '[' value ']' '=' value ';' # storeElemInst
-	| var ':' type '=' value '[' value ']' ';' # loadElemInst
-	| var ':' type '=' '&' MUT? var '[' value ']' ';' # borrowElemInst
-	| var ':' type '=' value binop value ';' # binaryInst
-	| var ':' type '=' ('!' value | '-' value | value) ';' # unaryInst
-	;
+	var ':' type '=' ID '(' (argList)? ')' ';'				# callInst
+	| '*' var '=' value ';'									# storeInst
+	| var ':' type '=' '*' var ';'							# loadInst
+	| var ':' type '=' '&' MUT? var ';'						# borrowInst
+	| var ':' type '=' value '[' value ']' ';'				# loadElemInst
+	| var ':' type '=' '&' MUT? var '[' value ']' ';'		# borrowElemInst
+	| var ':' type '=' value binop value ';'				# binaryInst
+	| var ':' type '=' ('!' value | '-' value | value) ';'	# unaryInst;
 
-phiInst : var ':' type '=' PHI '(' (label ':' value (',' label ':' value)*)? ')' ';' ;
-	
+phiInst:
+	var ':' type '=' PHI '(' (
+		label ':' value (',' label ':' value)*
+	)? ')' ';';
+
 argList: value (',' value)*;
 
 binop:
@@ -96,26 +99,20 @@ binop:
 	| '||';
 
 type:
-	(
-		'&' MUT? '[' type ']' // pointer
-		| '[' type ';' INT_LITERAL ']' // array
-		| INT
-		| FLOAT
-		| DOUBLE
-		| BOOL
-		| '(' (type ',')* ')' // product
-		| '(' type ('|' type)+ ')' // sum
-	);
+	'&' MUT? type					# pointerType
+	| '&' MUT? '[' type ']'			# sliceType
+	| '[' type ';' INT_LITERAL ']'	# arrayType
+	| (INT | FLOAT | DOUBLE | BOOL)	# primitiveType
+	| '(' (type ',')* ')'			# productType
+	| '(' type ('|' type)+ ')'		# sumType;
 
 basicConstexpr:
 	'-'? INT_LITERAL
 	| '-'? FLOAT_LITERAL
 	| '-'? DOUBLE_LITERAL
 	| TRUE
-	| FALSE
-	;
+	| FALSE;
 
 constexpr:
 	basicConstexpr
-	| '{' basicConstexpr (',' basicConstexpr)* '}' // array literal
-	;
+	| '{' basicConstexpr (',' basicConstexpr)* '}' ; // array literal

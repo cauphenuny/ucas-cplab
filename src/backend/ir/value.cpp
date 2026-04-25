@@ -122,7 +122,7 @@ bool operator==(const ConstexprValue& lhs, const ConstexprValue& rhs) {
 }
 
 auto SSAValue::toString() const -> std::string {
-    return fmt::format("${}.{}", def->name, version);
+    return fmt::format("{}.{}", def->name, version);
 }
 
 LeftValue as_lvalue(const Value& value) {

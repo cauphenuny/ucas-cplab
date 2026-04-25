@@ -127,8 +127,10 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
                     auto array = gen(&exp.left, func, scope);
                     auto index = gen(&exp.right, func, scope);
                     auto exp_val = gen(&assign_stmt.exp, func, scope);
-                    scope->add(BinaryInst{InstOp::STORE_ELEM, as_lvalue(array), std::move(index),
-                                          std::move(exp_val)});
+                    auto addr = func->newTemp(type_of(exp_val).borrow(false), scope);
+                    scope->add(BinaryInst{InstOp::BORROW_ELEM_MUT, addr, std::move(array),
+                                          std::move(index)});
+                    scope->add(UnaryInst{UnaryInstOp::STORE, addr, std::move(exp_val)});
                     return scope;
                 });
         },

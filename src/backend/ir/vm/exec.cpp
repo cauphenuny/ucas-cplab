@@ -95,33 +95,37 @@ auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View&
 
     while (it != block.insts().end()) {
         const auto& inst = *it;
-        match(
-            inst,
-            [&](const UnaryInst& unary) {
-                auto operand = view_of(unary.operand, frame);
-                auto result = view_of(unary.result, frame);
-                execute(unary, operand, result);
-            },
-            [&](const BinaryInst& binary) {
-                auto lhs = view_of(binary.lhs, frame);
-                auto rhs = view_of(binary.rhs, frame);
-                auto result = view_of(binary.result, frame);
-                execute(binary, lhs, rhs, result);
-            },
-            [&](const CallInst& call) {
-                auto result = view_of(call.result, frame);
-                std::vector<View> srcs;
-                srcs.reserve(call.args.size());
-                for (const auto& arg : call.args) {
-                    srcs.push_back(view_of(arg, frame));
-                }
-                execute(call, srcs, result);
-            },
-            [&](const PhiInst& phi) {
-                throw COMPILER_ERROR("Phi instruction must be at the beginning of a block");
-            });
-        perf_counter.num_insts++;
-        it++;
+        try {
+            match(
+                inst,
+                [&](const UnaryInst& unary) {
+                    auto operand = view_of(unary.operand, frame);
+                    auto result = view_of(unary.result, frame);
+                    execute(unary, operand, result);
+                },
+                [&](const BinaryInst& binary) {
+                    auto lhs = view_of(binary.lhs, frame);
+                    auto rhs = view_of(binary.rhs, frame);
+                    auto result = view_of(binary.result, frame);
+                    execute(binary, lhs, rhs, result);
+                },
+                [&](const CallInst& call) {
+                    auto result = view_of(call.result, frame);
+                    std::vector<View> srcs;
+                    srcs.reserve(call.args.size());
+                    for (const auto& arg : call.args) {
+                        srcs.push_back(view_of(arg, frame));
+                    }
+                    execute(call, srcs, result);
+                },
+                [&](const PhiInst& phi) {
+                    throw COMPILER_ERROR("Phi instruction must be at the beginning of a block");
+                });
+            perf_counter.num_insts++;
+            it++;
+        } catch (const CompilerError& e) {
+            throw COMPILER_ERROR(fmt::format("Error at instruction '{}':\n{}", inst, e.what()));
+        }
     }
     auto& exit = block.exit();
     perf_counter.num_insts++;  // count exit instruction as well

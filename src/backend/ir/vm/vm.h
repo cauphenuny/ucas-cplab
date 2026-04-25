@@ -81,6 +81,8 @@ private:
         throw COMPILER_ERROR(fmt::format("Cannot assign {} to {}", src_type, dest_type));
     }
 
+    void assign(const ir::type::Reference& dest_type, std::byte* dest,
+                const ir::type::Primitive& src_type, const std::byte* src) const;
     void assign(const ir::type::Primitive& dest_type, std::byte* dest,
                 const ir::type::Primitive& src_type, const std::byte* src) const;
     void assign(const ir::type::Sum& dest_type, std::byte* dest, const ir::Type& src_type,
@@ -286,18 +288,6 @@ public:
                     auto base = is_ref ? *(std::byte**)lhs.data : lhs.data;
                     assign(dest.type, dest.data, elem_type, base + offset * size_of(elem_type));
                 };
-        binary_ops[InstOp::STORE_ELEM] = [this, check_ref, check_indexing](
-                                             View& dest, const View& lhs, const View& rhs) {
-            // NOTE: dest: pointer, lhs: offset, rhs: value
-            using namespace ir::type;
-            check_indexing(dest.type, lhs.type);
-            auto is_ref = dest.type.is<Reference>();
-            if (is_ref) check_ref(dest.type, true, "binary store");
-            auto offset = *(int*)lhs.data;
-            auto elem_type = is_ref ? dest.type.as<Reference>().elem : dest.type.as<Array>().elem;
-            auto base = is_ref ? *(std::byte**)dest.data : dest.data;
-            assign(elem_type, base + offset * size_of(elem_type), rhs.type, rhs.data);
-        };
     }
 };
 

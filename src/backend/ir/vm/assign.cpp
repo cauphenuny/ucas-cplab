@@ -23,6 +23,20 @@ void VirtualMachine::assign(const ir::type::Primitive& dest_type, std::byte* des
     });
 }
 
+void VirtualMachine::assign(const ir::type::Reference& dest_type, std::byte* dest,
+                            const ir::type::Primitive& src_type, const std::byte* src) const {
+    if (!dest_type.elem.is<ir::type::Primitive>()) {
+        throw COMPILER_ERROR(fmt::format("Cannot assign {} to {}", src_type, dest_type));
+    }
+    Match(dest_type.elem.as<ir::type::Primitive>(), src_type)([&](auto dest_prim, auto src_prim) {
+        if constexpr (std::is_same_v<decltype(dest_prim), decltype(src_prim)>) {
+            *(const std::byte**)dest = src;
+        } else {
+            throw COMPILER_ERROR(fmt::format("Cannot assign {} to {}", src_type, dest_type));
+        }
+    });
+}
+
 void VirtualMachine::assign(const ir::type::Sum& dest_type, std::byte* dest,
                             const ir::Type& src_type, const std::byte* src) const {
     if (src_type.is<ir::type::Sum>()) {

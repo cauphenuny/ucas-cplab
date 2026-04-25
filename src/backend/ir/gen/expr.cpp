@@ -47,17 +47,26 @@ auto Generator::gen(const ast::LValExp* lval, Func* func, Block* scope) -> LeftV
 auto Generator::gen(const ast::BinaryExp* exp, Func* func, Block* scope) -> Value {
     auto left = gen(&exp->left, func, scope);
     auto right = gen(&exp->right, func, scope);
-    auto result = func->newTemp(this->info->type_of(exp), scope);
+    auto type = this->info->type_of(exp);
     if (exp->op != ast::BinaryOp::INDEX) {
+        auto result = func->newTemp(type, scope);
         scope->add(BinaryInst{convert_op(exp->op), result, std::move(left), std::move(right)});
+        return LeftValue{result};
     } else {
-        auto ir_op = result.type.is<ir::type::Reference>()
-                         ? result.type.as<ir::type::Reference>().readonly ? InstOp::BORROW_ELEM
-                                                                          : InstOp::BORROW_ELEM_MUT
-                         : InstOp::LOAD_ELEM;
-        scope->add(BinaryInst{ir_op, result, std::move(left), std::move(right)});
+        if (type.is<ir::type::Reference>()) {
+            auto result = func->newTemp(type, scope);
+            auto ir_op = type.as<ir::type::Reference>().readonly ? InstOp::BORROW_ELEM
+                                                                 : InstOp::BORROW_ELEM_MUT;
+            scope->add(BinaryInst{ir_op, result, std::move(left), std::move(right)});
+            return LeftValue{result};
+        } else {
+            auto ref = func->newTemp(type.borrow(true), scope);
+            auto result = func->newTemp(type, scope);
+            scope->add(BinaryInst{InstOp::BORROW_ELEM, ref, std::move(left), std::move(right)});
+            scope->add(UnaryInst{UnaryInstOp::LOAD, result, Value{LeftValue{ref}}});
+            return LeftValue{result};
+        }
     }
-    return LeftValue{result};
 }
 
 auto Generator::gen(const ast::ConstExp* exp, Func* func, Block* scope) -> Value {
