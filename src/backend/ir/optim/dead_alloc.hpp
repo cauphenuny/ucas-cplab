@@ -18,8 +18,8 @@ struct DeadAllocElimination : Pass {
             throw COMPILER_ERROR("DeadAllocElimination requires SSA form");
         }
         bool changed = false;
+        std::unordered_map<const Alloc*, bool> referenced;
         for (auto& func : prog.funcs()) {
-            std::unordered_map<const Alloc*, bool> referenced;
             for (auto var : analysis::utils::vars(*func)) {
                 if (auto named = std::get_if<NamedValue>(var); named) {
                     if (auto alloc = std::get_if<const Alloc*>(&named->def); alloc) {
@@ -40,6 +40,15 @@ struct DeadAllocElimination : Pass {
             }
             func->locals() = std::move(kept_locals);
         }
+        std::vector<std::unique_ptr<Alloc>> kept_globals;
+        for (auto& global : prog.globals()) {
+            if (referenced.count(global.get())) {
+                kept_globals.push_back(std::move(global));
+            } else {
+                changed = true;
+            }
+        }
+        prog.globals() = std::move(kept_globals);
         return changed;
     }
 };

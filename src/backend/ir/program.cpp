@@ -50,6 +50,10 @@ auto Program::findAlloc(const std::string& name) const -> const Alloc* {
     throw COMPILER_ERROR(fmt::format("global alloc '{}' not found", name));
 }
 
+std::vector<std::unique_ptr<Alloc>>& Program::globals() {
+    return globals_;
+}
+
 const std::vector<std::unique_ptr<Alloc>>& Program::globals() const {
     return globals_;
 }

@@ -336,6 +336,7 @@ struct Program {
     friend class IRConstructVisitor;
 
     [[nodiscard]] const std::vector<std::unique_ptr<Alloc>>& globals() const;
+    [[nodiscard]] std::vector<std::unique_ptr<Alloc>>& globals();
     [[nodiscard]] const std::vector<std::unique_ptr<Func>>& funcs() const;
     std::vector<std::unique_ptr<Func>>& funcs();
     [[nodiscard]] const std::vector<std::unique_ptr<BuiltinFunc>>& builtins() const;
