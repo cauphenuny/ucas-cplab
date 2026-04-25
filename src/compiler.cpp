@@ -309,16 +309,16 @@ int main(int argc, const char* argv[]) {
                         ConstructSSA().apply(program);
                         echo(program, fmt::format("#{} SSA Form", pass_id++));
                     }
+                    if (ssa_to_temp) {
+                        SSAValue2TempValue().apply(program);
+                        echo(program, fmt::format("#{} SSAValue to TempValue", pass_id++));
+                    }
                 }
 
                 if (optimize) {
                     using namespace ir::optim;
                     std::vector<std::pair<std::unique_ptr<SSAPass>, std::string>> passes;
                     SSAPassContext ctx(program);
-                    if (ssa_to_temp) {
-                        passes.emplace_back(std::make_unique<SSAValue2TempValue>(),
-                                            "SSA Form (TempValue)");
-                    }
                     if (optimize_copy) {
                         passes.emplace_back(std::make_unique<CopyPropagation>(),
                                             "Copy Propagation");

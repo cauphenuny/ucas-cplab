@@ -210,8 +210,8 @@ private:
 
 using ConstructSSA = Compose<void, minipass::AddPhi, minipass::Rename>;
 
-struct SSAValue2TempValue : SSAPass {
-    bool apply(Program& prog, SSAPassContext& ctx) override {
+struct SSAValue2TempValue : Pass<void> {
+    bool apply(Program& prog) override {
         bool changed = false;
         for (auto& func : prog.funcs()) {
             std::unordered_map<SSAValue, TempValue> ssa_to_temp;

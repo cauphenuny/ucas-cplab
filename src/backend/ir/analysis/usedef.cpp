@@ -37,6 +37,9 @@ void UseDefInfo::after_add(Inst* it) {
     for (auto use : utils::used(*it)) {
         add_use(use, it);
     }
+    for (auto source : utils::sources(*it)) {
+        source_links[source].insert(source);
+    }
 }
 
 void UseDefInfo::before_erase(Inst* it) {
@@ -44,17 +47,26 @@ void UseDefInfo::before_erase(Inst* it) {
     for (auto& use : utils::used(*it)) {
         erase_use(use, it);
     }
+    for (auto source : utils::sources(*it)) {
+        source_links[source].erase(source);
+    }
 }
 
 void UseDefInfo::after_add(Exit* exit) {
     if (auto use = utils::used(*exit)) {
         add_use(use, exit);
     }
+    for (auto target : utils::targets(*exit)) {
+        target_links[target].insert(target);
+    }
 }
 
 void UseDefInfo::before_erase(Exit* exit) {
     if (auto use = utils::used(*exit)) {
         erase_use(use, exit);
+    }
+    for (auto target : utils::targets(*exit)) {
+        target_links[target].erase(target);
     }
 }
 
@@ -81,6 +93,21 @@ void UseDefInfo::replace_all_uses_with(const LeftValue& old_val, const Value& ne
             *site.operand = new_val;
             add_use(site.operand, container);
         });
+    }
+}
+
+void UseDefInfo::replace_all_links_with(Block* old_block, Block* as_source, Block* as_target) {
+    if (source_links.count(old_block)) {
+        auto sources = source_links[old_block];
+        for (auto source_ref : sources) {
+            source_ref.get() = as_source;
+        }
+    }
+    if (target_links.count(old_block)) {
+        auto targets = target_links[old_block];
+        for (auto target_ref : targets) {
+            target_ref.get() = as_target;
+        }
     }
 }
 

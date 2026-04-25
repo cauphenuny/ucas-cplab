@@ -67,7 +67,6 @@ int main(int argc, const char* argv[]) {
         {"def", []() { return std::make_unique<ir::optim::DeadDefElimination>(); }},
         {"alloc", []() { return std::make_unique<ir::optim::DeadAllocElimination>(); }},
         {"const", []() { return std::make_unique<ir::optim::ConstPropagation>(); }},
-        {"ssa2temp", []() { return std::make_unique<ir::optim::SSAValue2TempValue>(); }},
         {"inline", []() { return std::make_unique<ir::optim::Inlining>(); }},
         {"exp",
          []() {
@@ -176,7 +175,7 @@ int main(int argc, const char* argv[]) {
                 return changed;
             };
             // apply passes in order
-            ir::optim::ConstructSSA ssa;
+            ir::optim::Compose<void, ir::optim::ConstructSSA, ir::optim::SSAValue2TempValue> ssa;
             ssa.apply(program);
             ir::optim::SSAPassContext ctx(program);
             while (apply(ctx, passes));
