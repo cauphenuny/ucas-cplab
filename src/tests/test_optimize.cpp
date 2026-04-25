@@ -113,6 +113,8 @@ int main(int argc, const char* argv[]) {
         }
         std::string text{std::istreambuf_iterator<char>(fstream), std::istreambuf_iterator<char>()};
 
+        std::ostringstream log;
+
         try {
             // parse & semantic analysis -> generate IR
             auto istream = std::istringstream(text);
@@ -170,7 +172,12 @@ int main(int argc, const char* argv[]) {
                              const std::vector<std::unique_ptr<ir::optim::SSAPass>>& passes) {
                 bool changed = false;
                 for (auto& pass : passes) {
-                    changed |= pass->apply(program, ctx);
+                    bool pass_changed = pass->apply(program, ctx);
+                    if (pass_changed) {
+                        log << fmt::format("----------\n{}\n", program);
+                        ctx.ud.verify();
+                    }
+                    changed |= pass_changed;
                 }
                 return changed;
             };
@@ -178,6 +185,8 @@ int main(int argc, const char* argv[]) {
             ir::optim::Compose<void, ir::optim::ConstructSSA, ir::optim::SSAValue2TempValue> ssa;
             ssa.apply(program);
             ir::optim::SSAPassContext ctx(program);
+            log.clear();
+            log << fmt::format("{}\n", program);
             while (apply(ctx, passes));
 
             size_t after = run_program(program);
@@ -192,6 +201,7 @@ int main(int argc, const char* argv[]) {
         } catch (const std::exception& e) {
             fmt::println(stderr, "Exception while processing {}: {}\n", file.path().string(),
                          e.what());
+            fmt::println(stderr, "{}", log.str());
             exit(1);
         }
     }

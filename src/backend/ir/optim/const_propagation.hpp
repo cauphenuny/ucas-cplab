@@ -122,7 +122,7 @@ struct ConstPropagation : SSAPass {
         do {
             changed = false;
             for (auto& func : prog.funcs()) {
-                changed |= propagate(*func);
+                changed |= propagate(*func, ctx);
             }
             changed |= CopyPropagation().apply(prog, ctx);
             result |= changed;
@@ -131,15 +131,14 @@ struct ConstPropagation : SSAPass {
     }
 
 private:
-    bool propagate(Func& func) {
+    bool propagate(Func& func, SSAPassContext& ctx) {
         bool changed = false;
         for (auto& block : func.blocks()) {
             for (auto& inst : block->insts()) {
                 if (auto unary = std::get_if<UnaryInst>(&inst)) {
                     if (auto c = std::get_if<ConstexprValue>(&unary->operand)) {
                         if (auto folded = ConstexprFolder::fold(unary->op, *c)) {
-                            inst = UnaryInst{UnaryInstOp::MOV, unary->result, *folded};
-                            changed = true;
+                            changed |= ctx.ud.replace_all_uses_with(unary->result, *folded);
                         }
                     }
                 } else if (auto binary = std::get_if<BinaryInst>(&inst)) {
@@ -147,8 +146,7 @@ private:
                     auto cr = std::get_if<ConstexprValue>(&binary->rhs);
                     if (cl && cr) {
                         if (auto folded = ConstexprFolder::fold(binary->op, *cl, *cr)) {
-                            inst = UnaryInst{UnaryInstOp::MOV, binary->result, *folded};
-                            changed = true;
+                            changed |= ctx.ud.replace_all_uses_with(binary->result, *folded);
                         }
                     }
                 } else if (auto phi = std::get_if<PhiInst>(&inst)) {
@@ -168,8 +166,7 @@ private:
                         }
                     }
                     if (foldable && common) {
-                        inst = UnaryInst{UnaryInstOp::MOV, phi->result, *common};
-                        changed = true;
+                        changed |= ctx.ud.replace_all_uses_with(phi->result, *common);
                     }
                 }
             }

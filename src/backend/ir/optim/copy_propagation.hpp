@@ -10,6 +10,7 @@
 
 #include <optional>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace ir::optim {
 
@@ -20,13 +21,13 @@ struct CopyPropagation : SSAPass {
         }
         bool changed = false;
         for (auto& func : prog.funcs()) {
-            while (propagate(*func, prog)) changed = true;
+            while (propagate(*func, prog, ctx)) changed = true;
         }
         return changed;
     }
 
 private:
-    bool propagate(Func& func, Program& prog) {
+    bool propagate(Func& func, Program& prog, SSAPassContext& ctx) {
         std::unordered_map<Value, Value> copies;
 
         for (auto& global : prog.globals()) {
@@ -36,9 +37,12 @@ private:
         }
 
         auto get_root = [&](auto self, Value v) -> Value {
-            auto it = copies.find(v);
-            if (it != copies.end()) {
-                return it->second = self(self, it->second);
+            std::unordered_set<Value> visited;
+            while (true) {
+                auto it = copies.find(v);
+                if (it == copies.end() || visited.count(it->second)) break;
+                visited.insert(it->second);
+                v = it->second;
             }
             return v;
         };
@@ -48,8 +52,7 @@ private:
             for (auto& inst : block->insts()) {
                 if (auto unary = std::get_if<UnaryInst>(&inst)) {
                     if (unary->op == UnaryInstOp::MOV) {
-                        if (type_of(unary->operand).is<type::Array>())
-                            continue;  // do not propagate array assignment
+                        if (type_of(unary->operand).is<type::Array>()) continue;
                         copies[unary->result] = unary->operand;
                     }
                 } else if (auto phi = std::get_if<PhiInst>(&inst); phi) {
@@ -62,7 +65,7 @@ private:
                             break;
                         }
                         auto root = get_root(get_root, *var);
-                        if (root == Value{phi->result}) continue;  // ignore self-loops in Phi
+                        if (root == Value{phi->result}) continue;
                         if (!uniform_val) {
                             uniform_val = root;
                         } else if (!(*uniform_val == root)) {
@@ -81,11 +84,10 @@ private:
 
         /// Perform replacement
         bool changed = false;
-        for (auto use : analysis::utils::used(func)) {
-            auto root = get_root(get_root, *use);
-            if (!(*use == root)) {
-                *use = root;
-                changed = true;
+        for (auto& [val, root] : copies) {
+            auto ultimate_root = get_root(get_root, root);
+            if (auto var = std::get_if<LeftValue>(&val)) {
+                changed |= ctx.ud.replace_all_uses_with(*var, ultimate_root);
             }
         }
 

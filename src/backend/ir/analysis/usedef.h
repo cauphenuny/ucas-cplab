@@ -2,6 +2,7 @@
 
 #include "backend/ir/ir.h"
 
+#include <functional>
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
@@ -38,8 +39,7 @@ struct UseDefInfo : Callback {
         -> std::unordered_set<UseSite, UseSiteHash>;
     [[nodiscard]] auto def_of(const LeftValue& val) const -> std::optional<DefSite>;
 
-    void replace_all_uses_with(const LeftValue& old_val, const Value& new_val);
-    void replace_all_links_with(Block* old_block, Block* as_source, Block* as_target);
+    bool replace_all_uses_with(const LeftValue& old_val, const Value& new_val);
 
     void verify() const;
 
@@ -49,7 +49,6 @@ private:
     Program& program;
     std::unordered_map<LeftValue, DefSite> def_sites;
     std::unordered_map<LeftValue, std::unordered_set<UseSite, UseSiteHash>> use_sites;
-    std::unordered_map<Block*, std::unordered_set<std::reference_wrapper<Block*>>> source_links, target_links;
 };
 
 }  // namespace ir::analysis

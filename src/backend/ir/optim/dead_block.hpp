@@ -124,7 +124,8 @@ private:
         return pass_changed;
     }
     // replace block by its predecessors in phi
-    void refine_phi(PhiInst& inst, Block* replaced, ControlFlowGraph& cfg) {
+    std::pair<bool, PhiInst> refine_phi(const PhiInst& inst, Block* replaced,
+                                        ControlFlowGraph& cfg) {
         std::vector<std::pair<Block*, Value>> new_args;
         std::unordered_set<Block*> preds;
         for (auto& [block, arg] : inst.args) {
@@ -133,8 +134,10 @@ private:
                 preds.insert(block);
             }
         }
+        bool changed = false;
         for (auto& [block, arg] : inst.args) {
             if (block == replaced) {
+                changed = true;
                 for (auto pred : cfg.pred[block]) {
                     if (preds.count(pred)) {
                         throw COMPILER_ERROR(
@@ -146,7 +149,7 @@ private:
                 }
             }
         }
-        inst.args = std::move(new_args);
+        return {changed, PhiInst{.result = inst.result, .args = std::move(new_args)}};
     }
 
     bool conflicts(Block* replaced, Block* target, ControlFlowGraph& cfg) {
@@ -217,7 +220,10 @@ private:
         for (auto& block : func.blocks()) {
             for (auto& inst : block->insts()) {
                 if (auto phi = std::get_if<PhiInst>(&inst); phi) {
-                    refine_phi(*phi, replaced, cfg);
+                    auto [changed, new_phi] = refine_phi(*phi, replaced, cfg);
+                    if (changed) {
+                        block->replace(&inst, new_phi);
+                    }
                 } else {
                     break;
                 }
