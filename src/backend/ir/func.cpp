@@ -20,7 +20,8 @@ Func::Func(Type ret_type, std::string name, std::vector<std::unique_ptr<Alloc>> 
 auto Func::toString() const -> std::string {
     std::string params_str = "";
     for (const auto& param : this->params) {
-        params_str += fmt::format("{}: {}, ", param->name, param->type);
+        params_str +=
+            fmt::format("{}{}: {}, ", param->immutable ? "" : "mut ", param->name, param->type);
     }
     if (!params_str.empty()) params_str.pop_back(), params_str.pop_back();
 

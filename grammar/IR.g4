@@ -52,7 +52,7 @@ funcDecl:
 	)* block* '}';
 
 paramList: param (',' param)*;
-param: ID ':' type;
+param: MUT? ID ':' type;
 
 temp: '$' INT_LITERAL;
 ssa: '$' ID '.' INT_LITERAL;

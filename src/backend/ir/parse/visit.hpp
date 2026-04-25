@@ -222,8 +222,9 @@ public:
 
     std::any visitParam(IRParser::ParamContext* ctx) override {
         auto name = ctx->ID()->getText();
+        auto mut = ctx->MUT() != nullptr;
         auto type = take<ir::type::TypeBox>(visit(ctx->type()));
-        return wrap(new ir::Alloc(name, std::move(type)));
+        return wrap(new ir::Alloc(name, std::move(type), false, !mut));
     }
 
     std::any visitBlock(IRParser::BlockContext* ctx) override {

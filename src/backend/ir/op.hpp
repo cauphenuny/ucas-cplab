@@ -32,10 +32,10 @@ enum class InstOp : uint8_t {
 inline std::string toString(UnaryInstOp op) {
     switch (op) {
         case UnaryInstOp::MOV: return "";
-        case UnaryInstOp::NOT: return "!";
-        case UnaryInstOp::NEG: return "-";
-        case UnaryInstOp::LOAD: return "*";
-        case UnaryInstOp::BORROW: return "&";
+        case UnaryInstOp::NOT: return "! ";
+        case UnaryInstOp::NEG: return "- ";
+        case UnaryInstOp::LOAD: return "* ";
+        case UnaryInstOp::BORROW: return "& ";
         case UnaryInstOp::BORROW_MUT: return "&mut ";
     }
 }
@@ -57,7 +57,7 @@ inline std::string toString(InstOp op) {
         case InstOp::OR: return "||";
         case InstOp::STORE: return "store";
         case InstOp::LOAD_ELEM: return "load";
-        case InstOp::BORROW_ELEM: return "&";
+        case InstOp::BORROW_ELEM: return "& ";
         case InstOp::BORROW_ELEM_MUT: return "&mut ";
     }
 }
