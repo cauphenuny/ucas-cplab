@@ -48,10 +48,10 @@ auto Func::locals() -> std::vector<std::unique_ptr<Alloc>>& {
     return locals_;
 }
 
-auto Func::blocks() const -> const std::vector<std::unique_ptr<Block>>& {
+auto Func::blocks() const -> const std::list<std::unique_ptr<Block>>& {
     return blocks_;
 }
-auto Func::blocks() -> std::vector<std::unique_ptr<Block>>& {
+auto Func::blocks() -> std::list<std::unique_ptr<Block>>& {
     return blocks_;
 }
 
@@ -93,8 +93,8 @@ auto Func::findBlock(const std::string& label) const -> Block* {
     throw COMPILER_ERROR(fmt::format("block '{}' not found", label));
 }
 
-auto Func::removeBlock(std::vector<std::unique_ptr<Block>>::iterator iter)
-    -> std::vector<std::unique_ptr<Block>>::iterator {
+auto Func::removeBlock(std::list<std::unique_ptr<Block>>::iterator iter)
+    -> std::list<std::unique_ptr<Block>>::iterator {
     if (program) {
         program->before_erase(iter->get());
     }

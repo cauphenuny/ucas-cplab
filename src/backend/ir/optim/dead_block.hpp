@@ -76,13 +76,14 @@ private:
                 }
             }
 
-            auto it = std::remove_if(blocks.begin(), blocks.end(),
-                                     [&](const std::unique_ptr<Block>& blk) {
-                                         return reachable.find(blk.get()) == reachable.end();
-                                     });
-
-            while (it != blocks.end()) {
-                it = func.removeBlock(it);
+            std::vector<std::list<std::unique_ptr<Block>>::iterator> to_erase;
+            for (auto it = blocks.begin(); it != blocks.end(); ++it) {
+                if (reachable.find(it->get()) == reachable.end()) {
+                    to_erase.push_back(it);
+                }
+            }
+            for (auto it : to_erase) {
+                func.removeBlock(it);
             }
         }
         return pass_changed;
@@ -247,8 +248,8 @@ private:
 
         for (auto& block : func.blocks()) {
             if (block.get() == target) {
-                std::swap(func.blocks()[0]->label, block->label);
-                std::swap(func.blocks()[0], block);
+                std::swap(func.blocks().front()->label, block->label);
+                std::swap(func.blocks().front(), block);
                 std::swap(block, func.blocks().back());
             }
         }

@@ -261,8 +261,8 @@ struct Func {
     [[nodiscard]] const std::vector<std::unique_ptr<Alloc>>& locals() const;
     std::vector<std::unique_ptr<Alloc>>& locals();
 
-    [[nodiscard]] const std::vector<std::unique_ptr<Block>>& blocks() const;
-    std::vector<std::unique_ptr<Block>>& blocks();
+    [[nodiscard]] const std::list<std::unique_ptr<Block>>& blocks() const;
+    std::list<std::unique_ptr<Block>>& blocks();
 
     [[nodiscard]] const auto& temps() const {
         return temps_;
@@ -275,8 +275,8 @@ struct Func {
     Block* newBlock();
     void addBlock(std::unique_ptr<Block> block);
     [[nodiscard]] Block* findBlock(const std::string& label) const;
-    auto removeBlock(std::vector<std::unique_ptr<Block>>::iterator iter)
-        -> std::vector<std::unique_ptr<Block>>::iterator;
+    auto removeBlock(std::list<std::unique_ptr<Block>>::iterator iter)
+        -> std::list<std::unique_ptr<Block>>::iterator;
 
     [[nodiscard]] const Alloc* findAlloc(const std::string& name) const;
 
@@ -297,7 +297,7 @@ struct Func {
 
 private:
     std::vector<std::unique_ptr<Alloc>> locals_;
-    std::vector<std::unique_ptr<Block>> blocks_;
+    std::list<std::unique_ptr<Block>> blocks_;
 
     struct TempInfo {
         Type type;
