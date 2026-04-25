@@ -22,6 +22,55 @@ auto Program::toString() const -> std::string {
     return str;
 }
 
+void Program::addCallback(Callback* callback) {
+    if (std::find(callbacks_.begin(), callbacks_.end(), callback) == callbacks_.end()) {
+        callbacks_.push_back(callback);
+    }
+}
+
+void Program::removeCallback(Callback* callback) {
+    auto it = std::find(callbacks_.begin(), callbacks_.end(), callback);
+    if (it != callbacks_.end()) {
+        callbacks_.erase(it);
+    }
+}
+
+void Program::after_inst_add(Block* block, Inst* it) {
+    for (auto* callback : callbacks_) {
+        callback->after_inst_add(block, it);
+    }
+}
+
+void Program::before_inst_erase(Block* block, Inst* it) {
+    for (auto* callback : callbacks_) {
+        callback->before_inst_erase(block, it);
+    }
+}
+
+void Program::after_exit_add(Block* block) {
+    for (auto* callback : callbacks_) {
+        callback->after_exit_add(block);
+    }
+}
+
+void Program::before_exit_erase(Block* block) {
+    for (auto* callback : callbacks_) {
+        callback->before_exit_erase(block);
+    }
+}
+
+void Program::after_block_add(Func* func, Block* block) {
+    for (auto* callback : callbacks_) {
+        callback->after_block_add(func, block);
+    }
+}
+
+void Program::before_block_erase(Func* func, Block* block) {
+    for (auto* callback : callbacks_) {
+        callback->before_block_erase(func, block);
+    }
+}
+
 void Program::addFunc(std::unique_ptr<Func> func) {
     funcs_.push_back(std::move(func));
 }

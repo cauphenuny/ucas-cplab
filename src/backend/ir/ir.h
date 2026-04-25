@@ -309,8 +309,8 @@ struct BuiltinFunc {
 };
 
 struct Callback {
-    virtual void after_inst_add(Block* block, std::list<Inst>::iterator it) = 0;
-    virtual void before_inst_erase(Block* block, std::list<Inst>::iterator it) = 0;
+    virtual void after_inst_add(Block* block, Inst* it) = 0;
+    virtual void before_inst_erase(Block* block, Inst* it) = 0;
     virtual void after_exit_add(Block* block) = 0;
     virtual void before_exit_erase(Block* block) = 0;
     virtual void after_block_add(Func* func, Block* block) = 0;
@@ -320,6 +320,16 @@ struct Callback {
 struct Program {
     bool is_ssa{false};
     [[nodiscard]] auto toString() const -> std::string;
+
+    void after_inst_add(Block* block, Inst* it);
+    void before_inst_erase(Block* block, Inst* it);
+    void after_exit_add(Block* block);
+    void before_exit_erase(Block* block);
+    void after_block_add(Func* func, Block* block);
+    void before_block_erase(Func* func, Block* block);
+
+    void addCallback(Callback* callback);
+    void removeCallback(Callback* callback);
 
     void addFunc(std::unique_ptr<Func> func);
     void addGlobal(std::unique_ptr<Alloc> alloc);
@@ -339,6 +349,7 @@ struct Program {
     [[nodiscard]] const std::vector<std::unique_ptr<BuiltinFunc>>& builtins() const;
 
 private:
+    std::vector<Callback*> callbacks_;
     std::vector<std::unique_ptr<Alloc>> globals_;
     std::vector<std::unique_ptr<Func>> funcs_;
     std::vector<std::unique_ptr<BuiltinFunc>> builtin_funcs_;
