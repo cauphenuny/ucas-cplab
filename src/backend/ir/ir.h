@@ -18,6 +18,7 @@ namespace ir {
 
 using Type = ir::type::TypeBox;
 
+struct Program;
 struct Block;
 struct Alloc;
 struct Func;
@@ -176,6 +177,8 @@ using Exit = std::variant<BranchExit, JumpExit, ReturnExit>;
 
 struct Block {
     std::string label;
+    Program* program{nullptr};
+
     Block(Block&&) =
         delete;  // NOTE: Block is not movable because some instructions may hold references to it.
 
@@ -184,6 +187,8 @@ struct Block {
     void add(Inst inst);
     void prepend(Inst inst);
     auto pop_front() -> Inst;
+    void replace(Inst* inst, Inst new_inst);
+    void erase(std::list<Inst>::iterator iter);
 
     void setExit(Exit exit);
     [[nodiscard]] bool hasExit() const;
@@ -241,6 +246,7 @@ struct Func {
     const Type ret_type;
     const std::string name;
     std::vector<std::unique_ptr<Alloc>> params;
+    Program* program{nullptr};
 
     struct LoopContext {
         Block* continue_target;
@@ -269,6 +275,7 @@ struct Func {
     Block* newBlock();
     void addBlock(std::unique_ptr<Block> block);
     [[nodiscard]] Block* findBlock(const std::string& label) const;
+    void removeBlock(std::vector<std::unique_ptr<Block>>::iterator iter);
 
     [[nodiscard]] const Alloc* findAlloc(const std::string& name) const;
 
@@ -309,24 +316,24 @@ struct BuiltinFunc {
 };
 
 struct Callback {
-    virtual void after_inst_add(Block* block, Inst* it) = 0;
-    virtual void before_inst_erase(Block* block, Inst* it) = 0;
-    virtual void after_exit_add(Block* block) = 0;
-    virtual void before_exit_erase(Block* block) = 0;
-    virtual void after_block_add(Func* func, Block* block) = 0;
-    virtual void before_block_erase(Func* func, Block* block) = 0;
+    virtual void after_add(Inst* it) = 0;
+    virtual void after_add(Exit* exit) = 0;
+    virtual void before_erase(Inst* it) = 0;
+    virtual void before_erase(Exit* exit) = 0;
 };
 
 struct Program {
     bool is_ssa{false};
     [[nodiscard]] auto toString() const -> std::string;
 
-    void after_inst_add(Block* block, Inst* it);
-    void before_inst_erase(Block* block, Inst* it);
-    void after_exit_add(Block* block);
-    void before_exit_erase(Block* block);
-    void after_block_add(Func* func, Block* block);
-    void before_block_erase(Func* func, Block* block);
+    void after_add(Inst* it);
+    void after_add(Exit* exit);
+    void after_add(Block* block);
+    void after_add(Func* func);
+    void before_erase(Inst* it);
+    void before_erase(Exit* exit);
+    void before_erase(Block* block);
+    void before_erase(Func* func);
 
     void addCallback(Callback* callback);
     void removeCallback(Callback* callback);
@@ -334,6 +341,8 @@ struct Program {
     void addFunc(std::unique_ptr<Func> func);
     void addGlobal(std::unique_ptr<Alloc> alloc);
     void addBuiltinFunc(std::unique_ptr<BuiltinFunc> func);
+
+    void removeFunc(std::vector<std::unique_ptr<Func>>::iterator iter);
 
     [[nodiscard]] const Func& findFunc(const std::string& name) const;
 

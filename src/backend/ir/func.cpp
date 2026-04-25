@@ -63,6 +63,7 @@ auto Func::newTemp(const Type& type, Block* container) -> TempValue {
 
 auto Func::newBlock(const std::string& label) -> Block* {
     blocks_.emplace_back(std::make_unique<Block>(label));
+    blocks_.back()->program = program;
     return blocks_.back().get();
 }
 
@@ -76,7 +77,11 @@ void Func::addBlock(std::unique_ptr<Block> block) {
             throw COMPILER_ERROR(fmt::format("block '{}' already exists", b->label));
         }
     }
+    block->program = program;
     blocks_.push_back(std::move(block));
+    if (program) {
+        program->after_add(blocks_.back().get());
+    }
 }
 
 auto Func::findBlock(const std::string& label) const -> Block* {
@@ -86,6 +91,13 @@ auto Func::findBlock(const std::string& label) const -> Block* {
         }
     }
     throw COMPILER_ERROR(fmt::format("block '{}' not found", label));
+}
+
+auto Func::removeBlock(std::vector<std::unique_ptr<Block>>::iterator iter) -> void {
+    if (program) {
+        program->before_erase(iter->get());
+    }
+    blocks_.erase(iter);
 }
 
 auto Func::findAlloc(const std::string& name) const -> const Alloc* {

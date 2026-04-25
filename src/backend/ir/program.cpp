@@ -25,6 +25,14 @@ auto Program::toString() const -> std::string {
 void Program::addCallback(Callback* callback) {
     if (std::find(callbacks_.begin(), callbacks_.end(), callback) == callbacks_.end()) {
         callbacks_.push_back(callback);
+        for (const auto& func : funcs()) {
+            for (const auto& block : func->blocks()) {
+                for (auto& inst : block->insts()) {
+                    callback->after_add(&inst);
+                }
+                callback->after_add(&block->exit());
+            }
+        }
     }
 }
 
@@ -35,44 +43,72 @@ void Program::removeCallback(Callback* callback) {
     }
 }
 
-void Program::after_inst_add(Block* block, Inst* it) {
+void Program::after_add(Inst* it) {
     for (auto* callback : callbacks_) {
-        callback->after_inst_add(block, it);
+        callback->after_add(it);
     }
 }
 
-void Program::before_inst_erase(Block* block, Inst* it) {
+void Program::before_erase(Inst* it) {
     for (auto* callback : callbacks_) {
-        callback->before_inst_erase(block, it);
+        callback->before_erase(it);
     }
 }
 
-void Program::after_exit_add(Block* block) {
+void Program::after_add(Exit* exit) {
     for (auto* callback : callbacks_) {
-        callback->after_exit_add(block);
+        callback->after_add(exit);
     }
 }
 
-void Program::before_exit_erase(Block* block) {
+void Program::before_erase(Exit* exit) {
     for (auto* callback : callbacks_) {
-        callback->before_exit_erase(block);
+        callback->before_erase(exit);
     }
 }
 
-void Program::after_block_add(Func* func, Block* block) {
+void Program::after_add(Block* block) {
     for (auto* callback : callbacks_) {
-        callback->after_block_add(func, block);
+        for (auto& inst : block->insts()) {
+            callback->after_add(&inst);
+        }
+        callback->after_add(&block->exit());
     }
 }
 
-void Program::before_block_erase(Func* func, Block* block) {
+void Program::before_erase(Block* block) {
     for (auto* callback : callbacks_) {
-        callback->before_block_erase(func, block);
+        for (auto& inst : block->insts()) {
+            callback->before_erase(&inst);
+        }
+        callback->before_erase(&block->exit());
+    }
+}
+
+void Program::after_add(Func* func) {
+    for (auto& block : func->blocks()) {
+        after_add(block.get());
+    }
+}
+
+void Program::before_erase(Func* func) {
+    for (auto& block : func->blocks()) {
+        before_erase(block.get());
     }
 }
 
 void Program::addFunc(std::unique_ptr<Func> func) {
+    func->program = this;
+    for (auto& block : func->blocks()) {
+        block->program = this;
+    }
     funcs_.push_back(std::move(func));
+    after_add(funcs_.back().get());
+}
+
+void Program::removeFunc(std::vector<std::unique_ptr<Func>>::iterator iter) {
+    before_erase(iter->get());
+    funcs_.erase(iter);
 }
 
 void Program::addGlobal(std::unique_ptr<Alloc> alloc) {

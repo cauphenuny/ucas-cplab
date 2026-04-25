@@ -22,21 +22,34 @@ auto Block::toString() const -> std::string {
 
 void Block::add(Inst inst) {
     insts_.push_back(std::move(inst));
+    if (this->program) this->program->after_add(&insts_.back());
 }
 void Block::prepend(Inst inst) {
     insts_.insert(insts_.begin(), std::move(inst));
+    if (this->program) this->program->after_add(&insts_.front());
 }
 auto Block::pop_front() -> Inst {
+    if (this->program) this->program->before_erase(&insts_.front());
     Inst inst = std::move(insts_.front());
     insts_.pop_front();
     return inst;
 }
+void Block::replace(Inst* inst, Inst new_inst) {
+    if (this->program) this->program->before_erase(inst);
+    *inst = std::move(new_inst);
+    if (this->program) this->program->after_add(inst);
+}
+void Block::erase(std::list<Inst>::iterator iter) {
+    if (this->program) this->program->before_erase(&*iter);
+    insts_.erase(iter);
+}
 
 void Block::setExit(Exit exit) {
-    if (this->exit_) {
-        throw COMPILER_ERROR(fmt::format("Block {} already has an exit instruction", label));
+    if (this->exit_ && this->program) {
+        this->program->before_erase(this);
     }
     this->exit_ = std::move(exit);
+    this->program->after_add(this);
 }
 
 bool Block::hasExit() const {

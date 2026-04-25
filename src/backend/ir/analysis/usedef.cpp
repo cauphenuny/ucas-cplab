@@ -10,11 +10,6 @@
 namespace ir::analysis {
 
 UseDefInfo::UseDefInfo(Program& program) : program(program) {
-    for (const auto& func : program.funcs()) {
-        for (const auto& block : func->blocks()) {
-            after_block_add(func.get(), block.get());
-        }
-    }
     program.addCallback(this);
 }
 
@@ -22,59 +17,45 @@ UseDefInfo::~UseDefInfo() {
     program.removeCallback(this);
 }
 
-void UseDefInfo::add_use(Value* val, Block* block, std::variant<Inst*, Exit*> it) {
+void UseDefInfo::add_use(Value* val, std::variant<Inst*, Exit*> it) {
     if (auto lval = std::get_if<LeftValue>(val)) {
-        use_sites[*lval].insert(UseSite{block, it, val});
+        use_sites[*lval].insert(UseSite{it, val});
     }
 }
 
-void UseDefInfo::erase_use(Value* val, Block* block, std::variant<Inst*, Exit*> it) {
+void UseDefInfo::erase_use(Value* val, std::variant<Inst*, Exit*> it) {
     if (auto lval = std::get_if<LeftValue>(val)) {
-        auto site_it = use_sites[*lval].find(UseSite{block, it, val});
+        auto site_it = use_sites[*lval].find(UseSite{it, val});
         if (site_it != use_sites[*lval].end()) {
             use_sites[*lval].erase(site_it);
         }
     }
 }
 
-void UseDefInfo::after_inst_add(Block* block, Inst* it) {
-    def_sites[*utils::defined_var(*it)] = {block, it};
+void UseDefInfo::after_add(Inst* it) {
+    def_sites[*utils::defined_var(*it)] = {it};
     for (auto use : utils::used(*it)) {
-        add_use(use, block, it);
+        add_use(use, it);
     }
 }
 
-void UseDefInfo::before_inst_erase(Block* block, Inst* it) {
+void UseDefInfo::before_erase(Inst* it) {
     def_sites.erase(*utils::defined_var(*it));
     for (auto& use : utils::used(*it)) {
-        erase_use(use, block, it);
+        erase_use(use, it);
     }
 }
 
-void UseDefInfo::after_exit_add(Block* block) {
-    if (auto use = utils::used(block->exit())) {
-        add_use(use, block, &block->exit());
+void UseDefInfo::after_add(Exit* exit) {
+    if (auto use = utils::used(*exit)) {
+        add_use(use, exit);
     }
 }
 
-void UseDefInfo::before_exit_erase(Block* block) {
-    if (auto use = utils::used(block->exit())) {
-        erase_use(use, block, &block->exit());
+void UseDefInfo::before_erase(Exit* exit) {
+    if (auto use = utils::used(*exit)) {
+        erase_use(use, exit);
     }
-}
-
-void UseDefInfo::after_block_add(Func* func, Block* block) {
-    for (auto& inst : block->insts()) {
-        after_inst_add(block, &inst);
-    }
-    after_exit_add(block);
-}
-
-void UseDefInfo::before_block_erase(Func* func, Block* block) {
-    for (auto& inst : block->insts()) {
-        before_inst_erase(block, &inst);
-    }
-    before_exit_erase(block);
 }
 
 auto UseDefInfo::uses_of(const LeftValue& val) const -> std::unordered_set<UseSite, UseSiteHash> {
@@ -95,10 +76,10 @@ void UseDefInfo::replace_all_uses_with(const LeftValue& old_val, const Value& ne
     if (!use_sites.count(old_val)) return;
     auto sites = use_sites[old_val];
     for (const auto& site : sites) {
-        Match{site.site}([&](auto handler) {
-            erase_use(site.operand, site.block, handler);
+        Match{site.site}([&](auto container) {
+            erase_use(site.operand, container);
             *site.operand = new_val;
-            add_use(site.operand, site.block, handler);
+            add_use(site.operand, container);
         });
     }
 }
@@ -110,7 +91,7 @@ void UseDefInfo::verify() const {
         if (!ref_def) {
             throw COMPILER_ERROR(fmt::format("Def site of {} not found in reference", val));
         }
-        if (def.block != ref_def->block || def.inst != ref_def->inst) {
+        if (def.inst != ref_def->inst) {
             throw COMPILER_ERROR(fmt::format("Def site of {} does not match reference", val));
         }
     }
