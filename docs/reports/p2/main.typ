@@ -5,9 +5,11 @@
 
 == IR 结构
 
-我们的中间表示 RIIR (acronym of "#text(red)[#strong[R]]IIR #text(red)[#strong[I]]s an #text(red)[#strong[I]]ntermediate #text(red)[#strong[R]]epresentation") 参考了 LLVM IR 的设计和 Rust 的语法，结构如下：
+我们的中间表示 RIIR (acronym of "#text(red)[#strong[R]]IIR #text(red)[#strong[I]]s an #text(red)[#strong[I]]ntermediate #text(red)[#strong[R]]epresentation") 参考了 LLVM IR 的设计和 Rust 的语法。
 
 #split
+
+结构如下：
 
 - 程序 `Program` 由若干全局变量 (`Alloc`) 和若干函数 (`Func`) 组成。
 - 函数 `Func` 由若干参数 (`Alloc`) 、若干局部变量 (`Alloc`) 和若干基本块 (`Block`) 组成，入口是第一个基本块。
@@ -29,8 +31,8 @@
 - 值 `Value` 是一个 variant，包含3个 alternative：`NamedValue`, `TempValue`, `ConstexprValue`
 
 - 左值 `LeftValue` 是一个 variant，包含2个 alternative：`NamedValue`, `TempValue`
-- 临时值 `TempValue` 包含类型和数字id，数字 id 的作用域是函数，同一个函数不能出现对两个对相同 id 临时值的赋值
-- 具名值 `NamedValue` 包含类型和一个指向一个 `Alloc`, `Func` 或者 `BuiltinFunc` 的指针
+- 临时值 `TempValue` 包含类型和数字id，数字 id 的作用域是函数，同一个函数不能出现对两个对相同 id 临时值的赋值，打印时以 `%id` 表示
+- 具名值 `NamedValue` 包含类型和一个指向一个 `Alloc`, `Func` 或者 `BuiltinFunc` 的指针，打印时以 `@name` 表示
 - 常量值 `ConstexprValue` 包含类型以及一个常量值或数组buffer
 
 #split
@@ -46,9 +48,9 @@
     | `MOV` | 赋值 | `%1: int = %0;` |
     | `NOT` | 逻辑非 | `%1: bool = ! %0;` |
     | `NEG` | 算术取负 | `%1: int = - %0;` |
+    | `LOAD` | 从引用读取值（解引用） | `%1: int = * %0;` |
     | `BORROW` | 取只读引用 | `%1: &int = & %0;` |
     | `BORROW_MUT` | 取可变引用 | `%1: &mut int = &mut %0;` |
-    | `LOAD` | 从引用读取值（解引用） | `%1: int = * %0;` |
   ]
 ]
 
@@ -73,8 +75,8 @@
     | `OR` | 逻辑或 | `%2: bool = %0 || %1;` |
     | `STORE` | 将值写入引用指向的位置 | `%2: () = %1 <- %0;` |
     | `LOAD_ELEM` | 数组/切片索引读取 | `%2: int = %0[%1];` |
-    | `BORROW_ELEM` | 数组/切片索引取引用 | `%2: &[int] = & %0[%1];` |
-    | `BORROW_ELEM_MUT` | 数组/切片索引取可变引用 | `%2: &mut[int] = &mut %0[%1];` |
+    | `BORROW_ELEM` | 数组/切片索引取引用 | `%2: &int = & %0[%1];` |
+    | `BORROW_ELEM_MUT` | 数组/切片索引取可变引用 | `%2: &mut int = &mut %0[%1];` |
   ]
 ]
 
@@ -222,27 +224,6 @@ fn main() -> i32 {
 
 - 如果 from 是 Sum，则 from 是 to 的子类型当且仅当 from 中的每个元素都是 to 的子类型；否则如果 to 是 Sum，则 from 是 to 的子类型当且仅当 from 是 to 中的某个元素的子类型
 
-  ```cpp
-  template <typename T>
-  std::enable_if_t<!std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>, bool>
-  operator<=(const Sum& from, const T& to) {
-      return std::all_of(from.items_.begin(), from.items_.end(),
-                        [&](const TypeBox& item) { return item <= to; });
-  }
-
-  inline bool operator<=(const Sum& from, const Sum& to) {  // forall T in from s.t. T -> to
-      return std::all_of(from.items_.begin(), from.items_.end(),
-                        [&](const TypeBox& item) { return item <= to; });
-  }
-
-  template <typename T>
-  std::enable_if_t<!std::disjunction_v<std::is_same<T, TypeBox>, std::is_same<T, Type>>, bool>
-  operator<=(const T& from, const Sum& to) {
-      return std::any_of(to.items_.begin(), to.items_.end(),
-                        [&](const TypeBox& item) { return from <= item; });
-  }
-  ```
-
 - 如果都是 Func 类型，from 是 to 的子类型当且仅当 from 的参数类型是 to 的参数类型的超类型（contravariance），并且 from 的返回类型是 to 的返回类型的子类型（covariance）
 
   ```cpp
@@ -264,7 +245,7 @@ fn main() -> i32 {
 
 - 如果都是 Reference 类型，from 是 to 的子类型当且仅当以下条件同时满足：
 
-1. from 的只读属性不比 to 更宽松（即 from 不能是 `&mut` 而 to 是 `&`）
+  1. from 的只读属性不比 to 更宽松（即 from 不能是 `&mut` 而 to 是 `&`）
   2. from 的目标类型是 to 的目标类型的子类型  (covariance)
   3. 若 to 非只读，则 from 的目标类型与 to 的目标类型相同 (invariance)
   
@@ -283,21 +264,13 @@ fn main() -> i32 {
 
 - 如果 from 是 Array，并且 to 是 Pointer，则 from 是 to 的子类型当且仅当 from 产生的 可变 Reference 是 to 的子类型
 
-```cpp
-inline bool operator<=(const Array& from, const Reference& to) {
-    return from.decay(/*readonly=*/false) <= to;
-}
-```
+    ```cpp
+    inline bool operator<=(const Array& from, const Reference& to) {
+        return from.decay(/*readonly=*/false) <= to;
+    }
+    ```
 
 - 对于其他情况，若 from 是 `Bottom` 或者 to 是 `Top`，则 from 是 to 的子类型，否则不是
-
-  ```cpp
-  template <typename T1, typename T2> bool operator<=(const T1& from, const T2& to) {
-      if constexpr (std::is_same_v<T1, Bottom>) return true;
-      if constexpr (std::is_same_v<T2, Top>) return true;
-      return false;
-  }
-  ```
 
 === 大小计算
 
@@ -317,52 +290,58 @@ inline size_t size_of(const Primitive& prim) {
 
 - 对于 Product 类型，大小是所有元素大小之和
 
-```cpp
-inline size_t size_of(const Product& prod) {
-    size_t size = 0;
-    for (const auto& item : prod.items()) {
-        size += size_of(item);
-    }
-    return size;
-}
-```
-
 - 对于 Sum 类型，大小是所有元素大小的最大值再加上tag的大小（int）
 
-```cpp
-inline size_t size_of(const Sum& sum) {
-    size_t max_size = 0;
-    for (const auto& item : sum.items()) {
-        auto item_size = size_of(item);
-        if (item_size > max_size) {
-            max_size = item_size;
-        }
-    }
-    return max_size + sizeof(int);  // tag
-}
-```
-
-- 对于 Func 类型或者 Reference 类型，大小是指针大小
-
-```cpp
-inline size_t size_of(const Func&) {
-    return sizeof(void*);  // function pointer
-}
-inline size_t size_of(const Reference&) {
-    return sizeof(void*);
-}
-```
+- 对于 Func 类型或者 Reference 类型，大小是指针大小（解释器调用函数的方法是用这个指向 Func 的指针来获取函数）
 
 - 对于 Array 类型，大小是元素大小乘以长度
 
-```cpp
-inline size_t size_of(const Array& arr) {
-    return size_of(arr.elem) * arr.size;
-}
-```
+= 语义分析
 
-= 语法分析
+== 用到的数据结构
+
+== 变量/函数定义检查
+
+== 类型检查
 
 = IR 生成
 
 = IR 解释执行
+
+= IR 优化
+
+== IR 分析
+
+=== 数据流分析框架
+
+=== 活跃变量分析
+
+=== 支配关系分析
+
+=== 支配边界和支配树
+
+== 生成SSA
+
+=== 插入 phi
+
+=== 重命名变量
+
+== SSA IR 的优化
+
+以下大致按实现先后顺序排列
+
+=== 死代码消除
+
+==== 定值
+
+==== 变量
+
+==== 不可达基本块
+
+=== 复制传播
+
+=== 常量传播
+
+=== 简单块消除
+
+=== 内联展开
