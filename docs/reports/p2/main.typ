@@ -9,13 +9,9 @@
 
 #include "sections/analysis.typ"
 
-= IR 生成
+= IR 生成与解释执行
 
-#include "sections/generate.typ"
-
-= IR 解释执行
-
-#include "sections/vm.typ"
+#include "sections/ir.typ"
 
 = IR 优化
 
