@@ -91,7 +91,7 @@
     inset: 0.6em,
     stroke: 0.05em,
   )
-  show raw: set text(font: ("Menlo", "FiraCode Nerd Font"))
+  show raw: set text(font: ("Liga Menlo", "FiraCode Nerd Font", "Menlo", "Consolas"))
   show raw.where(block: true): set text(size: 0.8em)
 
   show: show-theorion

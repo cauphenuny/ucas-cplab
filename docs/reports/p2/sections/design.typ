@@ -1,12 +1,109 @@
 #import "../../preamble/preamble.typ": *
+#import "@preview/xarrow:0.4.0": xarrow
+#import "@preview/cmarker:0.1.8"
 
 == IR 结构
 
-我们的中间表示 RIIR (acronym of "#text(red)[#strong[R]]IIR #text(red)[#strong[I]]s an #text(red)[#strong[I]]ntermediate #text(red)[#strong[R]]epresentation") 参考了 LLVM IR 的设计和 Rust 的语法。
+我们的中间表示 RIIR (acronym of "#text(red)[#strong[R]]IIR #text(red)[#strong[I]]s an #text(red)[#strong[I]]ntermediate #text(red)[#strong[R]]epresentation") 参考了 LLVM IR 的设计#strike[和 Rust 的语法] 。
+
+一段 IR 代码示例如下：
+
+
+#grid(columns: (1fr, auto, 2fr), gutter: 1em)[
+  原始代码
+
+  ```c
+  const int c = 2;
+  int d = 0;
+
+  int foo(int a[2], int b[2]) {
+      return a[0] + b[0];
+  }
+
+  int main() {
+      int a[2][2] = { {1, 2}, {4} };
+      int b = 1;
+      if (b < c) {
+          foo(a[0], a[1]);
+          d = 2;
+      }
+      return b;
+  }
+  ```
+][
+  #show: text.with(size: 1.5em)
+  #align(horizon)[
+    $xarrow(sym: ==>, "  RIIR  ")$
+  ]
+][
+  中间表示
+
+  #show raw: text.with(size: 0.8em)
+  #grid(columns: 2)[
+  ```rust
+  const c_0: i32 = 2;
+  let ref mut d_0: i32 = 0;
+
+  fn foo(mut a_0: &mut[i32], mut b_0: &mut[i32]) -> i32 {
+      'entry: {
+          %0: &i32 = & @a_0[0];
+          %1: i32 = * %0;
+          %2: &i32 = & @b_0[0];
+          %3: i32 = * %2;
+          %4: i32 = %1 + %3;
+          return %4;
+      }
+  }
+  ```
+
+  ][
+
+  ```rust
+  fn main() -> i32 {
+      let mut a_1: [[i32; 2]; 2];
+      let mut b_1: i32;
+      'entry: {
+          @a_1: [[i32; 2]; 2] = {1, 2, 4};
+          @b_1: i32 = 1;
+          %0: bool = @b_1 < @c_0;
+          => if %0 { 'if_true_11_4 } else { 'if_exit_11_4 };
+      }
+      'if_true_11_4: {
+          %1: &mut[i32] = &mut @a_1[0];
+          %2: &mut[i32] = &mut @a_1[1];
+          %3: i32 = @foo(%1, %2);
+          %4: () = @d_0 <- 2;
+          => 'if_exit_11_4;
+      }
+      'if_exit_11_4: {
+          return @b_1;
+      }
+  }
+  ```
+  ]
+
+]
+
+---
+
+优化后
+
+```rust
+let ref mut d_0: i32 = 0;
+
+fn main() -> i32 {
+    'entry: {
+        %4: () = @d_0 <- 2;
+        return 1;
+    }
+}
+```
 
 #split
 
-结构如下：
+---
+
+IR 结构：
 
 - 程序 `Program` 由若干全局变量 (`Alloc`) 和若干函数 (`Func`) 组成。
 - 函数 `Func` 由若干参数 (`Alloc`) 、若干局部变量 (`Alloc`) 和若干基本块 (`Block`) 组成，入口是第一个基本块。
@@ -16,6 +113,8 @@
 - 出口 `Exit` 可以是 无条件跳转 (`JumpExit`)、条件跳转 (`BranchExit`) 或 返回 (`Return`)。
 
 #split
+
+---
 
 - 变量 `Alloc` 包含名字、类型和属性，属性为 `comptime`、`immutable`、`reference`：
   - `comptime` 表示值在编译期已知 （comptime 一定是 immutable的）；
@@ -33,6 +132,8 @@
 - 常量值 `ConstexprValue` 包含类型以及一个常量值或数组buffer
 
 #split
+
+---
 
 - 指令 `Inst` 是一个 variant，包含3个 alternative：`UnaryInst`, `BinaryInst`, `CallInst`
 
@@ -81,82 +182,6 @@
 
 #split-full
 
-一段 IR 代码示例如下：
-
-
-原始代码
-
-```c
-const int c = 2;
-int d = 0;
-
-int foo(int a[2], int b[2]) {
-    return a[0] + b[0];
-}
-
-int main() {
-    int a[2][2] = { {1, 2}, {4} };
-    int b = 1;
-    if (b < c) {
-        foo(a[0], a[1]);
-        d = 2;
-    }
-    return b;
-}
-```
-
-IR 代码
-
-```rust
-const c_0: i32 = 2;
-let ref mut d_0: i32 = 0;
-
-fn foo(mut a_0: &mut[i32], mut b_0: &mut[i32]) -> i32 {
-    'entry: {
-        %0: &i32 = & @a_0[0];
-        %1: i32 = * %0;
-        %2: &i32 = & @b_0[0];
-        %3: i32 = * %2;
-        %4: i32 = %1 + %3;
-        return %4;
-    }
-}
-
-fn main() -> i32 {
-    let mut a_1: [[i32; 2]; 2];
-    let mut b_1: i32;
-    'entry: {
-        @a_1: [[i32; 2]; 2] = {1, 2, 4};
-        @b_1: i32 = 1;
-        %0: bool = @b_1 < @c_0;
-        => if %0 { 'if_true_11_4 } else { 'if_exit_11_4 };
-    }
-    'if_true_11_4: {
-        %1: &mut[i32] = &mut @a_1[0];
-        %2: &mut[i32] = &mut @a_1[1];
-        %3: i32 = @foo(%1, %2);
-        %4: () = @d_0 <- 2;
-        => 'if_exit_11_4;
-    }
-    'if_exit_11_4: {
-        return @b_1;
-    }
-}
-```
-
-优化后
-
-```rust
-let ref mut d_0: i32 = 0;
-
-fn main() -> i32 {
-    'entry: {
-        %4: () = @d_0 <- 2;
-        return 1;
-    }
-}
-```
-
 == 类型系统
 
 - 基本类型 `Primitive = std::variant<Int, Bool, Double, Bool>`，其中 `Int`、`Float`、`Double`、`Bool` 四个空类分别对应整数 `i32`、单精度浮点数 `f32` 、双精度浮点数 `f64` 和布尔值 `bool`。
@@ -170,6 +195,8 @@ fn main() -> i32 {
 - 指针类型 `Reference` ( e.g. `&[i32]` (readonly), `&mut[i32]` (non-readonly) ) 包含目标类型和是否只读的flag
 
 实现层面，我们使用 `using Type = std::variant<Primitive, Sum, Product, Top, Bottom, Func, Array, Reference>` 来表示类型，同时创建 `TypeBox` 类包含一个 `Type` 提供一些方便的方法，如 `is<T>(), as<T>(), flatten(), decay()`
+
+---
 
 === 子类型判断
 
@@ -197,6 +224,8 @@ fn main() -> i32 {
   inline constexpr bool is_primitive_v = is_primitive<T>::value;
   ```
 
+---
+
 - 对于 Primitive 类型，将其转换成对于 active alternative type 的比较
 
   ```cpp
@@ -214,6 +243,8 @@ fn main() -> i32 {
       return Match{from, to}([](const auto& from, const auto& to) -> bool { return from <= to; });
   }
   ```
+
+---
 
 - 对于 Product 类型，from 是 to 的子类型当且仅当 from 和 to 的元素个数相同，并且 from 中的每个元素都是 to 中对应位置元素的子类型
 
@@ -239,6 +270,8 @@ fn main() -> i32 {
       return from.size <= to.size;
   }
   ```
+
+---
 
 - 如果都是 Reference 类型，from 是 to 的子类型当且仅当以下条件同时满足：
 
@@ -268,6 +301,8 @@ fn main() -> i32 {
   ```
 
 - 对于其他情况，若 from 是 `Bottom` 或者 to 是 `Top`，则 from 是 to 的子类型，否则不是
+
+---
 
 === 大小计算
 
