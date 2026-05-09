@@ -4,10 +4,9 @@
 
 == IR 结构
 
-我们的中间表示 RIIR (acronym of "#text(red)[#strong[R]]IIR #text(red)[#strong[I]]s an #text(red)[#strong[I]]ntermediate #text(red)[#strong[R]]epresentation") 参考了 LLVM IR 的设计#strike[和 Rust 的语法] 。
+我们的中间表示 RIIR (acronym of "#text(red)[#strong[R]]IIR #text(red)[#strong[I]]s an #text(red)[#strong[I]]ntermediate #text(red)[#strong[R]]epresentation") 是结构化、强类型的，设计上比较类似 LLVM IR #strike[，语法参考 Rust] 。
 
 一段 IR 代码示例如下：
-
 
 #grid(columns: (1fr, auto, 2fr), gutter: 1em)[
   原始代码
@@ -124,18 +123,21 @@ IR 结构：
 
 #split
 
-- 值 `Value` 是一个 variant，包含3个 alternative：`NamedValue`, `TempValue`, `ConstexprValue`
+- 值 `Value` 是一个 variant，包含4个 alternative：`NamedValue`, `TempValue`, `SSAValue`, `ConstexprValue`
+- 左值 `LeftValue` 是一个 variant，包含3个 alternative：`NamedValue`, `TempValue`, `SSAValue`
 
-- 左值 `LeftValue` 是一个 variant，包含2个 alternative：`NamedValue`, `TempValue`
-- 临时值 `TempValue` 包含类型和数字id，数字 id 的作用域是函数，同一个函数不能出现对两个对相同 id 临时值的赋值，打印时以 `%id` 表示
-- 具名值 `NamedValue` 包含类型和一个指向一个 `Alloc`, `Func` 或者 `BuiltinFunc` 的指针，打印时以 `@name` 表示
-- 常量值 `ConstexprValue` 包含类型以及一个常量值或数组buffer
+#v(0.5em)
+
+- 常量值 `ConstexprValue` 包含类型以及值
+- 临时值 `TempValue` 包含类型和数字id，数字 id 的作用域是函数，同一个函数不能出现对两个对相同 id 临时值的赋值 (`%id`)
+- 具名值 `NamedValue` 包含类型和一个指向名字定义处的指针 (`@name`)
+- SSA值 `SSAValue` 包含类型、一个指向一个 `Alloc` 的指针和一个版本号 (`%id.version`)
 
 #split
 
 ---
 
-- 指令 `Inst` 是一个 variant，包含3个 alternative：`UnaryInst`, `BinaryInst`, `CallInst`
+- 指令 `Inst` 是一个 variant，包含4个 alternative：`UnaryInst`, `BinaryInst`, `CallInst`, `PhiInst`
 
 - 一元指令 `UnaryInst` 包含一个操作符和一个左值（结果）和一个值（操作数）
 
@@ -180,6 +182,8 @@ IR 结构：
 
 - 调用指令 `CallInst` 包含一个左值（结果）、一个具名值（函数）和一个值列表（参数）
 
+- Phi 指令 `PhiInst` 包含一个左值（结果）和一个 (基本块, 值) 对列表，表示从不同基本块流入时的值选择
+
 #split-full
 
 == 类型系统
@@ -192,7 +196,9 @@ IR 结构：
 
 - 函数类型 `Func` ( e.g. `(i32, float) -> float` ) 包含参数类型（保证为 `Product`）和返回类型。
 - 数组类型 `Array` ( e.g. `[i32; 10]` ) 包含元素类型和长度信息
-- 指针类型 `Reference` ( e.g. `&[i32]` (readonly), `&mut[i32]` (non-readonly) ) 包含目标类型和是否只读的flag
+- 指针类型 `Reference` ( e.g. `&[i32]` (readonly, is-slice), `&mut i32` (non-readonly, not-slice) ) 包含目标类型、是否只读的flag和是否是切片的flag
+  
+  如果是切片类型，只能通过 `LOAD_ELEM, BORROW_ELEM, BORROW_ELEM_MUT` 访问指向的数据，否则通过 `LOAD, STORE` 访问数据
 
 实现层面，我们使用 `using Type = std::variant<Primitive, Sum, Product, Top, Bottom, Func, Array, Reference>` 来表示类型，同时创建 `TypeBox` 类包含一个 `Type` 提供一些方便的方法，如 `is<T>(), as<T>(), flatten(), decay()`
 
