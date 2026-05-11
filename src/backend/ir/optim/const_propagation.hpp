@@ -11,6 +11,7 @@
 #include "framework.hpp"
 #include "utils/diagnosis.hpp"
 
+#include <memory>
 #include <optional>
 #include <variant>
 
@@ -21,15 +22,7 @@ struct ConstexprFolder {
         if (!operand.type.is<type::Primitive>()) return std::nullopt;
         return match(
             operand.val,
-            [&](int v) -> std::optional<ConstexprValue> {
-                if (op == UnaryInstOp::NEG) return ConstexprValue(-v);
-                return std::nullopt;
-            },
-            [&](float v) -> std::optional<ConstexprValue> {
-                if (op == UnaryInstOp::NEG) return ConstexprValue(-v);
-                return std::nullopt;
-            },
-            [&](double v) -> std::optional<ConstexprValue> {
+            [&](auto v) -> std::optional<ConstexprValue> {
                 if (op == UnaryInstOp::NEG) return ConstexprValue(-v);
                 return std::nullopt;
             },
@@ -37,7 +30,10 @@ struct ConstexprFolder {
                 if (op == UnaryInstOp::NOT) return ConstexprValue(!v);
                 return std::nullopt;
             },
-            [&](const auto&) -> std::optional<ConstexprValue> { return std::nullopt; });
+            [&](const std::monostate&) -> std::optional<ConstexprValue> { return std::nullopt; },
+            [&](const std::unique_ptr<std::byte[]>&) -> std::optional<ConstexprValue> {
+                return std::nullopt;
+            });
     }
 
     static std::optional<ConstexprValue> fold(InstOp op, const ConstexprValue& lhs,
@@ -47,8 +43,9 @@ struct ConstexprFolder {
 
         return match(
             lhs.val,
-            [&](int l) -> std::optional<ConstexprValue> {
-                int r = std::get<int>(rhs.val);
+            [&](auto l) -> std::optional<ConstexprValue> {
+                using T = decltype(l);
+                auto r = std::get<T>(rhs.val);
                 switch (op) {
                     case InstOp::ADD: return ConstexprValue(l + r);
                     case InstOp::SUB: return ConstexprValue(l - r);
@@ -56,39 +53,11 @@ struct ConstexprFolder {
                     case InstOp::DIV:
                         return r ? std::optional(ConstexprValue(l / r)) : std::nullopt;
                     case InstOp::MOD:
-                        return r ? std::optional(ConstexprValue(l % r)) : std::nullopt;
-                    case InstOp::LT: return ConstexprValue(l < r);
-                    case InstOp::GT: return ConstexprValue(l > r);
-                    case InstOp::LEQ: return ConstexprValue(l <= r);
-                    case InstOp::GEQ: return ConstexprValue(l >= r);
-                    case InstOp::EQ: return ConstexprValue(l == r);
-                    case InstOp::NEQ: return ConstexprValue(l != r);
-                    default: return std::nullopt;
-                }
-            },
-            [&](float l) -> std::optional<ConstexprValue> {
-                float r = std::get<float>(rhs.val);
-                switch (op) {
-                    case InstOp::ADD: return ConstexprValue(l + r);
-                    case InstOp::SUB: return ConstexprValue(l - r);
-                    case InstOp::MUL: return ConstexprValue(l * r);
-                    case InstOp::DIV: return ConstexprValue(l / r);
-                    case InstOp::LT: return ConstexprValue(l < r);
-                    case InstOp::GT: return ConstexprValue(l > r);
-                    case InstOp::LEQ: return ConstexprValue(l <= r);
-                    case InstOp::GEQ: return ConstexprValue(l >= r);
-                    case InstOp::EQ: return ConstexprValue(l == r);
-                    case InstOp::NEQ: return ConstexprValue(l != r);
-                    default: return std::nullopt;
-                }
-            },
-            [&](double l) -> std::optional<ConstexprValue> {
-                double r = std::get<double>(rhs.val);
-                switch (op) {
-                    case InstOp::ADD: return ConstexprValue(l + r);
-                    case InstOp::SUB: return ConstexprValue(l - r);
-                    case InstOp::MUL: return ConstexprValue(l * r);
-                    case InstOp::DIV: return ConstexprValue(l / r);
+                        if constexpr (std::is_integral_v<T>) {
+                            return r ? std::optional(ConstexprValue(l % r)) : std::nullopt;
+                        } else {
+                            return std::nullopt;
+                        }
                     case InstOp::LT: return ConstexprValue(l < r);
                     case InstOp::GT: return ConstexprValue(l > r);
                     case InstOp::LEQ: return ConstexprValue(l <= r);
@@ -108,7 +77,10 @@ struct ConstexprFolder {
                     default: return std::nullopt;
                 }
             },
-            [&](const auto&) -> std::optional<ConstexprValue> { return std::nullopt; });
+            [&](const std::monostate&) -> std::optional<ConstexprValue> { return std::nullopt; },
+            [&](const std::unique_ptr<std::byte[]>&) -> std::optional<ConstexprValue> {
+                return std::nullopt;
+            });
     }
 };
 
