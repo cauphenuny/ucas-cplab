@@ -1,8 +1,12 @@
 #import "../../preamble/preamble.typ": *
 #import "@preview/xarrow:0.4.0": xarrow
 #import "@preview/cmarker:0.1.8"
+#import "@preview/codly:1.3.0": *
+#import "@preview/codly-languages:0.1.10": *
 
 == IR 结构
+
+#codly(languages: codly-languages)
 
 我们的中间表示 RIIR (acronym of "#text(red)[#strong[R]]IIR #text(red)[#strong[I]]s an #text(red)[#strong[I]]ntermediate #text(red)[#strong[R]]epresentation") 是结构化、强类型的，设计上比较类似 LLVM IR #strike[，语法参考 Rust] 。
 

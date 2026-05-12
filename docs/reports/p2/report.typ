@@ -3,5 +3,6 @@
 
 #{
   show "—": ""
+  codly(display-icon: false)
   include "sections/main.typ"
 }

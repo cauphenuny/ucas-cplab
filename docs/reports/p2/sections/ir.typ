@@ -56,6 +56,8 @@ struct Program {
 };
 ```
 
+---
+
 == IR 生成
 
 类似类型检查，我们的 IR 生成也是通过从上到下遍历一遍 AST 得到的，
@@ -97,6 +99,8 @@ private:
 };
 ```
 
+---
+
 - 对于变量定义和函数形式参数定义，我们返回对应类型的 `Alloc`
 
 - 对于函数定义，我们返回一个 `Func`
@@ -128,6 +132,8 @@ struct View {
 
 这是虚拟机的核心部分，IR 中的每一个指令都对应着对于 View 的某种操作，IR 解释器通过模式匹配 IR 指令来执行对应的 View 操作。
 
+---
+
 ==== 赋值
 
 ```cpp
@@ -158,6 +164,8 @@ struct View {
 ```
 
 具体实现比较简单，需要注意的只有 Sum Type 的 tag维护，以及从数组/基础类型assign到指针时的取地址处理。
+
+---
 
 ==== 运算
 
@@ -193,6 +201,8 @@ void eval_comparison(View& dest, const View& lhs, const View& rhs) const {
 }
 ```
 
+---
+
 通过传入不同的 Op 模版参数实例化成不同的运算
 
 ```cpp
@@ -211,6 +221,8 @@ binary_ops[InstOp::DIV] = [this](View& dest, const View& lhs, const View& rhs) {
 
 // ...
 ```
+
+---
 
 对于 `LOAD/STORE/BORROW` 指令，实现通过获取指针地址和类型信息后 assign 实现
 
@@ -237,6 +249,8 @@ binary_ops[InstOp::STORE] = [this, check_ref](View& dest, const View& lhs,
 
 对于 `LOAD_ELEM/STORE_ELEM/BORROW_ELEM`，计算出元素地址后同样通过 assign 实现
 
+---
+
 === 内存分配与栈帧
 
 内存通过进入Program或者Func时 RAII 分配，离开时自动释放
@@ -256,6 +270,8 @@ uint8_t VirtualMachine::execute(const Program& program) {
     // ...
 }
 ```
+
+---
 
 函数栈帧由三部分组成：局部变量、临时值、参数
 
@@ -284,6 +300,8 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
 
 出于实现方便考虑，使用 `std::max_align_t` 来对齐所有变量
 
+---
+
 函数的核心执行循环：
 
 ```cpp
@@ -299,6 +317,8 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
 ```
 
 基本块执行循环：遍历每一个指令，将 Value 转换为 View，然后对指令eval，最后根据 Exit 类型返回下一个基本块地址或者空指针
+
+---
 
 对于 call 指令，通过保存的地址来调用对应函数
 
@@ -322,11 +342,12 @@ void VirtualMachine::execute(const CallInst& inst, const std::vector<View>& srcs
 }
 ```
 
+---
+
 === builtin函数的实现
 
 ```cpp
-// not ir::BuiltinFunc
-struct /*ir::vm::*/BuiltinFunc {
+struct /*ir::vm::*/BuiltinFunc { // not ir::BuiltinFunc
     std::function<void(View& ret, const std::vector<View>& args, std::istream& input,
                        std::ostream& output)>
         apply;

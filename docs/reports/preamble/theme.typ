@@ -5,7 +5,6 @@
 #import "@preview/cetz:0.4.2"
 #import "@preview/cmarker:0.1.7"
 #import "@preview/codly:1.3.0": *
-#import "@preview/codly-languages:0.1.1": *
 #import "@preview/theorion:0.5.0": *
 #import cosmos.rainbow: *
 // #import cosmos.rainbow: *
@@ -33,7 +32,6 @@
   set text(font: ("Libertinus Serif", "Songti SC"), lang: lang)
   show emph: text.with(font: ("Libertinus Serif", "STKaiti"))
   show: thmrules
-  show: codly-init.with()
 
   set heading(numbering: numbering)
 
@@ -98,5 +96,6 @@
 
   align(center, text(1.7em)[*#course* *#title*])
   align(right, emph(author))
+  show: codly-init.with()
   doc
 }

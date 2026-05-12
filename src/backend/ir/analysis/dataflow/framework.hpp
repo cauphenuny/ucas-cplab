@@ -27,6 +27,7 @@ namespace ir::analysis {
 ///   static Data top();                             // initval of other nodes (identity element of meet)
 ///   static Data meet(const Data& a, const Data& b);
 ///   static Data transfer(Block& blk, const Data& in, Context& ctx);  // transfer function, context is optional
+///   static Data edge_transfer(Block* from, Block* to, const Data& data, Context& ctx);  // edge transfer function, context is optional
 ///   static Context init(const ControlFlowGraph& cfg);  // optional context initializer
 ///
 
