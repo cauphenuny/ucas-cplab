@@ -13,3 +13,9 @@
 = IR 优化
 
 #include "optimize.typ"
+
+= 效果展示以及实验中遇到的问题
+
+#include "demo.typ"
+
+#include "bug.typ"

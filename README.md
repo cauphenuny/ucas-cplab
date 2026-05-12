@@ -62,14 +62,14 @@ Examples:
 
 Design Notes:
 
-- [Our IR: RIIR](docs/ir.md)
+- [Comprehensive Note of IR](docs/reports/p2.pdf)
 
-- [Virtual Machine of IR](docs/vm.md)
+- [Other Notes](docs/)
 
 Pipeline:
 
 ```
-source -> IR(RIIR) -> target(rv64)
+source(c) -> IR(RIIR) -> Construct SSA -> optimize... -> Destruct SSA -> target(rv64)
 ```
 
 ---
