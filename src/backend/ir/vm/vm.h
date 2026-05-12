@@ -33,7 +33,7 @@ private:
             using type = typename decltype(value)::type;
             if constexpr (std::is_floating_point_v<type> &&
                           std::is_same_v<Op<type>, std::modulus<type>>) {
-                throw COMPILER_ERROR("Cannot apply modulus operator to floating point");
+                *(type*)dest.data = std::fmod(*(type*)lhs.data, *(type*)rhs.data);
             } else {
                 *(type*)dest.data = Op<type>{}(*(type*)lhs.data, *(type*)rhs.data);
             }
