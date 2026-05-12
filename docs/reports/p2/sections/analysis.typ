@@ -8,25 +8,23 @@
 
 我们的 AST 数据结构定义如下：
 
+函数
 ```cpp
 struct FuncDef { Type type; std::string name; FuncParams params; BlockStmt block; };
 struct FuncParam { Type type; std::string name; std::vector<std::optional<size_t>>> dims; };
 using FuncParams = std::vector<FuncParam>;
 using FuncArgs = std::vector<Exp>;
+```
 
+定义
+```cpp
 struct ConstDecl { Type type; std::vector<ConstDef> defs; };
 struct VarDecl { Type type; std::vector<VarDef> defs; };
 using Decl = std::variant<ConstDecl, VarDecl>;
+```
 
-struct LValExp { std::string name; };
-struct PrimaryExp { std::variant<ExpBox, LValExp, ConstExp> exp; };
-struct UnaryExp { UnaryOp op; ExpBox exp; };
-struct BinaryExp { BinaryOp op; ExpBox left, right; };
-struct CallExp { LVal func; FuncArgs args; };
-using Exp = std::variant<PrimaryExp, UnaryExp, BinaryExp, CallExp>;
-struct ExpBox { std::unique_ptr<Exp> exp; };
-
-
+语句
+```cpp
 struct IfStmt { Exp cond; StmtBox stmt; };
 struct WhileStmt { Exp cond; StmtBox stmt; std::optional<StmtBox> else_stmt; };
 struct ReturnStmt { std::optional<Exp> exp; };
@@ -38,6 +36,19 @@ struct ExpStmt { Exp exp; };
 using Stmt = std::variant<IfStmt, WhileStmt, ReturnStmt, BreakStmt, ContinueStmt, AssignStmt, BlockStmt, ExpStmt>;
 struct StmtBox;
 ```
+
+表达式
+```cpp
+struct LValExp { std::string name; };
+struct PrimaryExp { std::variant<ExpBox, LValExp, ConstExp> exp; };
+struct UnaryExp { UnaryOp op; ExpBox exp; };
+struct BinaryExp { BinaryOp op; ExpBox left, right; };
+struct CallExp { LVal func; FuncArgs args; };
+using Exp = std::variant<PrimaryExp, UnaryExp, BinaryExp, CallExp>;
+struct ExpBox { std::unique_ptr<Exp> exp; };
+```
+
+---
 
 用于当 key 的节点类型:
 
@@ -71,13 +82,11 @@ Semantic AST 维护的信息：
 struct SemanticAST {
     using VarTable = std::unordered_map<std::string, VarDefNode>;
     using FuncTable = std::unordered_map<std::string, std::pair<FuncDefNode, bool>>;
-
     FuncTable funcs;
+    std::vector<VarTable> vars;
     std::unordered_map<LValNode, SymDefNode> defs;
     std::unordered_set<VarDefNode> readonly_defs;  // variables that are declared as const
-
     std::unordered_map<ExprNode, Type> types;
-
     struct StmtType {
         Type ret_type{NEVER};
         bool always_return{false};
@@ -86,23 +95,28 @@ struct SemanticAST {
 }
 ```
 
+---
+
 Semantic AST 构造时自上至下遍历 AST，计算上述信息
 
+定义
 ```cpp
-    /// in struct SemanticAST
-    template <typename T> void analysis(const T* elem) {}
-
     void analysis(const CompUnit* comp_unit);
     void analysis(const Decl* decl);
     void analysis(const ConstDecl* decl);
     void analysis(const VarDecl* decl);
     void analysis(const ConstInitVal* val);
-
+```
+函数
+```cpp
     void analysis(const FuncParam* param);
     void analysis(const FuncParams* params);
     void analysis(const FuncArgs* args, const ir::type::Product& param_types);
     void analysis(const FuncDef* func_def, bool is_builtin = false);
 
+```
+语句
+```cpp
     void analysis(const Stmt* stmt);
     void analysis(const BlockStmt* block);
     void analysis(const IfStmt* if_stmt);
@@ -111,7 +125,9 @@ Semantic AST 构造时自上至下遍历 AST，计算上述信息
     void analysis(const AssignStmt* assign_stmt);
     void analysis(const ExpStmt* exp_stmt);
     void analysis(const StmtBox* stmt_box);
-
+```
+表达式
+```cpp
     void analysis(const Exp* exp, const Type& upperbound = ANY, bool readonly = true);
     void analysis(const LVal* lid, const Type& upperbound = ANY, bool readonly = true);
     void analysis(const LValExp* lval, const Type& upperbound = ANY, bool readonly = true);
@@ -124,6 +140,26 @@ Semantic AST 构造时自上至下遍历 AST，计算上述信息
 ```
 
 == 变量/函数定义检查
+
+我们在遍历 AST 的同时维护一个函数表和一个变量定义表：
+
+1. 函数注册：
+    - 在语义分析开始时先注册内建函数，再分析用户代码。
+    - `registerFunction` 会检查函数名是否已存在，若存在则报“函数重定义”。
+    - 由于函数表是全局的，因此不存在同名函数重载，内建函数名也不可被覆盖。
+
+2. 变量注册：
+    - `registerVariable` 只检查当前作用域（`vars.back()`）。
+    - 同一作用域内重复定义会报错；不同作用域允许同名变量遮蔽。
+
+3. 作用域维护：
+    - 进入函数体时 `pushScope()`，先注册形参，再分析函数体，最后 `popScope()`。
+    - 进入 `BlockStmt` 时再 `pushScope()`，块结束时 `popScope()`。
+    - `lookup` 从内向外查找。
+
+4. 入口函数检查：
+    - 分析完 `CompUnit` 后检查 `main` 是否存在。
+    - 同时要求 `main` 的类型为 `int()`，否则报错。
 
 == 类型检查
 

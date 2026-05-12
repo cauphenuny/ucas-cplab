@@ -48,7 +48,7 @@
 
 #grid(columns: (1fr, 1fr), gutter: 1em)[
   - 正向数据流
-  - 值类型为基本块集合，使用 Set 数据结构实现　
+  - 值类型为基本块集合，使用 Set 数据结构实现
   - entry初始值为空集，其余初始值为全集
   - meet 操作为集合交集
   
@@ -61,11 +61,11 @@
           return blk->label;
       }
       using Data = Set<Block*, print>;
-  
+
       static constexpr auto boundary = Data::empty;
       static constexpr auto top = Data::universe;
       static constexpr auto meet = Data::intersection_set;
-  
+
       static Data transfer(Block& blk, const Data& in) {
           if (in.is_universe) return in;
           Data res = in;
@@ -131,21 +131,47 @@ struct DominanceTree {
 
 #definition(title: "支配边界")[
   $"DF"(x)={y | exists p in "pred"(y), p != y and x "dom" p and not (x "dom" y)}$
+
+  即： 基本块 $x$ 的支配边界是那些存在前驱 $p$ 使得 $x$ 支配 $p$ 但不支配 $y$ 的基本块 $y$ 的集合
 ]
+
+求支配边界的算法：对每个块 $B$ 从其每个前驱沿着 idom 链向上遍历直到 $"idom"(B)$，在路径上所有点的支配边界集合中加入 $B$
+
+```cpp
+for (auto& block_box : cfg.func.blocks()) {
+    Block* block = block_box.get();
+    auto idom = dom_tree.idom(block);
+    if (!idom) continue;  // skip entry block
+    for (auto pred : cfg.pred.at(block)) {
+        auto runner = pred;
+        while (runner && runner != idom) {
+            /// NOTE: runner dominates pred, and do not dominates block
+            frontier_map[runner].insert(block);
+            runner = dom_tree.idom(runner);
+        }
+    }
+}
+```
+
+---
 
 === 活跃变量分析
 
 活跃变量分析是后向数据流分析。变量 $v$ 在程序点 $p$ 活跃，当且仅当存在一条从 $p$ 到某使用点的路径，且路径上 $v$ 未被重定义。
 
 `Liveness` trait 中：
-- `Data = Set<LeftValue>`，`is_forward = false`
+- `is_forward = false`
+- `Data = Set<LeftValue>`
 - `top() = empty`，`meet = union_set`
-- `transfer(blk, out) = (out \\ "kill"[blk]) union "gen"[blk]`
+- `transfer(blk, out) = (out \ kill[blk]) union gen[blk]`
 - `edge_transfer` 将 Phi 指令的操作数视为"在对应的前驱边末尾"被使用，这是 Phi 语义所要求的
+
+其中 `gen[blk]` 和 `kill[blk]` 通过倒序遍历每一条指令的 `gen` 和 `kill` 集合构造
 
 活跃变量信息用于死代码消除：如果一个定值处定义的变量在被使用前又重新定值，则原定值可消除。此外，SSA 构造中 Phi 插入时也需检查变量在目标块是否活跃——若不活跃则无需插入。
 
-#split-full
+
+---
 
 == 生成 SSA
 
@@ -165,8 +191,7 @@ while (worklist.size()) {
         if (!live_vars.in[frontier].contains(val)) continue;
         if (!has_phi[frontier]) {
             auto phi = PhiInst{.result = val};
-            for (auto pred : cfg.pred[frontier])
-                phi.args.emplace_back(pred, LeftValue{val});
+            for (auto pred : cfg.pred[frontier]) phi.args.emplace_back(pred, LeftValue{val});
             frontier->prepend(Inst{std::move(phi)});
             has_phi[frontier] = true;
         }
@@ -175,7 +200,7 @@ while (worklist.size()) {
 }
 ```
 
-#split
+---
 
 === 重命名变量
 
@@ -191,27 +216,50 @@ while (worklist.size()) {
 ```cpp
 void rename(Block& block, const Func& func) {
     for (auto& inst : block.insts()) {
-        if (!is_phi(inst))
-            for (auto use : used_vars(inst)) rename_var(*use);  // 1. 重命名使用
-        if (auto def = defined_var(inst); def)
-            push_new_version(def);                              // 2. 重命名定值
+        if (!is_phi(inst)) for (auto use : used_vars(inst)) rename_var(*use);   // 1. 重命名使用
+        if (auto def = defined_var(inst); def) push_new_version(def);           // 2. 重命名定值
     }
     for (auto& succ : cfg->succ[&block])
-        for (auto& phi : phi_insts(succ))
-            rename_phi_arg(phi, &block);                        // 3. 重命名后继的 Phi 参数
-    for (auto& child : dom_tree->children(&block))
-        rename(*child, func);                                   // 4. 递归子节点
-    pop_pushed_versions();                                      // 5. 退出：恢复栈
+        for (auto& phi : phi_insts(succ)) rename_phi_arg(phi, &block);          // 3. 重命名后继的 Phi 参数
+    for (auto& child : dom_tree->children(&block)) rename(*child, func);        // 4. 递归子节点
+    pop_pushed_versions();                                                      // 5. 退出：恢复栈
 }
 ```
 
-#split-full
+---
 
 == SSA IR 的优化
 
-我们实现了一个基于 Pass 框架的优化管线。每个 Pass 遵循统一接口 `SSAPass::apply(Program&, SSAPassContext&)`，返回 `bool` 表示是否有改变。`SSAPassContext` 持有 `UseDefInfo`，一个基于回调自动维护的定值-使用映射表，随 IR 修改实时更新。
+我们实现了一个基于 Pass 框架的优化管线。每个在 SSA IR 上执行的 Pass 遵循统一接口 `SSAPass::apply(Program&, SSAPassContext&)`，返回 `bool` 表示是否有改变。`SSAPassContext` 持有 `UseDefInfo`，一个基于回调自动维护的定值-使用映射表，随 IR 修改实时更新。
 
 优化 Pass 通过 `compiler.cpp` 中的 `apply` 函数迭代执行，外层 `while (apply(program, ctx, passes))` 循环保证各 Pass 反复运行至不动点。
+
+#grid(columns: 2, gutter: 1em)[
+  ```cpp
+  template <typename Context> struct Pass {
+      virtual ~Pass() = default;
+      virtual bool apply(Program& prog, Context& ctx) = 0;
+  };
+  
+  template <> struct Pass<void> {
+      virtual ~Pass() = default;
+      virtual bool apply(Program& prog) = 0;
+  };
+  ```
+][
+  ```cpp
+  struct SSAPassContext {
+      UseDefInfo ud;
+      SSAPassContext(Program& program) : ud(program) {}
+  };
+  
+  using SSAPass = Pass<SSAPassContext>;
+  ```
+]
+
+#split-semi
+
+---
 
 === 死代码消除
 
@@ -227,19 +275,19 @@ for (auto& inst : block->insts()) {
 }
 ```
 
-#split
 
 ==== 变量
 
 `DeadAllocElimination` 收集整个程序中所有被引用过的 `Alloc*`（通过 `NamedValue` 或 `SSAValue` 的 `def` 字段），将不再被引用的 `Alloc` 从 `Func.locals()` 或 `Program.globals()` 中移除。这通常在其他优化消除所有对某变量的引用后生效。
 
-#split
 
 ==== 不可达基本块
 
 `DeadBlockElimination` 以入口块为起点做可及性分析（DFS），将所有不可及基本块删除，同时精简 Phi 指令中指向不可及块的分支。此 Pass 也迭代执行——删除不可及块可能使更多块变得不可及。
 
 #split
+
+---
 
 === 复制传播
 
@@ -257,13 +305,15 @@ auto get_root = [&](auto self, Value v) -> Value {
 
 #split
 
+---
+
 === 常量传播
 
 `ConstPropagation` 包含两个子模块：
 
-#strong[常量折叠 `ConstexprFolder`] 对操作数均为编译期常量的指令进行静态求值。支持算术运算（`+`, `-`, `*`, `/`, `%`）、比较运算和逻辑运算，覆盖 `int`/`float`/`double`/`bool` 四种基本类型。
+*折叠 `ConstexprFolder`* 对操作数均为编译期常量的指令进行静态求值。支持算术运算（`+`, `-`, `*`, `/`, `%`）、比较运算和逻辑运算，覆盖 `int`/`float`/`double`/`bool` 四种基本类型，对于除/模0，不进行传播。
 
-#strong[传播] 扫描所有指令：若一元/二元指令的操作数可折叠为常量，或 Phi 指令的所有来源均为同一常量，则将结果替换为该常量，通过 `replace_all_uses_with` 传播。此外，扫描 `BranchExit` 的条件——若条件为编译期布尔常量，直接将分支出口替换为 `JumpExit`。
+*替换* 扫描所有指令：若一元/二元指令的操作数可折叠为常量，或 Phi 指令的所有来源均为同一常量，则将结果替换为该常量，通过 `replace_all_uses_with` 传播。此外，扫描 `BranchExit` 的条件——若条件为编译期布尔常量，直接将分支出口替换为 `JumpExit`。
 
 ```cpp
 // 常量折叠分支: if (true) → jump true_target
@@ -275,9 +325,11 @@ if (auto c = std::get_if<ConstexprValue>(&branch->cond)) {
 }
 ```
 
-常量传播后需要紧跟一次复制传播，因为常量替换可能产生新的 `MOV` 复制链。两个 Pass 交替迭代至不动点。
+常量折叠后紧跟一次复制传播，因为折叠可能产生新的 `MOV` 复制链。两个 Pass 交替迭代至不动点。
 
 #split
+
+---
 
 === 简单块替换
 
@@ -287,9 +339,11 @@ if (auto c = std::get_if<ConstexprValue>(&branch->cond)) {
 
 #strong[Redirect（入口重定向）] 若入口块只有一条 `JumpExit` 且目标块无 Phi 指令，则可将目标块的内容合并到入口块，并交换标签使合并后的块仍为入口。
 
-这两个操作均需检查 Phi 冲突：若替换块的前驱在目标块的 Phi 中已存在，则拒绝合并。
+这两个操作均需检查 Phi 冲突：若替换块的前驱在目标块的 Phi 中已存在，则拒绝合并，因为不能把两个phi分支合并成一个。
 
 #split
+
+---
 
 === 公共子表达式消除
 
@@ -310,9 +364,11 @@ if (ctx.expr_num.count(expr)) {
 }
 ```
 
-CSE 跳过内存操作（`LOAD`、`STORE`、`LOAD_ELEM`）和 `MOV` 指令本身——`MOV` 跳过是为了避免跨变量 SSA 引用导致的共享存储错误（详见 VM 文档），也避免产生 `MOV` 链使迭代不收敛。
+CSE 跳过内存操作（`LOAD`、`STORE`、`LOAD_ELEM`）和 `MOV` 指令本身——`MOV` 跳过是为了避免产生 `MOV` 链不停地替换使迭代不收敛，同时避免 SSA 共享引用导致的共享存储错误（VM实现时把SSA值当作普通的变量值进行赋值，详见 VM 文档）。
+
 
 #split
+---
 
 === 内联展开
 

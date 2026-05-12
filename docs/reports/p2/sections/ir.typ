@@ -4,9 +4,13 @@
 
 根据前问所述 IR 设计，我们 IR 的数据结构如下：
 
+（辅助类型 NameDef：用于索引定义）
 ```cpp
 using NameDef = std::variant<const Alloc*, const Func*, const BuiltinFunc*>;
+```
 
+值
+```cpp
 struct NamedValue { Type type; NameDef def; };
 struct TempValue { Type type; size_t id; };
 struct ConstexprValue { Type type; std::variant<std::monostate, int, float, bool, double, std::unique_ptr<std::byte[]>> val; };
@@ -14,20 +18,39 @@ struct SSAValue { Type type; const Alloc* def; size_t version; };
 
 using Value = std::variant<NamedValue, TempValue, ConstexprValue, SSAValue>;
 using LeftValue = std::variant<NamedValue, TempValue, SSAValue>;
+```
 
+指令
+```cpp
 struct UnaryInst { LeftValue result; UnaryInstOp op; Value operand; };
 struct BinaryInst { LeftValue result; InstOp op; Value lhs, rhs; };
 struct CallInst { LeftValue result; NamedValue func; std::vector<Value> args; };
 struct PhiInst { LeftValue result; std::vector<std::pair<Block* Value>> args; };
 using Inst = std::variant<UnaryInst, BinaryInst, CallInst, PhiInst>;
+```
 
+出口
+```cpp
 struct ReturnExit { Value; exp; };
 struct BranchExit { Value cond; Block *true_target, *false_target; };
 struct JumpExit { Block* target; };
 using Exit = std::variant<ReturnExit, BranchExit, JumpExit>;
+```
 
-struct Block { std::string label; std::list<Inst> insts; std::optional<Exit> exit; };
+变量定义和基本块
+```cpp
 struct Alloc { std::string name; Type type; bool comptime, immutable, reference; };
+struct Block { std::string label; std::list<Inst> insts; std::optional<Exit> exit; };
+```
+
+函数和程序
+```cpp
+struct Program {
+    std::vector<std::unique_ptr<Alloc>> globals;
+    std::vector<std::unique_ptr<Func>> funcs;
+    std::vector<std::unique_ptr<BuiltinFunc>> builtins;
+};
+struct BuiltinFunc { std::string name; Type type; };
 struct Func {
     std::string name;
     Type ret_type;
@@ -45,15 +68,7 @@ struct Func {
     };
     std::vector<LoopContext> loops;  // for break/continue target
 };
-struct BuiltinFunc {
-    std::string name;
-    Type type;
-};
-struct Program {
-    std::vector<std::unique_ptr<Alloc>> globals;
-    std::vector<std::unique_ptr<Func>> funcs;
-    std::vector<std::unique_ptr<BuiltinFunc>> builtins;
-};
+
 ```
 
 ---
@@ -151,14 +166,8 @@ struct View {
                 const std::byte* src) const;
     void assign(const ir::type::Array& dest_type, std::byte* dest, const ir::type::Array& src_type,
                 const std::byte* src) const;
-    void assign(const ir::type::Reference& dest_type, std::byte* dest,
-                const ir::type::Reference& src_type, const std::byte* src) const;
-    void assign(const ir::type::Reference& dest_type, std::byte* dest,
-                const ir::type::Array& src_type, const std::byte* src) const;
-    void assign(const ir::type::Product& dest_type, std::byte* dest,
-                const ir::type::Product& src_type, const std::byte* src) const;
-    void assign(const Type& dest_type, std::byte* dest, const Type& src_type,
-                const std::byte* src) const;
+
+    // ...
 
     void assign(View& dest, const View& src) const;
 ```
@@ -201,7 +210,6 @@ void eval_comparison(View& dest, const View& lhs, const View& rhs) const {
 }
 ```
 
----
 
 通过传入不同的 Op 模版参数实例化成不同的运算
 
@@ -212,13 +220,6 @@ binary_ops[InstOp::ADD] = [this](View& dest, const View& lhs, const View& rhs) {
 binary_ops[InstOp::SUB] = [this](View& dest, const View& lhs, const View& rhs) {
     eval_binary<std::minus>(dest, lhs, rhs);
 };
-binary_ops[InstOp::MUL] = [this](View& dest, const View& lhs, const View& rhs) {
-    eval_binary<std::multiplies>(dest, lhs, rhs);
-};
-binary_ops[InstOp::DIV] = [this](View& dest, const View& lhs, const View& rhs) {
-    eval_binary<std::divides>(dest, lhs, rhs);
-};
-
 // ...
 ```
 

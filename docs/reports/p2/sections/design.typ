@@ -223,42 +223,11 @@ IR 结构：
 
   其中 `is_primitive_v<T>` 是一个编译期常量表达式，用于判断类型 `T` 是否是 Primitive 类型中的一个 alternative type：
 
-  ```cpp
-  template <typename T> struct is_primitive : std::false_type {};
-  template <> struct is_primitive<Int> : std::true_type {};
-  template <> struct is_primitive<Float> : std::true_type {};
-  template <> struct is_primitive<Double> : std::true_type {};
-  template <> struct is_primitive<Bool> : std::true_type {};
-
-  template <typename T>
-  inline constexpr bool is_primitive_v = is_primitive<T>::value;
-  ```
-
----
-
 - 对于 Primitive 类型，将其转换成对于 active alternative type 的比较
-
-  ```cpp
-  template <typename T, typename = std::enable_if_t<is_primitive_v<T>>>
-  bool operator<=(const Primitive& from, const T& to) {
-      return Match{from}([&](const auto& from) -> bool { return from <= to; });
-  }
-
-  template <typename T, typename = std::enable_if_t<is_primitive_v<T>>>
-  bool operator<=(const T& from, const Primitive& to) {
-      return Match{to}([&](const auto& to) -> bool { return from <= to; });
-  }
-
-  inline bool operator<=(const Primitive& from, const Primitive& to) {
-      return Match{from, to}([](const auto& from, const auto& to) -> bool { return from <= to; });
-  }
-  ```
 
 ---
 
 - 对于 Product 类型，from 是 to 的子类型当且仅当 from 和 to 的元素个数相同，并且 from 中的每个元素都是 to 中对应位置元素的子类型
-
-  代码略
 
 - 如果 from 是 Sum，则 from 是 to 的子类型当且仅当 from 中的每个元素都是 to 的子类型；否则如果 to 是 Sum，则 from 是 to 的子类型当且仅当 from 是 to 中的某个元素的子类型
 
