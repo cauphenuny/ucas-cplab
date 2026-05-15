@@ -514,20 +514,22 @@ inline bool operator<=(const Func& from, const Func& to) {
 inline bool operator<=(const Array& from, const Array& to) {
     if (!(from.elem <= to.elem)) return false;
     if (!(to.elem <= from.elem)) return false;
-    return from.size <= to.size;
+    return from.size == to.size;
 }
 
 inline bool operator<=(const Reference& from, const Reference& to) {
-    auto from_elem = from.elem.decay(from.readonly);
-    auto to_elem = to.elem.decay(to.readonly);
-    if (!(from_elem <= to_elem)) return false;
+    if (!(from.elem <= to.elem)) return false;
     if (from.readonly && !to.readonly) return false;
-    if (!to.readonly && !(to_elem <= from_elem)) return false;
+    if (!to.readonly && !(to.elem <= from.elem)) return false;
     return true;
 }
 
 inline bool operator<=(const Array& from, const Reference& to) {
     return from.decay(false) <= to;
+}
+
+inline bool operator<=(const Reference& from, const Array& to) {
+    return from <= to.decay(false);
 }
 
 inline bool operator<=(const TypeBox& from, const TypeBox& to) {

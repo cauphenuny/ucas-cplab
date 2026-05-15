@@ -215,6 +215,17 @@ endif()
 
 find_package(Threads REQUIRED)
 
+# Add targets for each .cpp file directly in src/
+FILE(GLOB SRC_EXECUTABLES "src/*.cpp")
+foreach(EXEC_SOURCE ${SRC_EXECUTABLES})
+    get_filename_component(EXEC_NAME ${EXEC_SOURCE} NAME_WE)
+    add_executable(${EXEC_NAME} ${EXEC_SOURCE})
+    target_link_libraries(${EXEC_NAME} compiler_core antlr Threads::Threads)
+    if(ENABLE_FORMAT AND CLANG_FORMAT_EXECUTABLE)
+        add_dependencies(${EXEC_NAME} format)
+    endif()
+endforeach()
+
 # Add targets for each test in src/tests
 FILE(GLOB TEST_FILES "src/tests/*.cpp")
 foreach(TEST_SOURCE ${TEST_FILES})
@@ -225,17 +236,6 @@ foreach(TEST_SOURCE ${TEST_FILES})
         add_dependencies(${TEST_NAME} format)
     endif()
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
-endforeach()
-
-# Add targets for each .cpp file directly in src/
-FILE(GLOB SRC_EXECUTABLES "src/*.cpp")
-foreach(EXEC_SOURCE ${SRC_EXECUTABLES})
-    get_filename_component(EXEC_NAME ${EXEC_SOURCE} NAME_WE)
-    add_executable(${EXEC_NAME} ${EXEC_SOURCE})
-    target_link_libraries(${EXEC_NAME} compiler_core antlr Threads::Threads)
-    if(ENABLE_FORMAT AND CLANG_FORMAT_EXECUTABLE)
-        add_dependencies(${EXEC_NAME} format)
-    endif()
 endforeach()
 
 if(PYTHON_EXECUTABLE AND TARGET compiler AND TARGET interpreter)
