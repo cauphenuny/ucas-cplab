@@ -130,6 +130,33 @@ private:
 
 - 对于嵌套多级表达式，因为我们对于每一个表达式都返回的是 Value，因此每一级表达式只需要分配少量新临时值，根据自己的运算符以及操作数表达式返回的 Value，生成少量 IR 指令。
 
+---
+
+短路运算的实现：
+
+- 发生在生成条件分支时：`if/while` 的条件会调用 `branch` 来产出 `BranchExit`
+- `a && b`：在当前 block 对 `a` 生成分支（通过递归调用 `branch`），true 跳到新建的 `right_block` 继续求 `b`，false 直接跳到 `false_block`，从而跳过 `b` 的求值
+- `a || b`：类似地在当前 block 对 `a` 生成分支，true 直接跳到 `true_block`，false 才进入 `right_block` 求 `b`
+- 对非 `AND/OR` 的条件表达式，先生成 `Value`，再直接用 `BranchExit{cond, true_block, false_block}`
+
+```cpp
+match(*cond,
+    [&](const ast::BinaryExp& binary_exp) -> BranchExit {
+        switch (binary_exp.op) {
+            case ast::BinaryOp::AND: {
+                auto right_block = func->newBlock();
+                auto left_exit = branch(binary_exp.left.exp.get(), func, scope, right_block, false_block);
+                right_block->setExit(branch(binary_exp.right.exp.get(), func, right_block, true_block, false_block));
+                return left_exit;
+            }
+            case ast::BinaryOp::OR: { ... }
+        }
+    },
+    [&](const auto& exp) {
+        return BranchExit{gen(cond, func, scope), true_block, false_block};
+    });
+```
+
 == IR 解释执行
 
 === 核心数据结构: View

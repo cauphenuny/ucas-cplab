@@ -19,7 +19,7 @@
     ),
     navigation: "mini-slides",
     config-info(
-      title: [语法分析与IR设计和优化 报告],
+      title: [语义分析与IR设计和优化 报告],
       author: meta.author,
       date: datetime(year: 2026, month: 5, day: 9),
       institution: meta.institution,

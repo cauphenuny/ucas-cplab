@@ -108,3 +108,5 @@ fn mod() {
         => 'loop(%rem.0, %n.1);
     }
 ```
+
+reference: https://www.cs.cornell.edu/courses/cs6120/2025sp/lesson/6/

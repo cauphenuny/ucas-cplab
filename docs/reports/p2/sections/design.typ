@@ -240,13 +240,13 @@ IR 结构：
   }
   ```
 
-- 如果都是 Array 类型，from 是 to 的子类型当且仅当 from 和 to 的元素类型相同，并且 from 的长度小于等于 to 的长度
-
+- 如果都是 Array 类型，from 是 to 的子类型当且仅当 from 和 to 的元素类型相同，并且 from 的长度等于 to 的长度
+  
   ```cpp
   inline bool operator<=(const Array& from, const Array& to) {
       if (!(from.elem <= to.elem)) return false;
       if (!(to.elem <= from.elem)) return false;
-      return from.size <= to.size;
+      return from.size == to.size;
   }
   ```
 
@@ -257,21 +257,17 @@ IR 结构：
   1. from 的只读属性不比 to 更宽松（即 from 不能是 `&mut` 而 to 是 `&`）
   2. from 的目标类型是 to 的目标类型的子类型  (covariance)
   3. 若 to 非只读，则 from 的目标类型与 to 的目标类型相同 (invariance)
-
-  实现上，目标类型指的是 `{from, to}.elem`#text(red)[`.decay()`] // TODO: 改成没有decay，把bug解释一下
-
+  
   ```cpp
   inline bool operator<=(const Reference& from, const Reference& to) {
-      auto from_elem = from.elem.decay(from.readonly);
-      auto to_elem = to.elem.decay(to.readonly);
-      if (!(from_elem <= to_elem)) return false;
+      if (!(from.elem <= to.elem)) return false;
       if (from.readonly && !to.readonly) return false;
-      if (!to.readonly && !(to_elem <= from_elem)) return false;
+      if (!to.readonly && !(to.elem <= from.elem)) return false;
       return true;
   }
   ```
 
-- 如果 from 是 Array，并且 to 是 Pointer，则 from 是 to 的子类型当且仅当 from 产生的 可变 Reference 是 to 的子类型
+- 如果 from 是 Array，并且 to 是 Reference，则 from 是 to 的子类型当且仅当 from 产生的 可变 Reference 是 to 的子类型
 
   ```cpp
   inline bool operator<=(const Array& from, const Reference& to) {

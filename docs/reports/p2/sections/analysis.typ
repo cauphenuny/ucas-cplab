@@ -176,7 +176,7 @@ Semantic AST 构造时自上至下遍历 AST，计算上述信息
   - 函数调用参数个数不符
   - 二元算数逻辑表达式中，左右子表达式类型不兼容
 
-  upperbound 属性也能用于分析LVal应该在函数符号表查找还是变量符号表查找，因为函数调用表达式处的LVal的 `upperbound` 会被设置为 `Func{.param = ANY, .ret = NEVER}`，只需要判断LVal处的 `upperbound` 是否是函数类型即可。
+  upperbound 属性也能用于分析LVal应该在函数符号表查找还是变量符号表查找，因为函数调用表达式处的LVal的 `upperbound` 会被设置为 `Func{.param = NEVER, .ret = ANY}`，只需要判断LVal处的 `upperbound` 是否是函数类型即可。
 
 - 表达式还有一个继承属性 `readonly`，可以理解为对于此处表达式的要求：如果 `readonly = false`，要求此处表达式可变，目前只用于 LVal 表达式，不能修改常量，否则报出类型错误。
 
