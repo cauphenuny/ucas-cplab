@@ -21,12 +21,11 @@ struct Liveness {
     using Data = Set<ElemType, print>;
     struct Context {
         std::unordered_map<Block*, Data> gen, kill;
-        Data global_variables;
         std::unordered_map<Block*, std::unordered_map<Block*, Data>> phi_uses;
     };
 
     static Data boundary(Context& ctx) {
-        return ctx.global_variables;
+        return Data::empty();
     }
     static constexpr auto top = Data::empty;
     static constexpr auto meet = Data::union_set;
@@ -68,10 +67,6 @@ struct Liveness {
             }
             ctx.gen[block] = gen;
             ctx.kill[block] = kill;
-        }
-        ctx.global_variables = Data::empty();
-        for (auto& global_alloc : prog.globals()) {
-            ctx.global_variables.insert(LeftValue{global_alloc->value()});
         }
         return ctx;
     }
