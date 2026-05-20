@@ -226,6 +226,7 @@ struct Alloc {
           bool reference = false, std::optional<ConstexprValue> init = std::nullopt);
 
     [[nodiscard]] std::string toString() const;
+    [[nodiscard]] std::string attrString() const;
 
     Alloc(Alloc&&) = delete;
     [[nodiscard]] std::unique_ptr<Alloc> clone(const std::string& prefix) const;

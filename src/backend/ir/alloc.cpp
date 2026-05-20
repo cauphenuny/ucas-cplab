@@ -22,15 +22,19 @@ Alloc::Alloc(std::string name, Type type, bool comptime, bool immutable, bool re
     }
 }
 
-auto Alloc::toString() const -> std::string {
-    auto keyword = comptime ? "const" : "let";
+auto Alloc::attrString() const -> std::string {
     std::string attr;
     attr += reference ? "ref " : "";
     attr += immutable ? "" : "mut ";
+    return attr;
+}
+
+auto Alloc::toString() const -> std::string {
+    auto keyword = comptime ? "const" : "let";
     if (init) {
-        return fmt::format("{} {}{}: {} = {};", keyword, attr, name, type, *init);
+        return fmt::format("{} {}{}: {} = {};", keyword, attrString(), name, type, *init);
     }
-    return fmt::format("{} {}{}: {};", keyword, attr, name, type);
+    return fmt::format("{} {}{}: {};", keyword, attrString(), name, type);
 }
 
 auto Alloc::clone(const std::string& prefix) const -> std::unique_ptr<Alloc> {
