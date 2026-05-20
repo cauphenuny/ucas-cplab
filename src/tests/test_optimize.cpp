@@ -14,22 +14,38 @@
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/syntax/visit.hpp"
 
+#include <chrono>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <future>
 #include <iterator>
 #include <map>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
+#include <thread>
+#include <utility>
 #include <vector>
 
 int main(int argc, const char* argv[]) {
     // first arg: comma-separated pass names, e.g. "cp,dde"
+    // second arg: timeout in seconds (default 5)
     std::string passes_arg;
     if (argc > 1) passes_arg = argv[1];
+
+    int timeout_sec = 5;
+    if (argc > 2) {
+        try {
+            timeout_sec = std::stoi(argv[2]);
+        } catch (...) {
+            fmt::println(stderr, "Invalid timeout argument, using default {}s", timeout_sec);
+        }
+    }
+    auto timeout_dur = std::chrono::seconds(timeout_sec);
 
     std::vector<std::string> pass_names, negative_passes;
     if (!passes_arg.empty()) {
@@ -119,14 +135,15 @@ int main(int argc, const char* argv[]) {
             // parse & semantic analysis -> generate IR
             auto istream = std::istringstream(text);
             auto ast = ast::analysis(ast::parse(istream));
-            auto program_box = ir::gen::generate(ast);
+            auto program_box = std::shared_ptr<ir::Program>{ir::gen::generate(ast).release()};
             auto& program = *program_box;
 
             // helper to run program and return executed instruction count
-            auto run_program = [&](const ir::Program& prog) -> size_t {
-                // prepare input stream from .in if exists
-                std::filesystem::path in_path = file.path();
-                std::filesystem::path out_path = file.path();
+            // captures file_path by value so the lambda is safe to run in a detached thread
+            auto file_path = file.path();
+            auto run_program = [file_path](const ir::Program& prog) -> size_t {
+                std::filesystem::path in_path = file_path;
+                std::filesystem::path out_path = file_path;
                 in_path.replace_extension("in");
                 out_path.replace_extension("out");
                 std::string in_text;
@@ -155,7 +172,26 @@ int main(int argc, const char* argv[]) {
                 return vm.perf().num_insts;
             };
 
-            size_t before = run_program(program);
+            // run prog_ptr in a detached thread; shared_ptr keeps the program alive
+            auto run_with_timeout =
+                [&, run_program](
+                    const std::shared_ptr<ir::Program>& prog_ptr) -> std::optional<size_t> {
+                std::packaged_task<size_t()> task(
+                    [prog_ptr, run_program]() { return run_program(*prog_ptr); });
+                auto fut = task.get_future();
+                std::thread(std::move(task)).detach();
+                if (fut.wait_for(timeout_dur) != std::future_status::ready) {
+                    return std::nullopt;
+                }
+                return fut.get();
+            };
+
+            auto result_before = run_with_timeout(program_box);
+            if (!result_before) {
+                fmt::println(stderr, "Timeout (>{}s), skipping", timeout_sec);
+                continue;
+            }
+            size_t before = *result_before;
 
             // build passes list from requested names
             std::vector<std::unique_ptr<ir::optim::SSAPass>> passes;
@@ -189,7 +225,12 @@ int main(int argc, const char* argv[]) {
             log << fmt::format("{}\n", program);
             while (apply(ctx, passes));
 
-            size_t after = run_program(program);
+            auto result_after = run_with_timeout(program_box);
+            if (!result_after) {
+                fmt::println(stderr, "Timeout after optimization (>{}s), skipping", timeout_sec);
+                continue;
+            }
+            size_t after = *result_after;
 
             double improvement = 0.0;
             if (before > 0) {
