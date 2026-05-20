@@ -32,8 +32,15 @@
 #include <vector>
 
 int main(int argc, const char* argv[]) {
+    // --enum [passes] [timeout]: enumerate all subsets of passes (must be first arg)
     // first arg: comma-separated pass names, e.g. "cp,dde"
     // second arg: timeout in seconds (default 5)
+    bool enum_mode = false;
+    if (argc > 1 && std::string(argv[1]) == "--enum") {
+        enum_mode = true;
+        --argc;
+        ++argv;
+    }
     std::string passes_arg;
     if (argc > 1) passes_arg = argv[1];
 
@@ -118,6 +125,21 @@ int main(int argc, const char* argv[]) {
     std::sort(files.begin(), files.end(),
               [](const auto& a, const auto& b) { return a.path().string() < b.path().string(); });
 
+    // build set of pass-name lists to test: powerset in enum mode, single list otherwise
+    std::vector<std::vector<std::string>> combinations;
+    if (enum_mode) {
+        int n = (int)pass_names.size();
+        for (int mask = 0; mask < (1 << n); ++mask) {
+            std::vector<std::string> subset;
+            for (int i = 0; i < n; ++i) {
+                if (mask & (1 << i)) subset.push_back(pass_names[i]);
+            }
+            combinations.push_back(std::move(subset));
+        }
+    } else {
+        combinations.push_back(pass_names);
+    }
+
     for (const auto& file : files) {
         fmt::print(stderr, "{}: ", file.path().string());
 
@@ -136,7 +158,6 @@ int main(int argc, const char* argv[]) {
             auto istream = std::istringstream(text);
             auto ast = ast::analysis(ast::parse(istream));
             auto program_box = std::shared_ptr<ir::Program>{ir::gen::generate(ast).release()};
-            auto& program = *program_box;
 
             // helper to run program and return executed instruction count
             // captures file_path by value so the lambda is safe to run in a detached thread
@@ -193,51 +214,64 @@ int main(int argc, const char* argv[]) {
             }
             size_t before = *result_before;
 
-            // build passes list from requested names
-            std::vector<std::unique_ptr<ir::optim::SSAPass>> passes;
-            for (const auto& name : pass_names) {
-                auto it = factories.find(name);
-                if (it != factories.end()) {
-                    passes.push_back(it->second());
-                } else {
-                    fmt::println(stderr, "Unknown pass: {} (skipping)", name);
+            for (const auto& combo : combinations) {
+                // build label
+                std::string label;
+                for (size_t i = 0; i < combo.size(); ++i) {
+                    if (i) label += '+';
+                    label += combo[i];
                 }
-            }
+                if (label.empty()) label = "none";
 
-            auto apply = [&](ir::optim::SSAPassContext& ctx,
-                             const std::vector<std::unique_ptr<ir::optim::SSAPass>>& passes) {
-                bool changed = false;
-                for (auto& pass : passes) {
-                    bool pass_changed = pass->apply(program, ctx);
-                    if (pass_changed) {
-                        log << fmt::format("----------\n{}\n", program);
-                        ctx.ud.verify();
+                // fresh program from ast for each combination
+                auto combo_prog_box =
+                    std::shared_ptr<ir::Program>(ir::gen::generate(ast).release());
+                auto& combo_prog = *combo_prog_box;
+
+                ir::optim::Compose<void, ir::optim::ConstructSSA, ir::optim::SSAValue2TempValue>
+                    ssa;
+                ssa.apply(combo_prog);
+                ir::optim::SSAPassContext ctx(combo_prog);
+
+                std::vector<std::unique_ptr<ir::optim::SSAPass>> passes;
+                for (const auto& name : combo) {
+                    auto it = factories.find(name);
+                    if (it != factories.end()) {
+                        passes.push_back(it->second());
+                    } else {
+                        fmt::println(stderr, "Unknown pass: {} (skipping)", name);
                     }
-                    changed |= pass_changed;
                 }
-                return changed;
-            };
-            // apply passes in order
-            ir::optim::Compose<void, ir::optim::ConstructSSA, ir::optim::SSAValue2TempValue> ssa;
-            ssa.apply(program);
-            ir::optim::SSAPassContext ctx(program);
-            log.clear();
-            log << fmt::format("{}\n", program);
-            while (apply(ctx, passes));
 
-            auto result_after = run_with_timeout(program_box);
-            if (!result_after) {
-                fmt::println(stderr, "Timeout after optimization (>{}s), skipping", timeout_sec);
-                continue;
+                auto apply = [&](ir::optim::SSAPassContext& ctx2,
+                                 const std::vector<std::unique_ptr<ir::optim::SSAPass>>& ps) {
+                    bool changed = false;
+                    for (auto& pass : ps) {
+                        bool pass_changed = pass->apply(combo_prog, ctx2);
+                        if (pass_changed) {
+                            log << fmt::format("----------\n{}\n", combo_prog);
+                            ctx2.ud.verify();
+                        }
+                        changed |= pass_changed;
+                    }
+                    return changed;
+                };
+                log.clear();
+                log << fmt::format("{}\n", combo_prog);
+                while (apply(ctx, passes));
+
+                auto result_after = run_with_timeout(combo_prog_box);
+                if (!result_after) {
+                    fmt::println(stderr, "  [{}]: Timeout after optimization (>{}s), skipping",
+                                 label, timeout_sec);
+                    continue;
+                }
+                size_t after = *result_after;
+                double improvement =
+                    before > 0 ? ((ssize_t)before - (ssize_t)after) * 100.0 / before : 0.0;
+                fmt::println(stderr, "  [{}]: {} -> {}, improvement: {:.2f}%", label, before, after,
+                             improvement);
             }
-            size_t after = *result_after;
-
-            double improvement = 0.0;
-            if (before > 0) {
-                improvement = ((ssize_t)before - (ssize_t)after) * 100.0 / before;
-            }
-
-            fmt::println(stderr, "{} -> {}, improvement: {:.2f}%", before, after, improvement);
 
         } catch (const std::exception& e) {
             fmt::println(stderr, "Exception while processing {}: {}\n", file.path().string(),
