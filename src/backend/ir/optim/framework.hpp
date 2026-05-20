@@ -34,7 +34,7 @@ template <typename... Passes> struct Compose<void, Passes...> : Pass<void> {
 };
 
 struct SSAPassContext {
-    UseDefInfo ud;
+    UseDefGraph ud;
     SSAPassContext(Program& program) : ud(program) {}
 };
 

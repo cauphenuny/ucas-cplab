@@ -10,25 +10,25 @@
 
 namespace ir::analysis {
 
-struct UseDefInfo : Callback {
-    UseDefInfo(Program& program);
-    ~UseDefInfo();
-    struct UseSite {
-        std::variant<Inst*, Exit*> site;
-        Value* operand;
-        friend bool operator==(const UseSite& a, const UseSite& b) {
-            return a.site == b.site && a.operand == b.operand;
-        }
-    };
-    struct UseSiteHash {
-        std::size_t operator()(const UseSite& site) const {
-            return std::hash<std::variant<Inst*, Exit*>>{}(site.site) ^
-                   std::hash<Value*>{}(site.operand);
-        }
-    };
-    struct DefSite {
-        Inst* inst;  // is defined by inst->result
-    };
+using DefSite = Inst*;
+
+struct UseSite {
+    std::variant<Inst*, Exit*> site;
+    Value* operand;
+    friend bool operator==(const UseSite& a, const UseSite& b) {
+        return a.site == b.site && a.operand == b.operand;
+    }
+};
+struct UseSiteHash {
+    std::size_t operator()(const UseSite& site) const {
+        return std::hash<std::variant<Inst*, Exit*>>{}(site.site) ^
+               std::hash<Value*>{}(site.operand);
+    }
+};
+
+struct UseDefGraph : Callback {
+    UseDefGraph(Program& program);
+    ~UseDefGraph();
 
     void after_add(Inst* it) override;
     void after_add(Exit* exit) override;

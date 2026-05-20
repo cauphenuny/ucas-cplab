@@ -10,21 +10,21 @@
 
 namespace ir::analysis {
 
-UseDefInfo::UseDefInfo(Program& program) : program(program) {
+UseDefGraph::UseDefGraph(Program& program) : program(program) {
     program.addCallback(this);
 }
 
-UseDefInfo::~UseDefInfo() {
+UseDefGraph::~UseDefGraph() {
     program.removeCallback(this);
 }
 
-void UseDefInfo::add_use(Value* val, std::variant<Inst*, Exit*> it) {
+void UseDefGraph::add_use(Value* val, std::variant<Inst*, Exit*> it) {
     if (auto lval = std::get_if<LeftValue>(val)) {
         use_sites[*lval].insert(UseSite{it, val});
     }
 }
 
-void UseDefInfo::erase_use(Value* val, std::variant<Inst*, Exit*> it) {
+void UseDefGraph::erase_use(Value* val, std::variant<Inst*, Exit*> it) {
     if (auto lval = std::get_if<LeftValue>(val)) {
         auto site_it = use_sites[*lval].find(UseSite{it, val});
         if (site_it != use_sites[*lval].end()) {
@@ -33,47 +33,47 @@ void UseDefInfo::erase_use(Value* val, std::variant<Inst*, Exit*> it) {
     }
 }
 
-void UseDefInfo::after_add(Inst* it) {
-    def_sites[*utils::defined_var(*it)] = {it};
+void UseDefGraph::after_add(Inst* it) {
+    def_sites[*utils::defined_var(*it)] = it;
     for (auto use : utils::used(*it)) {
         add_use(use, it);
     }
 }
 
-void UseDefInfo::before_erase(Inst* it) {
+void UseDefGraph::before_erase(Inst* it) {
     def_sites.erase(*utils::defined_var(*it));
     for (auto& use : utils::used(*it)) {
         erase_use(use, it);
     }
 }
 
-void UseDefInfo::after_add(Exit* exit) {
+void UseDefGraph::after_add(Exit* exit) {
     if (auto use = utils::used(*exit)) {
         add_use(use, exit);
     }
 }
 
-void UseDefInfo::before_erase(Exit* exit) {
+void UseDefGraph::before_erase(Exit* exit) {
     if (auto use = utils::used(*exit)) {
         erase_use(use, exit);
     }
 }
 
-auto UseDefInfo::uses_of(const LeftValue& val) const -> std::unordered_set<UseSite, UseSiteHash> {
+auto UseDefGraph::uses_of(const LeftValue& val) const -> std::unordered_set<UseSite, UseSiteHash> {
     if (use_sites.count(val)) {
         return use_sites.at(val);
     }
     return {};
 }
 
-auto UseDefInfo::def_of(const LeftValue& val) const -> std::optional<DefSite> {
+auto UseDefGraph::def_of(const LeftValue& val) const -> std::optional<DefSite> {
     if (def_sites.count(val)) {
         return def_sites.at(val);
     }
     return std::nullopt;
 }
 
-bool UseDefInfo::replace_all_uses_with(const LeftValue& old_val, const Value& new_val) {
+bool UseDefGraph::replace_all_uses_with(const LeftValue& old_val, const Value& new_val) {
     if (!use_sites.count(old_val)) return false;
     auto sites = use_sites[old_val];
     if (sites.empty()) return false;
@@ -87,14 +87,14 @@ bool UseDefInfo::replace_all_uses_with(const LeftValue& old_val, const Value& ne
     return true;
 }
 
-void UseDefInfo::verify() const {
-    auto reference = UseDefInfo(program);
+void UseDefGraph::verify() const {
+    auto reference = UseDefGraph(program);
     for (const auto& [val, def] : def_sites) {
         auto ref_def = reference.def_of(val);
         if (!ref_def) {
             throw COMPILER_ERROR(fmt::format("Def site of {} not found in reference", val));
         }
-        if (def.inst != ref_def->inst) {
+        if (def != *ref_def) {
             throw COMPILER_ERROR(fmt::format("Def site of {} does not match reference", val));
         }
     }
