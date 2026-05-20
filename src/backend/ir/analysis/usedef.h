@@ -26,18 +26,15 @@ struct UseSiteHash {
     }
 };
 
-struct UseDefGraph : Callback {
-    UseDefGraph(Program& program);
-    ~UseDefGraph();
-
+struct UseInfo : Callback {
+    UseInfo(Program& program);
+    ~UseInfo();
     void after_add(Inst* it) override;
     void after_add(Exit* exit) override;
     void before_erase(Inst* it) override;
     void before_erase(Exit* exit) override;
-
     [[nodiscard]] auto uses_of(const LeftValue& val) const
         -> std::unordered_set<UseSite, UseSiteHash>;
-    [[nodiscard]] auto def_of(const LeftValue& val) const -> std::optional<DefSite>;
 
     bool replace_all_uses_with(const LeftValue& old_val, const Value& new_val);
 
@@ -46,9 +43,66 @@ struct UseDefGraph : Callback {
 private:
     void add_use(Value* val, std::variant<Inst*, Exit*> it);
     void erase_use(Value* val, std::variant<Inst*, Exit*> it);
-    Program& program;
-    std::unordered_map<LeftValue, DefSite> def_sites;
     std::unordered_map<LeftValue, std::unordered_set<UseSite, UseSiteHash>> use_sites;
+    Program& program;
 };
+
+struct DefInfo : Callback {
+    DefInfo(Program& program);
+    ~DefInfo();
+    void after_add(Inst* it) override;
+    void after_add(Exit* exit) override {}
+    void before_erase(Inst* it) override;
+    void before_erase(Exit* exit) override {}
+    [[nodiscard]] auto def_of(const LeftValue& val) const -> std::optional<DefSite>;
+
+    void verify() const;
+
+private:
+    std::unordered_map<LeftValue, DefSite> def_sites;
+    Program& program;
+};
+
+struct MultiDefInfo : Callback {
+    MultiDefInfo(Program& program);
+    ~MultiDefInfo();
+    void after_add(Inst* it) override;
+    void after_add(Exit* exit) override {}
+    void before_erase(Inst* it) override;
+    void before_erase(Exit* exit) override {}
+
+    [[nodiscard]] auto def_of(const LeftValue& val) const -> std::unordered_set<DefSite>;
+
+    void verify() const;
+
+private:
+    std::unordered_map<LeftValue, std::unordered_set<DefSite>> def_sites;
+    Program& program;
+};
+
+template <typename Use, typename Def> struct UniversalUseDefGraph {
+    UniversalUseDefGraph(Program& program) : uses(program), defs(program) {}
+
+    [[nodiscard]] auto uses_of(const LeftValue& val) const {
+        return uses.uses_of(val);
+    }
+    [[nodiscard]] auto def_of(const LeftValue& val) const {
+        return defs.def_of(val);
+    }
+
+    bool replace_all_uses_with(const LeftValue& old_val, const Value& new_val) {
+        return uses.replace_all_uses_with(old_val, new_val);
+    }
+
+    void verify() const {
+        uses.verify(), defs.verify();
+    }
+
+    Use uses;
+    Def defs;
+};
+
+using UseDefGraph = UniversalUseDefGraph<UseInfo, DefInfo>;
+using NonSSAUseDefGraph = UniversalUseDefGraph<UseInfo, MultiDefInfo>;
 
 }  // namespace ir::analysis

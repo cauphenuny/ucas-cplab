@@ -7,10 +7,13 @@ namespace ir::optim {
 
 namespace minipass {
 
-struct SplitCriticalEdges {};
+struct SplitCriticalEdges : NonSSAPass {};
 
-struct ScheduleCopy {};
+struct ScheduleCopy : NonSSAPass {};
 
 }  // namespace minipass
+
+using DestructSSA =
+    Compose<NonSSAPassContext, minipass::SplitCriticalEdges, minipass::ScheduleCopy>;
 
 }  // namespace ir::optim

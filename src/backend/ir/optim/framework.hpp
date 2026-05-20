@@ -38,6 +38,12 @@ struct SSAPassContext {
     SSAPassContext(Program& program) : ud(program) {}
 };
 
+struct NonSSAPassContext {
+    NonSSAUseDefGraph ud;
+    NonSSAPassContext(Program& program) : ud(program) {}
+};
+
 using SSAPass = Pass<SSAPassContext>;
+using NonSSAPass = Pass<NonSSAPassContext>;
 
 }  // namespace ir::optim
