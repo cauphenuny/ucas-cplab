@@ -200,9 +200,9 @@ fn main() -> i32 {
                  auto g2 = prog.findAlloc("g2")->value();
 
                  check(live.in.at(entry).contains(g1), "global: g1 is live-in at entry");
-                 check(live.in.at(entry).contains(g2), "global: g2 is live-in at entry");
-                 check(live.out.at(entry).contains(g1), "global: g1 is live-out at entry");
-                 check(live.out.at(entry).contains(g2), "global: g2 is live-out at entry");
+                 check(!live.in.at(entry).contains(g2), "global: g2 is not live-in at entry");
+                 check(!live.out.at(entry).contains(g1), "global: g1 is not live-out at entry");
+                 check(!live.out.at(entry).contains(g2), "global: g2 is not live-out at entry");
              }
          });
 

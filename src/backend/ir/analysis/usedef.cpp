@@ -4,6 +4,7 @@
 #include "backend/ir/ir.h"
 
 #include <optional>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <variant>
@@ -122,6 +123,18 @@ auto DefInfo::def_of(const LeftValue& val) const -> std::optional<DefSite> {
     }
     return std::nullopt;
 }
+auto DefInfo::all_defs() const -> const std::unordered_map<LeftValue, DefSite>& {
+    return def_sites;
+}
+bool DefInfo::replace_all_defs_with(const LeftValue& old_var, const LeftValue& new_var) {
+    if (!def_sites.count(old_var)) return false;
+    auto site = def_sites[old_var];
+    if (!site) return false;
+    match(*site, [&](auto& inst) { inst.result = new_var; });
+    def_sites[new_var] = site;
+    def_sites.erase(old_var);
+    return true;
+}
 
 void DefInfo::verify() const {
     auto reference = DefInfo(program);
@@ -171,6 +184,21 @@ auto MultiDefInfo::def_of(const LeftValue& val) const -> std::unordered_set<DefS
         return def_sites.at(val);
     }
     return {};
+}
+auto MultiDefInfo::all_defs() const
+    -> const std::unordered_map<LeftValue, std::unordered_set<DefSite>>& {
+    return def_sites;
+}
+bool MultiDefInfo::replace_all_defs_with(const LeftValue& old_var, const LeftValue& new_var) {
+    if (!def_sites.count(old_var)) return false;
+    auto sites = def_sites[old_var];
+    if (sites.empty()) return false;
+    for (const auto& site : sites) {
+        match(*site, [&](auto& inst) { inst.result = new_var; });
+        def_sites[new_var].insert(site);
+    }
+    def_sites.erase(old_var);
+    return true;
 }
 
 void MultiDefInfo::verify() const {

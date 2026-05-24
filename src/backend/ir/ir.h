@@ -149,6 +149,7 @@ struct PhiInst {
     std::vector<std::pair<Block*, Value>> args;
     auto operator[](Block* block) const -> const Value&;
     [[nodiscard]] bool contains(Block* block) const;
+    [[nodiscard]] auto value(Block* block) const -> Value;
 
     [[nodiscard]] auto toString() const -> std::string;
 };
@@ -188,7 +189,7 @@ struct Block {
     void prepend(Inst inst);
     auto pop_front() -> Inst;
     void replace(Inst* inst, Inst new_inst);
-    void erase(std::list<Inst>::iterator iter);
+    auto erase(std::list<Inst>::iterator iter) -> std::list<Inst>::iterator;
 
     void setExit(Exit exit);
     [[nodiscard]] bool hasExit() const;

@@ -39,6 +39,14 @@ bool PhiInst::contains(Block* block) const {
     }
     return false;
 }
+auto PhiInst::value(Block* block) const -> Value {
+    for (auto& [b, v] : args) {
+        if (b == block) {
+            return v;
+        }
+    }
+    throw COMPILER_ERROR(fmt::format("Block {} not found in PhiInst", block->label));
+}
 
 auto BranchExit::toString() const -> std::string {
     return fmt::format("=> if {} {{ '{} }} else {{ '{} }};", cond,

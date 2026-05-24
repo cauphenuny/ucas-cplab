@@ -39,9 +39,9 @@ void Block::replace(Inst* inst, Inst new_inst) {
     *inst = std::move(new_inst);
     if (this->program) this->program->after_add(inst);
 }
-void Block::erase(std::list<Inst>::iterator iter) {
+auto Block::erase(std::list<Inst>::iterator iter) -> std::list<Inst>::iterator {
     if (this->program) this->program->before_erase(&*iter);
-    insts_.erase(iter);
+    return insts_.erase(iter);
 }
 
 void Block::setExit(Exit exit) {
