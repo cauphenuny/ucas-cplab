@@ -58,7 +58,7 @@ private:
             for (auto target : utils::targets(edge.from->exit())) {
                 if (target.get() == edge.to) target.get() = mid;
             }
-            for (auto inst : edge.to->insts()) {
+            for (auto& inst : edge.to->insts()) {
                 if (!std::holds_alternative<PhiInst>(inst)) break;
                 for (auto source : utils::sources(inst)) {
                     if (source.get() == edge.from) source.get() = mid;
@@ -75,34 +75,55 @@ struct ReplacePhi : NonSSAPass {
         for (auto& func : prog.funcs()) {
             changed |= replace_phi(*func, prog);
         }
-        legalize(ctx);
+        legalize(prog, ctx);
         return changed;
     }
 
 private:
-    void legalize(NonSSAPassContext& ctx) {
+    void legalize(Program& prog, NonSSAPassContext& ctx) {
         std::unordered_set<LeftValue> illegals;
         for (auto& [var, sites] : ctx.ud.all_defs()) {
             if (sites.size() > 1 && !std::holds_alternative<NamedValue>(var)) {
                 illegals.insert(var);
             }
         }
+
+        struct Info {
+            std::string name;
+            Func* scope;
+        };
+        auto where = [&](const Alloc* alloc) -> Func* {
+            for (auto& func : prog.funcs()) {
+                for (auto& local : func->locals()) {
+                    if (local.get() == alloc) return func.get();
+                }
+                for (auto& param : func->params) {
+                    if (param.get() == alloc) return func.get();
+                }
+            }
+            throw COMPILER_ERROR(fmt::format("alloc {} not found in any function", alloc->name));
+        };
+
         for (auto var : illegals) {
-            auto name = Match{var}(
-                [&](const TempValue& temp) -> std::string { return fmt::format("_{}", temp.id); },
-                [&](const SSAValue& ssa) -> std::string {
-                    return fmt::format("_{}_{}", ssa.def->name, ssa.version);
+            auto [name, scope] = Match{var}(
+                [&](const TempValue& temp) -> Info {
+                    return {fmt::format("_{}", temp.id), temp.func};
                 },
-                [&](const NamedValue& named) -> std::string {
+                [&](const SSAValue& ssa) -> Info {
+                    return {fmt::format("_{}_{}", ssa.def->name, ssa.version), where(ssa.def)};
+                },
+                [&](const NamedValue& named) -> Info {
                     throw COMPILER_ERROR(
                         "detected NamedValue in illegal single-assignment variable");
                 });
-            auto alloc = std::make_unique<Alloc>(name, type_of(var));
+            auto alloc = Alloc::variable(name, type_of(var));
             auto alloc_var = LeftValue{alloc->value()};
             ctx.ud.replace_all_uses_with(var, alloc_var);
             ctx.ud.replace_all_defs_with(var, alloc_var);
+            scope->addLocal(std::move(alloc));
         }
     }
+
     bool replace_phi(Func& func, Program& prog) {
         auto cfg = ControlFlowGraph(func);
         auto domflow = analysis::DataFlow<analysis::flow::Dominance>(cfg, prog);
@@ -163,7 +184,6 @@ private:
                         ++it;
                     }
                 }
-                map[dest] = src;
             }
 
             if (copy_set.size()) {
