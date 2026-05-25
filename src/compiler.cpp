@@ -14,6 +14,7 @@
 #include "backend/ir/optim/framework.hpp"
 #include "backend/ir/optim/inline.hpp"
 #include "backend/ir/optim/ssa.hpp"
+#include "backend/ir/optim/ssa_destruct.hpp"
 #include "backend/ir/vm/vm.h"
 #include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"
@@ -52,18 +53,23 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
 
     --help                  Show this help message
 
+    --output <file>         Write the generated IR also to the specified file
+
     --ast                   Print the AST of the input files
     --ast-info              Print the semantic analysis result of the AST
 
     --ir                    Print the generated IR
     --ir-info               Print analysis result of the generated IR
+
     --ssa                   Convert generated IR to SSA form
-    --ssa2temp              Convert SSAValue in IR to TempValue
+    --retain-ssa-value      Do not convert SSAValue to TempValue in IR
+    --exit-ssa              Exit SSA form by eliminating phi instructions
 
     --optimize-copy         Apply Copy Propagation optimization (triggers --ssa)
     --optimize-const        Apply Const Propagation optimization (triggers --ssa)
     --optimize-def          Apply Dead Definition Elimination optimization (triggers --ssa)
     --optimize-alloc        Apply Dead Allocation Elimination optimization (triggers --ssa, better with --ssa2temp)
+    --optimize-temp         Apply Dead Temporary Value Elimination optimization (triggers --ssa)
     --optimize-block        Apply Dead/Trivial Block Elimination optimization (triggers --ssa)
     --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts) (triggers --ssa)
     --optimize-exp          Apply Common Subexpression Elimination optimization (triggers --ssa)
@@ -71,9 +77,6 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
 
     --exec                  Execute the generated IR
     --silent                Suppress all compiler output except the return value when executing
-
-    --output <file>         Write the generated IR also to the specified file
-
 )",
         prog_name);
     exit(ret);
@@ -136,7 +139,8 @@ int main(int argc, const char* argv[]) {
     bool execute = false;
     bool silent = false;
     bool to_ssa = false;
-    bool ssa_to_temp = false;
+    bool exit_ssa = false;
+    bool retain_ssa_value = false;
 
     bool optimize_alloc = false;
     bool optimize_def = false;
@@ -144,11 +148,12 @@ int main(int argc, const char* argv[]) {
     bool optimize_copy = false;
     bool optimize_const = false;
     bool optimize_block = false;
+    bool optimize_temp = false;
 
     std::vector<std::pair<std::string, std::reference_wrapper<bool>>> optimizations = {
         {"alloc", optimize_alloc}, {"def", optimize_def},     {"exp", optimize_exp},
         {"copy", optimize_copy},   {"const", optimize_const}, {"block", optimize_block},
-    };
+        {"temp", optimize_temp}};
 
     size_t optimize_inline = 0;
     constexpr size_t default_inline_threshold = 8;
@@ -168,8 +173,10 @@ int main(int argc, const char* argv[]) {
             print_ir_info = true;
         } else if (arg == "--ssa") {
             to_ssa = true;
-        } else if (arg == "--ssa2temp") {
-            ssa_to_temp = true;
+        } else if (arg == "--exit-ssa") {
+            exit_ssa = true;
+        } else if (arg == "--retain-ssa-value") {
+            retain_ssa_value = true;
         } else if (arg == "--exec") {
             execute = true;
         } else if (arg == "--silent") {
@@ -179,6 +186,7 @@ int main(int argc, const char* argv[]) {
             optimize_const = true;
             optimize_def = true;
             optimize_alloc = true;
+            optimize_temp = true;
             optimize_exp = true;
             optimize_block = true;
             optimize_inline = default_inline_threshold;
@@ -225,7 +233,7 @@ int main(int argc, const char* argv[]) {
     }
 
     bool optimize = optimize_def || optimize_exp || optimize_copy || optimize_alloc ||
-                    optimize_const || optimize_inline;
+                    optimize_const || optimize_inline || optimize_temp;
     if (optimize && !to_ssa) {
         // warning("Optimization requires SSA form. Auto enabling SSA form.");
         to_ssa = true;
@@ -309,7 +317,7 @@ int main(int argc, const char* argv[]) {
                         ConstructSSA().apply(program);
                         echo(program, fmt::format("#{} SSA Form", pass_id++));
                     }
-                    if (ssa_to_temp) {
+                    if (!retain_ssa_value) {
                         SSAValue2TempValue().apply(program);
                         echo(program, fmt::format("#{} SSAValue to TempValue", pass_id++));
                     }
@@ -335,6 +343,10 @@ int main(int argc, const char* argv[]) {
                         passes.emplace_back(std::make_unique<DeadAllocElimination>(),
                                             "Dead Allocation Elimination");
                     }
+                    if (optimize_temp) {
+                        passes.emplace_back(std::make_unique<DeadTempElimination>(),
+                                            "Dead Temporary Value Elimination");
+                    }
                     if (optimize_exp) {
                         passes.emplace_back(std::make_unique<DeadBlockElimination>(),
                                             "Dead Block Elimination");
@@ -351,6 +363,13 @@ int main(int argc, const char* argv[]) {
                                             "Function Call Inlining");
                     }
                     while (apply(program, ctx, passes));
+                }
+
+                if (exit_ssa) {
+                    using namespace ir::optim;
+                    NonSSAPassContext ctx(program);
+                    DestructSSA().apply(program, ctx);
+                    echo(program, fmt::format("#{} Exit SSA Form", pass_id++));
                 }
 
                 if (output_file) {

@@ -89,6 +89,7 @@ int main(int argc, const char* argv[]) {
         {"copy", []() { return std::make_unique<ir::optim::CopyPropagation>(); }},
         {"def", []() { return std::make_unique<ir::optim::DeadDefElimination>(); }},
         {"alloc", []() { return std::make_unique<ir::optim::DeadAllocElimination>(); }},
+        {"temp", []() { return std::make_unique<ir::optim::DeadTempElimination>(); }},
         {"const", []() { return std::make_unique<ir::optim::ConstPropagation>(); }},
         {"inline", []() { return std::make_unique<ir::optim::Inlining>(); }},
         {"exp",

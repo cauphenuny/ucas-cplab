@@ -51,7 +51,7 @@ struct NamedValue {
 struct TempValue {
     Type type;
     size_t id;
-    const Func* func;
+    Func* func;
 
     friend bool operator==(const TempValue& lhs, const TempValue& rhs) {
         return lhs.func == rhs.func && lhs.id == rhs.id;
@@ -255,6 +255,11 @@ struct Func {
         Block* break_target;
     };
 
+    struct TempInfo {
+        Type type;
+        Block* block;  // block where the temp is defined
+    };
+
     Func(Type ret_type, std::string name, std::vector<std::unique_ptr<Alloc>> params = {});
     Func(Func&&) = delete;
 
@@ -267,6 +272,9 @@ struct Func {
     std::list<std::unique_ptr<Block>>& blocks();
 
     [[nodiscard]] const auto& temps() const {
+        return temps_;
+    }
+    [[nodiscard]] auto& temps() {
         return temps_;
     }
 
@@ -301,10 +309,6 @@ private:
     std::vector<std::unique_ptr<Alloc>> locals_;
     std::list<std::unique_ptr<Block>> blocks_;
 
-    struct TempInfo {
-        Type type;
-        Block* block;  // block where the temp is defined
-    };
     std::vector<TempInfo> temps_;
     std::vector<LoopContext> loops;  // for break/continue target
 
