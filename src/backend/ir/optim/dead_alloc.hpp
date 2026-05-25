@@ -95,7 +95,7 @@ private:
     static bool has_elem(std::optional<DefSite> def) {
         return (bool)def;
     }
-    static bool has_elem(std::unordered_set<DefSite>& defs) {
+    static bool has_elem(const std::unordered_set<DefSite>& defs) {
         return !defs.empty();
     }
 };

@@ -8,6 +8,7 @@
 #include "backend/ir/analysis/dominance.hpp"
 #include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.h"
+#include "dead_alloc.hpp"
 #include "framework.hpp"
 #include "utils/diagnosis.hpp"
 
@@ -92,17 +93,15 @@ private:
             std::string name;
             Func* scope;
         };
-        auto where = [&](const Alloc* alloc) -> Func* {
-            for (auto& func : prog.funcs()) {
-                for (auto& local : func->locals()) {
-                    if (local.get() == alloc) return func.get();
-                }
-                for (auto& param : func->params) {
-                    if (param.get() == alloc) return func.get();
-                }
+        std::unordered_map<const Alloc*, Func*> where;
+        for (auto& func : prog.funcs()) {
+            for (auto& local : func->locals()) {
+                where[local.get()] = func.get();
             }
-            throw COMPILER_ERROR(fmt::format("alloc {} not found in any function", alloc->name));
-        };
+            for (auto& param : func->params) {
+                where[param.get()] = func.get();
+            }
+        }
 
         for (auto var : illegals) {
             auto [name, scope] = Match{var}(
@@ -110,7 +109,7 @@ private:
                     return {fmt::format("_{}", temp.id), temp.func};
                 },
                 [&](const SSAValue& ssa) -> Info {
-                    return {fmt::format("_{}_{}", ssa.def->name, ssa.version), where(ssa.def)};
+                    return {fmt::format("_{}_{}", ssa.def->name, ssa.version), where.at(ssa.def)};
                 },
                 [&](const NamedValue& named) -> Info {
                     throw COMPILER_ERROR(
@@ -223,6 +222,7 @@ private:
 
 }  // namespace minipass
 
-using DestructSSA = Compose<NonSSAPassContext, minipass::SplitCriticalEdge, minipass::ReplacePhi>;
+using DestructSSA = Compose<NonSSAPassContext, minipass::SplitCriticalEdge, minipass::ReplacePhi,
+                            NonSSADeadTempElimination>;
 
 }  // namespace ir::optim
