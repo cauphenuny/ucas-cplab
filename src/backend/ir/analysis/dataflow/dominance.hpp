@@ -18,9 +18,8 @@ struct Dominance {
     static constexpr auto meet = Data::intersection_set;
 
     static Data transfer(Block& blk, const Data& in) {
-        if (in.is_universe) return in;
         Data res = in;
-        res.set.insert(&blk);
+        res.insert(&blk);
         return res;
     }
 };
