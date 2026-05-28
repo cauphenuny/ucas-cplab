@@ -661,4 +661,16 @@ inline bool constructable(const TypeBox& from_box, const TypeBox& to_box) {
     return from_box <= to_box;
 }
 
+TypeBox unit() {
+    return Product{}.toBoxed();
+}
+
+TypeBox any() {
+    return Top{}.toBoxed();
+}
+
+TypeBox never() {
+    return Bottom{}.toBoxed();
+}
+
 }  // namespace ir::type

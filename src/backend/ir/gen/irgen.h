@@ -58,8 +58,6 @@ private:
 
     [[nodiscard]] auto branch(const ast::Exp* cond, Func* func, Block* scope, Block* true_block,
                               Block* false_block) -> BranchExit;
-
-    inline static const auto VOID = type::construct<void>();
 };
 
 inline auto generate(const ast::SemanticAST& info) {
