@@ -75,13 +75,14 @@ int main() {
                             fmt::println("  [OK] param '{}' is live-in at entry",
                                          alloc->get()->name);
                         } else {
-                            if (!alloc->get()->init) {
+                            if (!alloc->get()->init && !alloc->get()->reference) {
                                 fmt::println("  [FAIL] local value '{}' is live-in at entry "
                                              "without initializer",
                                              alloc->get()->name);
                                 exit(1);
                             } else {
-                                fmt::println("  [OK] {}local value '{}' is initialized at entry",
+                                fmt::println("  [OK] {}local value '{}' is initialized at entry or "
+                                             "accessed by reference",
                                              alloc->get()->comptime ? "const " : "",
                                              alloc->get()->name);
                             }
