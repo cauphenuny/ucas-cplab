@@ -87,7 +87,7 @@ auto Generator::gen(const ast::FuncParam* param) -> std::unique_ptr<Alloc> {
 }
 
 auto Generator::gen(const ast::Decl* decl) -> std::vector<std::unique_ptr<Alloc>> {
-    return match(*decl, [&](const auto& decl) {
+    auto allocs = match(*decl, [&](const auto& decl) {
         std::vector<std::unique_ptr<Alloc>> allocs;
         for (const auto& def : decl.defs) {
             auto var_alloc = gen(&def);
@@ -95,6 +95,12 @@ auto Generator::gen(const ast::Decl* decl) -> std::vector<std::unique_ptr<Alloc>
         }
         return allocs;
     });
+    for (auto& alloc : allocs) {
+        if (alloc->type.is<ir::type::Array>()) {
+            alloc->reference = true;  // arrays must be accessed by reference
+        }
+    }
+    return allocs;
 }
 
 auto Generator::gen(const ast::FuncDef* func) -> std::unique_ptr<Func> {

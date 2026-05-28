@@ -180,6 +180,7 @@ public:
     }
 
     VirtualMachine(std::istream& input, std::ostream& output) : input(input), output(output) {
+        using namespace type;
         unary_ops[UnaryInstOp::MOV] = [&](View& dest, const View& operand) {
             assign(dest.type, dest.data, operand.type, operand.data);
         };
@@ -191,26 +192,24 @@ public:
         };
         unary_ops[UnaryInstOp::BORROW] = [this](View& dest, const View& operand) {
             auto addr = operand.data;
-            assign(dest.type, dest.data, ir::type::Reference::pointer(operand.type, false),
+            assign(dest.type, dest.data, Reference::pointer(operand.type, false),
                    (std::byte*)&addr);
         };
         unary_ops[UnaryInstOp::BORROW_MUT] = [this](View& dest, const View& operand) {
             auto addr = operand.data;
-            assign(dest.type, dest.data, ir::type::Reference::pointer(operand.type, true),
-                   (std::byte*)&addr);
+            assign(dest.type, dest.data, Reference::pointer(operand.type, true), (std::byte*)&addr);
         };
 
-        auto check_ref = [](const Type& type, bool is_slice, const char* op_name) {
-            if (!(type.is<ir::type::Reference>() &&
-                  type.as<ir::type::Reference>().is_slice == is_slice)) {
-                throw COMPILER_ERROR(fmt::format("{} expected {} reference type, but got {}",
-                                                 op_name, is_slice ? "slice" : "non-slice", type));
+        auto check_ref = [](const TypeBox& type, const char* op_name) {
+            if (!type.is<Reference>()) {
+                throw COMPILER_ERROR(
+                    fmt::format("{} expected {} reference type, but got {}", op_name, type));
             }
         };
 
         unary_ops[UnaryInstOp::LOAD] = [this, check_ref](View& dest, const View& operand) {
-            check_ref(operand.type, false, "load");
-            auto ref_type = operand.type.as<type::Reference>();
+            check_ref(operand.type, "load");
+            auto ref_type = operand.type.as<Reference>();
             auto addr = *(std::byte**)operand.data;
             assign(dest.type, dest.data, ref_type.elem, addr);
         };
@@ -255,8 +254,7 @@ public:
             eval_binary<std::logical_or>(dest, lhs, rhs);
         };
 
-        auto check_indexing = [](const Type& base_type, const Type& offset_type) {
-            using namespace ir::type;
+        auto check_indexing = [](const TypeBox& base_type, const TypeBox& offset_type) {
             if (!offset_type.is<Primitive>() ||
                 !std::holds_alternative<Int>(offset_type.as<Primitive>())) {
                 throw COMPILER_ERROR(
@@ -272,10 +270,9 @@ public:
             binary_ops[InstOp::BORROW_ELEM_MUT] =
                 [this, check_ref, check_indexing](View& dest, const View& lhs, const View& rhs) {
                     // NOTE: lhs: pointer, rhs: offset
-                    using namespace ir::type;
                     check_indexing(lhs.type, rhs.type);
                     auto is_ref = lhs.type.is<Reference>();
-                    if (is_ref) check_ref(lhs.type, true, "binary load");
+                    if (is_ref) check_ref(lhs.type, "binary load");
                     auto offset = *(int*)rhs.data;
                     auto elem_type =
                         is_ref ? lhs.type.as<Reference>().elem : lhs.type.as<Array>().elem;
@@ -285,10 +282,16 @@ public:
 
         binary_ops[InstOp::STORE] = [this, check_ref](View& dest, const View& lhs,
                                                       const View& rhs) {
-            check_ref(lhs.type, false, "store");
-            auto ref_type = lhs.type.as<type::Reference>();
             auto addr = *(std::byte**)lhs.data;
-            assign(ref_type.elem, addr, rhs.type, rhs.data);
+            check_ref(lhs.type, "store");
+            auto ref_type = lhs.type.as<Reference>();
+            auto elem_type = ref_type.elem;
+            if (ref_type.is_slice) {
+                auto rhs_type = rhs.type.as<Array>();
+                assign(type::Array(elem_type, rhs_type.size), addr, rhs_type, rhs.data);
+            } else {
+                assign(elem_type, addr, rhs.type, rhs.data);
+            }
         };
     }
 };
