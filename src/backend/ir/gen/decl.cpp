@@ -17,6 +17,12 @@
 
 namespace ir::gen {
 
+std::string demangle(const std::string& varname) {
+    auto pos = varname.rfind('_');
+    if (pos == std::string::npos) return varname;
+    return varname.substr(0, pos);
+}
+
 auto Generator::gen(const ast::ConstInitVal* init, Type target_type) -> ConstexprValue {
     return match(
         init->val,

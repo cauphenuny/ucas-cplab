@@ -9,6 +9,7 @@
 #include "backend/ir/analysis/dataflow/liveness.hpp"
 #include "backend/ir/analysis/dominance.hpp"
 #include "backend/ir/analysis/utils.hpp"
+#include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.h"
 
 #include <memory>
@@ -56,6 +57,12 @@ private:
         auto dom_tree = DominanceTree(dom_flow);
         auto dom_frontier = DominanceFrontier(cfg, dom_tree);
         auto live_vars = DataFlow<flow::Liveness>(cfg, prog);
+        for (auto& param : func.params) {
+            if (!live_vars.in.at(func.entrance()).contains(param->value())) {
+                warning(fmt::format("unused parameter '{}' in function '{}'",
+                                    gen::demangle(param->name), func.name));
+            }
+        }
 
         auto allocs = std::unordered_set<Alloc*>();
         for (auto& alloc : func.locals()) allocs.insert(alloc.get());

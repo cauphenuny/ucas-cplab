@@ -240,12 +240,13 @@ int main(int argc, const char* argv[]) {
     }
 
     if (optimize && !silent) {
-        fmt::print("optimizations: ");
+        std::stringstream ss;
+        ss << "enabled optimizations: ";
         for (auto& [name, flag] : optimizations) {
-            fmt::print("{}{} ", flag.get() ? "+" : "-", name);
+            ss << fmt::format("{}{} ", flag.get() ? "+" : "-", name);
         }
-        fmt::println("{}{} ", optimize_inline > 0 ? "+" : "-", "inline");
-        fmt::print("\n");
+        ss << fmt::format("{}{} ", optimize_inline > 0 ? "+" : "-", "inline");
+        info(ss.str());
     }
 
     try {
