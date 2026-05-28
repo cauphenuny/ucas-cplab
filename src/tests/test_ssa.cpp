@@ -1,5 +1,5 @@
-#include "backend/ir/optim/ssa.hpp"
 #include "backend/ir/parse/visit.hpp"
+#include "backend/ir/transform/ssa/construct.hpp"
 #include "fmt/base.h"
 
 #include <sstream>
@@ -13,12 +13,12 @@ void test(const std::string& name, const std::string& text) {
         auto& program = *program_box;
         fmt::println("Before AddPhi:\n{}", program);
 
-        ir::optim::minipass::AddPhi add_phi;
+        ir::transform::minipass::AddPhi add_phi;
         add_phi.apply(program);
 
         fmt::println("After AddPhi:\n{}", program);
 
-        ir::optim::minipass::Rename rename;
+        ir::transform::minipass::Rename rename;
         rename.apply(program);
         fmt::println("After Rename:\n{}", program);
     } catch (const std::exception& e) {

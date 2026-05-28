@@ -1,14 +1,14 @@
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.h"
-#include "backend/ir/optim/common_expr.hpp"
-#include "backend/ir/optim/const_propagation.hpp"
-#include "backend/ir/optim/copy_propagation.hpp"
-#include "backend/ir/optim/dead_alloc.hpp"
-#include "backend/ir/optim/dead_block.hpp"
-#include "backend/ir/optim/dead_def.hpp"
-#include "backend/ir/optim/framework.hpp"
-#include "backend/ir/optim/inline.hpp"
-#include "backend/ir/optim/ssa.hpp"
+#include "backend/ir/transform/framework.hpp"
+#include "backend/ir/transform/optim/common_expr.hpp"
+#include "backend/ir/transform/optim/const_propagation.hpp"
+#include "backend/ir/transform/optim/copy_propagation.hpp"
+#include "backend/ir/transform/optim/dead_alloc.hpp"
+#include "backend/ir/transform/optim/dead_block.hpp"
+#include "backend/ir/transform/optim/dead_def.hpp"
+#include "backend/ir/transform/optim/inline.hpp"
+#include "backend/ir/transform/ssa/construct.hpp"
 #include "backend/ir/vm/vm.h"
 #include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"
@@ -84,24 +84,24 @@ int main(int argc, const char* argv[]) {
     }
 
     // factory mapping from short name -> Pass constructor
-    using PassFactory = std::function<std::unique_ptr<ir::optim::SSAPass>()>;
+    using PassFactory = std::function<std::unique_ptr<ir::transform::SSAPass>()>;
     std::map<std::string, PassFactory> factories = {
-        {"copy", []() { return std::make_unique<ir::optim::CopyPropagation>(); }},
-        {"def", []() { return std::make_unique<ir::optim::DeadDefElimination>(); }},
-        {"alloc", []() { return std::make_unique<ir::optim::DeadAllocElimination>(); }},
-        {"temp", []() { return std::make_unique<ir::optim::DeadTempElimination>(); }},
-        {"const", []() { return std::make_unique<ir::optim::ConstPropagation>(); }},
-        {"inline", []() { return std::make_unique<ir::optim::Inlining>(); }},
+        {"copy", []() { return std::make_unique<ir::transform::CopyPropagation>(); }},
+        {"def", []() { return std::make_unique<ir::transform::DeadDefElimination>(); }},
+        {"alloc", []() { return std::make_unique<ir::transform::DeadAllocElimination>(); }},
+        {"temp", []() { return std::make_unique<ir::transform::DeadTempElimination>(); }},
+        {"const", []() { return std::make_unique<ir::transform::ConstPropagation>(); }},
+        {"inline", []() { return std::make_unique<ir::transform::Inlining>(); }},
         {"exp",
          []() {
-             return std::make_unique<
-                 ir::optim::Compose<ir::optim::SSAPassContext, ir::optim::DeadBlockElimination,
-                                    ir::optim::CommonSubexprElimination>>();
+             return std::make_unique<ir::transform::Compose<
+                 ir::transform::SSAPassContext, ir::transform::DeadBlockElimination,
+                 ir::transform::CommonSubexprElimination>>();
          }},
         {"block", []() {
              return std::make_unique<
-                 ir::optim::Compose<ir::optim::SSAPassContext, ir::optim::SimplifyCFG,
-                                    ir::optim::DeadBlockElimination>>();
+                 ir::transform::Compose<ir::transform::SSAPassContext, ir::transform::SimplifyCFG,
+                                        ir::transform::DeadBlockElimination>>();
          }}};
 
     if (pass_names.empty()) {
@@ -229,12 +229,13 @@ int main(int argc, const char* argv[]) {
                     std::shared_ptr<ir::Program>(ir::gen::generate(ast).release());
                 auto& combo_prog = *combo_prog_box;
 
-                ir::optim::Compose<void, ir::optim::ConstructSSA, ir::optim::SSAValue2TempValue>
+                ir::transform::Compose<void, ir::transform::ConstructSSA,
+                                       ir::transform::SSAValue2TempValue>
                     ssa;
                 ssa.apply(combo_prog);
-                ir::optim::SSAPassContext ctx(combo_prog);
+                ir::transform::SSAPassContext ctx(combo_prog);
 
-                std::vector<std::unique_ptr<ir::optim::SSAPass>> passes;
+                std::vector<std::unique_ptr<ir::transform::SSAPass>> passes;
                 for (const auto& name : combo) {
                     auto it = factories.find(name);
                     if (it != factories.end()) {
@@ -244,8 +245,8 @@ int main(int argc, const char* argv[]) {
                     }
                 }
 
-                auto apply = [&](ir::optim::SSAPassContext& ctx2,
-                                 const std::vector<std::unique_ptr<ir::optim::SSAPass>>& ps) {
+                auto apply = [&](ir::transform::SSAPassContext& ctx2,
+                                 const std::vector<std::unique_ptr<ir::transform::SSAPass>>& ps) {
                     bool changed = false;
                     for (auto& pass : ps) {
                         bool pass_changed = pass->apply(combo_prog, ctx2);

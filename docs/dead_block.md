@@ -11,7 +11,7 @@
 2. **错误的 Phi 处理**：Phi 函数被保留，但使用了错误的源块，其中计算尚未发生。
 
 ### 修复
-修改了 `src/backend/ir/optim/dead_block.hpp` 以：
+修改了 `src/backend/ir/transform/optim/dead_block.hpp` 以：
 - 确保在块合并时按拓扑顺序追加指令。
 - 在合并具有指令的块时，添加对目标块中 Phi 指令的检查。
 - 如果源块有指令且目标块以 Phi 指令开头，则阻止合并。

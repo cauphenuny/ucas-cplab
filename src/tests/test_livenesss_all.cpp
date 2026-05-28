@@ -1,6 +1,6 @@
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.h"
-#include "backend/ir/optim/ssa.hpp"
+#include "backend/ir/transform/ssa/construct.hpp"
 #include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/syntax/visit.hpp"
@@ -94,11 +94,11 @@ int main() {
 
         analysis(code, "Generated IR");
 
-        auto to_ssa = ir::optim::ConstructSSA();
+        auto to_ssa = ir::transform::ConstructSSA();
         to_ssa.apply(code);
         analysis(code, "SSA IR");
 
-        auto ssa_to_temp = ir::optim::SSAValue2TempValue();
+        auto ssa_to_temp = ir::transform::SSAValue2TempValue();
         ssa_to_temp.apply(code);
         analysis(code, "SSA IR, use TempValue");
     }

@@ -3,7 +3,7 @@
 #include "backend/ir/analysis/usedef.h"
 #include "backend/ir/ir.h"
 
-namespace ir::optim {
+namespace ir::transform {
 
 using namespace ir::analysis;
 
@@ -46,4 +46,4 @@ struct NonSSAPassContext {
 using SSAPass = Pass<SSAPassContext>;
 using NonSSAPass = Pass<NonSSAPassContext>;
 
-}  // namespace ir::optim
+}  // namespace ir::transform

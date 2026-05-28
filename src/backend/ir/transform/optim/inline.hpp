@@ -13,9 +13,9 @@
 /// 7. move func's block to caller
 /// 8. connect blocks
 
+#include "../framework.hpp"
 #include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/op.hpp"
-#include "framework.hpp"
 
 #include <list>
 #include <memory>
@@ -24,7 +24,7 @@
 #include <utility>
 #include <vector>
 
-namespace ir::optim {
+namespace ir::transform {
 
 struct Inlining : SSAPass {
     Inlining(size_t threshold = 8) : threshold(threshold) {}
@@ -129,4 +129,4 @@ private:
     size_t threshold;
 };
 
-}  // namespace ir::optim
+}  // namespace ir::transform

@@ -3,16 +3,16 @@
 /// @note propagates through non-array MOV operation
 
 #pragma once
+#include "../framework.hpp"
 #include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.h"
 #include "backend/ir/type.hpp"
-#include "framework.hpp"
 
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
 
-namespace ir::optim {
+namespace ir::transform {
 
 struct CopyPropagation : SSAPass {
     bool apply(Program& prog, SSAPassContext& ctx) override {
@@ -95,4 +95,4 @@ private:
     }
 };
 
-}  // namespace ir::optim
+}  // namespace ir::transform

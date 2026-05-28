@@ -20,9 +20,9 @@
 /// variables with b's value after one iteration.
 
 #include "backend/ir/ir.h"
-#include "backend/ir/optim/framework.hpp"
-#include "backend/ir/optim/ssa_destruct.hpp"
 #include "backend/ir/parse/visit.hpp"
+#include "backend/ir/transform/framework.hpp"
+#include "backend/ir/transform/ssa/destruct.hpp"
 #include "backend/ir/vm/vm.h"
 #include "fmt/base.h"
 
@@ -30,7 +30,7 @@
 #include <string>
 
 using namespace ir;
-using namespace ir::optim;
+using namespace ir::transform;
 
 static int tests_passed = 0;
 static int tests_failed = 0;

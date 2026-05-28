@@ -2,9 +2,9 @@
 
 #pragma once
 
+#include "../framework.hpp"
 #include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.h"
-#include "framework.hpp"
 
 #include <algorithm>
 #include <memory>
@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 
-namespace ir::optim {
+namespace ir::transform {
 struct DeadAllocElimination : SSAPass {
     bool apply(Program& prog, SSAPassContext& ctx) override {
         if (!prog.is_ssa) {
@@ -103,4 +103,4 @@ private:
 using DeadTempElimination = DeadTempEliminationImpl<SSAPassContext>;
 using NonSSADeadTempElimination = DeadTempEliminationImpl<NonSSAPassContext>;
 
-}  // namespace ir::optim
+}  // namespace ir::transform

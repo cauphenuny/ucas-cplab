@@ -5,16 +5,16 @@
 #include "backend/ir/analysis/dominance.hpp"
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.h"
-#include "backend/ir/optim/common_expr.hpp"
-#include "backend/ir/optim/const_propagation.hpp"
-#include "backend/ir/optim/copy_propagation.hpp"
-#include "backend/ir/optim/dead_alloc.hpp"
-#include "backend/ir/optim/dead_block.hpp"
-#include "backend/ir/optim/dead_def.hpp"
-#include "backend/ir/optim/framework.hpp"
-#include "backend/ir/optim/inline.hpp"
-#include "backend/ir/optim/ssa.hpp"
-#include "backend/ir/optim/ssa_destruct.hpp"
+#include "backend/ir/transform/framework.hpp"
+#include "backend/ir/transform/optim/common_expr.hpp"
+#include "backend/ir/transform/optim/const_propagation.hpp"
+#include "backend/ir/transform/optim/copy_propagation.hpp"
+#include "backend/ir/transform/optim/dead_alloc.hpp"
+#include "backend/ir/transform/optim/dead_block.hpp"
+#include "backend/ir/transform/optim/dead_def.hpp"
+#include "backend/ir/transform/optim/inline.hpp"
+#include "backend/ir/transform/ssa/construct.hpp"
+#include "backend/ir/transform/ssa/destruct.hpp"
 #include "backend/ir/vm/vm.h"
 #include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"
@@ -289,9 +289,9 @@ int main(int argc, const char* argv[]) {
                 size_t pass_id = 0;
 
                 auto apply =
-                    [&](ir::Program& program, ir::optim::SSAPassContext& ctx,
-                        const std::vector<
-                            std::pair<std::unique_ptr<ir::optim::SSAPass>, std::string>>& passes) {
+                    [&](ir::Program& program, ir::transform::SSAPassContext& ctx,
+                        const std::vector<std::pair<std::unique_ptr<ir::transform::SSAPass>,
+                                                    std::string>>& passes) {
                         bool any_changed = false;
                         for (auto& [pass, name] : passes) {
                             try {
@@ -312,7 +312,7 @@ int main(int argc, const char* argv[]) {
                 echo(program, "Generated IR");
 
                 {
-                    using namespace ir::optim;
+                    using namespace ir::transform;
                     if (to_ssa) {
                         ConstructSSA().apply(program);
                         echo(program, fmt::format("#{} SSA Form", pass_id++));
@@ -324,7 +324,7 @@ int main(int argc, const char* argv[]) {
                 }
 
                 if (optimize) {
-                    using namespace ir::optim;
+                    using namespace ir::transform;
                     std::vector<std::pair<std::unique_ptr<SSAPass>, std::string>> passes;
                     SSAPassContext ctx(program);
                     if (optimize_copy) {
@@ -366,7 +366,7 @@ int main(int argc, const char* argv[]) {
                 }
 
                 if (exit_ssa) {
-                    using namespace ir::optim;
+                    using namespace ir::transform;
                     NonSSAPassContext ctx(program);
                     DestructSSA().apply(program, ctx);
                     echo(program, fmt::format("#{} Exit SSA Form", pass_id++));

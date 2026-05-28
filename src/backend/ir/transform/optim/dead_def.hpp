@@ -1,13 +1,13 @@
 /// @brief Dead Definition Elimination Pass, requires SSA
 
 #pragma once
+#include "../framework.hpp"
 #include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.h"
-#include "framework.hpp"
 
 #include <list>
 
-namespace ir::optim {
+namespace ir::transform {
 
 struct DeadDefElimination : SSAPass {
     bool apply(Program& prog, SSAPassContext& ctx) override {
@@ -40,4 +40,4 @@ private:
     }
 };
 
-}  // namespace ir::optim
+}  // namespace ir::transform

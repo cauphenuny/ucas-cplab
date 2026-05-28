@@ -3,7 +3,7 @@
 ## 简单块消除
 
 ```
-TrivialBlockElimination failed: compiler error : conflict phi args, caused by replacng if_true_8_4 to entry in %a_0.4: i32 = phi('entry: 5, 'if_true_8_4: 25); (at /Users/ycp/Source/Courses/cp-lab/main/src/backend/ir/optim/dead_block.hpp:124)
+TrivialBlockElimination failed: compiler error : conflict phi args, caused by replacng if_true_8_4 to entry in %a_0.4: i32 = phi('entry: 5, 'if_true_8_4: 25); (at /Users/ycp/Source/Courses/cp-lab/main/src/backend/ir/transform/optim/dead_block.hpp:124)
 Current program: fn if_if_Else() -> i32 {
     let a_0: i32;
     'entry: {

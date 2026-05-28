@@ -4,18 +4,17 @@
 /// then invoke Copy Propagation to further propagate constants.
 
 #pragma once
+#include "../framework.hpp"
 #include "backend/ir/ir.h"
-#include "backend/ir/optim/copy_propagation.hpp"
 #include "backend/ir/type.hpp"
 #include "copy_propagation.hpp"
-#include "framework.hpp"
 #include "utils/diagnosis.hpp"
 
 #include <memory>
 #include <optional>
 #include <variant>
 
-namespace ir::optim {
+namespace ir::transform {
 
 struct ConstexprFolder {
     static std::optional<ConstexprValue> fold(UnaryInstOp op, const ConstexprValue& operand) {
@@ -157,4 +156,4 @@ private:
         return changed;
     }
 };
-}  // namespace ir::optim
+}  // namespace ir::transform

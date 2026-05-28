@@ -4,12 +4,12 @@
 /// Assignment Form, Briggs et al. 1998
 /// slightly modifyed by add a split-critical-edge pass to handle so-called "lost copy" problem.
 
+#include "../framework.hpp"
+#include "../optim/dead_alloc.hpp"
 #include "backend/ir/analysis/cfg.hpp"
 #include "backend/ir/analysis/dominance.hpp"
 #include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.h"
-#include "dead_alloc.hpp"
-#include "framework.hpp"
 #include "utils/diagnosis.hpp"
 
 #include <memory>
@@ -20,7 +20,7 @@
 #include <variant>
 #include <vector>
 
-namespace ir::optim {
+namespace ir::transform {
 
 namespace minipass {
 
@@ -225,4 +225,4 @@ private:
 using DestructSSA = Compose<NonSSAPassContext, minipass::SplitCriticalEdge, minipass::ReplacePhi,
                             NonSSADeadTempElimination>;
 
-}  // namespace ir::optim
+}  // namespace ir::transform

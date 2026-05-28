@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "../framework.hpp"
 #include "backend/ir/analysis/cfg.hpp"
 #include "backend/ir/analysis/dataflow/dominance.hpp"
 #include "backend/ir/analysis/dataflow/framework.hpp"
@@ -9,7 +10,6 @@
 #include "backend/ir/analysis/dominance.hpp"
 #include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.h"
-#include "framework.hpp"
 
 #include <memory>
 #include <queue>
@@ -19,7 +19,7 @@
 #include <utility>
 #include <variant>
 
-namespace ir::optim {
+namespace ir::transform {
 
 /// @note: passes in minipass should not be used directly
 
@@ -239,4 +239,4 @@ struct SSAValue2TempValue : Pass<void> {
     }
 };
 
-}  // namespace ir::optim
+}  // namespace ir::transform

@@ -2,10 +2,10 @@
 
 #pragma once
 
+#include "../framework.hpp"
 #include "backend/ir/analysis/cfg.hpp"
 #include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.h"
-#include "framework.hpp"
 
 #include <algorithm>
 #include <list>
@@ -16,7 +16,7 @@
 #include <variant>
 #include <vector>
 
-namespace ir::optim {
+namespace ir::transform {
 
 /// @note eliminate unreachable blocks.
 
@@ -263,4 +263,4 @@ private:
     }
 };
 
-}  // namespace ir::optim
+}  // namespace ir::transform
