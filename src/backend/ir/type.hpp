@@ -661,15 +661,15 @@ inline bool constructable(const TypeBox& from_box, const TypeBox& to_box) {
     return from_box <= to_box;
 }
 
-TypeBox unit() {
+inline TypeBox unit() {
     return Product{}.toBoxed();
 }
 
-TypeBox any() {
+inline TypeBox any() {
     return Top{}.toBoxed();
 }
 
-TypeBox never() {
+inline TypeBox never() {
     return Bottom{}.toBoxed();
 }
 
