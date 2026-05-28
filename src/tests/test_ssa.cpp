@@ -23,6 +23,7 @@ void test(const std::string& name, const std::string& text) {
         fmt::println("After Rename:\n{}", program);
     } catch (const std::exception& e) {
         fmt::println("  Error during test '{}': {}", name, e.what());
+        exit(1);
     }
     fmt::println("------------------------------------------");
 }
@@ -36,15 +37,15 @@ fn main() -> i32 {
         => if %0 { 'then_blk } else { 'else_blk };
     }
     'then_blk: {
-        x: i32 = 1;
+        @x: i32 = 1;
         => 'exit_blk;
     }
     'else_blk: {
-        x: i32 = 2;
+        @x: i32 = 2;
         => 'exit_blk;
     }
     'exit_blk: {
-        return x;
+        return @x;
     }
 }
 )");
@@ -54,21 +55,21 @@ fn main() -> i32 {
     let mut i: i32;
     let mut sum: i32;
     'entry: {
-        i: i32 = 0;
-        sum: i32 = 0;
+        @i: i32 = 0;
+        @sum: i32 = 0;
         => 'cond;
     }
     'cond: {
-        %0: bool = i < 10;
+        %0: bool = @i < 10;
         => if %0 { 'body } else { 'exit };
     }
     'body: {
-        sum: i32 = sum + i;
-        i: i32 = i + 1;
+        @sum: i32 = @sum + @i;
+        @i: i32 = @i + 1;
         => 'cond;
     }
     'exit: {
-        return sum;
+        return @sum;
     }
 }
 )");

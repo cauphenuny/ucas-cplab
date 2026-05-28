@@ -32,6 +32,7 @@ void test(const std::string& name, const std::string& text,
         }
     } catch (const std::exception& e) {
         fmt::println("  Error during test '{}': {}", name, e.what());
+        exit(1);
     }
     fmt::println("------------------------------------------");
 }
