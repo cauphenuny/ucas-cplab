@@ -46,12 +46,16 @@ assign_param_regs(const std::vector<std::unique_ptr<Alloc>>& params, TargetABI& 
         if (num_general < abi.reg.generals.parameters.size()) {
             param_regs.emplace_back(abi.reg.generals.parameters[num_general]);
             num_general++;
+        } else {
+            param_regs.emplace_back(std::nullopt);
         }
     };
     auto floating = [&] {
         if (num_float < abi.reg.floats.parameters.size()) {
             param_regs.emplace_back(abi.reg.floats.parameters[num_float]);
             num_float++;
+        } else {
+            param_regs.emplace_back(std::nullopt);
         }
     };
     for (const auto& param : params) {

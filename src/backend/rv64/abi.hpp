@@ -4,7 +4,7 @@
 
 namespace rv64 {
 
-namespace {
+namespace abi {
 inline const ir::lowering::RegisterABI GPR = {
     .size = 32,
     .caller_saved = {1, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 28, 29, 30, 31},
@@ -24,17 +24,17 @@ inline const ir::lowering::RegisterABI FPR = {
 inline size_t size_of(const ir::Type& type) {
     using namespace ir::type;
     if (type.is<Primitive>()) {
-        Match{type.as<Primitive>()}([](const Int&) { return 4; }, [](const Bool&) { return 1; },
-                                    [](const Float&) { return 4; },
-                                    [](const Double&) { return 8; });
+        return Match{type.as<Primitive>()}(
+            [](const Int&) { return 4; }, [](const Bool&) { return 1; },
+            [](const Float&) { return 4; }, [](const Double&) { return 8; });
     }
     throw UNIMPLEMENTED_ERROR("size_of: non-primitive type");
 }
-}  // namespace
+}  // namespace abi
 
 inline const ir::lowering::TargetABI ABI = {
-    .reg = {.generals = GPR, .floats = FPR},
-    .mem = {.stack_alignment = 16, .size = size_of, .align = size_of},
+    .reg = {.generals = abi::GPR, .floats = abi::FPR},
+    .mem = {.stack_alignment = 16, .size = abi::size_of, .align = abi::size_of},
 };
 
 }  // namespace rv64
