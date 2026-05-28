@@ -172,7 +172,7 @@ private:
             while (worklist.size()) {
                 auto [src, dest] = worklist.back();
                 worklist.pop_back();
-                block.add(UnaryInst{
+                block.append(UnaryInst{
                     .op = UnaryInstOp::MOV, .result = as_lvalue(dest), .operand = map[src]});
                 map[src] = dest;
                 for (auto it = copy_set.begin(); it != copy_set.end();) {
@@ -192,7 +192,7 @@ private:
                 copy_set.erase(it);
 
                 auto temp = func.newTemp(type_of(dest), &block);
-                block.add(UnaryInst{.op = UnaryInstOp::MOV, .result = temp, .operand = dest});
+                block.append(UnaryInst{.op = UnaryInstOp::MOV, .result = temp, .operand = dest});
                 map[dest] = Value{LeftValue{temp}};
                 worklist.emplace_back(src, dest);
             }

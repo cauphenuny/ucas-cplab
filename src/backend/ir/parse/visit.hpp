@@ -252,9 +252,10 @@ public:
         if (ctx->argList()) {
             args = take_ptr<std::vector<ir::Value>>(visit(ctx->argList()));
         }
-        current_block_->add(ir::CallInst{.result = std::move(result),
-                                         .func = ir::NamedValue{func_def->first, func_def->second},
-                                         .args = std::move(args)});
+        current_block_->append(
+            ir::CallInst{.result = std::move(result),
+                         .func = ir::NamedValue{func_def->first, func_def->second},
+                         .args = std::move(args)});
         return {};
     }
 
@@ -263,10 +264,10 @@ public:
         auto result = resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
         auto base = take<ir::Value>(visit(ctx->value(0)));
         auto index = take<ir::Value>(visit(ctx->value(1)));
-        current_block_->add(ir::BinaryInst{.op = ir::InstOp::LOAD_ELEM,
-                                           .result = std::move(result),
-                                           .lhs = std::move(base),
-                                           .rhs = std::move(index)});
+        current_block_->append(ir::BinaryInst{.op = ir::InstOp::LOAD_ELEM,
+                                              .result = std::move(result),
+                                              .lhs = std::move(base),
+                                              .rhs = std::move(index)});
         return {};
     }
 
@@ -274,7 +275,7 @@ public:
         // var : type = & MUT? var ;
         auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
         auto operand = resolveLValue(ctx->var(1));
-        current_block_->add(
+        current_block_->append(
             ir::UnaryInst{.op = ctx->MUT() ? ir::UnaryInstOp::BORROW_MUT : ir::UnaryInstOp::BORROW,
                           .result = std::move(result),
                           .operand = ir::Value(std::move(operand))});
@@ -286,7 +287,7 @@ public:
         auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
         auto base = ir::Value(resolveLValue(ctx->var(1)));
         auto index = take<ir::Value>(visit(ctx->value()));
-        current_block_->add(
+        current_block_->append(
             ir::BinaryInst{.op = ctx->MUT() ? ir::InstOp::BORROW_ELEM_MUT : ir::InstOp::BORROW_ELEM,
                            .result = std::move(result),
                            .lhs = std::move(base),
@@ -298,9 +299,9 @@ public:
         // var : type = *(var) ;
         auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
         auto operand = resolveLValue(ctx->var(1));
-        current_block_->add(ir::UnaryInst{.op = ir::UnaryInstOp::LOAD,
-                                          .result = std::move(result),
-                                          .operand = ir::Value(std::move(operand))});
+        current_block_->append(ir::UnaryInst{.op = ir::UnaryInstOp::LOAD,
+                                             .result = std::move(result),
+                                             .operand = ir::Value(std::move(operand))});
         return {};
     }
 
@@ -310,7 +311,7 @@ public:
         auto lhs = take<ir::Value>(visit(ctx->value(0)));
         auto rhs = take<ir::Value>(visit(ctx->value(1)));
         auto op = getBinOp(ctx->binop());
-        current_block_->add(ir::BinaryInst{
+        current_block_->append(ir::BinaryInst{
             .op = op, .result = std::move(result), .lhs = std::move(lhs), .rhs = std::move(rhs)});
         return {};
     }
@@ -324,7 +325,7 @@ public:
             auto val = take<ir::Value>(visit(ctx->value(i)));
             phi.args.emplace_back(block_map_.at(label_str), std::move(val));
         }
-        current_block_->add(std::move(phi));
+        current_block_->append(std::move(phi));
         return {};
     }
 
@@ -341,19 +342,19 @@ public:
 
         if (has_not) {
             auto val = take<ir::Value>(visit(ctx->value()));
-            current_block_->add(ir::UnaryInst{.op = ir::UnaryInstOp::NOT,
-                                              .result = std::move(result),
-                                              .operand = std::move(val)});
+            current_block_->append(ir::UnaryInst{.op = ir::UnaryInstOp::NOT,
+                                                 .result = std::move(result),
+                                                 .operand = std::move(val)});
         } else if (has_neg) {
             auto val = take<ir::Value>(visit(ctx->value()));
-            current_block_->add(ir::UnaryInst{.op = ir::UnaryInstOp::NEG,
-                                              .result = std::move(result),
-                                              .operand = std::move(val)});
+            current_block_->append(ir::UnaryInst{.op = ir::UnaryInstOp::NEG,
+                                                 .result = std::move(result),
+                                                 .operand = std::move(val)});
         } else {
             auto val = take<ir::Value>(visit(ctx->value()));
-            current_block_->add(ir::UnaryInst{.op = ir::UnaryInstOp::MOV,
-                                              .result = std::move(result),
-                                              .operand = std::move(val)});
+            current_block_->append(ir::UnaryInst{.op = ir::UnaryInstOp::MOV,
+                                                 .result = std::move(result),
+                                                 .operand = std::move(val)});
         }
         return {};
     }

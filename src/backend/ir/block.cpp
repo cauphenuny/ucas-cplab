@@ -20,7 +20,7 @@ auto Block::toString() const -> std::string {
     return str;
 }
 
-void Block::add(Inst inst) {
+void Block::append(Inst inst) {
     insts_.push_back(std::move(inst));
     if (this->program) this->program->after_add(&insts_.back());
 }
@@ -42,6 +42,11 @@ void Block::replace(Inst* inst, Inst new_inst) {
 auto Block::erase(std::list<Inst>::iterator iter) -> std::list<Inst>::iterator {
     if (this->program) this->program->before_erase(&*iter);
     return insts_.erase(iter);
+}
+auto Block::insert(std::list<Inst>::iterator iter, Inst inst) -> std::list<Inst>::iterator {
+    auto new_iter = insts_.insert(iter, std::move(inst));
+    if (this->program) this->program->after_add(&*new_iter);
+    return new_iter;
 }
 
 void Block::setExit(Exit exit) {
@@ -65,7 +70,7 @@ Exit& Block::exit() {
 auto Block::clone(const std::string& prefix) -> std::unique_ptr<Block> {
     auto block = std::make_unique<Block>(prefix + label);
     for (auto& inst : insts_) {
-        block->add(inst);
+        block->append(inst);
     }
     if (exit_) {
         block->setExit(*exit_);

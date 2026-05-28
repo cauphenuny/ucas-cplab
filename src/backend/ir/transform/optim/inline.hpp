@@ -78,9 +78,9 @@ private:
         auto call = std::get<CallInst>(remain->pop_front());
 
         for (size_t i = 0; i < call.args.size(); i++) {
-            prologue->add(UnaryInst{.op = UnaryInstOp::MOV,
-                                    .result = callee->params[i]->value(),
-                                    .operand = call.args[i]});
+            prologue->append(UnaryInst{.op = UnaryInstOp::MOV,
+                                       .result = callee->params[i]->value(),
+                                       .operand = call.args[i]});
         }
         prologue->setExit(JumpExit{callee->entrance()});
 
@@ -91,7 +91,7 @@ private:
             exit_block->exit() = JumpExit{epilogue.get()};
         }
 
-        epilogue->add(PhiInst{.result = call.result, .args = return_values});
+        epilogue->append(PhiInst{.result = call.result, .args = return_values});
         epilogue->setExit(JumpExit{remain});
 
         for (auto& param : callee->params) {

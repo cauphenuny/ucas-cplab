@@ -60,10 +60,10 @@ auto Generator::gen(const ast::BlockStmt* block_stmt, Func* func, Block* scope) 
                             auto val = LeftValue{alloc->value()};
                             auto init_val = Value{std::move(*alloc->init)};
                             if (alloc->reference) {
-                                scope->add(BinaryInst{InstOp::STORE, func->newTemp(VOID, scope),
-                                                      val, init_val});
+                                scope->append(BinaryInst{InstOp::STORE, func->newTemp(VOID, scope),
+                                                         val, init_val});
                             } else {
-                                scope->add(UnaryInst{UnaryInstOp::MOV, val, init_val});
+                                scope->append(UnaryInst{UnaryInstOp::MOV, val, init_val});
                             }
                             alloc->init = std::nullopt;
                         }
@@ -122,10 +122,10 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
                     auto var = gen(&lval);
                     auto exp = gen(&assign_stmt.exp, func, scope);
                     if (var.type.isPointer()) {
-                        scope->add(BinaryInst{InstOp::STORE, func->newTemp(VOID, scope),
-                                              LeftValue{var}, std::move(exp)});
+                        scope->append(BinaryInst{InstOp::STORE, func->newTemp(VOID, scope),
+                                                 LeftValue{var}, std::move(exp)});
                     } else {
-                        scope->add(UnaryInst{UnaryInstOp::MOV, std::move(var), std::move(exp)});
+                        scope->append(UnaryInst{UnaryInstOp::MOV, std::move(var), std::move(exp)});
                     }
                     return scope;
                 },
@@ -134,10 +134,10 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
                     auto index = gen(&exp.right, func, scope);
                     auto exp_val = gen(&assign_stmt.exp, func, scope);
                     auto addr = func->newTemp(type_of(exp_val).borrow(false), scope);
-                    scope->add(BinaryInst{InstOp::BORROW_ELEM_MUT, addr, std::move(array),
-                                          std::move(index)});
-                    scope->add(BinaryInst{InstOp::STORE, func->newTemp(VOID, scope),
-                                          LeftValue{addr}, std::move(exp_val)});
+                    scope->append(BinaryInst{InstOp::BORROW_ELEM_MUT, addr, std::move(array),
+                                             std::move(index)});
+                    scope->append(BinaryInst{InstOp::STORE, func->newTemp(VOID, scope),
+                                             LeftValue{addr}, std::move(exp_val)});
                     return scope;
                 });
         },

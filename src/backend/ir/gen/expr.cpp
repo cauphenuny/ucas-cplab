@@ -29,7 +29,7 @@ auto Generator::gen(const ast::LValExp* lval, Func* func, Block* scope) -> LeftV
             if (named.type.isPointer()) {
                 auto elem_type = named.type.as<ir::type::Reference>().elem;
                 auto temp = func->newTemp(elem_type, scope);
-                scope->add(UnaryInst{UnaryInstOp::LOAD, temp, Value{LeftValue{named}}});
+                scope->append(UnaryInst{UnaryInstOp::LOAD, temp, Value{LeftValue{named}}});
                 return temp;
             }
             return named;
@@ -50,20 +50,20 @@ auto Generator::gen(const ast::BinaryExp* exp, Func* func, Block* scope) -> Valu
     auto type = this->info->type_of(exp);
     if (exp->op != ast::BinaryOp::INDEX) {
         auto result = func->newTemp(type, scope);
-        scope->add(BinaryInst{convert_op(exp->op), result, std::move(left), std::move(right)});
+        scope->append(BinaryInst{convert_op(exp->op), result, std::move(left), std::move(right)});
         return LeftValue{result};
     } else {
         if (type.is<ir::type::Reference>()) {
             auto result = func->newTemp(type, scope);
             auto ir_op = type.as<ir::type::Reference>().readonly ? InstOp::BORROW_ELEM
                                                                  : InstOp::BORROW_ELEM_MUT;
-            scope->add(BinaryInst{ir_op, result, std::move(left), std::move(right)});
+            scope->append(BinaryInst{ir_op, result, std::move(left), std::move(right)});
             return LeftValue{result};
         } else {
             auto ref = func->newTemp(type.borrow(true), scope);
             auto result = func->newTemp(type, scope);
-            scope->add(BinaryInst{InstOp::BORROW_ELEM, ref, std::move(left), std::move(right)});
-            scope->add(UnaryInst{UnaryInstOp::LOAD, result, Value{LeftValue{ref}}});
+            scope->append(BinaryInst{InstOp::BORROW_ELEM, ref, std::move(left), std::move(right)});
+            scope->append(UnaryInst{UnaryInstOp::LOAD, result, Value{LeftValue{ref}}});
             return LeftValue{result};
         }
     }
@@ -83,7 +83,7 @@ auto Generator::gen(const ast::Exp* exp, Func* func, Block* scope) -> Value {
         [&](const ast::UnaryExp& unary_exp) -> Value {
             auto operand = gen(&unary_exp.exp, func, scope);
             auto result = func->newTemp(this->info->type_of(&unary_exp), scope);
-            scope->add(UnaryInst{convert_op(unary_exp.op), result, std::move(operand)});
+            scope->append(UnaryInst{convert_op(unary_exp.op), result, std::move(operand)});
             return LeftValue{result};
         },
         [&](const ast::BinaryExp& binary_exp) -> Value { return gen(&binary_exp, func, scope); },
@@ -93,7 +93,7 @@ auto Generator::gen(const ast::Exp* exp, Func* func, Block* scope) -> Value {
                 args.push_back(gen(&arg, func, scope));
             }
             auto result = func->newTemp(this->info->type_of(&call_exp), scope);
-            scope->add(
+            scope->append(
                 CallInst{.result = result, .func = gen(&call_exp.func), .args = std::move(args)});
             return LeftValue{result};
         });

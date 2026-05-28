@@ -185,11 +185,12 @@ struct Block {
 
     [[nodiscard]] auto toString() const -> std::string;
 
-    void add(Inst inst);
+    void append(Inst inst);
     void prepend(Inst inst);
     auto pop_front() -> Inst;
     void replace(Inst* inst, Inst new_inst);
     auto erase(std::list<Inst>::iterator iter) -> std::list<Inst>::iterator;
+    auto insert(std::list<Inst>::iterator iter, Inst inst) -> std::list<Inst>::iterator;
 
     void setExit(Exit exit);
     [[nodiscard]] bool hasExit() const;
