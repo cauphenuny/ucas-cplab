@@ -47,6 +47,14 @@ struct CompilerError : std::logic_error {
 #define COMPILER_ERROR(desc)         CompilerError(std::string_view(__FILE__), __LINE__, desc)
 #define COMPILER_ERROR_T(desc, type) CompilerError(std::string_view(__FILE__), __LINE__, desc, type)
 
+struct UnimplementedError : CompilerError {
+    UnimplementedError(const std::string& desc) : CompilerError(desc, "unimplemented feature") {}
+    UnimplementedError(std::string_view file, int line, const std::string& desc)
+        : CompilerError(file, line, desc, "unimplemented feature") {}
+};
+
+#define UNIMPLEMENTED_ERROR(desc) UnimplementedError(std::string_view(__FILE__), __LINE__, desc)
+
 inline void warning(const std::string& desc) {
     fmt::println(stderr, YELLOW BOLD "warning: " NONE "{}", desc);
 }
