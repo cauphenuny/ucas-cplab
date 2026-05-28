@@ -56,7 +56,7 @@ struct DeadAllocElimination : SSAPass {
     }
 };
 
-template <typename Context> struct DeadTempEliminationImpl : Pass<Context> {
+template <typename Context> struct DeadTempElimination : Pass<Context> {
     bool apply(Program& prog, Context& ctx) override {
         bool changed = false;
         for (auto& func : prog.funcs()) {
@@ -99,8 +99,5 @@ private:
         return !defs.empty();
     }
 };
-
-using DeadTempElimination = DeadTempEliminationImpl<SSAPassContext>;
-using NonSSADeadTempElimination = DeadTempEliminationImpl<NonSSAPassContext>;
 
 }  // namespace ir::transform

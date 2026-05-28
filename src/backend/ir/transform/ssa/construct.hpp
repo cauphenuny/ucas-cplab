@@ -210,28 +210,22 @@ private:
 
 using ConstructSSA = Compose<void, minipass::AddPhi, minipass::Rename>;
 
-struct SSAValue2TempValue : Pass<void> {
-    bool apply(Program& prog) override {
+template <typename Context> struct SSAValue2TempValue : Pass<Context> {
+    bool apply(Program& prog, Context& ctx) override {
         bool changed = false;
         for (auto& func : prog.funcs()) {
-            std::unordered_map<SSAValue, TempValue> ssa_to_temp;
             for (auto& block : func->blocks()) {
-                auto convert = [&](LeftValue* v) {
-                    if (auto ssa = std::get_if<SSAValue>(v); ssa) {
-                        if (!ssa_to_temp.count(*ssa)) {
-                            ssa_to_temp[*ssa] = func->newTemp(ssa->type, block.get());
-                            changed = true;
-                        }
-                        *v = ssa_to_temp[*ssa];
-                    }
-                };
                 for (auto& inst : block->insts()) {
-                    for (auto& var : utils::vars(inst)) {
-                        convert(var);
-                    }
-                }
-                if (auto var = utils::used_var(block->exit()); var) {
-                    convert(var);
+                    auto result = match(inst, [&](auto& i) { return i.result; });
+                    match(
+                        result,
+                        [&](const SSAValue& ssa) {
+                            auto target = LeftValue{func->newTemp(ssa.type, block.get())};
+                            ctx.ud.replace_all_uses_with(ssa, target);
+                            ctx.ud.replace_all_defs_with(ssa, target);
+                            changed = true;
+                        },
+                        [](const auto&) {});
                 }
             }
         }

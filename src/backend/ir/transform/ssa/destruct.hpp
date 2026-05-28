@@ -10,6 +10,7 @@
 #include "backend/ir/analysis/dominance.hpp"
 #include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.h"
+#include "backend/ir/transform/ssa/construct.hpp"
 #include "utils/diagnosis.hpp"
 
 #include <memory>
@@ -222,7 +223,8 @@ private:
 
 }  // namespace minipass
 
-using DestructSSA = Compose<NonSSAPassContext, minipass::SplitCriticalEdge, minipass::ReplacePhi,
-                            NonSSADeadTempElimination>;
+using DestructSSA =
+    Compose<NonSSAPassContext, SSAValue2TempValue<NonSSAPassContext>, minipass::SplitCriticalEdge,
+            minipass::ReplacePhi, DeadTempElimination<NonSSAPassContext>>;
 
 }  // namespace ir::transform

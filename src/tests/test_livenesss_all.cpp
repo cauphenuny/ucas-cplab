@@ -98,8 +98,9 @@ int main() {
         to_ssa.apply(code);
         analysis(code, "SSA IR");
 
-        auto ssa_to_temp = ir::transform::SSAValue2TempValue();
-        ssa_to_temp.apply(code);
+        auto ssa_to_temp = ir::transform::SSAValue2TempValue<ir::transform::SSAPassContext>();
+        auto ctx = ir::transform::SSAPassContext(code);
+        ssa_to_temp.apply(code, ctx);
         analysis(code, "SSA IR, use TempValue");
     }
     return 0;

@@ -317,16 +317,16 @@ int main(int argc, const char* argv[]) {
                         ConstructSSA().apply(program);
                         echo(program, fmt::format("#{} SSA Form", pass_id++));
                     }
-                    if (!retain_ssa_value) {
-                        SSAValue2TempValue().apply(program);
-                        echo(program, fmt::format("#{} SSAValue to TempValue", pass_id++));
-                    }
                 }
 
                 if (optimize) {
                     using namespace ir::transform;
                     std::vector<std::pair<std::unique_ptr<SSAPass>, std::string>> passes;
                     SSAPassContext ctx(program);
+                    if (!retain_ssa_value) {
+                        passes.emplace_back(std::make_unique<SSAValue2TempValue<SSAPassContext>>(),
+                                            "SSAValue to TempValue");
+                    }
                     if (optimize_copy) {
                         passes.emplace_back(std::make_unique<CopyPropagation>(),
                                             "Copy Propagation");
@@ -344,7 +344,7 @@ int main(int argc, const char* argv[]) {
                                             "Dead Allocation Elimination");
                     }
                     if (optimize_temp) {
-                        passes.emplace_back(std::make_unique<DeadTempElimination>(),
+                        passes.emplace_back(std::make_unique<DeadTempElimination<SSAPassContext>>(),
                                             "Dead Temporary Value Elimination");
                     }
                     if (optimize_exp) {

@@ -89,7 +89,11 @@ int main(int argc, const char* argv[]) {
         {"copy", []() { return std::make_unique<ir::transform::CopyPropagation>(); }},
         {"def", []() { return std::make_unique<ir::transform::DeadDefElimination>(); }},
         {"alloc", []() { return std::make_unique<ir::transform::DeadAllocElimination>(); }},
-        {"temp", []() { return std::make_unique<ir::transform::DeadTempElimination>(); }},
+        {"temp",
+         []() {
+             return std::make_unique<
+                 ir::transform::DeadTempElimination<ir::transform::SSAPassContext>>();
+         }},
         {"const", []() { return std::make_unique<ir::transform::ConstPropagation>(); }},
         {"inline", []() { return std::make_unique<ir::transform::Inlining>(); }},
         {"exp",
@@ -229,11 +233,10 @@ int main(int argc, const char* argv[]) {
                     std::shared_ptr<ir::Program>(ir::gen::generate(ast).release());
                 auto& combo_prog = *combo_prog_box;
 
-                ir::transform::Compose<void, ir::transform::ConstructSSA,
-                                       ir::transform::SSAValue2TempValue>
-                    ssa;
-                ssa.apply(combo_prog);
+                ir::transform::ConstructSSA().apply(combo_prog);
                 ir::transform::SSAPassContext ctx(combo_prog);
+                ir::transform::SSAValue2TempValue<ir::transform::SSAPassContext>().apply(combo_prog,
+                                                                                         ctx);
 
                 std::vector<std::unique_ptr<ir::transform::SSAPass>> passes;
                 for (const auto& name : combo) {
