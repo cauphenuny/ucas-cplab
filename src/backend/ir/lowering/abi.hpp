@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <variant>
 #include <vector>
 
 namespace ir::lowering {
@@ -36,35 +37,50 @@ struct TargetABI {
     MemoryABI mem;
 };
 
-std::vector<std::optional<size_t>>
-assign_param_regs(const std::vector<std::unique_ptr<Alloc>>& params, TargetABI& abi) {
+inline bool is_fp(const Type& type) {
+    using namespace type;
+    return type.is<Primitive>() && (std::holds_alternative<Float>(type.as<Primitive>()) ||
+                                    std::holds_alternative<Double>(type.as<Primitive>()));
+}
+
+inline std::vector<std::optional<size_t>> assign_call_regs(const std::vector<Type>& types,
+                                                           TargetABI& abi) {
     using namespace type;
     size_t num_general = 0, num_float = 0;
     std::vector<std::optional<size_t>> param_regs;
-    param_regs.reserve(params.size());
-    auto general = [&] {
-        if (num_general < abi.reg.generals.parameters.size()) {
-            param_regs.emplace_back(abi.reg.generals.parameters[num_general]);
-            num_general++;
+    auto assign = [&](size_t& counter, const std::vector<size_t>& params) {
+        if (counter < params.size()) {
+            param_regs.emplace_back(params[counter]);
+            counter++;
         } else {
             param_regs.emplace_back(std::nullopt);
         }
     };
-    auto floating = [&] {
-        if (num_float < abi.reg.floats.parameters.size()) {
-            param_regs.emplace_back(abi.reg.floats.parameters[num_float]);
-            num_float++;
+    for (const auto& type : types) {
+        if (!type.is<Primitive>()) throw UNIMPLEMENTED_ERROR("non-primitive parameter type");
+        if (is_fp(type)) {
+            assign(num_float, abi.reg.floats.parameters);
         } else {
-            param_regs.emplace_back(std::nullopt);
+            assign(num_general, abi.reg.generals.parameters);
         }
-    };
-    for (const auto& param : params) {
-        if (!param->type.is<Primitive>()) throw UNIMPLEMENTED_ERROR("non-primitive parameter type");
-        Match{param->type.as<Primitive>()}(
-            [&](const Int&) { general(); }, [&](const Bool& b) { general(); },
-            [&](const Float& f) { floating(); }, [&](const Double& d) { floating(); });
     }
     return param_regs;
+}
+
+inline std::vector<std::optional<size_t>>
+assign_param_regs(const std::vector<std::unique_ptr<Alloc>>& params, TargetABI& abi) {
+    std::vector<Type> types;
+    types.reserve(params.size());
+    for (const auto& param : params) types.push_back(param->type);
+    return assign_call_regs(types, abi);
+}
+
+inline std::vector<std::optional<size_t>> assign_arg_regs(const std::vector<Value>& args,
+                                                          TargetABI& abi) {
+    std::vector<Type> types;
+    types.reserve(args.size());
+    for (const auto& arg : args) types.push_back(type_of(arg));
+    return assign_call_regs(types, abi);
 }
 
 }  // namespace ir::lowering

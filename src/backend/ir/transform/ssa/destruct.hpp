@@ -107,10 +107,11 @@ private:
         for (auto var : illegals) {
             auto [name, scope] = Match{var}(
                 [&](const TempValue& temp) -> Info {
-                    return {fmt::format("_{}", temp.id), temp.func};
+                    return {fmt::format("__phi_{}", temp.id), temp.func};
                 },
                 [&](const SSAValue& ssa) -> Info {
-                    return {fmt::format("_{}_{}", ssa.def->name, ssa.version), where.at(ssa.def)};
+                    return {fmt::format("__phi_{}_{}", ssa.def->name, ssa.version),
+                            where.at(ssa.def)};
                 },
                 [&](const NamedValue& named) -> Info {
                     throw COMPILER_ERROR(
