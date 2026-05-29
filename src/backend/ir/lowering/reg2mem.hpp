@@ -1,4 +1,4 @@
-/// @note Convert non-ref Alloc to ref Alloc, which let variable accessing go through load/store.
+/// @note Convert non-ref Alloc which cannot be put in register to ref Alloc
 #pragma once
 
 #include "backend/ir/analysis/utils.hpp"
@@ -105,9 +105,6 @@ struct RegToMem : NonSSAPass {
             if (!global->reference) workset.insert(global.get());
         }
         for (auto& func : prog.funcs()) {
-            for (auto& local : func->locals()) {
-                if (!local->reference) workset.insert(local.get());
-            }
             auto param_regs = assign_param_regs(func->params, abi);
             for (size_t i = 0; i < func->params.size(); i++) {
                 if (param_regs[i]) continue;

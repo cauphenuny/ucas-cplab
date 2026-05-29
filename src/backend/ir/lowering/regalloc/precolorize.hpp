@@ -15,9 +15,7 @@ namespace ir::lowering {
 
 using ColorMap = std::unordered_map<LeftValue, ssize_t>;
 
-/// @note: colorized: func call, func param, return value
-/// TODO: colorize callee-saved registers in prologue/epilogue
-/// maybe merge multiple returns to a single return and multiple jump for saving code size?
+/// @note: colorized: func call, func param, return value, callee-saved registers
 
 struct PreColorize : ir::transform::NonSSAPass {
     PreColorize(TargetABI abi) : abi(std::move(abi)) {}

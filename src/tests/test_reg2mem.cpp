@@ -1,5 +1,6 @@
-/// Test RegToMem pass: converting non-ref Allocs to ref Allocs, inserting
-/// LOAD/STORE instructions so that variable accesses go through memory.
+/// Test RegToMem pass: spill non-ref Allocs that cannot be promoted to
+/// registers (globals, params exceeding register count) to ref Allocs,
+/// inserting LOAD/STORE instructions so that accesses go through memory.
 /// Uses the RV64 ABI for parameter register assignment.
 
 #include "backend/ir/ir.h"
@@ -85,12 +86,10 @@ void test_structural(const std::string& name, const std::string& ir_text,
 
 int main() {
     // ------------------------------------------------------------------
-    // Test 1: Simple local variable spill.
-    // A single non-ref local @x is assigned and returned.
-    // After spilling: assign becomes STORE, return's operand becomes LOAD.
-    // Expected: 42
+    // Test 1: Local variable NOT spilled (fits in register).
+    // Workset is empty — IR unchanged. Expected: 42
     // ------------------------------------------------------------------
-    test("Simple local spill", R"(
+    test("Local NOT spilled", R"(
 fn main() -> i32 {
     let mut x: i32;
     'entry: {
@@ -236,7 +235,7 @@ fn main() -> i32 {
 }
 )",
                     [](Program& prog, bool changed) {
-                        check(changed, "apply returns true (locals and params need spilling)");
+                        check(changed, "apply returns true (params exceeding regs need spilling)");
                         const auto& func = prog.findFunc("many_params");
                         check(func.params.size() == 9, "has 9 params");
                         // First 8 int params get registers, so they should NOT be spilled
@@ -250,8 +249,8 @@ fn main() -> i32 {
 
     // ------------------------------------------------------------------
     // Test 7: Mixed param types (int + float) within register limits.
-    // 2 int params + 2 float params — all fit in registers.
-    // None of these params should be spilled (only local @r is spilled).
+    // All params fit in registers, local @r is kept in register.
+    // Workset is empty — nothing to spill.
     // ------------------------------------------------------------------
     test_structural("Mixed params within register limits", R"(
 fn mixed(a: i32, b: i32, x: f32, y: f32) -> i32 {
@@ -270,7 +269,7 @@ fn main() -> i32 {
 }
 )",
                     [](Program& prog, bool changed) {
-                        check(changed, "apply returns true (locals need spilling)");
+                        check(!changed, "apply returns false (nothing to spill)");
                         const auto& func = prog.findFunc("mixed");
                         check(func.params.size() == 4, "has 4 params");
                         for (size_t i = 0; i < 4; i++) {
@@ -296,7 +295,7 @@ fn main() -> i32 {
 }
 )",
                     [](Program& prog, bool changed) {
-                        check(changed, "apply returns true (global and local need spilling)");
+                        check(changed, "apply returns true (global needs spilling)");
                         auto* global = prog.findAlloc("x");
                         check(global != nullptr, "found global x");
                         if (global) {
