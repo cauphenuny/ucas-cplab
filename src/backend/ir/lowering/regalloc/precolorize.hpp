@@ -3,6 +3,7 @@
 #include "backend/ir/ir.h"
 #include "backend/ir/lowering/abi.hpp"
 #include "backend/ir/transform/framework.hpp"
+#include "backend/ir/type.hpp"
 
 #include <optional>
 #include <set>
@@ -59,8 +60,7 @@ private:
                 block->append(
                     UnaryInst{.op = UnaryInstOp::MOV, .result = temp, .operand = ret->exp});
                 block->setExit(ReturnExit{temp});
-                precolored[temp] =
-                    is_fp(type) ? abi.reg.floats.return_value : abi.reg.generals.return_value;
+                precolored[temp] = abi.reg_of(type).return_value;
 
                 ret_blocks.push_back(block.get());
             }
@@ -111,7 +111,17 @@ private:
                     precolored[temp] = reg;
                     args[i] = temp;
                 }
-                block.insert(next_it, CallInst{result, callee, std::move(args)});
+                if (type_of(result).is<type::Primitive>()) {
+                    auto reg = abi.reg_of(type_of(result)).return_value;
+                    auto retval = LeftValue{func.newTemp(type_of(result), &block)};
+                    block.insert(next_it, CallInst{retval, callee, std::move(args)});
+                    block.insert(
+                        next_it,
+                        UnaryInst{.op = UnaryInstOp::MOV, .result = result, .operand = retval});
+                    precolored[retval] = reg;
+                } else {
+                    block.insert(next_it, CallInst{result, callee, std::move(args)});
+                }
                 it = next_it;
             } else {
                 it = std::next(it);

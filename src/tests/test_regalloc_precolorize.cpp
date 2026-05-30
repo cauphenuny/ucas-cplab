@@ -90,7 +90,7 @@ void test_precolorize(const std::string& name, const std::string& ir_text,
 int main() {
     // ------------------------------------------------------------------
     // Test 1: Call with 2 int args. add(a,b) has 2 arg proxies + 25 cs +
-    // return. main has 25 cs + 2 call args + return. Total: 28 + 28 = 56.
+    // return. main has 25 cs + 2 call args + 1 retval + return. Total: 28 + 29 = 57.
     // ------------------------------------------------------------------
     test_precolorize("Call with 2 int args", R"(
 fn add(a: i32, b: i32) -> i32 {
@@ -111,7 +111,7 @@ fn main() -> i32 {
                          check(regs.count(10) > 0,
                                "register 10 is used (first GPR param / return)");
                          check(regs.count(11) > 0, "register 11 is used (second GPR param)");
-                         check(precolored.size() == 56, "56 entries (28 add + 28 main)");
+                         check(precolored.size() == 57, "57 entries (28 add + 29 main)");
                          auto& main_func = prog.findFunc("main");
                          auto* entry = main_func.findBlock("entry");
                          check(count_movs(*entry) >= 2, "at least 2 MOVs inserted before call");
@@ -120,7 +120,7 @@ fn main() -> i32 {
     // ------------------------------------------------------------------
     // Test 2: Call with 9 int args — 9th spills.
     // many: 8 arg proxies + 25 cs + return = 34.
-    // main: 25 cs + 8 call args + return = 34. Total: 68.
+    // main: 25 cs + 8 call args + 1 retval + return = 35. Total: 69.
     // ------------------------------------------------------------------
     test_precolorize("Call with 9 int args — 9th spills", R"(
 fn many(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, g: i32, h: i32, i: i32) -> i32 {
@@ -141,13 +141,13 @@ fn main() -> i32 {
                          for (ssize_t r = 10; r <= 17; r++)
                              check(regs.count(r) > 0,
                                    fmt::format("register {} is used (GPR param)", r));
-                         check(precolored.size() == 68, "68 entries (34 many + 34 main)");
+                         check(precolored.size() == 69, "69 entries (34 many + 35 main)");
                      });
 
     // ------------------------------------------------------------------
     // Test 3: Call with 2 float args.
     // fadd: 2 arg proxies + 25 cs + return = 28.
-    // main: 25 cs + 2 call args + return = 28. Total: 56.
+    // main: 25 cs + 2 call args + 1 retval + return = 29. Total: 57.
     // ------------------------------------------------------------------
     test_precolorize("Call with 2 float args", R"(
 fn fadd(a: f32, b: f32) -> f32 {
@@ -167,13 +167,13 @@ fn main() -> f32 {
                          auto regs = collect_regs(precolored);
                          check(regs.count(10) > 0, "f10 is used (first FPR param)");
                          check(regs.count(11) > 0, "f11 is used (second FPR param)");
-                         check(precolored.size() == 56, "56 entries (28 fadd + 28 main)");
+                         check(precolored.size() == 57, "57 entries (28 fadd + 29 main)");
                      });
 
     // ------------------------------------------------------------------
     // Test 4: Mixed int+float call args.
     // mixed: 4 arg proxies + 25 cs + return = 30.
-    // main: 25 cs + 4 call args + return = 30. Total: 60.
+    // main: 25 cs + 4 call args + 1 retval + return = 31. Total: 61.
     // ------------------------------------------------------------------
     test_precolorize("Call with mixed int+float args", R"(
 fn mixed(a: i32, x: f32, b: i32, y: f32) -> i32 {
@@ -190,7 +190,7 @@ fn main() -> i32 {
 }
 )",
                      [](Program& prog, const ColorMap& precolored) {
-                         check(precolored.size() == 60, "60 entries (30 mixed + 30 main)");
+                         check(precolored.size() == 61, "61 entries (30 mixed + 31 main)");
                          auto& main_func = prog.findFunc("main");
                          auto* entry = main_func.findBlock("entry");
                          check(count_movs(*entry) >= 4, "at least 4 MOVs inserted (one per arg)");
@@ -266,7 +266,7 @@ fn main() -> i32 {
     // ------------------------------------------------------------------
     // Test 8: Multiple calls in one function.
     // square: 1 arg proxy + 25 cs + return = 27.
-    // main: 25 cs + 2 call args + return = 28. Total: 55.
+    // main: 25 cs + 2 call args + 2 retvals + return = 30. Total: 57.
     // ------------------------------------------------------------------
     test_precolorize("Multiple calls in one function", R"(
 fn square(x: i32) -> i32 {
@@ -285,7 +285,7 @@ fn main() -> i32 {
 }
 )",
                      [](Program& prog, const ColorMap& precolored) {
-                         check(precolored.size() == 55, "55 entries (27 square + 28 main)");
+                         check(precolored.size() == 57, "57 entries (27 square + 30 main)");
                          auto& main_func = prog.findFunc("main");
                          auto* entry = main_func.findBlock("entry");
                          check(count_movs(*entry) >= 2,
@@ -295,7 +295,7 @@ fn main() -> i32 {
     // ------------------------------------------------------------------
     // Test 9: Bool args use GPR (same as Int).
     // logic: 2 arg proxies + 25 cs + return = 28.
-    // main: 25 cs + 2 call args + return = 28. Total: 56.
+    // main: 25 cs + 2 call args + 1 retval + return = 29. Total: 57.
     // ------------------------------------------------------------------
     test_precolorize("Call with bool args uses GPR", R"(
 fn logic(a: bool, b: bool) -> bool {
@@ -316,13 +316,13 @@ fn main() -> i32 {
                          auto regs = collect_regs(precolored);
                          check(regs.count(10) > 0, "register 10 used (first bool param)");
                          check(regs.count(11) > 0, "register 11 used (second bool param)");
-                         check(precolored.size() == 56, "56 entries (28 logic + 28 main)");
+                         check(precolored.size() == 57, "57 entries (28 logic + 29 main)");
                      });
 
     // ------------------------------------------------------------------
     // Test 10: Call args include both temps and constexprs.
     // add: 2 arg proxies + 25 cs + return = 28.
-    // main: 25 cs + 2 call args + return = 28. Total: 56.
+    // main: 25 cs + 2 call args + 1 retval + return = 29. Total: 57.
     // ------------------------------------------------------------------
     test_precolorize("Call with temp args", R"(
 fn add(a: i32, b: i32) -> i32 {
@@ -342,7 +342,7 @@ fn main() -> i32 {
 }
 )",
                      [](Program& prog, const ColorMap& precolored) {
-                         check(precolored.size() == 56, "56 entries (28 add + 28 main)");
+                         check(precolored.size() == 57, "57 entries (28 add + 29 main)");
                          auto& main_func = prog.findFunc("main");
                          auto* entry = main_func.findBlock("entry");
                          bool found_call = false;

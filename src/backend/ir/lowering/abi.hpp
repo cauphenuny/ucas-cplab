@@ -28,6 +28,12 @@ struct MemoryABI {
     size_t (*align)(const Type& type);
 };
 
+inline bool is_fp(const Type& type) {
+    using namespace type;
+    return type.is<Primitive>() && (std::holds_alternative<Float>(type.as<Primitive>()) ||
+                                    std::holds_alternative<Double>(type.as<Primitive>()));
+}
+
 struct TargetABI {
     struct {
         RegisterABI generals;
@@ -35,13 +41,10 @@ struct TargetABI {
     } reg;
 
     MemoryABI mem;
+    [[nodiscard]] const RegisterABI& reg_of(const Type& type) const {
+        return is_fp(type) ? reg.floats : reg.generals;
+    }
 };
-
-inline bool is_fp(const Type& type) {
-    using namespace type;
-    return type.is<Primitive>() && (std::holds_alternative<Float>(type.as<Primitive>()) ||
-                                    std::holds_alternative<Double>(type.as<Primitive>()));
-}
 
 inline std::vector<std::optional<size_t>> assign_call_regs(const std::vector<Type>& types,
                                                            TargetABI& abi) {

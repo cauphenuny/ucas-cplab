@@ -28,6 +28,9 @@ inline size_t size_of(const ir::Type& type) {
             [](const Int&) { return 4; }, [](const Bool&) { return 1; },
             [](const Float&) { return 4; }, [](const Double&) { return 8; });
     }
+    if (type == ir::type::unit()) {
+        return 0;
+    }
     throw UNIMPLEMENTED_ERROR("size_of: non-primitive type");
 }
 }  // namespace abi
