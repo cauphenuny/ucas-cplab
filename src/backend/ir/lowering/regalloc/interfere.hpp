@@ -26,7 +26,9 @@ struct InterfereGraph {
     void ensure(const LeftValue& value) {
         if (nodes.count(value) == 0) {
             nodes[value] = InterfereNode{.value = value};
-            for (size_t i = 0; i < abi.reg_of(type_of(value)).size; i++) {
+            auto& regs = abi.reg_of(type_of(value));
+            for (size_t i = 0; i < regs.size; i++) {
+                if (regs.reserved.count(i)) continue;
                 nodes[value].available_colors.insert(i);
             }
         }

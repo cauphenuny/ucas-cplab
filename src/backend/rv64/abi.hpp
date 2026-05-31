@@ -7,9 +7,9 @@ namespace rv64 {
 namespace abi {
 inline const ir::lowering::RegisterABI GPR = {
     .size = 32,
-    .caller_saved = {1, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 28, 29, 30, 31},
-    .callee_saved = {2, 8, 9, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27},
-    .reserved = {0, 3, 4},
+    .caller_saved = {5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 28, 29, 30, 31},
+    .callee_saved = {8, 9, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27},
+    .reserved = {0, 1, 2, 3, 4},
     .parameters = {10, 11, 12, 13, 14, 15, 16, 17},
     .return_value = 10,
 };
@@ -21,6 +21,7 @@ inline const ir::lowering::RegisterABI FPR = {
     .parameters = {10, 11, 12, 13, 14, 15, 16, 17},
     .return_value = 10,
 };
+
 inline size_t size_of(const ir::Type& type) {
     using namespace ir::type;
     if (type.is<Primitive>()) {
