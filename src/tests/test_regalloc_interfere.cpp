@@ -1,17 +1,21 @@
-/// Test InterfereGraph::build: interference edges and caller-saved register forbidding.
+/// Test InterfereGraph::build: interference edges and caller-saved register forbidding
+/// via global pre-color proxy allocs.
 ///
 /// Key behaviors tested:
 ///   1. Two variables simultaneously live at a def point → interfere.
 ///   2. Sequential chain (non-overlapping lifetimes) → no interference.
 ///   3. Three variables: only the simultaneously-live pair interferes.
-///   4. GPR variable live across a call → forbidden from all GPR caller-saved regs.
+///   4. GPR variable live across a call → forbidden from all GPR caller-saved regs
+///      (connected to the global proxy alloc for each caller-saved register).
 ///   5. GPR variable dead before a call → no caller-saved forbidden from that call.
 ///   6. FPR variable live across a call → forbidden from all FPR caller-saved regs.
 ///   7. Cross-block (loop): loop variables with overlapping live ranges interfere.
 
 #include "backend/ir/ir.h"
 #include "backend/ir/lowering/regalloc/interfere.hpp"
+#include "backend/ir/lowering/regalloc/precolorize.hpp"
 #include "backend/ir/parse/visit.hpp"
+#include "backend/ir/transform/framework.hpp"
 #include "backend/rv64/abi.hpp"
 #include "fmt/base.h"
 
@@ -21,6 +25,7 @@
 #include <string>
 
 using namespace ir;
+using namespace ir::transform;
 using namespace ir::lowering;
 
 static int tests_passed = 0;
@@ -37,15 +42,19 @@ void check(bool cond, const std::string& msg) {
 }
 
 void test_interfere(const std::string& name, const std::string& ir_text,
-                    const std::function<void(Program&, InterfereGraph&)>& verify) {
+                    const std::function<void(Program&, InterfereGraph&, PreColorize&)>& verify) {
     fmt::println("Test: {}", name);
     try {
         auto stream = std::istringstream(ir_text);
         auto prog_box = ir::parse(stream);
         auto& prog = *prog_box;
-        ColorMap empty_precolor;
-        auto graph = InterfereGraph::build(prog, empty_precolor, rv64::ABI);
-        verify(prog, graph);
+
+        PreColorize precolor(rv64::ABI);
+        NonSSAPassContext ctx(prog);
+        precolor.apply(prog, ctx);
+
+        auto graph = InterfereGraph::build(prog, precolor.proxies, rv64::ABI);
+        verify(prog, graph, precolor);
     } catch (const std::exception& e) {
         fmt::println("  Error: {}", e.what());
         ++tests_failed;
@@ -82,7 +91,7 @@ fn f() -> i32 {
     }
 }
 )",
-                   [](Program& prog, InterfereGraph& g) {
+                   [](Program& prog, InterfereGraph& g, PreColorize&) {
                        auto& func = prog.findFunc("f");
                        auto a = named(func, "a");
                        auto b = named(func, "b");
@@ -109,7 +118,7 @@ fn f() -> i32 {
     }
 }
 )",
-                   [](Program& prog, InterfereGraph& g) {
+                   [](Program& prog, InterfereGraph& g, PreColorize&) {
                        auto& func = prog.findFunc("f");
                        auto a = named(func, "a");
                        auto b = named(func, "b");
@@ -136,7 +145,7 @@ fn f() -> i32 {
     }
 }
 )",
-                   [](Program& prog, InterfereGraph& g) {
+                   [](Program& prog, InterfereGraph& g, PreColorize&) {
                        auto& func = prog.findFunc("f");
                        auto a = named(func, "a");
                        auto b = named(func, "b");
@@ -149,11 +158,11 @@ fn f() -> i32 {
     // -----------------------------------------------------------------------
     // Test 4: GPR caller-saved unavailable — var live across a call.
     //   @x = 5; %0 = @g(); %1 = @x + %0; return %1;
-    // @x is in the live set when the CallInst is processed
-    // → all GPR caller-saved regs removed from available_colors.
-    // RV64 GPR caller-saved: {1, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 28, 29, 30, 31}
+    // @x is in the live set when the CallInst is processed → connected to all
+    // GPR caller-saved proxy allocs.
     // -----------------------------------------------------------------------
-    test_interfere("GPR caller-saved: var live across call → caller-saved unavailable", R"(
+    test_interfere("GPR caller-saved: var live across call → caller-saved proxies interfere",
+                   R"(
 fn g() -> i32 {
     'entry: {
         return 1;
@@ -169,13 +178,18 @@ fn f() -> i32 {
     }
 }
 )",
-                   [](Program& prog, InterfereGraph& g) {
+                   [](Program& prog, InterfereGraph& g, PreColorize& precolor) {
                        auto& func = prog.findFunc("f");
                        auto x = named(func, "x");
-                       const auto& available = g[x].available_colors;
+                       // x should interfere with all GPR caller-saved proxy allocs
                        for (auto reg : rv64::abi::GPR.caller_saved) {
-                           check(available.count(reg) == 0,
-                                 fmt::format("x: GPR caller-saved x{} unavailable", reg));
+                           // Proxies were pre-created with int type for GPR
+                           auto proxy_lv =
+                               LeftValue{precolor.proxies.at({ir::type::construct<int>(), reg})
+                                             ->value()};
+                           check(g.interferes(x, proxy_lv),
+                                 fmt::format("x interferes with GPR caller-saved proxy (reg {})",
+                                             reg));
                        }
                    });
 
@@ -183,9 +197,10 @@ fn f() -> i32 {
     // Test 5: GPR caller-saved still available — var dead before the call.
     //   @x = 5; @y = @x + 1; %0 = @g(); %1 = @y + %0; return %1;
     // @x's last use is in the def of @y, so @x is dead at the CallInst
-    // → caller-saved regs should still be in available_colors.
+    // → x NOT connected to caller-saved proxy allocs.
     // -----------------------------------------------------------------------
-    test_interfere("GPR caller-saved: var dead before call → caller-saved still available", R"(
+    test_interfere("GPR caller-saved: var dead before call → no caller-saved interference",
+                   R"(
 fn g() -> i32 {
     'entry: {
         return 1;
@@ -203,23 +218,26 @@ fn f() -> i32 {
     }
 }
 )",
-                   [](Program& prog, InterfereGraph& g) {
+                   [](Program& prog, InterfereGraph& g, PreColorize& precolor) {
                        auto& func = prog.findFunc("f");
                        auto x = named(func, "x");
-                       const auto& available = g[x].available_colors;
                        for (auto reg : rv64::abi::GPR.caller_saved) {
-                           check(available.count(reg) > 0,
-                                 fmt::format("x: GPR x{} still available (x dead before call)", reg));
+                           auto proxy_lv =
+                               LeftValue{precolor.proxies.at({ir::type::construct<int>(), reg})
+                                             ->value()};
+                           check(!g.interferes(x, proxy_lv),
+                                 fmt::format("x does NOT interfere with GPR caller-saved proxy "
+                                             "(reg {}) — x dead before call",
+                                             reg));
                        }
                    });
 
     // -----------------------------------------------------------------------
     // Test 6: FPR caller-saved unavailable — float var live across a call.
     //   @v = 1.0; %0 = @h(); %1 = @v + %0; return %1;
-    // @v (f64) is live at the call → all FPR caller-saved removed from available_colors.
-    // RV64 FPR caller-saved: {0..7, 10..17, 28..31}
+    // @v (f64) is live at the call → connected to all FPR caller-saved proxy allocs.
     // -----------------------------------------------------------------------
-    test_interfere("FPR caller-saved: float var live across call → fpr caller-saved unavailable",
+    test_interfere("FPR caller-saved: float var live across call → FPR proxies interfere",
                    R"(
 fn h() -> f64 {
     'entry: {
@@ -236,13 +254,17 @@ fn f() -> f64 {
     }
 }
 )",
-                   [](Program& prog, InterfereGraph& g) {
+                   [](Program& prog, InterfereGraph& g, PreColorize& precolor) {
                        auto& func = prog.findFunc("f");
                        auto v = named(func, "v");
-                       const auto& available = g[v].available_colors;
                        for (auto reg : rv64::abi::FPR.caller_saved) {
-                           check(available.count(reg) == 0,
-                                 fmt::format("v: FPR caller-saved f{} unavailable", reg));
+                           // Proxies were pre-created with double type for FPR
+                           auto proxy_lv =
+                               LeftValue{precolor.proxies.at({ir::type::construct<double>(), reg})
+                                             ->value()};
+                           check(g.interferes(v, proxy_lv),
+                                 fmt::format("v interferes with FPR caller-saved proxy (reg {})",
+                                             reg));
                        }
                    });
 
@@ -271,7 +293,7 @@ fn f(n: i32) -> i32 {
     }
 }
 )",
-                   [](Program& prog, InterfereGraph& g) {
+                   [](Program& prog, InterfereGraph& g, PreColorize&) {
                        auto& func = prog.findFunc("f");
                        auto i = named(func, "i");
                        auto s = named(func, "s");

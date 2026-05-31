@@ -1,6 +1,7 @@
 #pragma once
 #define FMT_HEADER_ONLY
 #include "fmt/format.h"
+#include "utils/diagnosis.hpp"
 
 #include <array>
 #include <cstdint>
@@ -8,7 +9,7 @@
 
 namespace rv64 {
 
-enum class Reg : uint8_t {
+enum class GeneralReg : uint8_t {
     ZERO,
     RA,
     SP,
@@ -43,7 +44,7 @@ enum class Reg : uint8_t {
     T6,
 };
 
-std::string toString(Reg r) {
+std::string toString(GeneralReg r) {
     static std::array<const char*, 32> names = {"zero", "ra", "sp",  "gp",  "tp", "t0", "t1", "t2",
                                                 "s0",   "s1", "a0",  "a1",  "a2", "a3", "a4", "a5",
                                                 "a6",   "a7", "s2",  "s3",  "s4", "s5", "s6", "s7",
@@ -55,6 +56,11 @@ struct FloatReg {
     uint8_t id;  // f0 - f31
     [[nodiscard]] auto toString() const -> std::string {
         return fmt::format("f{}", id);
+    }
+    FloatReg(uint8_t id) : id(id) {
+        if (id >= 32) {
+            throw COMPILER_ERROR(fmt::format("Invalid float register f{}", id));
+        }
     }
 };
 

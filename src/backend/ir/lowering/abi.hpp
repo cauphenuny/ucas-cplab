@@ -8,6 +8,7 @@
 #include <set>
 #include <variant>
 #include <vector>
+#include <string>
 
 namespace ir::lowering {
 
@@ -20,6 +21,8 @@ struct RegisterABI {
 
     std::vector<size_t> parameters;
     size_t return_value;
+
+    std::string (*name)(size_t index);
 };
 
 struct MemoryABI {

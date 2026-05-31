@@ -34,17 +34,11 @@ struct BriggsAllocator {
     ColorizeResult colorize() && {
         ColorizeResult result;
         for (const auto& [value, node] : graph.nodes()) {
-            if (node.pinned) {
+            if (node.color) {
                 precolored.insert(value);
                 continue;
             }
-            if (node.available_colors.size() < node.neighbors.size()) {
-                worklist.spill.insert(value);
-            } else if (node.neighbors.size() == 0) {
-                worklist.simplify.insert(value);
-            } else {
-                worklist.freeze.insert(value);
-            }
+            // TODO:
         }
         return result;
     }

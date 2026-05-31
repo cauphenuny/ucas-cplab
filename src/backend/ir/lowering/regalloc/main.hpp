@@ -24,12 +24,11 @@ struct RegisterAllocation : transform::NonSSAPass {
     bool apply(Program& prog, transform::NonSSAPassContext& ctx) override {
         PreColorize precolor(abi);
         precolor.apply(prog, ctx);
+        proxies = precolor.proxies;
         fmt::println("After precoloring:\n{}", prog);
-        auto precolored = precolor.precolored;
-        fmt::println("Precolored: {}\n", precolored);
 
         while (true) {
-            auto graph = InterfereGraph::build(prog, precolored, abi);
+            auto graph = InterfereGraph::build(prog, precolor.proxies, abi);
             auto moves = scan_move(prog);
             fmt::print(stderr, "graph: {}\nmoves: {}\n", graph, moves);
             auto [spills, colors] = BriggsAllocator(graph, moves).colorize();
@@ -42,13 +41,15 @@ struct RegisterAllocation : transform::NonSSAPass {
 
         fmt::println("Colorized: {}", colored);
 
-        for (auto& [val, color] : precolored) {
-            colored[val] = color;
+        for (auto& [key, alloc] : precolor.proxies) {
+            auto& [type, id] = key;
+            colored[alloc->value()] = id;
         }
         return true;
     }
 
     ColorMap colored;
+    ProxyMap proxies;
 };
 
 template <typename T> struct RedundantMoveElimination : transform::Pass<T> {

@@ -6,8 +6,7 @@
 #include "backend/ir/lowering/abi.hpp"
 #include "backend/ir/lowering/regalloc/precolorize.hpp"
 
-#include <set>
-#include <string>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -18,9 +17,8 @@ namespace ir::lowering {
 struct InterfereNode {
     LeftValue value;
     std::unordered_set<LeftValue> neighbors;
-    std::set<size_t> available_colors;
-    bool pinned{false};
-    TO_STRING(InterfereNode, value, neighbors, available_colors, pinned);
+    std::optional<size_t> color;
+    TO_STRING(InterfereNode, value, neighbors, color);
 };
 
 struct InterfereGraph {
@@ -28,11 +26,6 @@ struct InterfereGraph {
     void ensure(const LeftValue& value) {
         if (nodes_.count(value) == 0) {
             nodes_[value] = InterfereNode{.value = value};
-            auto& regs = abi.reg_of(type_of(value));
-            for (size_t i = 0; i < regs.size; i++) {
-                if (regs.reserved.count(i)) continue;
-                nodes_[value].available_colors.insert(i);
-            }
         }
     }
     void connect(const LeftValue& u, const LeftValue& v) {
@@ -45,35 +38,37 @@ struct InterfereGraph {
         ensure(u), ensure(v);
         return nodes_[u].neighbors.count(v) > 0;
     }
-    void connect(const LeftValue& value, size_t color) {
+    void pin(const LeftValue& value, size_t color) {
         ensure(value);
-        nodes_[value].available_colors.erase(color);
-    }
-    void pin(const LeftValue& value) {
-        ensure(value);
-        nodes_[value].pinned = true;
+        nodes_[value].color = color;
     }
     const InterfereNode& operator[](const LeftValue& value) {
         ensure(value);
         return nodes_.at(value);
     }
 
-    static InterfereGraph from_precolored(const ColorMap& precolor, const TargetABI& abi) {
+    [[nodiscard]] size_t max_color(const Type& type) const {
+        return abi.reg_of(type).size;
+    }
+
+    static InterfereGraph from_precolored(const ProxyMap& precolor, const TargetABI& abi) {
         InterfereGraph graph(abi);
-        for (const auto& [value, color] : precolor) {
-            size_t size = abi.reg_of(type_of(value)).size;
-            for (size_t i = 0; i < size; i++) {
-                if (i == color) continue;
-                graph.connect(value, i);
+        for (const auto& [key, alloc] : precolor) {
+            auto& [type, id] = key;
+            graph.pin(alloc->value(), id);
+        }
+        for (auto& node : graph.nodes_) {
+            for (auto& other : graph.nodes_) {
+                graph.connect(node.first, other.first);
             }
-            graph.pin(value);
         }
         return graph;
     }
 
-    static InterfereGraph build(Program& program, const ColorMap& precolor, const TargetABI& abi) {
+    static InterfereGraph build(Program& program, const ProxyMap& proxies,
+                                const TargetABI& abi) {
         using namespace analysis;
-        auto graph = from_precolored(precolor, abi);
+        auto graph = from_precolored(proxies, abi);
 
         for (auto& func : program.funcs()) {
             auto cfg = ControlFlowGraph(*func);
@@ -98,7 +93,7 @@ struct InterfereGraph {
                         for (auto& l : live) {
                             auto& regs = abi.reg_of(type_of(l));
                             for (auto reg : regs.caller_saved) {
-                                graph.connect(l, reg);
+                                graph.connect(l, proxies.at({type_of(l), reg})->value());
                             }
                         }
                     }
@@ -110,6 +105,13 @@ struct InterfereGraph {
                         live.insert(*use);
                     }
                 }
+            }
+        }
+
+        for (auto& node : graph.nodes()) {
+            auto type = type_of(node.first);
+            for (auto reserved : abi.reg_of(type).reserved) {
+                graph.connect(node.first, proxies.at({type, reserved})->value());
             }
         }
 
