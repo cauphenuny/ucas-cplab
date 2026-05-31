@@ -20,10 +20,7 @@ struct InterfereNode {
     std::unordered_set<LeftValue> neighbors;
     std::set<size_t> available_colors;
     bool pinned{false};
-    std::string toString() const {
-        return fmt::format("value = {}, neighbors = {}, available_colors = {}, pinned = {}", value,
-                           neighbors, available_colors, pinned);
-    }
+    TO_STRING(InterfereNode, value, neighbors, available_colors, pinned);
 };
 
 struct InterfereGraph {
@@ -122,13 +119,7 @@ struct InterfereGraph {
         return nodes_;
     }
 
-    [[nodiscard]] std::string toString() const {
-        std::string res;
-        for (const auto& [value, node] : nodes_) {
-            res += fmt::format("{}: {}\n", value, node);
-        }
-        return res;
-    }
+    TO_STRING(InterfereGraph, nodes_);
 
 private:
     std::unordered_map<LeftValue, InterfereNode> nodes_;

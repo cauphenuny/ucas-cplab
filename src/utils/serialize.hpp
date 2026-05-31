@@ -14,6 +14,8 @@
 #include <type_traits>
 #include <unordered_set>
 #include <utility>
+#include <map>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -73,6 +75,27 @@ template <typename T> auto toString(const std::unique_ptr<T>& ptr) -> std::strin
     } else {
         return serialize(ptr.get());
     }
+}
+
+template<typename K, typename V> auto toString(const std::pair<K, V>& p) -> std::string {
+    return fmt::format("({}, {})", p.first, p.second);
+}
+
+template <typename K, typename V, template <typename, typename> typename Container>
+std::enable_if_t<std::disjunction_v<std::is_same<Container<K, V>, std::map<K, V>>,
+                                    std::is_same<Container<K, V>, std::unordered_map<K, V>>>,
+                 std::string>
+toString(const Container<K, V>& map) {
+    if (map.empty()) return "{}";
+    auto& state = fmt_indent::state;
+    state.push();
+    std::string result = "{\n";
+    for (const auto& kv : map) {
+        result += fmt::format("{}{},\n", state.indent(), kv);
+    }
+    state.pop();
+    result += state.indent() + "}";
+    return result;
 }
 
 template <typename... Ts> std::string toString(const std::variant<Ts...>& var) {

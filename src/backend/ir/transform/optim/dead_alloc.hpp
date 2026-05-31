@@ -15,11 +15,10 @@
 #include <vector>
 
 namespace ir::transform {
-struct DeadAllocElimination : SSAPass {
-    bool apply(Program& prog, SSAPassContext& ctx) override {
-        if (!prog.is_ssa) {
-            throw COMPILER_ERROR("DeadAllocElimination requires SSA form");
-        }
+
+template<typename T>
+struct DeadAllocElimination : Pass<T> {
+    bool apply(Program& prog, T&) override {
         bool changed = false;
         std::unordered_map<const Alloc*, bool> referenced;
         for (auto& func : prog.funcs()) {

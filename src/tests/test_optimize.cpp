@@ -88,7 +88,7 @@ int main(int argc, const char* argv[]) {
     std::map<std::string, PassFactory> factories = {
         {"copy", []() { return std::make_unique<ir::transform::CopyPropagation>(); }},
         {"def", []() { return std::make_unique<ir::transform::DeadDefElimination>(); }},
-        {"alloc", []() { return std::make_unique<ir::transform::DeadAllocElimination>(); }},
+        {"alloc", []() { return std::make_unique<ir::transform::DeadAllocElimination<ir::transform::SSAPassContext>>(); }},
         {"temp",
          []() {
              return std::make_unique<

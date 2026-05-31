@@ -5,6 +5,7 @@
 #include "backend/ir/analysis/dominance.hpp"
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.h"
+#include "backend/ir/lowering/regalloc/main.hpp"
 #include "backend/ir/transform/framework.hpp"
 #include "backend/ir/transform/optim/common_expr.hpp"
 #include "backend/ir/transform/optim/const_propagation.hpp"
@@ -16,6 +17,7 @@
 #include "backend/ir/transform/ssa/construct.hpp"
 #include "backend/ir/transform/ssa/destruct.hpp"
 #include "backend/ir/vm/vm.h"
+#include "backend/rv64/abi.hpp"
 #include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/syntax/visit.hpp"
@@ -63,7 +65,6 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
 
     --ssa                   Convert generated IR to SSA form
     --retain-ssa-value      Do not convert SSAValue to TempValue in IR
-    --exit-ssa              Exit SSA form by eliminating phi instructions
 
     --optimize-copy         Apply Copy Propagation optimization (triggers --ssa)
     --optimize-const        Apply Const Propagation optimization (triggers --ssa)
@@ -139,7 +140,6 @@ int main(int argc, const char* argv[]) {
     bool execute = false;
     bool silent = false;
     bool to_ssa = false;
-    bool exit_ssa = false;
     bool retain_ssa_value = false;
 
     bool optimize_alloc = false;
@@ -173,8 +173,6 @@ int main(int argc, const char* argv[]) {
             print_ir_info = true;
         } else if (arg == "--ssa") {
             to_ssa = true;
-        } else if (arg == "--exit-ssa") {
-            exit_ssa = true;
         } else if (arg == "--retain-ssa-value") {
             retain_ssa_value = true;
         } else if (arg == "--exec") {
@@ -341,7 +339,7 @@ int main(int argc, const char* argv[]) {
                                             "Dead Definition Elimination");
                     }
                     if (optimize_alloc) {
-                        passes.emplace_back(std::make_unique<DeadAllocElimination>(),
+                        passes.emplace_back(std::make_unique<DeadAllocElimination<SSAPassContext>>(),
                                             "Dead Allocation Elimination");
                     }
                     if (optimize_temp) {
@@ -366,17 +364,17 @@ int main(int argc, const char* argv[]) {
                     while (apply(program, ctx, passes));
                 }
 
-                if (exit_ssa) {
-                    using namespace ir::transform;
-                    NonSSAPassContext ctx(program);
-                    DestructSSA().apply(program, ctx);
-                    echo(program, fmt::format("#{} Exit SSA Form", pass_id++));
+                if (output_file && print_ir) {
+                    fmt::println(output_file, "{}", program);
                 }
 
-                if (output_file) {
-                    if (print_ir) {
-                        fmt::println(output_file, "{}", program);
-                    }
+                ir::transform::NonSSAPassContext ctx(program);
+
+                // exit SSA
+                if (to_ssa) {
+                    using namespace ir::transform;
+                    DestructSSA().apply(program, ctx);
+                    echo(program, fmt::format("#{} Exit SSA Form", pass_id++));
                 }
 
                 if (execute) {
@@ -391,6 +389,19 @@ int main(int argc, const char* argv[]) {
                     } else {
                         fmt::println("{}", ret);
                     }
+                }
+
+                {
+                    using namespace ir::lowering;
+                    using Context = ir::transform::NonSSAPassContext;
+                    auto regalloc = RegisterAllocation(rv64::ABI);
+                    regalloc.apply(program, ctx);
+                    echo(program, fmt::format("#{} After Register Allocation", pass_id++));
+                    RedundantMoveElimination<Context>(regalloc.colored)
+                        .apply(program, ctx);
+                    ir::transform::DeadAllocElimination<Context>().apply(program, ctx);
+                    echo(program, fmt::format("#{} After Redundant Move Elimination",
+                                              pass_id++));
                 }
 
                 if (!silent) {
