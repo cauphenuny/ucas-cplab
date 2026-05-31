@@ -24,36 +24,36 @@ struct InterfereNode {
 struct InterfereGraph {
     explicit InterfereGraph(TargetABI abi) : abi(std::move(abi)) {}
     void ensure(const LeftValue& value) {
-        if (nodes.count(value) == 0) {
-            nodes[value] = InterfereNode{.value = value};
+        if (nodes_.count(value) == 0) {
+            nodes_[value] = InterfereNode{.value = value};
             auto& regs = abi.reg_of(type_of(value));
             for (size_t i = 0; i < regs.size; i++) {
                 if (regs.reserved.count(i)) continue;
-                nodes[value].available_colors.insert(i);
+                nodes_[value].available_colors.insert(i);
             }
         }
     }
     void connect(const LeftValue& u, const LeftValue& v) {
         if (u == v) return;
         ensure(u), ensure(v);
-        nodes[u].neighbors.insert(v);
-        nodes[v].neighbors.insert(u);
+        nodes_[u].neighbors.insert(v);
+        nodes_[v].neighbors.insert(u);
     }
     [[nodiscard]] bool interferes(const LeftValue& u, const LeftValue& v) {
         ensure(u), ensure(v);
-        return nodes[u].neighbors.count(v) > 0;
+        return nodes_[u].neighbors.count(v) > 0;
     }
     void connect(const LeftValue& value, size_t color) {
         ensure(value);
-        nodes[value].available_colors.erase(color);
+        nodes_[value].available_colors.erase(color);
     }
     void pin(const LeftValue& value) {
         ensure(value);
-        nodes[value].pinned = true;
+        nodes_[value].pinned = true;
     }
     const InterfereNode& operator[](const LeftValue& value) {
         ensure(value);
-        return nodes.at(value);
+        return nodes_.at(value);
     }
 
     static InterfereGraph from_precolored(const ColorMap& precolor, const TargetABI& abi) {
@@ -113,9 +113,12 @@ struct InterfereGraph {
 
         return graph;
     }
+    [[nodiscard]] const std::unordered_map<LeftValue, InterfereNode>& nodes() const {
+        return nodes_;
+    }
 
 private:
-    std::unordered_map<LeftValue, InterfereNode> nodes;
+    std::unordered_map<LeftValue, InterfereNode> nodes_;
     TargetABI abi;
 };
 
