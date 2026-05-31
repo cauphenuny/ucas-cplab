@@ -6,7 +6,6 @@
 #include "backend/ir/type.hpp"
 
 #include <optional>
-#include <set>
 #include <unordered_map>
 #include <utility>
 #include <variant>
@@ -16,7 +15,7 @@ namespace ir::lowering {
 
 using ColorMap = std::unordered_map<LeftValue, ssize_t>;
 
-/// @note: colorized: func call, func param, return value, callee-saved registers
+/// @note: colorized: func call, func param, return value
 
 struct PreColorize : ir::transform::NonSSAPass {
     PreColorize(TargetABI abi) : abi(std::move(abi)) {}
@@ -26,8 +25,7 @@ struct PreColorize : ir::transform::NonSSAPass {
             for (auto& block : func->blocks()) {
                 colorize_call(*block, *func, prog);
             }
-            auto exits = colorize_return(*func, prog);
-            colorize_callee_saved(*func, prog, exits);
+            colorize_return(*func, prog);
         }
         return true;
     }
@@ -66,28 +64,6 @@ private:
             }
         }
         return ret_blocks;
-    }
-
-    void colorize_callee_saved(Func& func, Program& prog, const std::vector<Block*>& ret_blocks) {
-        auto save = [&](const std::set<size_t>& regs, const char* prefix, const Type& type) {
-            for (auto idx : regs) {
-                auto name = fmt::format("__save_{}{}", prefix, idx);
-                auto proxy = Alloc::variable(name, type);
-                precolored[proxy->value()] = idx;
-                auto backup = func.newTemp(proxy->type, func.entrance());
-                func.entrance()->prepend(UnaryInst{.op = UnaryInstOp::MOV,
-                                                   .result = LeftValue{backup},
-                                                   .operand = LeftValue{proxy->value()}});
-                for (auto ret : ret_blocks) {
-                    ret->append(UnaryInst{.op = UnaryInstOp::MOV,
-                                          .result = LeftValue{proxy->value()},
-                                          .operand = LeftValue{backup}});
-                }
-                func.addLocal(std::move(proxy));
-            }
-        };
-        save(abi.reg.generals.callee_saved, "x", type::construct<int>());
-        save(abi.reg.floats.callee_saved, "f", type::construct<double>());
     }
 
     void colorize_call(Block& block, Func& func, Program& prog) {
