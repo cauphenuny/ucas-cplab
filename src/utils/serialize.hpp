@@ -7,10 +7,12 @@
 
 #include <memory>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <unordered_set>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -83,6 +85,22 @@ template <typename T> std::string toString(const std::optional<T>& opt) {
     } else {
         return "nullopt";
     }
+}
+
+template <typename T, template <typename> typename Container>
+std::enable_if_t<std::disjunction_v<std::is_same<Container<T>, std::set<T>>,
+                                    std::is_same<Container<T>, std::unordered_set<T>>>,
+                 std::string>
+toString(const Container<T>& set) {
+    std::string res = "{";
+    bool first = true;
+    for (const auto& elem : set) {
+        if (!first) res += ", ";
+        res += fmt::format("{}", elem);
+        first = false;
+    }
+    res += "}";
+    return res;
 }
 
 template <typename T, typename = void> struct has_free_toString : std::false_type {};

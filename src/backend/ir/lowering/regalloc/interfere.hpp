@@ -7,6 +7,7 @@
 #include "backend/ir/lowering/regalloc/precolorize.hpp"
 
 #include <set>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -19,6 +20,10 @@ struct InterfereNode {
     std::unordered_set<LeftValue> neighbors;
     std::set<size_t> available_colors;
     bool pinned{false};
+    std::string toString() const {
+        return fmt::format("value = {}, neighbors = {}, available_colors = {}, pinned = {}", value,
+                           neighbors, available_colors, pinned);
+    }
 };
 
 struct InterfereGraph {
@@ -115,6 +120,14 @@ struct InterfereGraph {
     }
     [[nodiscard]] const std::unordered_map<LeftValue, InterfereNode>& nodes() const {
         return nodes_;
+    }
+
+    [[nodiscard]] std::string toString() const {
+        std::string res;
+        for (const auto& [value, node] : nodes_) {
+            res += fmt::format("{}: {}\n", value, node);
+        }
+        return res;
     }
 
 private:
