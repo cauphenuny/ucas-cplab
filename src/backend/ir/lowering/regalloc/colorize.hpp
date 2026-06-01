@@ -275,7 +275,12 @@ struct BriggsAllocator {
             }
         }
         for (auto& n : nodes.coalesced) {
-            result.colors[n] = result.colors.at(graph.alias(n));
+            auto a = graph.alias(n);
+            if (result.colors.count(a)) {
+                result.colors[n] = result.colors.at(a);
+            } else {
+                result.spilled.push_back(n);
+            }
         }
     }
 

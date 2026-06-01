@@ -85,6 +85,10 @@ template <typename T> struct RedundantMoveElimination : transform::Pass<T> {
                             continue;
                         }
                         if (auto src = std::get_if<LeftValue>(&mov->operand)) {
+                            if (!color.count(*src) || !color.count(*mov->result)) {
+                                ++it;
+                                continue;
+                            }
                             auto src_color = color.at(*src);
                             auto dst_color = color.at(*mov->result);
                             if (src_color == dst_color) {

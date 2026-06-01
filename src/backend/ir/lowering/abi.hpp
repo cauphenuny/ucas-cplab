@@ -65,7 +65,12 @@ inline std::vector<std::optional<size_t>> assign_call_regs(const std::vector<Typ
         }
     };
     for (const auto& type : types) {
-        if (!type.is<Primitive>()) throw UNIMPLEMENTED_ERROR("non-primitive parameter type");
+        if (!type.is<Primitive>()) {
+            if (type.is<Reference>())
+                assign(num_general, abi.reg.generals.parameters);
+            else
+                throw UNIMPLEMENTED_ERROR("non-primitive parameter type");
+        }
         if (is_fp(type)) {
             assign(num_float, abi.reg.floats.parameters);
         } else {
