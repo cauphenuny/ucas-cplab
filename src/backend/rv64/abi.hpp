@@ -9,13 +9,6 @@ namespace rv64 {
 
 namespace abi {
 
-inline std::string general_reg_name(size_t index) {
-    return fmt::format("{}", GeneralReg(index));
-}
-inline std::string floating_reg_name(size_t index) {
-    return fmt::format("{}", FloatReg(index));
-}
-
 inline const ir::lowering::RegisterABI GPR = {
     .size = 32,
     .caller_saved = {5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 28, 29, 30, 31},
@@ -23,7 +16,7 @@ inline const ir::lowering::RegisterABI GPR = {
     .reserved = {0, 2, 3, 4},
     .parameters = {10, 11, 12, 13, 14, 15, 16, 17},
     .return_value = 10,
-    .name = general_reg_name,
+    .name = [](size_t index) { return fmt::format("{}", GeneralReg(index)); },
 };
 
 inline const ir::lowering::RegisterABI FPR = {
@@ -32,7 +25,7 @@ inline const ir::lowering::RegisterABI FPR = {
     .callee_saved = {8, 9, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27},
     .parameters = {10, 11, 12, 13, 14, 15, 16, 17},
     .return_value = 10,
-    .name = floating_reg_name,
+    .name = [](size_t index) { return fmt::format("{}", FloatReg(index)); },
 };
 
 inline size_t size_of(const ir::Type& type) {
