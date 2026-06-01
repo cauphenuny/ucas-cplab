@@ -192,10 +192,12 @@ IR Type System:
 
 ```rust
 enum PrimitiveType {
+    Int1,
+    Int32,
     Int,
+    Float32,
+    Float64,
     Float,
-    Double,
-    Bool,
 }
 enum Type {
     Top,
@@ -275,16 +277,20 @@ struct CompUnit(Vec<CompUnitItem>)
 IR:
 
 ```rust
-enum Value {
+enum LeftValue {
     Named(Type, &Alloc),
-    Temp(Type, usize),
+    Temp(Type, &Func, usize),
+    Ssa(Type, &Alloc, usize),
+}
+enum Value {
+    Left(LeftValue),
     Const(Type, ConstExp),
 }
 enum Inst {
-    Unary(UnaryOp, Value, Value),
-    Binary(BinaryOp, Value, Value, Value),
-    Call(Value, Value, Vec<Value>),
-    Phi(Value, Vec<&Block, Value>)
+    Unary(UnaryOp, Option<LeftValue>, Value),
+    Binary(BinaryOp, Option<LeftValue>, Value, Value),
+    Call(Option<LeftValue>, Value, Vec<Value>),
+    Phi(Option<LeftValue>, Vec<&Block, Value>)
 }
 enum Exit {
     Return(Value),

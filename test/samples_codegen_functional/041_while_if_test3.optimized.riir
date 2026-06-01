@@ -4,35 +4,35 @@ fn deepWhileBr(a_0: i32, b_0: i32) -> i32 {
         => 'while_cond_4_2;
     }
     'while_cond_4_2: {
-        %11: i32 = phi('if_exit_7_4: %10, 'entry: %0);
-        %1: bool = %11 < 75;
+        %5: i32 = phi('if_exit_7_4: %6, 'entry: %0);
+        %1: bool = %5 < 75;
         => if %1 { 'while_body_4_2 } else { 'while_exit_4_2 };
     }
     'while_body_4_2: {
-        %2: bool = %11 < 100;
+        %2: bool = %5 < 100;
         => if %2 { 'if_true_7_4 } else { 'if_exit_7_4 };
     }
     'while_exit_4_2: {
-        return %11;
+        return %5;
     }
     'if_true_7_4: {
-        %3: i32 = %11 + 42;
+        %3: i32 = %5 + 42;
         %4: bool = %3 > 99;
         => if %4 { 'if_true_12_8 } else { 'if_exit_9_6 };
     }
     'if_exit_7_4: {
-        %10: i32 = phi('if_exit_9_6: %15, 'while_body_4_2: %11);
+        %6: bool = phi('if_exit_9_6: %7, 'while_body_4_2: %5);
         => 'while_cond_4_2;
     }
     'if_exit_9_6: {
-        %15: i32 = phi('if_exit_12_8: %18, 'if_true_7_4: %3);
+        %7: i32 = phi('if_exit_12_8: %8, 'if_true_7_4: %3);
         => 'if_exit_7_4;
     }
     'if_true_12_8: {
         => 'if_exit_12_8;
     }
     'if_exit_12_8: {
-        %18: i32 = phi('if_true_12_8: 168, 'if_true_7_4: %3);
+        %8: i32 = phi('if_true_12_8: 168, 'if_true_7_4: %3);
         => 'if_exit_9_6;
     }
 }

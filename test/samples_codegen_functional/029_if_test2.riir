@@ -62,7 +62,7 @@ fn ifElseIf() -> i32 {
 fn main() -> i32 {
     'entry: {
         %0: i32 = @ifElseIf();
-        %1: () = @print_int(%0);
+        @print_int(%0);
         return 0;
     }
 }

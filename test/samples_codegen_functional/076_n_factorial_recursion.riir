@@ -31,7 +31,7 @@ fn main() -> i32 {
         => 'if_exit_15_4;
     }
     'if_exit_15_4: {
-        %3: () = @print_int(@result_0);
+        @print_int(@result_0);
         return 0;
     }
     'if_false_15_4: {

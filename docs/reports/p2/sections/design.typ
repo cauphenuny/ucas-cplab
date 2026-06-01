@@ -75,7 +75,7 @@
           %1: &mut[i32] = &mut @a_1[0];
           %2: &mut[i32] = &mut @a_1[1];
           %3: i32 = @foo(%1, %2);
-          %4: () = @d_0 <- 2;
+          @d_0 <- 2;
           => 'if_exit_11_4;
       }
       'if_exit_11_4: {
@@ -96,7 +96,7 @@ let ref mut d_0: i32 = 0;
 
 fn main() -> i32 {
     'entry: {
-        %4: () = @d_0 <- 2;
+        @d_0 <- 2;
         return 1;
     }
 }
@@ -143,7 +143,7 @@ IR 结构：
 
 - 指令 `Inst` 是一个 variant，包含4个 alternative：`UnaryInst`, `BinaryInst`, `CallInst`, `PhiInst`
 
-- 一元指令 `UnaryInst` 包含一个操作符和一个左值（结果）和一个值（操作数）
+- 一元指令 `UnaryInst` 包含一个操作符、一个可选的左值（结果）和一个值（操作数）。结果为空时表示该指令不产生值。
 
 #align(center)[
   #three-line-table[
@@ -158,7 +158,7 @@ IR 结构：
   ]
 ]
 
-- 二元指令 `BinaryInst` 包含一个操作符和一个左值（结果）和两个值（操作数）
+- 二元指令 `BinaryInst` 包含一个操作符、一个可选的左值（结果）和两个值（操作数）
 
 #align(center)[
   #three-line-table[
@@ -177,22 +177,28 @@ IR 结构：
     | `NEQ` | 不等比较 | `%2: bool = %0 != %1;` |
     | `AND` | 逻辑与 | `%2: bool = %0 && %1;` |
     | `OR` | 逻辑或 | `%2: bool = %0 || %1;` |
-    | `STORE` | 将值写入引用指向的位置 | `%2: () = %1 <- %0;` |
+    | `STORE` | 将值写入引用指向的位置 | `%1 <- %0;` |
     | `LOAD_ELEM` | 数组/切片索引读取 | `%2: int = %0[%1];` |
     | `BORROW_ELEM` | 数组/切片索引取引用 | `%2: &int = & %0[%1];` |
     | `BORROW_ELEM_MUT` | 数组/切片索引取可变引用 | `%2: &mut int = &mut %0[%1];` |
   ]
 ]
 
-- 调用指令 `CallInst` 包含一个左值（结果）、一个具名值（函数）和一个值列表（参数）
+- 调用指令 `CallInst` 包含一个可选的左值（结果）、一个具名值（函数）和一个值列表（参数）。当返回值被丢弃时结果为空。
 
-- Phi 指令 `PhiInst` 包含一个左值（结果）和一个 (基本块, 值) 对列表，表示从不同基本块流入时的值选择
+- Phi 指令 `PhiInst` 包含一个可选的左值（结果）和一个 (基本块, 值) 对列表，表示从不同基本块流入时的值选择
 
 #split-full
 
 == 类型系统
 
-- 基本类型 `Primitive = std::variant<Int, Bool, Double, Bool>`，其中 `Int`、`Float`、`Double`、`Bool` 四个空类分别对应整数 `i32`、单精度浮点数 `f32` 、双精度浮点数 `f64` 和布尔值 `bool`。
+- 基本类型 `Primitive = std::variant<Int1, Int32, Float32, Float64, Int, Float>`：
+  - `Int1` 对应布尔值 `bool`
+  - `Int32` 对应32位整数 `i32`
+  - `Float32` 对应单精度浮点数 `f32`
+  - `Float64` 对应双精度浮点数 `f64`
+  - `Int` 是通用整数类型 `int`，兼容 Int1/Int32/指针
+  - `Float` 是通用浮点类型 `float`，兼容 Float32/Float64
 - 和类型 `Sum` (e.g. `(i32 | float)` ) 包含一个类型列表，语义类似 `std::variant`
 - 积类型 `Product` ( e.g. `(i32, float)` ) 包含一个类型列表，语义类似 `std::tuple`，注意 C 语言中的 `void` 对应空积类型 `()`。
 - Top 类型 `Top` ( a.k.a. `⊤` ) 是所有类型的超类型，任何类型都是 `Top` 的子类型。
@@ -212,7 +218,7 @@ IR 结构：
 
 现在有两个类型 from 和 to，from 和 to 都是上面提到的类的一个对象，下面判断 from 代表的类型是否是 to 代表的类型的子类型：
 
-- 对于 Primitive 类型中的任意两个 alternative type，只有当它们完全相同时才是子类型关系，例如 `i32` 不是 `f32` 的子类型，反之亦然。
+- 对于 Primitive 类型中的任意两个 alternative type，只有当它们完全相同时才是子类型关系，例如 `i32` 不是 `f32` 的子类型，反之亦然。特殊地，通用类型 `Int` 与 `Int1`/`Int32`/`Reference` 双向兼容，`Float` 与 `Float32`/`Float64` 双向兼容。
 
   ```cpp
   template <typename T, typename = std::enable_if_t<is_primitive_v<T>>>

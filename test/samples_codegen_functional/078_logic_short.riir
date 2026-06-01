@@ -5,9 +5,9 @@ fn sfx(mut a_0: i32) -> i32 {
     'entry: {
         %0: i32 = * @gx_0;
         %1: i32 = %0 + @a_0;
-        %2: () = @gx_0 <- %1;
-        %3: i32 = * @gx_0;
-        return %3;
+        @gx_0 <- %1;
+        %2: i32 = * @gx_0;
+        return %2;
     }
 }
 
@@ -57,7 +57,7 @@ fn main() -> i32 {
         => 'if_exit_17_1;
     }
     'if_exit_17_1: {
-        %16: () = @print_int(@r_0);
+        @print_int(@r_0);
         return 0;
     }
     'L2: {

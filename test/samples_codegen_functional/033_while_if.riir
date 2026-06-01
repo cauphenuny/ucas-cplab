@@ -64,7 +64,7 @@ fn main() -> i32 {
         @p_0: i32 = 2;
         %0: i32 = @deepWhileBr(@p_0, @p_0);
         @p_0: i32 = %0;
-        %1: () = @print_int(@p_0);
+        @print_int(@p_0);
         return 0;
     }
 }

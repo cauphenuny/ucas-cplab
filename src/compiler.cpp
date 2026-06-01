@@ -391,7 +391,7 @@ int main(int argc, const char* argv[]) {
                     }
                 }
 
-                {
+                if (false) {
                     using namespace ir::lowering;
                     using Context = ir::transform::NonSSAPassContext;
                     auto regalloc = RegisterAllocation(rv64::ABI);

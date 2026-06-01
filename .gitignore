@@ -6,6 +6,8 @@ cmake-build-debug
 .vscode
 .idea
 .cache
+.claude
+.kiro
 
 grammar/*.cpp
 grammar/*.h

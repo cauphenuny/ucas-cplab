@@ -34,7 +34,7 @@ fn main() -> i32 {
         @n_1: i32 = %1;
         %2: i32 = @fun(@m_1, @n_1);
         @num_0: i32 = %2;
-        %3: () = @print_int(@num_0);
+        @print_int(@num_0);
         return 0;
     }
 }

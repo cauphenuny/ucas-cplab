@@ -22,10 +22,10 @@ using LeftValue = std::variant<NamedValue, TempValue, SSAValue>;
 
 指令
 ```cpp
-struct UnaryInst { LeftValue result; UnaryInstOp op; Value operand; };
-struct BinaryInst { LeftValue result; InstOp op; Value lhs, rhs; };
-struct CallInst { LeftValue result; NamedValue func; std::vector<Value> args; };
-struct PhiInst { LeftValue result; std::vector<std::pair<Block* Value>> args; };
+struct UnaryInst { std::optional<LeftValue> result; UnaryInstOp op; Value operand; };
+struct BinaryInst { std::optional<LeftValue> result; InstOp op; Value lhs, rhs; };
+struct CallInst { std::optional<LeftValue> result; NamedValue func; std::vector<Value> args; };
+struct PhiInst { std::optional<LeftValue> result; std::vector<std::pair<Block* Value>> args; };
 using Inst = std::variant<UnaryInst, BinaryInst, CallInst, PhiInst>;
 ```
 
