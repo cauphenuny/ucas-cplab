@@ -293,7 +293,9 @@ public:
 
     std::any visitLoadInst(IRParser::LoadInstContext* ctx) override {
         auto result = resolveDef(ctx->def());
+        auto type = take<ir::type::TypeBox>(visit(ctx->type()));
         auto operand = resolveLValue(ctx->var());
+        Match{operand}([&](auto& v) { v.type = type; });
         current_block_->append(ir::UnaryInst{.op = ir::UnaryInstOp::LOAD,
                                              .result = std::move(result),
                                              .operand = ir::Value(std::move(operand))});
@@ -333,9 +335,9 @@ public:
             if (child->getText() == "-") has_neg = true;
         }
 
-        auto op = has_not ? ir::UnaryInstOp::NOT
-                 : has_neg ? ir::UnaryInstOp::NEG
-                           : ir::UnaryInstOp::MOV;
+        auto op = has_not   ? ir::UnaryInstOp::NOT
+                  : has_neg ? ir::UnaryInstOp::NEG
+                            : ir::UnaryInstOp::MOV;
         auto val = take<ir::Value>(visit(ctx->value()));
         current_block_->append(
             ir::UnaryInst{.op = op, .result = std::move(result), .operand = std::move(val)});

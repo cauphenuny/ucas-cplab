@@ -72,7 +72,8 @@ auto serializeArray(const Type& type, std::byte* buffer) -> std::string;
 
 struct ConstexprValue {
     Type type;
-    std::variant<std::monostate, int, int64_t, float, bool, double, std::unique_ptr<std::byte[]>> val;
+    std::variant<std::monostate, int, int64_t, float, bool, double, std::unique_ptr<std::byte[]>>
+        val;
 
     SIMPLE_TO_STRING(match(
                          val, [&](std::monostate) { return std::string(""); },
@@ -126,7 +127,10 @@ struct UnaryInst {
     std::optional<LeftValue> result;
     Value operand;
 
-    SIMPLE_TO_STRING(fmt::format("{}{}{};", fmt_result(result), op, operand))
+    SIMPLE_TO_STRING(op != UnaryInstOp::LOAD
+                         ? fmt::format("{}{}{};", fmt_result(result), op, operand)
+                         : fmt::format("{}{}({}){};", fmt_result(result), op, type_of(operand),
+                                       operand));
 };
 
 struct BinaryInst {

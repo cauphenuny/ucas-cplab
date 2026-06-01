@@ -74,7 +74,7 @@ def: var ':' type '=' ;
 
 inst
 	: def? name '(' (argList)? ')' ';'							# callInst
-	| def '*' var ';'											# loadInst
+	| def '*' '(' type ')' var ';'								# loadInst
 	| def '&' MUT? var ';'										# borrowInst
 	| def value '[' value ']' ';'								# loadElemInst
 	| def '&' MUT? var '[' value ']' ';'						# borrowElemInst
