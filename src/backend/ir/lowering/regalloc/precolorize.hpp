@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <utility>
 #include <variant>
+#include <set>
 #include <vector>
 
 namespace ir::lowering {
@@ -51,7 +52,7 @@ struct PrecolorVars {
     }
 };
 
-/// @note: colorized: func call, func param, return value
+/// @note: colorized: func call, func param, return value, callee-saved registers
 
 struct Precolorize : ir::transform::NonSSAPass {
     Precolorize(TargetABI abi) : abi(std::move(abi)) {}
@@ -62,7 +63,8 @@ struct Precolorize : ir::transform::NonSSAPass {
             for (auto& block : func->blocks()) {
                 colorize_call(*block, *func, prog);
             }
-            colorize_return(*func, prog);
+            auto exits = colorize_return(*func, prog);
+            colorize_callee_saved(*func, prog, exits);
         }
         return true;
     }
@@ -110,6 +112,25 @@ private:
             }
         }
         return ret_blocks;
+    }
+
+    void colorize_callee_saved(Func& func, Program& prog, const std::vector<Block*>& ret_blocks) {
+        auto save = [&](const std::set<size_t>& regs, const char* prefix, const Type& type) {
+            for (auto idx : regs) {
+                auto backup = func.newTemp(type, func.entrance());
+                func.entrance()->prepend(
+                    UnaryInst{.op = UnaryInstOp::MOV,
+                              .result = LeftValue{backup},
+                              .operand = LeftValue{precolored[{type, idx}]->value()}});
+                for (auto ret : ret_blocks) {
+                    ret->append(UnaryInst{.op = UnaryInstOp::MOV,
+                                          .result = LeftValue{precolored[{type, idx}]->value()},
+                                          .operand = LeftValue{backup}});
+                }
+            }
+        };
+        save(abi.reg.generals.callee_saved, "x", type::construct<int>());
+        save(abi.reg.floats.callee_saved, "f", type::construct<double>());
     }
 
     void colorize_call(Block& block, Func& func, Program& prog) {

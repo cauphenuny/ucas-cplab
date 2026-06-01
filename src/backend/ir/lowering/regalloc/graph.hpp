@@ -171,6 +171,7 @@ struct InterfereGraph {
                 for (auto inst_it = block->insts().rbegin(); inst_it != block->insts().rend();
                      ++inst_it) {
                     auto& inst = *inst_it;
+                    for (auto var : utils::vars(inst)) graph_of(*var).ref_count[*var]++;
 
                     if (auto mov = std::get_if<UnaryInst>(&inst);
                         mov && mov->op == UnaryInstOp::MOV) {
@@ -254,9 +255,14 @@ struct InterfereGraph {
         }
     }
 
+    double priority(const LeftValue& value) {
+        return static_cast<double>(ref_count[value]) / nodes_[value].degree;
+    }
+
 private:
     std::unordered_map<LeftValue, LeftValue> aliases_;
     std::unordered_map<LeftValue, InterfereNode> nodes_;
+    std::unordered_map<LeftValue, size_t> ref_count;
 
     void ensure(const LeftValue& value) {
         if (nodes_.count(value) == 0) {

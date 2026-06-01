@@ -215,7 +215,10 @@ struct BriggsAllocator {
     }
 
     void spill() {
-        auto m = nodes.to_spill.front();  // TODO: heuristic
+        auto m = nodes.to_spill.front();
+        for (const auto& n : nodes.to_spill) {
+            if (graph.priority(n) < graph.priority(m)) m = n;
+        }
         relocate(m, nodes.simplify, node_locations);
         freeze_moves(m);
     }
