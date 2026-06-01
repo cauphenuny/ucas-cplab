@@ -144,7 +144,7 @@ private:
                 // Extract data before erasing (erase destroys the instruction)
                 auto result = call->result;
                 auto callee = call->func;
-                std::vector<Value> args = std::move(call->args);
+                std::vector<Value> args = call->args;
                 auto next_it = block.erase(it);
 
                 auto regs = assign_arg_regs(args, abi);

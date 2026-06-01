@@ -6,6 +6,7 @@
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.h"
 #include "backend/ir/lowering/regalloc/main.hpp"
+#include "backend/ir/lowering/reg2mem.hpp"
 #include "backend/ir/transform/framework.hpp"
 #include "backend/ir/transform/optim/common_expr.hpp"
 #include "backend/ir/transform/optim/const_propagation.hpp"
@@ -394,7 +395,9 @@ int main(int argc, const char* argv[]) {
 
                 {
                     using namespace ir::lowering;
+                    using namespace ir::transform;
                     using Context = ir::transform::NonSSAPassContext;
+                    RegToMem(rv64::ABI).apply(program, ctx);
                     auto regalloc = RegisterAllocation(rv64::ABI);
                     regalloc.apply(program, ctx);
                     echo(program, fmt::format("#{} After Register Allocation", pass_id++));
@@ -420,7 +423,7 @@ int main(int argc, const char* argv[]) {
         return RUNTIME_ERROR;
     } catch (const CompilerError& e) {
         std::cerr << e.what() << '\n';
-        return RUNTIME_ERROR;
+        throw;
     }
     return ret;
 }

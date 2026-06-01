@@ -83,6 +83,25 @@ void UseInfo::verify() const {
     for (const auto& [val, uses] : use_sites) {
         auto ref_uses = reference.uses_of(val);
         if (uses.size() != ref_uses.size()) {
+            fmt::println(stderr, "UseInfo mismatch for {}: stored={}, reference={}", val, uses.size(), ref_uses.size());
+            for (const auto& use : uses) {
+                if (!ref_uses.count(use)) {
+                    Match{use.site}([&](Inst* inst) {
+                        fmt::println(stderr, "  EXTRA in stored: inst={}", *inst);
+                    }, [&](Exit* exit) {
+                        fmt::println(stderr, "  EXTRA in stored: exit={}", *exit);
+                    });
+                }
+            }
+            for (const auto& use : ref_uses) {
+                if (!uses.count(use)) {
+                    Match{use.site}([&](Inst* inst) {
+                        fmt::println(stderr, "  MISSING from stored: inst={}", *inst);
+                    }, [&](Exit* exit) {
+                        fmt::println(stderr, "  MISSING from stored: exit={}", *exit);
+                    });
+                }
+            }
             throw COMPILER_ERROR(fmt::format("Use sites of {} size does not match reference", val));
         }
         for (const auto& use : uses) {

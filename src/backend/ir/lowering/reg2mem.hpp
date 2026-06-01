@@ -60,7 +60,7 @@ inline void replace_instruments(Func& func, const std::unordered_set<LeftValue>&
             it = next_it;
         }
         if (block->hasExit()) {
-            auto& exit = block->exit();
+            auto exit = block->exit();
             if (auto use = utils::used_var(exit); use && spill_set.count(*use)) {
                 auto elem_type = type_of(*use).as<ir::type::Reference>().elem;
                 auto temp = LeftValue{func.newTemp(elem_type, block.get())};
@@ -68,6 +68,7 @@ inline void replace_instruments(Func& func, const std::unordered_set<LeftValue>&
                               UnaryInst{.op = UnaryInstOp::LOAD, .result = temp, .operand = *use});
                 *use = temp;
             }
+            block->setExit(exit);
         }
     }
 }
