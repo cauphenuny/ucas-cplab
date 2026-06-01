@@ -274,6 +274,22 @@ template <typename T, auto print> struct Set {
         set.erase(elem);
     }
 
+    template <typename Predicate>
+    [[nodiscard]] auto divide(Predicate predicate) && -> std::pair<Set, Set> {
+        if (is_universe) {
+            throw COMPILER_ERROR("Cannot divide universe set");
+        }
+        Set true_set{false, {}}, false_set{false, {}};
+        for (const auto& elem : set) {
+            if (predicate(elem)) {
+                true_set.set.insert(elem);
+            } else {
+                false_set.set.insert(elem);
+            }
+        }
+        return {true_set, false_set};
+    }
+
     [[nodiscard]] auto toString() const -> std::string {
         if (is_universe) return "<universe>";
         std::string res = "{";

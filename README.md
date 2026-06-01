@@ -106,10 +106,9 @@ src/
 │   │   │   ├── reg2mem.hpp
 │   │   │   └── regalloc/
 │   │   │       ├── colorize.hpp:	Chaitin-Briggs Graph Coloring Register Allocator
-│   │   │       ├── interfere.hpp
+│   │   │       ├── graph.hpp
 │   │   │       ├── main.hpp
 │   │   │       ├── precolorize.hpp
-│   │   │       ├── scanmov.hpp
 │   │   │       └── spill.hpp
 │   │   ├── op.hpp
 │   │   ├── parse/
@@ -168,7 +167,6 @@ src/
 │   ├── test_optimize.cpp
 │   ├── test_reg2mem.cpp
 │   ├── test_regalloc_interfere.cpp
-│   ├── test_regalloc_main.cpp
 │   ├── test_regalloc_precolorize.cpp
 │   ├── test_sem.cpp
 │   ├── test_serialize.cpp
@@ -182,7 +180,7 @@ src/
     ├── traits.hpp
     └── tui.h
 
-19 directories, 83 files
+19 directories, 81 files
 ```
 <!--/source_tree-->
 

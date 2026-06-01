@@ -42,6 +42,7 @@ struct TargetABI {
     struct {
         RegisterABI generals;
         RegisterABI floats;
+        size_t return_addr;
     } reg;
 
     MemoryABI mem;

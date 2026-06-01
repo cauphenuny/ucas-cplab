@@ -3,9 +3,8 @@
 #include "backend/ir/ir.h"
 #include "backend/ir/lowering/abi.hpp"
 #include "backend/ir/lowering/regalloc/colorize.hpp"
-#include "backend/ir/lowering/regalloc/interfere.hpp"
+#include "backend/ir/lowering/regalloc/graph.hpp"
 #include "backend/ir/lowering/regalloc/precolorize.hpp"
-#include "backend/ir/lowering/regalloc/scanmov.hpp"
 #include "backend/ir/lowering/regalloc/spill.hpp"
 #include "backend/ir/op.hpp"
 #include "backend/ir/transform/framework.hpp"
@@ -22,34 +21,43 @@ struct RegisterAllocation : transform::NonSSAPass {
     TargetABI abi;
 
     bool apply(Program& prog, transform::NonSSAPassContext& ctx) override {
-        PreColorize precolor(abi);
+        Precolorize precolor(abi);
         precolor.apply(prog, ctx);
-        proxies = precolor.proxies;
+        precolored = precolor.precolored;
         fmt::println("After precoloring:\n{}", prog);
 
         while (true) {
-            auto graph = InterfereGraph::build(prog, precolor.proxies, abi);
-            auto moves = scan_move(prog);
-            fmt::print(stderr, "graph: {}\nmoves: {}\n", graph, moves);
-            auto [spills, colors] = BriggsAllocator(graph, moves).colorize();
-            if (spills.empty()) {
-                this->colored = std::move(colors);
+            auto [general, floating] = InterfereGraph::build(prog, precolor.precolored, abi);
+            fmt::print(stderr, "general graph: {}\n", general);
+            fmt::print(stderr, "floating-point graph: {}\n", floating);
+            auto [general_spills, general_colors] = BriggsAllocator(general).colorize();
+            auto [floating_spills, floating_colors] = BriggsAllocator(floating).colorize();
+            if (general_spills.empty() && floating_spills.empty()) {
+                colored = merge(std::move(general_colors), std::move(floating_colors));
                 break;
             }
-            Spill(spills).apply(prog, ctx);
+            Spill(general_spills).apply(prog, ctx);
+            Spill(floating_spills).apply(prog, ctx);
         }
 
         fmt::println("Colorized: {}", colored);
 
-        for (auto& [key, alloc] : precolor.proxies) {
-            auto& [type, id] = key;
+        for (auto& [key, alloc] : precolor.precolored) {
+            auto& [_, id] = key;
             colored[alloc->value()] = id;
         }
         return true;
     }
 
+    static ColorMap merge(ColorMap&& general, ColorMap&& floating) {
+        ColorMap merged;
+        merged.insert(general.begin(), general.end());
+        merged.insert(floating.begin(), floating.end());
+        return merged;
+    }
+
     ColorMap colored;
-    ProxyMap proxies;
+    PrecolorVars precolored;
 };
 
 template <typename T> struct RedundantMoveElimination : transform::Pass<T> {

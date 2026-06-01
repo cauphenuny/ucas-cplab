@@ -5,14 +5,13 @@
 ///   1. Two variables simultaneously live at a def point → interfere.
 ///   2. Sequential chain (non-overlapping lifetimes) → no interference.
 ///   3. Three variables: only the simultaneously-live pair interferes.
-///   4. GPR variable live across a call → forbidden from all GPR caller-saved regs
-///      (connected to the global proxy alloc for each caller-saved register).
+///   4. GPR variable live across a call → forbidden from all GPR caller-saved regs.
 ///   5. GPR variable dead before a call → no caller-saved forbidden from that call.
 ///   6. FPR variable live across a call → forbidden from all FPR caller-saved regs.
 ///   7. Cross-block (loop): loop variables with overlapping live ranges interfere.
 
 #include "backend/ir/ir.h"
-#include "backend/ir/lowering/regalloc/interfere.hpp"
+#include "backend/ir/lowering/regalloc/graph.hpp"
 #include "backend/ir/lowering/regalloc/precolorize.hpp"
 #include "backend/ir/parse/visit.hpp"
 #include "backend/ir/transform/framework.hpp"
@@ -20,9 +19,9 @@
 #include "fmt/base.h"
 
 #include <functional>
-#include <set>
 #include <sstream>
 #include <string>
+#include <utility>
 
 using namespace ir;
 using namespace ir::transform;
@@ -41,20 +40,23 @@ void check(bool cond, const std::string& msg) {
     }
 }
 
-void test_interfere(const std::string& name, const std::string& ir_text,
-                    const std::function<void(Program&, InterfereGraph&, PreColorize&)>& verify) {
+using Graphs = std::pair<InterfereGraph, InterfereGraph>;
+
+void test_interfere(
+    const std::string& name, const std::string& ir_text,
+    const std::function<void(Program&, Graphs&, Precolorize&)>& verify) {
     fmt::println("Test: {}", name);
     try {
         auto stream = std::istringstream(ir_text);
         auto prog_box = ir::parse(stream);
         auto& prog = *prog_box;
 
-        PreColorize precolor(rv64::ABI);
+        Precolorize precolor(rv64::ABI);
         NonSSAPassContext ctx(prog);
         precolor.apply(prog, ctx);
 
-        auto graph = InterfereGraph::build(prog, precolor.proxies, rv64::ABI);
-        verify(prog, graph, precolor);
+        auto graphs = InterfereGraph::build(prog, precolor.precolored, rv64::ABI);
+        verify(prog, graphs, precolor);
     } catch (const std::exception& e) {
         fmt::println("  Error: {}", e.what());
         ++tests_failed;
@@ -62,23 +64,16 @@ void test_interfere(const std::string& name, const std::string& ir_text,
     fmt::println("------------------------------------------");
 }
 
-/// Get the LeftValue for a named allocation (param or local) in a function.
 LeftValue named(const Func& func, const std::string& name) {
     return LeftValue{func.findAlloc(name)->value()};
 }
 
-/// Construct a TempValue LeftValue by id (equality uses id + func* only, type ignored).
 LeftValue temp(const Func& func, size_t id) {
     return LeftValue{TempValue{ir::type::construct<int>(), id, const_cast<Func*>(&func)}};
 }
 
 int main() {
-    // -----------------------------------------------------------------------
-    // Test 1: Basic interference.
-    //   @a = 1; @b = 2; %0 = @a + @b; return %0;
-    // When @b is defined, @a is already live → a ↔ b.
-    // Neither a nor b is live when %0 is defined (live = {%0} only) → no edge with %0.
-    // -----------------------------------------------------------------------
+    // Test 1: Basic interference — a ↔ b, neither interferes with %0.
     test_interfere("two vars simultaneously live → interfere", R"(
 fn f() -> i32 {
     let mut a: i32;
@@ -91,7 +86,8 @@ fn f() -> i32 {
     }
 }
 )",
-                   [](Program& prog, InterfereGraph& g, PreColorize&) {
+                   [](Program& prog, Graphs& gs, Precolorize&) {
+                       auto& g = gs.first;
                        auto& func = prog.findFunc("f");
                        auto a = named(func, "a");
                        auto b = named(func, "b");
@@ -102,11 +98,7 @@ fn f() -> i32 {
                        check(!g.interferes(b, t0), "b does NOT interfere with %0");
                    });
 
-    // -----------------------------------------------------------------------
-    // Test 2: Sequential chain — non-overlapping lifetimes, no interference.
-    //   @a = 1; @b = @a + 1; return @b;
-    // a's live range ends at the def of b → a NOT ↔ b.
-    // -----------------------------------------------------------------------
+    // Test 2: Sequential chain — no interference.
     test_interfere("sequential chain → no interference", R"(
 fn f() -> i32 {
     let mut a: i32;
@@ -118,7 +110,8 @@ fn f() -> i32 {
     }
 }
 )",
-                   [](Program& prog, InterfereGraph& g, PreColorize&) {
+                   [](Program& prog, Graphs& gs, Precolorize&) {
+                       auto& g = gs.first;
                        auto& func = prog.findFunc("f");
                        auto a = named(func, "a");
                        auto b = named(func, "b");
@@ -126,12 +119,7 @@ fn f() -> i32 {
                        check(!g.interferes(b, a), "b does NOT interfere with a");
                    });
 
-    // -----------------------------------------------------------------------
-    // Test 3: Three vars — only the pair alive at the same def point interferes.
-    //   @a = 1; @b = 2; @c = @a + @b; return @c;
-    // When @b is defined, @a is live → a ↔ b.
-    // When @c is defined, live = {%0} only → c has no named-var neighbors.
-    // -----------------------------------------------------------------------
+    // Test 3: Three vars — only a ↔ b.
     test_interfere("three vars: a↔b, c independent of both", R"(
 fn f() -> i32 {
     let mut a: i32;
@@ -145,7 +133,8 @@ fn f() -> i32 {
     }
 }
 )",
-                   [](Program& prog, InterfereGraph& g, PreColorize&) {
+                   [](Program& prog, Graphs& gs, Precolorize&) {
+                       auto& g = gs.first;
                        auto& func = prog.findFunc("f");
                        auto a = named(func, "a");
                        auto b = named(func, "b");
@@ -155,12 +144,7 @@ fn f() -> i32 {
                        check(!g.interferes(b, c), "b does NOT interfere with c");
                    });
 
-    // -----------------------------------------------------------------------
-    // Test 4: GPR caller-saved unavailable — var live across a call.
-    //   @x = 5; %0 = @g(); %1 = @x + %0; return %1;
-    // @x is in the live set when the CallInst is processed → connected to all
-    // GPR caller-saved proxy allocs.
-    // -----------------------------------------------------------------------
+    // Test 4: GPR caller-saved — var live across call.
     test_interfere("GPR caller-saved: var live across call → caller-saved proxies interfere",
                    R"(
 fn g() -> i32 {
@@ -178,27 +162,20 @@ fn f() -> i32 {
     }
 }
 )",
-                   [](Program& prog, InterfereGraph& g, PreColorize& precolor) {
+                   [](Program& prog, Graphs& gs, Precolorize& precolor) {
+                       auto& g = gs.first;
                        auto& func = prog.findFunc("f");
                        auto x = named(func, "x");
-                       // x should interfere with all GPR caller-saved proxy allocs
                        for (auto reg : rv64::abi::GPR.caller_saved) {
-                           // Proxies were pre-created with int type for GPR
-                           auto proxy_lv =
-                               LeftValue{precolor.proxies.at({ir::type::construct<int>(), reg})
-                                             ->value()};
+                           auto proxy_lv = LeftValue{
+                               precolor.precolored.at({ir::type::construct<int>(), reg})->value()};
                            check(g.interferes(x, proxy_lv),
                                  fmt::format("x interferes with GPR caller-saved proxy (reg {})",
                                              reg));
                        }
                    });
 
-    // -----------------------------------------------------------------------
-    // Test 5: GPR caller-saved still available — var dead before the call.
-    //   @x = 5; @y = @x + 1; %0 = @g(); %1 = @y + %0; return %1;
-    // @x's last use is in the def of @y, so @x is dead at the CallInst
-    // → x NOT connected to caller-saved proxy allocs.
-    // -----------------------------------------------------------------------
+    // Test 5: GPR caller-saved — var dead before call.
     test_interfere("GPR caller-saved: var dead before call → no caller-saved interference",
                    R"(
 fn g() -> i32 {
@@ -218,13 +195,13 @@ fn f() -> i32 {
     }
 }
 )",
-                   [](Program& prog, InterfereGraph& g, PreColorize& precolor) {
+                   [](Program& prog, Graphs& gs, Precolorize& precolor) {
+                       auto& g = gs.first;
                        auto& func = prog.findFunc("f");
                        auto x = named(func, "x");
                        for (auto reg : rv64::abi::GPR.caller_saved) {
-                           auto proxy_lv =
-                               LeftValue{precolor.proxies.at({ir::type::construct<int>(), reg})
-                                             ->value()};
+                           auto proxy_lv = LeftValue{
+                               precolor.precolored.at({ir::type::construct<int>(), reg})->value()};
                            check(!g.interferes(x, proxy_lv),
                                  fmt::format("x does NOT interfere with GPR caller-saved proxy "
                                              "(reg {}) — x dead before call",
@@ -232,11 +209,7 @@ fn f() -> i32 {
                        }
                    });
 
-    // -----------------------------------------------------------------------
-    // Test 6: FPR caller-saved unavailable — float var live across a call.
-    //   @v = 1.0; %0 = @h(); %1 = @v + %0; return %1;
-    // @v (f64) is live at the call → connected to all FPR caller-saved proxy allocs.
-    // -----------------------------------------------------------------------
+    // Test 6: FPR caller-saved — float var live across call.
     test_interfere("FPR caller-saved: float var live across call → FPR proxies interfere",
                    R"(
 fn h() -> f64 {
@@ -254,25 +227,20 @@ fn f() -> f64 {
     }
 }
 )",
-                   [](Program& prog, InterfereGraph& g, PreColorize& precolor) {
+                   [](Program& prog, Graphs& gs, Precolorize& precolor) {
+                       auto& g = gs.second;
                        auto& func = prog.findFunc("f");
                        auto v = named(func, "v");
                        for (auto reg : rv64::abi::FPR.caller_saved) {
-                           // Proxies were pre-created with double type for FPR
-                           auto proxy_lv =
-                               LeftValue{precolor.proxies.at({ir::type::construct<double>(), reg})
-                                             ->value()};
+                           auto proxy_lv = LeftValue{
+                               precolor.precolored.at({ir::type::construct<double>(), reg})->value()};
                            check(g.interferes(v, proxy_lv),
                                  fmt::format("v interferes with FPR caller-saved proxy (reg {})",
                                              reg));
                        }
                    });
 
-    // -----------------------------------------------------------------------
-    // Test 7: Cross-block interference in a loop.
-    //   @i and @s are both live throughout the loop body → i ↔ s.
-    //   @n (param) is live throughout → i ↔ n, s ↔ n.
-    // -----------------------------------------------------------------------
+    // Test 7: Cross-block loop — loop-carried vars interfere.
     test_interfere("loop: loop-carried vars interfere", R"(
 fn f(n: i32) -> i32 {
     let mut i: i32;
@@ -293,7 +261,8 @@ fn f(n: i32) -> i32 {
     }
 }
 )",
-                   [](Program& prog, InterfereGraph& g, PreColorize&) {
+                   [](Program& prog, Graphs& gs, Precolorize&) {
+                       auto& g = gs.first;
                        auto& func = prog.findFunc("f");
                        auto i = named(func, "i");
                        auto s = named(func, "s");

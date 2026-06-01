@@ -15,20 +15,46 @@
 namespace ir::lowering {
 
 using ColorMap = std::unordered_map<LeftValue, ssize_t>;
-struct ProxyKeyHasher {
-    size_t operator()(const std::pair<Type, size_t>& key) const {
-        auto& [type, id] = key;
-        size_t h2 = std::hash<size_t>{}(id);
-        size_t h3 = std::hash<bool>{}(is_fp(type));
-        return (h2 << 1) ^ (h3 << 2);
+Type register_type(const Type& ir_type) {
+    return is_fp(ir_type) ? type::floating() : type::integer();
+}
+
+struct PrecolorVars {
+    struct ProxyKeyHasher {
+        size_t operator()(const std::pair<Type, size_t>& key) const {
+            auto& [type, id] = key;
+            size_t h2 = std::hash<size_t>{}(id);
+            size_t h3 = std::hash<bool>{}(is_fp(type));
+            return (h2 << 1) ^ (h3 << 2);
+        }
+    };
+
+    std::unordered_map<std::pair<Type, size_t>, Alloc*, ProxyKeyHasher> proxies;
+    Alloc*& operator[](const std::pair<Type, size_t>& key) {
+        return proxies[{register_type(key.first), key.second}];
+    }
+    auto begin() {
+        return proxies.begin();
+    }
+    auto begin() const {
+        return proxies.begin();
+    }
+    auto end() {
+        return proxies.end();
+    }
+    auto end() const {
+        return proxies.end();
+    }
+
+    [[nodiscard]] Alloc* const& at(const std::pair<Type, size_t>& key) const {
+        return proxies.at({register_type(key.first), key.second});
     }
 };
-using ProxyMap = std::unordered_map<std::pair<Type, size_t>, Alloc*, ProxyKeyHasher>;
 
 /// @note: colorized: func call, func param, return value
 
-struct PreColorize : ir::transform::NonSSAPass {
-    PreColorize(TargetABI abi) : abi(std::move(abi)) {}
+struct Precolorize : ir::transform::NonSSAPass {
+    Precolorize(TargetABI abi) : abi(std::move(abi)) {}
     bool apply(Program& prog, ir::transform::NonSSAPassContext& ctx) override {
         map_registers(prog);
         for (auto& func : prog.funcs()) {
@@ -40,33 +66,30 @@ struct PreColorize : ir::transform::NonSSAPass {
         }
         return true;
     }
-    ProxyMap proxies;
+    PrecolorVars precolored;
 
 private:
     TargetABI abi;
 
     void map_registers(Program& prog) {
-        auto map = [&](const Type& reg_type, const std::vector<Type>& types) {
-            auto& regs = abi.reg_of(reg_type);
+        auto map = [&](const Type& type) {
+            auto& regs = abi.reg_of(type);
             for (size_t idx = 0; idx < regs.size; idx++) {
                 auto name = fmt::format("__reg_{}", regs.name(idx));
-                auto proxy = Alloc::variable(name, reg_type, std::nullopt, true);
-                for (const auto& type : types) {
-                    proxies[{type, idx}] = proxy.get();
-                }
+                auto proxy = Alloc::variable(name, type, std::nullopt, true);
+                precolored[{type, idx}] = proxy.get();
                 prog.addGlobal(std::move(proxy));
             }
         };
-        Type gpr = type::integer(), fpr = type::floating();
-        map(gpr, {gpr, type::int1(), type::int32()});
-        map(fpr, {fpr, type::float32(), type::float64()});
+        map(type::integer());
+        map(type::floating());
     }
 
     void colorize_param(Func& func, Program& prog) {
         auto regs = assign_param_regs(func.params, abi);
         for (size_t i = 0; i < func.params.size(); i++) {
             if (!regs[i]) continue;
-            auto proxy = proxies[{func.params[i]->type, regs[i].value()}];
+            auto proxy = precolored[{func.params[i]->type, regs[i].value()}];
             func.entrance()->prepend(UnaryInst{.op = UnaryInstOp::MOV,
                                                .result = LeftValue{func.params[i]->value()},
                                                .operand = LeftValue{proxy->value()}});
@@ -78,7 +101,7 @@ private:
         for (auto& block : func.blocks()) {
             if (auto ret = std::get_if<ReturnExit>(&block->exit())) {
                 auto type = type_of(ret->exp);
-                LeftValue proxy = proxies[{type, abi.reg_of(type).return_value}]->value();
+                LeftValue proxy = precolored[{type, abi.reg_of(type).return_value}]->value();
                 block->append(
                     UnaryInst{.op = UnaryInstOp::MOV, .result = proxy, .operand = ret->exp});
                 block->setExit(ReturnExit{proxy});
@@ -103,7 +126,7 @@ private:
                 for (size_t i = 0; i < args.size(); i++) {
                     if (!regs[i]) continue;
                     auto reg = regs[i].value();
-                    LeftValue proxy = proxies[{type_of(args[i]), reg}]->value();
+                    LeftValue proxy = precolored[{type_of(args[i]), reg}]->value();
                     block.insert(
                         next_it,
                         UnaryInst{.op = UnaryInstOp::MOV, .result = proxy, .operand = args[i]});
@@ -111,7 +134,7 @@ private:
                 }
                 if (result) {
                     auto reg = abi.reg_of(type_of(*result)).return_value;
-                    LeftValue retval = proxies[{type_of(*result), reg}]->value();
+                    LeftValue retval = precolored[{type_of(*result), reg}]->value();
                     block.insert(next_it, CallInst{retval, callee, std::move(args)});
                     block.insert(
                         next_it,

@@ -1,12 +1,10 @@
 /// Test PreColorize pass: global pre-colored register proxies.
 ///
-/// map_registers creates 128 global proxy allocs (shared across all functions):
-///   32 bool-type GPR  (__reg_bool_{name})
-///   32 i32-type GPR   (__reg_i32_{name})
-///   32 f32-type FPR   (__reg_f32_f{id})
-///   32 f64-type FPR   (__reg_f64_f{id})
+/// map_registers creates 64 global proxy allocs (shared across all functions):
+///   32 integer-type GPR  (__reg_{name})
+///   32 floating-type FPR (__reg_f{id})
 ///
-/// All 128 are pre-colored to their physical register numbers.
+/// All 64 are pre-colored to their physical register numbers.
 /// Params, call-args, and returns reference these global proxies via MOV.
 
 #include "backend/ir/ir.h"
@@ -39,11 +37,10 @@ void check(bool cond, const std::string& msg) {
     }
 }
 
-/// Derive a ColorMap from the ProxyMap.
-/// The color (register number) is the `id` stored in each proxy key `(Type, size_t)`.
-ColorMap build_color_map(const ProxyMap& proxies) {
+/// Derive a ColorMap from the PrecolorVars.
+ColorMap build_color_map(const PrecolorVars& precolored) {
     ColorMap colors;
-    for (const auto& [key, alloc] : proxies) {
+    for (const auto& [key, alloc] : precolored) {
         colors[alloc->value()] = static_cast<ssize_t>(key.second);
     }
     return colors;
@@ -66,11 +63,11 @@ const Alloc* find_global(const Program& prog, const std::string& name) {
     return nullptr;
 }
 
-/// Verify all 128 global proxy allocs exist with correct register numbers.
-void verify_all_128(const Program& prog, const ProxyMap& proxies) {
-    auto colors = build_color_map(proxies);
-    check(colors.size() == 128, "colors has 128 entries (4 types × 32 regs)");
-    check(prog.globals().size() == 128, "program has 128 global allocs");
+/// Verify all 64 global proxy allocs exist with correct register numbers.
+void verify_all_64(const Program& prog, const PrecolorVars& precolored) {
+    auto colors = build_color_map(precolored);
+    check(colors.size() == 64, "colors has 64 entries (2 types × 32 regs)");
+    check(prog.globals().size() == 64, "program has 64 global allocs");
 
     constexpr std::array gpr_names{
         "zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2",
@@ -79,42 +76,28 @@ void verify_all_128(const Program& prog, const ProxyMap& proxies) {
         "s8",   "s9", "s10","s11","t3", "t4", "t5", "t6"
     };
 
-    // 32 bool-type GPR proxies
+    // 32 integer-type GPR proxies
     for (size_t idx = 0; idx < 32; idx++) {
-        auto name = fmt::format("__reg_bool_{}", gpr_names[idx]);
+        auto name = fmt::format("__reg_{}", gpr_names[idx]);
         auto* alloc = find_global(prog, name);
         check(alloc != nullptr, fmt::format("{} exists", name));
-        check(colors.at(LeftValue{alloc->value()}) == static_cast<ssize_t>(idx),
-              fmt::format("{} -> register {}", name, idx));
+        if (alloc)
+            check(colors.at(LeftValue{alloc->value()}) == static_cast<ssize_t>(idx),
+                  fmt::format("{} -> register {}", name, idx));
     }
-    // 32 i32-type GPR proxies
+    // 32 floating-type FPR proxies
     for (size_t idx = 0; idx < 32; idx++) {
-        auto name = fmt::format("__reg_i32_{}", gpr_names[idx]);
+        auto name = fmt::format("__reg_f{}", idx);
         auto* alloc = find_global(prog, name);
         check(alloc != nullptr, fmt::format("{} exists", name));
-        check(colors.at(LeftValue{alloc->value()}) == static_cast<ssize_t>(idx),
-              fmt::format("{} -> register {}", name, idx));
-    }
-    // 32 f32-type FPR proxies
-    for (size_t idx = 0; idx < 32; idx++) {
-        auto name = fmt::format("__reg_f32_f{}", idx);
-        auto* alloc = find_global(prog, name);
-        check(alloc != nullptr, fmt::format("{} exists", name));
-        check(colors.at(LeftValue{alloc->value()}) == static_cast<ssize_t>(idx),
-              fmt::format("{} -> register {}", name, idx));
-    }
-    // 32 f64-type FPR proxies
-    for (size_t idx = 0; idx < 32; idx++) {
-        auto name = fmt::format("__reg_f64_f{}", idx);
-        auto* alloc = find_global(prog, name);
-        check(alloc != nullptr, fmt::format("{} exists", name));
-        check(colors.at(LeftValue{alloc->value()}) == static_cast<ssize_t>(idx),
-              fmt::format("{} -> register {}", name, idx));
+        if (alloc)
+            check(colors.at(LeftValue{alloc->value()}) == static_cast<ssize_t>(idx),
+                  fmt::format("{} -> register {}", name, idx));
     }
 }
 
 void test_precolorize(const std::string& name, const std::string& ir_text,
-                      const std::function<void(Program&, PreColorize&)>& verify) {
+                      const std::function<void(Program&, Precolorize&)>& verify) {
     fmt::println("Test: {}", name);
     try {
         auto stream = std::istringstream(ir_text);
@@ -122,7 +105,7 @@ void test_precolorize(const std::string& name, const std::string& ir_text,
         auto& prog = *prog_box;
         fmt::println("Before PreColorize:\n{}", prog);
 
-        PreColorize pass(rv64::ABI);
+        Precolorize pass(rv64::ABI);
         NonSSAPassContext ctx(prog);
         pass.apply(prog, ctx);
 
@@ -138,23 +121,21 @@ void test_precolorize(const std::string& name, const std::string& ir_text,
 
 int main() {
     // ==================================================================
-    // Global proxy basics -- 128 entries regardless of function count.
+    // Global proxy basics -- 64 entries regardless of function count.
     // ==================================================================
 
-    test_precolorize("1 function = 128 global entries", R"(
+    test_precolorize("1 function = 64 global entries", R"(
 fn singleton() -> i32 {
     'entry: { return 1; }
 }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         check(pass.proxies.size() == 128,
-                               "128 proxies (4 types x 32 regs)");
-                         check(prog.globals().size() == 128,
-                               "128 global allocs");
-                         verify_all_128(prog, pass.proxies);
+                     [](Program& prog, Precolorize& pass) {
+                         check(pass.precolored.proxies.size() == 64, "64 proxies (2 types x 32 regs)");
+                         check(prog.globals().size() == 64, "64 global allocs");
+                         verify_all_64(prog, pass.precolored);
                      });
 
-    test_precolorize("2 functions = 128 global entries", R"(
+    test_precolorize("2 functions = 64 global entries", R"(
 fn add(a: i32, b: i32) -> i32 {
     'entry: {
         %0: i32 = @a + @b;
@@ -168,29 +149,28 @@ fn main() -> i32 {
     }
 }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         check(pass.proxies.size() == 128,
-                               "128 proxies (global, not per-function)");
-                         check(prog.globals().size() == 128, "128 global allocs");
-                         verify_all_128(prog, pass.proxies);
+                     [](Program& prog, Precolorize& pass) {
+                         check(pass.precolored.proxies.size() == 64,
+                               "64 proxies (global, not per-function)");
+                         check(prog.globals().size() == 64, "64 global allocs");
+                         verify_all_64(prog, pass.precolored);
 
                          auto* entry = prog.findFunc("main").findBlock("entry");
-                         check(count_movs(*entry) >= 2,
-                               ">=2 MOVs before call (arg proxies)");
+                         check(count_movs(*entry) >= 2, ">=2 MOVs before call (arg proxies)");
                      });
 
-    test_precolorize("3 functions = 128 global entries", R"(
+    test_precolorize("3 functions = 64 global entries", R"(
 fn f1(x: i32) -> i32 { 'entry: { return @x; } }
 fn f2(x: i32) -> i32 { 'entry: { return @x; } }
 fn f3(x: i32) -> i32 { 'entry: { return @x; } }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         check(pass.proxies.size() == 128,
-                               "128 proxies regardless of function count");
+                     [](Program& prog, Precolorize& pass) {
+                         check(pass.precolored.proxies.size() == 64,
+                               "64 proxies regardless of function count");
                      });
 
     // ==================================================================
-    // Colorize behavior -- same 128 globals reused across all functions.
+    // Colorize behavior -- same 64 globals reused across all functions.
     // ==================================================================
 
     test_precolorize("9 int args -- 9th spills", R"(
@@ -207,8 +187,8 @@ fn main() -> i32 {
     }
 }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         check(pass.proxies.size() == 128, "128 proxies");
+                     [](Program& prog, Precolorize& pass) {
+                         check(pass.precolored.proxies.size() == 64, "64 proxies");
                          auto* entry = prog.findFunc("main").findBlock("entry");
                          check(count_movs(*entry) == 10,
                                "10 MOVs: 8 call arg MOVs + 1 retval MOV + 1 return MOV");
@@ -228,9 +208,9 @@ fn main() -> f32 {
     }
 }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         check(pass.proxies.size() == 128, "128 proxies");
-                         verify_all_128(prog, pass.proxies);
+                     [](Program& prog, Precolorize& pass) {
+                         check(pass.precolored.proxies.size() == 64, "64 proxies");
+                         verify_all_64(prog, pass.precolored);
                      });
 
     test_precolorize("Mixed int+float args", R"(
@@ -247,13 +227,12 @@ fn main() -> i32 {
     }
 }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         check(pass.proxies.size() == 128, "128 proxies");
-                         verify_all_128(prog, pass.proxies);
+                     [](Program& prog, Precolorize& pass) {
+                         check(pass.precolored.proxies.size() == 64, "64 proxies");
+                         verify_all_64(prog, pass.precolored);
 
                          auto* entry = prog.findFunc("main").findBlock("entry");
-                         check(count_movs(*entry) >= 4,
-                               ">=4 MOVs (one per arg)");
+                         check(count_movs(*entry) >= 4, ">=4 MOVs (one per arg)");
                      });
 
     test_precolorize("Bool args", R"(
@@ -271,16 +250,16 @@ fn main() -> i32 {
     }
 }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         check(pass.proxies.size() == 128, "128 proxies");
-                         verify_all_128(prog, pass.proxies);
+                     [](Program& prog, Precolorize& pass) {
+                         check(pass.precolored.proxies.size() == 64, "64 proxies");
+                         verify_all_64(prog, pass.precolored);
                      });
 
     // ==================================================================
     // Return value colorization.
     // ==================================================================
 
-    test_precolorize("Return value (i32) -- MOV to __reg_i32_a0", R"(
+    test_precolorize("Return value (i32) -- MOV to __reg_a0", R"(
 fn answer() -> i32 {
     'entry: { return 42; }
 }
@@ -291,12 +270,12 @@ fn main() -> i32 {
     }
 }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         check(pass.proxies.size() == 128, "128 proxies");
+                     [](Program& prog, Precolorize& pass) {
+                         check(pass.precolored.proxies.size() == 64, "64 proxies");
                          auto* ae = prog.findFunc("answer").entrance();
-                         check(count_movs(*ae) == 1, "1 MOV in answer (return -> __reg_i32_a0)");
+                         check(count_movs(*ae) == 1, "1 MOV in answer (return -> __reg_a0)");
                          auto* me = prog.findFunc("main").entrance();
-                         check(count_movs(*me) == 2, "2 MOVs in main (temp %0=1 + return -> __reg_i32_a0)");
+                         check(count_movs(*me) == 2, "2 MOVs in main (temp %0=1 + return -> __reg_a0)");
                      });
 
     test_precolorize("Return value (f64)", R"(
@@ -310,8 +289,8 @@ fn main() -> i32 {
     }
 }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         check(pass.proxies.size() == 128, "128 proxies");
+                     [](Program& prog, Precolorize& pass) {
+                         check(pass.precolored.proxies.size() == 64, "64 proxies");
                      });
 
     test_precolorize("No return exit", R"(
@@ -325,8 +304,8 @@ fn main() -> i32 {
     }
 }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         check(pass.proxies.size() == 128, "128 proxies");
+                     [](Program& prog, Precolorize& pass) {
+                         check(pass.precolored.proxies.size() == 64, "64 proxies");
                          check(count_movs(*prog.findFunc("no_ret").entrance()) == 0,
                                "no_ret has 0 MOVs");
                          check(count_movs(*prog.findFunc("main").entrance()) == 2,
@@ -349,8 +328,8 @@ fn main() -> i32 {
     }
 }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         check(pass.proxies.size() == 128, "128 proxies");
+                     [](Program& prog, Precolorize& pass) {
+                         check(pass.precolored.proxies.size() == 64, "64 proxies");
                          auto* entry = prog.findFunc("main").findBlock("entry");
                          check(count_movs(*entry) >= 2, ">=2 MOVs (arg proxies)");
                      });
@@ -376,8 +355,8 @@ fn main() -> i32 {
     }
 }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         check(pass.proxies.size() == 128, "128 proxies");
+                     [](Program& prog, Precolorize& pass) {
+                         check(pass.precolored.proxies.size() == 64, "64 proxies");
                          auto* entry = prog.findFunc("main").findBlock("entry");
                          bool found_call = false;
                          for (auto& inst : entry->insts()) {
@@ -411,9 +390,9 @@ fn main() -> i32 {
     }
 }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         auto colors = build_color_map(pass.proxies);
-                         check(pass.proxies.size() == 128, "128 proxies");
+                     [](Program& prog, Precolorize& pass) {
+                         auto colors = build_color_map(pass.precolored);
+                         check(pass.precolored.proxies.size() == 64, "64 proxies");
                          auto& func = prog.findFunc("add");
                          // Params are NOT pre-colored
                          for (auto& p : func.params) {
@@ -421,14 +400,14 @@ fn main() -> i32 {
                                    fmt::format("@{} is NOT directly pre-colored", p->name));
                          }
                          // Global proxies exist
-                         auto* pa0 = find_global(prog, "__reg_i32_a0");
-                         auto* pa1 = find_global(prog, "__reg_i32_a1");
-                         check(pa0 != nullptr, "__reg_i32_a0 global proxy exists");
-                         check(pa1 != nullptr, "__reg_i32_a1 global proxy exists");
+                         auto* pa0 = find_global(prog, "__reg_a0");
+                         auto* pa1 = find_global(prog, "__reg_a1");
+                         check(pa0 != nullptr, "__reg_a0 global proxy exists");
+                         check(pa1 != nullptr, "__reg_a1 global proxy exists");
                          check(colors.at(LeftValue{pa0->value()}) == 10,
-                               "__reg_i32_a0 -> register 10 (a0)");
+                               "__reg_a0 -> register 10 (a0)");
                          check(colors.at(LeftValue{pa1->value()}) == 11,
-                               "__reg_i32_a1 -> register 11 (a1)");
+                               "__reg_a1 -> register 11 (a1)");
 
                          auto* entry = func.entrance();
                          check(count_movs(*entry) >= 2,
@@ -449,17 +428,14 @@ fn main() -> i32 {
     }
 }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         check(pass.proxies.size() == 128, "128 proxies");
-                         // i32 GPR global proxies
-                         check(find_global(prog, "__reg_i32_a0") != nullptr, "__reg_i32_a0 exists");
-                         check(find_global(prog, "__reg_i32_a1") != nullptr, "__reg_i32_a1 exists");
-                         // f64 FPR global proxies (pre-mapped)
-                         check(find_global(prog, "__reg_f64_f10") != nullptr, "__reg_f64_f10 exists");
-                         check(find_global(prog, "__reg_f64_f11") != nullptr, "__reg_f64_f11 exists");
-                         // f32 FPR global proxies also exist
-                         check(find_global(prog, "__reg_f32_f10") != nullptr, "__reg_f32_f10 exists");
-                         check(find_global(prog, "__reg_f32_f11") != nullptr, "__reg_f32_f11 exists");
+                     [](Program& prog, Precolorize& pass) {
+                         check(pass.precolored.proxies.size() == 64, "64 proxies");
+                         // GPR global proxies
+                         check(find_global(prog, "__reg_a0") != nullptr, "__reg_a0 exists");
+                         check(find_global(prog, "__reg_a1") != nullptr, "__reg_a1 exists");
+                         // FPR global proxies
+                         check(find_global(prog, "__reg_f10") != nullptr, "__reg_f10 exists");
+                         check(find_global(prog, "__reg_f11") != nullptr, "__reg_f11 exists");
                      });
 
     test_precolorize("9 params -- global proxies for a0-a7", R"(
@@ -476,16 +452,17 @@ fn main() -> i32 {
     }
 }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         auto colors = build_color_map(pass.proxies);
-                         check(pass.proxies.size() == 128, "128 proxies");
+                     [](Program& prog, Precolorize& pass) {
+                         auto colors = build_color_map(pass.precolored);
+                         check(pass.precolored.proxies.size() == 64, "64 proxies");
                          for (ssize_t r = 10; r <= 17; r++) {
-                             auto name = fmt::format("__reg_i32_a{}", r - 10);
+                             auto name = fmt::format("__reg_a{}", r - 10);
                              auto* proxy = find_global(prog, name);
                              check(proxy != nullptr,
                                    fmt::format("{} exists (register {})", name, r));
-                             check(colors.at(LeftValue{proxy->value()}) == r,
-                                   fmt::format("{} -> register {}", name, r));
+                             if (proxy)
+                                 check(colors.at(LeftValue{proxy->value()}) == r,
+                                       fmt::format("{} -> register {}", name, r));
                          }
                      });
 
@@ -496,101 +473,87 @@ fn main() -> i32 {
     test_precolorize("Special registers: zero, ra, sp, gp, tp", R"(
 fn f() -> i32 { 'entry: { return 0; } }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         auto colors = build_color_map(pass.proxies);
-                         check(pass.proxies.size() == 128, "128 proxies");
+                     [](Program& prog, Precolorize& pass) {
+                         auto colors = build_color_map(pass.precolored);
+                         check(pass.precolored.proxies.size() == 64, "64 proxies");
                          auto check_name = [&](const std::string& name, ssize_t reg) {
                              auto* alloc = find_global(prog, name);
                              check(alloc != nullptr, fmt::format("{} exists", name));
-                             check(colors.at(LeftValue{alloc->value()}) == reg,
-                                   fmt::format("{} -> register {}", name, reg));
+                             if (alloc)
+                                 check(colors.at(LeftValue{alloc->value()}) == reg,
+                                       fmt::format("{} -> register {}", name, reg));
                          };
-                         check_name("__reg_i32_zero", 0);
-                         check_name("__reg_i32_ra", 1);
-                         check_name("__reg_i32_sp", 2);
-                         check_name("__reg_i32_gp", 3);
-                         check_name("__reg_i32_tp", 4);
-                         check_name("__reg_bool_zero", 0);
-                         check_name("__reg_bool_ra", 1);
+                         check_name("__reg_zero", 0);
+                         check_name("__reg_ra", 1);
+                         check_name("__reg_sp", 2);
+                         check_name("__reg_gp", 3);
+                         check_name("__reg_tp", 4);
                      });
 
     test_precolorize("GPR parameter registers a0-a7", R"(
 fn f() -> i32 { 'entry: { return 0; } }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         auto colors = build_color_map(pass.proxies);
+                     [](Program& prog, Precolorize& pass) {
+                         auto colors = build_color_map(pass.precolored);
                          for (ssize_t i = 0; i < 8; i++) {
-                             auto name = fmt::format("__reg_i32_a{}", i);
+                             auto name = fmt::format("__reg_a{}", i);
                              auto* alloc = find_global(prog, name);
                              check(alloc != nullptr, fmt::format("{} exists", name));
-                             check(colors.at(LeftValue{alloc->value()}) == 10 + i,
-                                   fmt::format("{} -> register {}", name, 10 + i));
+                             if (alloc)
+                                 check(colors.at(LeftValue{alloc->value()}) == 10 + i,
+                                       fmt::format("{} -> register {}", name, 10 + i));
                          }
                      });
 
     test_precolorize("Callee/caller-saved register names", R"(
 fn f() -> i32 { 'entry: { return 0; } }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         auto colors = build_color_map(pass.proxies);
+                     [](Program& prog, Precolorize& pass) {
+                         auto colors = build_color_map(pass.precolored);
                          auto check_name = [&](const std::string& name, ssize_t reg) {
                              auto* alloc = find_global(prog, name);
                              check(alloc != nullptr, fmt::format("{} exists", name));
-                             check(colors.at(LeftValue{alloc->value()}) == reg,
-                                   fmt::format("{} -> register {}", name, reg));
+                             if (alloc)
+                                 check(colors.at(LeftValue{alloc->value()}) == reg,
+                                       fmt::format("{} -> register {}", name, reg));
                          };
                          // Callee-saved
-                         check_name("__reg_i32_s0", 8);
-                         check_name("__reg_i32_s1", 9);
-                         check_name("__reg_i32_s2", 18);
-                         check_name("__reg_i32_s11", 27);
+                         check_name("__reg_s0", 8);
+                         check_name("__reg_s1", 9);
+                         check_name("__reg_s2", 18);
+                         check_name("__reg_s11", 27);
                          // Caller-saved
-                         check_name("__reg_i32_t0", 5);
-                         check_name("__reg_i32_t6", 31);
+                         check_name("__reg_t0", 5);
+                         check_name("__reg_t6", 31);
                      });
 
-    test_precolorize("FPR registers f0-f31 (f64)", R"(
+    test_precolorize("FPR registers f0-f31", R"(
 fn f() -> i32 { 'entry: { return 0; } }
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         auto colors = build_color_map(pass.proxies);
+                     [](Program& prog, Precolorize& pass) {
+                         auto colors = build_color_map(pass.precolored);
                          for (size_t idx = 0; idx < 32; idx++) {
-                             auto name = fmt::format("__reg_f64_f{}", idx);
+                             auto name = fmt::format("__reg_f{}", idx);
                              auto* alloc = find_global(prog, name);
                              check(alloc != nullptr, fmt::format("{} exists", name));
-                             check(colors.at(LeftValue{alloc->value()})
-                                       == static_cast<ssize_t>(idx),
-                                   fmt::format("{} -> register {}", name, idx));
-                         }
-                     });
-
-    test_precolorize("FPR registers f0-f31 (f32)", R"(
-fn f() -> i32 { 'entry: { return 0; } }
-)",
-                     [](Program& prog, PreColorize& pass) {
-                         auto colors = build_color_map(pass.proxies);
-                         for (size_t idx = 0; idx < 32; idx++) {
-                             auto name = fmt::format("__reg_f32_f{}", idx);
-                             auto* alloc = find_global(prog, name);
-                             check(alloc != nullptr, fmt::format("{} exists", name));
-                             check(colors.at(LeftValue{alloc->value()})
-                                       == static_cast<ssize_t>(idx),
-                                   fmt::format("{} -> register {}", name, idx));
+                             if (alloc)
+                                 check(colors.at(LeftValue{alloc->value()})
+                                           == static_cast<ssize_t>(idx),
+                                       fmt::format("{} -> register {}", name, idx));
                          }
                      });
 
     // ==================================================================
-    // Edge: empty program (no functions) still has 128 globals.
+    // Edge: empty program (no functions) still has 64 globals.
     // ==================================================================
 
-    test_precolorize("Empty program still has 128 globals", R"(
+    test_precolorize("Empty program still has 64 globals", R"(
 )",
-                     [](Program& prog, PreColorize& pass) {
-                         check(pass.proxies.size() == 128,
-                               "128 proxies even with 0 functions");
-                         check(prog.globals().size() == 128,
-                               "128 global allocs even with 0 functions");
-                         verify_all_128(prog, pass.proxies);
+                     [](Program& prog, Precolorize& pass) {
+                         check(pass.precolored.proxies.size() == 64, "64 proxies even with 0 functions");
+                         check(prog.globals().size() == 64,
+                               "64 global allocs even with 0 functions");
+                         verify_all_64(prog, pass.precolored);
                      });
 
     fmt::println("\nResults: {} passed, {} failed", tests_passed, tests_failed);
