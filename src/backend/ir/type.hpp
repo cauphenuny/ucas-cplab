@@ -79,7 +79,7 @@ struct Int32 : mixin::ToBoxed<Int32, Type> {
 };
 
 struct Int : mixin::ToBoxed<Int, Type> {
-    using type = size_t;
+    using type = int64_t;
     SIMPLE_TO_STRING("int");
 };
 
@@ -426,7 +426,7 @@ template <typename T> TypeBox construct() {
         return Float32{}.toBoxed();
     } else if constexpr (std::is_same_v<U, double>) {
         return Float64{}.toBoxed();
-    } else if constexpr (std::is_same_v<U, size_t>) {
+    } else if constexpr (std::is_same_v<U, int64_t>) {
         return Int{}.toBoxed();
     } else if constexpr (std::is_same_v<U, bool>) {
         return Int1{}.toBoxed();

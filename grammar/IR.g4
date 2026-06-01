@@ -5,10 +5,12 @@ grammar IR;
 // Keywords
 FN: 'fn';
 LET: 'let';
-INT: 'i32';
-FLOAT: 'f32';
-DOUBLE: 'f64';
-BOOL: 'bool';
+I1: 'bool';
+I32: 'i32';
+INT: 'int';
+F32: 'f32';
+F64: 'f64';
+FLOAT: 'float';
 CONST: 'const';
 MUT: 'mut';
 REF: 'ref';
@@ -103,12 +105,12 @@ binop:
 	| '<-';
 
 type:
-	'&' MUT? type					# pointerType
-	| '&' MUT? '[' type ']'			# sliceType
-	| '[' type ';' INT_LITERAL ']'	# arrayType
-	| (INT | FLOAT | DOUBLE | BOOL)	# primitiveType
-	| '(' (type ',')* ')'			# productType
-	| '(' type ('|' type)+ ')'		# sumType;
+	'&' MUT? type							# pointerType
+	| '&' MUT? '[' type ']'					# sliceType
+	| '[' type ';' INT_LITERAL ']'			# arrayType
+	| (I32 | F32 | F64 | I1 | INT | FLOAT)	# primitiveType
+	| '(' (type ',')* ')'					# productType
+	| '(' type ('|' type)+ ')'				# sumType;
 
 basicConstexpr:
 	'-'? INT_LITERAL

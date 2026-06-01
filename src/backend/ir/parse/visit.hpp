@@ -395,10 +395,12 @@ public:
     }
 
     std::any visitPrimitiveType(IRParser::PrimitiveTypeContext* ctx) override {
-        if (ctx->INT()) return wrap(ir::type::construct<int>());
-        if (ctx->FLOAT()) return wrap(ir::type::construct<float>());
-        if (ctx->DOUBLE()) return wrap(ir::type::construct<double>());
-        if (ctx->BOOL()) return wrap(ir::type::construct<bool>());
+        if (ctx->I1()) return wrap(ir::type::construct<bool>());
+        if (ctx->I32()) return wrap(ir::type::construct<int>());
+        if (ctx->INT()) return wrap(ir::type::integer());
+        if (ctx->F32()) return wrap(ir::type::construct<float>());
+        if (ctx->F64()) return wrap(ir::type::construct<double>());
+        if (ctx->FLOAT()) return wrap(ir::type::floating());
         return wrap(ir::type::construct<void>());
     }
 

@@ -62,7 +62,7 @@ struct TempValue {
 
 struct ConstexprValue;
 
-auto toString(size_t val) -> std::string;
+auto toString(int64_t val) -> std::string;
 auto toString(int val) -> std::string;
 auto toString(float val) -> std::string;
 auto toString(double val) -> std::string;
@@ -72,7 +72,7 @@ auto serializeArray(const Type& type, std::byte* buffer) -> std::string;
 
 struct ConstexprValue {
     Type type;
-    std::variant<std::monostate, int, size_t, float, bool, double, std::unique_ptr<std::byte[]>> val;
+    std::variant<std::monostate, int, int64_t, float, bool, double, std::unique_ptr<std::byte[]>> val;
 
     SIMPLE_TO_STRING(match(
                          val, [&](std::monostate) { return std::string(""); },
@@ -248,6 +248,7 @@ struct Alloc {
                               bool immutable = false) -> std::unique_ptr<Alloc>;
 
     [[nodiscard]] auto value() const -> NamedValue;
+    [[nodiscard]] auto value(Type type) const -> NamedValue;
 };
 
 struct Func {
