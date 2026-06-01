@@ -120,15 +120,15 @@ private:
 
     void colorize_callee_saved(Func& func, Program& prog, const std::vector<Block*>& ret_blocks) {
         auto save = [&](const std::set<size_t>& regs, const char* prefix, const Type& type) {
-            for (auto idx : regs) {
+            for (auto it = regs.rbegin(); it != regs.rend(); it++) {
                 auto backup = func.newTemp(type, func.entrance());
                 func.entrance()->prepend(
                     UnaryInst{.op = UnaryInstOp::MOV,
                               .result = LeftValue{backup},
-                              .operand = LeftValue{precolored[{type, idx}]->value()}});
+                              .operand = LeftValue{precolored[{type, *it}]->value()}});
                 for (auto ret : ret_blocks) {
                     ret->append(UnaryInst{.op = UnaryInstOp::MOV,
-                                          .result = LeftValue{precolored[{type, idx}]->value()},
+                                          .result = LeftValue{precolored[{type, *it}]->value()},
                                           .operand = LeftValue{backup}});
                 }
             }
