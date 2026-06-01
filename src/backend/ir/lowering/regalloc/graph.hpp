@@ -289,7 +289,7 @@ private:
     bool need_register(const LeftValue& v) {
         if (auto named = std::get_if<NamedValue>(&v)) {
             if (auto alloc = std::get_if<const Alloc*>(&named->def)) {
-                return !(*alloc)->reference;
+                return !(*alloc)->reference && !(*alloc)->comptime;
             }
         }
         return true;
