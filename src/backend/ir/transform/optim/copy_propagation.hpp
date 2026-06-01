@@ -53,7 +53,7 @@ private:
                 if (auto unary = std::get_if<UnaryInst>(&inst)) {
                     if (unary->op == UnaryInstOp::MOV) {
                         if (type_of(unary->operand).is<type::Array>()) continue;
-                        copies[unary->result] = unary->operand;
+                        copies[*unary->result] = unary->operand;
                     }
                 } else if (auto phi = std::get_if<PhiInst>(&inst); phi) {
                     std::optional<Value> uniform_val;
@@ -65,7 +65,7 @@ private:
                             break;
                         }
                         auto root = get_root(get_root, *var);
-                        if (root == Value{phi->result}) continue;
+                        if (root == Value{*phi->result}) continue;
                         if (!uniform_val) {
                             uniform_val = root;
                         } else if (!(*uniform_val == root)) {
@@ -74,7 +74,7 @@ private:
                         }
                     }
                     if (possible && uniform_val) {
-                        copies[phi->result] = *uniform_val;
+                        copies[*phi->result] = *uniform_val;
                     }
                 }
             }

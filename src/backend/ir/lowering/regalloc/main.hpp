@@ -61,14 +61,14 @@ template <typename T> struct RedundantMoveElimination : transform::Pass<T> {
             for (auto& block : func->blocks()) {
                 auto& insts = block->insts();
                 for (auto it = insts.begin(); it != insts.end();) {
-                    if (auto unary = std::get_if<UnaryInst>(&*it)) {
-                        if (unary->op != UnaryInstOp::MOV) {
+                    if (auto mov = std::get_if<UnaryInst>(&*it)) {
+                        if (mov->op != UnaryInstOp::MOV) {
                             ++it;
                             continue;
                         }
-                        if (auto src = std::get_if<LeftValue>(&unary->operand)) {
+                        if (auto src = std::get_if<LeftValue>(&mov->operand)) {
                             auto src_color = color.at(*src);
-                            auto dst_color = color.at(unary->result);
+                            auto dst_color = color.at(*mov->result);
                             if (src_color == dst_color) {
                                 it = insts.erase(it);
                                 changed = true;

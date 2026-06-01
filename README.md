@@ -19,18 +19,22 @@ compiler [args]... files ...
 
     --help                  Show this help message
 
+    --output <file>         Write the generated IR also to the specified file
+
     --ast                   Print the AST of the input files
     --ast-info              Print the semantic analysis result of the AST
 
     --ir                    Print the generated IR
     --ir-info               Print analysis result of the generated IR
+
     --ssa                   Convert generated IR to SSA form
-    --ssa2temp              Convert SSAValue in IR to TempValue
+    --retain-ssa-value      Do not convert SSAValue to TempValue in IR
 
     --optimize-copy         Apply Copy Propagation optimization (triggers --ssa)
     --optimize-const        Apply Const Propagation optimization (triggers --ssa)
     --optimize-def          Apply Dead Definition Elimination optimization (triggers --ssa)
     --optimize-alloc        Apply Dead Allocation Elimination optimization (triggers --ssa, better with --ssa2temp)
+    --optimize-temp         Apply Dead Temporary Value Elimination optimization (triggers --ssa)
     --optimize-block        Apply Dead/Trivial Block Elimination optimization (triggers --ssa)
     --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts) (triggers --ssa)
     --optimize-exp          Apply Common Subexpression Elimination optimization (triggers --ssa)
@@ -38,8 +42,6 @@ compiler [args]... files ...
 
     --exec                  Execute the generated IR
     --silent                Suppress all compiler output except the return value when executing
-
-    --output <file>         Write the generated IR also to the specified file
 
 interpreter [--help] [--silent] [--print] IR_file
     --help      Show this help message
@@ -99,20 +101,33 @@ src/
 │   │   │   └── stmt.cpp
 │   │   ├── inst.cpp
 │   │   ├── ir.h
+│   │   ├── lowering/
+│   │   │   ├── abi.hpp
+│   │   │   ├── reg2mem.hpp
+│   │   │   └── regalloc/
+│   │   │       ├── colorize.hpp:	Chaitin-Briggs Graph Coloring Register Allocator
+│   │   │       ├── interfere.hpp
+│   │   │       ├── main.hpp
+│   │   │       ├── precolorize.hpp
+│   │   │       ├── scanmov.hpp
+│   │   │       └── spill.hpp
 │   │   ├── op.hpp
-│   │   ├── optim/
-│   │   │   ├── common_expr.hpp:	Common Subexpressions Elimination, requires SSA
-│   │   │   ├── const_propagation.hpp:	Const Propagation Pass, requires SSA
-│   │   │   ├── copy_propagation.hpp:	Copy Propagation Pass, requires SSA
-│   │   │   ├── dead_alloc.hpp:	Dead Allocation Elimination Pass
-│   │   │   ├── dead_block.hpp:	CFG Simplification & Dead Block Elimination Pass, requires SSA
-│   │   │   ├── dead_def.hpp:	Dead Definition Elimination Pass, requires SSA
-│   │   │   ├── framework.hpp
-│   │   │   ├── inline.hpp:	Inline Pass, requires SSA
-│   │   │   └── ssa.hpp:	SSA Construct Pass
 │   │   ├── parse/
 │   │   │   └── visit.hpp
 │   │   ├── program.cpp
+│   │   ├── transform/
+│   │   │   ├── framework.hpp
+│   │   │   ├── optim/
+│   │   │   │   ├── common_expr.hpp:	Common Subexpressions Elimination, requires SSA
+│   │   │   │   ├── const_propagation.hpp:	Const Propagation Pass, requires SSA
+│   │   │   │   ├── copy_propagation.hpp:	Copy Propagation Pass, requires SSA
+│   │   │   │   ├── dead_alloc.hpp:	Dead Allocation Elimination Pass
+│   │   │   │   ├── dead_block.hpp:	CFG Simplification & Dead Block Elimination Pass, requires SSA
+│   │   │   │   ├── dead_def.hpp:	Dead Definition Elimination Pass, requires SSA
+│   │   │   │   └── inline.hpp:	Inline Pass, requires SSA
+│   │   │   └── ssa/
+│   │   │       ├── construct.hpp:	SSA Construct Pass
+│   │   │       └── destruct.hpp:	Exit from SSA Form by eliminating phi instructions
 │   │   ├── type.hpp:	algebraic data types for IR
 │   │   ├── value.cpp
 │   │   └── vm/
@@ -121,6 +136,7 @@ src/
 │   │       ├── view.hpp
 │   │       └── vm.h
 │   └── rv64/
+│       ├── abi.hpp
 │       └── inst.hpp
 ├── compiler.cpp
 ├── frontend/
@@ -142,14 +158,21 @@ src/
 ├── tests/
 │   ├── test_adt.cpp
 │   ├── test_ast.cpp
+│   ├── test_dessa_phi.cpp
+│   ├── test_dessa_split.cpp
 │   ├── test_dominance.cpp
 │   ├── test_ir_parse.cpp
 │   ├── test_ir_parse_all.cpp
 │   ├── test_liveness.cpp
-│   ├── test_livenesss_all.cpp
+│   ├── test_liveness_all.cpp
 │   ├── test_optimize.cpp
+│   ├── test_reg2mem.cpp
+│   ├── test_regalloc_interfere.cpp
+│   ├── test_regalloc_main.cpp
+│   ├── test_regalloc_precolorize.cpp
 │   ├── test_sem.cpp
 │   ├── test_serialize.cpp
+│   ├── test_spill.cpp
 │   ├── test_ssa.cpp
 │   └── test_vm.cpp
 └── utils/
@@ -159,7 +182,7 @@ src/
     ├── traits.hpp
     └── tui.h
 
-15 directories, 66 files
+19 directories, 83 files
 ```
 <!--/source_tree-->
 

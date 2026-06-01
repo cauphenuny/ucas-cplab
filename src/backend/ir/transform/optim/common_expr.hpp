@@ -6,6 +6,7 @@
 
 #include "../framework.hpp"
 #include "backend/ir/analysis/dominance.hpp"
+#include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.h"
 #include "backend/ir/op.hpp"
 
@@ -66,11 +67,11 @@ private:
             Expr expr{op, arg1, arg2};
             if (ctx.expr_num.count(expr)) {
                 changed = true;
-                ctx.value_num[inst.result] = ctx.expr_num[expr];
+                ctx.value_num[*inst.result] = ctx.expr_num[expr];
                 return UnaryInst{UnaryInstOp::MOV, inst.result, ctx.num_value[ctx.expr_num[expr]]};
             } else {
-                insert(inst.result);
-                ctx.expr_num[expr] = ctx.value_num[inst.result];
+                insert(*inst.result);
+                ctx.expr_num[expr] = ctx.value_num[*inst.result];
                 return inst;
             }
         };
@@ -90,6 +91,7 @@ private:
             }
         };
         for (auto& inst : block.insts()) {
+            if (!utils::defined_var(inst)) continue;
             block.replace(
                 &inst,
                 Match{inst}([&](const auto&) { return inst; },

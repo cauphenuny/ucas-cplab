@@ -68,14 +68,16 @@ exit:
 
 block: label ':' '{' phiInst* inst* exit '}';
 
-inst:
-	var ':' type '=' name '(' (argList)? ')' ';'			# callInst
-	| var ':' type '=' '*' var ';'							# loadInst
-	| var ':' type '=' '&' MUT? var ';'						# borrowInst
-	| var ':' type '=' value '[' value ']' ';'				# loadElemInst
-	| var ':' type '=' '&' MUT? var '[' value ']' ';'		# borrowElemInst
-	| var ':' type '=' value binop value ';'				# binaryInst
-	| var ':' type '=' ('!' value | '-' value | value) ';'	# unaryInst;
+def: var ':' type '=' ;
+
+inst
+	: def? name '(' (argList)? ')' ';'							# callInst
+	| def '*' var ';'											# loadInst
+	| def '&' MUT? var ';'										# borrowInst
+	| def value '[' value ']' ';'								# loadElemInst
+	| def '&' MUT? var '[' value ']' ';'						# borrowElemInst
+	| def? value binop value ';'								# binaryInst
+	| def ('!' value | '-' value | value) ';'					# unaryInst;
 
 phiInst:
 	var ':' type '=' PHI '(' (

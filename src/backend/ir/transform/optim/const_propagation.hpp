@@ -106,10 +106,11 @@ private:
         bool changed = false;
         for (auto& block : func.blocks()) {
             for (auto& inst : block->insts()) {
+                if (!utils::defined_var(inst)) continue;
                 if (auto unary = std::get_if<UnaryInst>(&inst)) {
                     if (auto c = std::get_if<ConstexprValue>(&unary->operand)) {
                         if (auto folded = ConstexprFolder::fold(unary->op, *c)) {
-                            changed |= ctx.ud.replace_all_uses_with(unary->result, *folded);
+                            changed |= ctx.ud.replace_all_uses_with(*unary->result, *folded);
                         }
                     }
                 } else if (auto binary = std::get_if<BinaryInst>(&inst)) {
@@ -117,7 +118,7 @@ private:
                     auto cr = std::get_if<ConstexprValue>(&binary->rhs);
                     if (cl && cr) {
                         if (auto folded = ConstexprFolder::fold(binary->op, *cl, *cr)) {
-                            changed |= ctx.ud.replace_all_uses_with(binary->result, *folded);
+                            changed |= ctx.ud.replace_all_uses_with(*binary->result, *folded);
                         }
                     }
                 } else if (auto phi = std::get_if<PhiInst>(&inst)) {
@@ -137,7 +138,7 @@ private:
                         }
                     }
                     if (foldable && common) {
-                        changed |= ctx.ud.replace_all_uses_with(phi->result, *common);
+                        changed |= ctx.ud.replace_all_uses_with(*phi->result, *common);
                     }
                 }
             }

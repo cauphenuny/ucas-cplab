@@ -25,8 +25,8 @@ inline MoveGraph scan_move(const Program& prog, bool bidirectional = true) {
                         match(
                             unary->operand,
                             [&](const LeftValue& lv) {
-                                graph.adj[unary->result].insert(lv);
-                                if (bidirectional) graph.adj[lv].insert(unary->result);
+                                graph.adj[*unary->result].insert(lv);
+                                if (bidirectional) graph.adj[lv].insert(*unary->result);
                             },
                             [&](const ConstexprValue& v) {
                                 // Ignore non-LeftValue sources (e.g. immediates)

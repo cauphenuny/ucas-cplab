@@ -116,9 +116,9 @@ private:
                         UnaryInst{.op = UnaryInstOp::MOV, .result = proxy, .operand = args[i]});
                     args[i] = proxy;
                 }
-                if (type_of(result).is<type::Primitive>()) {
-                    auto reg = abi.reg_of(type_of(result)).return_value;
-                    LeftValue retval = proxies[{type_of(result), reg}]->value();
+                if (result) {
+                    auto reg = abi.reg_of(type_of(*result)).return_value;
+                    LeftValue retval = proxies[{type_of(*result), reg}]->value();
                     block.insert(next_it, CallInst{retval, callee, std::move(args)});
                     block.insert(
                         next_it,

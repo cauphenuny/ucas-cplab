@@ -242,8 +242,7 @@ public:
     }
 
     std::any visitCallInst(IRParser::CallInstContext* ctx) override {
-        // var : type = ID ( (argList)? ) ;
-        auto result = resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
+        auto result = resolveDef(ctx->def());
         auto func_name = ctx->name()->ID()->getText();
         auto func_def = resolveFunc(func_name);
         if (!func_def)
@@ -260,8 +259,7 @@ public:
     }
 
     std::any visitLoadElemInst(IRParser::LoadElemInstContext* ctx) override {
-        // var : type = base [ index ] ;
-        auto result = resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
+        auto result = resolveDef(ctx->def());
         auto base = take<ir::Value>(visit(ctx->value(0)));
         auto index = take<ir::Value>(visit(ctx->value(1)));
         current_block_->append(ir::BinaryInst{.op = ir::InstOp::LOAD_ELEM,
@@ -272,9 +270,8 @@ public:
     }
 
     std::any visitBorrowInst(IRParser::BorrowInstContext* ctx) override {
-        // var : type = & MUT? var ;
-        auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
-        auto operand = resolveLValue(ctx->var(1));
+        auto result = resolveDef(ctx->def());
+        auto operand = resolveLValue(ctx->var());
         current_block_->append(
             ir::UnaryInst{.op = ctx->MUT() ? ir::UnaryInstOp::BORROW_MUT : ir::UnaryInstOp::BORROW,
                           .result = std::move(result),
@@ -283,9 +280,8 @@ public:
     }
 
     std::any visitBorrowElemInst(IRParser::BorrowElemInstContext* ctx) override {
-        // var : type = & MUT? var [ value ] ;
-        auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
-        auto base = ir::Value(resolveLValue(ctx->var(1)));
+        auto result = resolveDef(ctx->def());
+        auto base = ir::Value(resolveLValue(ctx->var()));
         auto index = take<ir::Value>(visit(ctx->value()));
         current_block_->append(
             ir::BinaryInst{.op = ctx->MUT() ? ir::InstOp::BORROW_ELEM_MUT : ir::InstOp::BORROW_ELEM,
@@ -296,9 +292,8 @@ public:
     }
 
     std::any visitLoadInst(IRParser::LoadInstContext* ctx) override {
-        // var : type = *(var) ;
-        auto result = resolveDef(ctx->var(0), take<ir::type::TypeBox>(visit(ctx->type())));
-        auto operand = resolveLValue(ctx->var(1));
+        auto result = resolveDef(ctx->def());
+        auto operand = resolveLValue(ctx->var());
         current_block_->append(ir::UnaryInst{.op = ir::UnaryInstOp::LOAD,
                                              .result = std::move(result),
                                              .operand = ir::Value(std::move(operand))});
@@ -306,8 +301,7 @@ public:
     }
 
     std::any visitBinaryInst(IRParser::BinaryInstContext* ctx) override {
-        // var : type = lhs op rhs ;
-        auto result = resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
+        auto result = resolveDef(ctx->def());
         auto lhs = take<ir::Value>(visit(ctx->value(0)));
         auto rhs = take<ir::Value>(visit(ctx->value(1)));
         auto op = getBinOp(ctx->binop());
@@ -330,8 +324,7 @@ public:
     }
 
     std::any visitUnaryInst(IRParser::UnaryInstContext* ctx) override {
-        // var : type = !val | -val | val ;
-        auto result = resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
+        auto result = resolveDef(ctx->def());
 
         bool has_not = false;
         bool has_neg = false;
@@ -340,22 +333,12 @@ public:
             if (child->getText() == "-") has_neg = true;
         }
 
-        if (has_not) {
-            auto val = take<ir::Value>(visit(ctx->value()));
-            current_block_->append(ir::UnaryInst{.op = ir::UnaryInstOp::NOT,
-                                                 .result = std::move(result),
-                                                 .operand = std::move(val)});
-        } else if (has_neg) {
-            auto val = take<ir::Value>(visit(ctx->value()));
-            current_block_->append(ir::UnaryInst{.op = ir::UnaryInstOp::NEG,
-                                                 .result = std::move(result),
-                                                 .operand = std::move(val)});
-        } else {
-            auto val = take<ir::Value>(visit(ctx->value()));
-            current_block_->append(ir::UnaryInst{.op = ir::UnaryInstOp::MOV,
-                                                 .result = std::move(result),
-                                                 .operand = std::move(val)});
-        }
+        auto op = has_not ? ir::UnaryInstOp::NOT
+                 : has_neg ? ir::UnaryInstOp::NEG
+                           : ir::UnaryInstOp::MOV;
+        auto val = take<ir::Value>(visit(ctx->value()));
+        current_block_->append(
+            ir::UnaryInst{.op = op, .result = std::move(result), .operand = std::move(val)});
         return {};
     }
 
@@ -610,6 +593,11 @@ private:
                 get_loc(ctx),
                 fmt::format("Variable `{}` must be declared before use as a target", name));
         }
+    }
+
+    auto resolveDef(IRParser::DefContext* ctx) -> std::optional<ir::LeftValue> {
+        if (!ctx) return std::nullopt;
+        return resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
     }
 
     auto resolveFunc(const std::string& name)

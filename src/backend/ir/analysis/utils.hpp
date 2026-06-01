@@ -35,7 +35,7 @@ inline auto as_var(Value& v) -> LeftValue* {
 }
 
 inline auto defined_var(Inst& inst) -> LeftValue* {
-    return match(inst, [&](auto& i) { return &i.result; });
+    return match(inst, [&](auto& i) { return i.result ? &*i.result : nullptr; });
 }
 
 inline auto defined_vars(Block& block) -> std::vector<LeftValue*> {

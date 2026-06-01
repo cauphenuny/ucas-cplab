@@ -7,6 +7,7 @@
 #include "utils/diagnosis.hpp"
 #include "utils/match.hpp"
 
+#include <optional>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -92,10 +93,13 @@ auto Generator::gen(const ast::Exp* exp, Func* func, Block* scope) -> Value {
             for (auto& arg : call_exp.args) {
                 args.push_back(gen(&arg, func, scope));
             }
-            auto result = func->newTemp(this->info->type_of(&call_exp), scope);
+            auto type = this->info->type_of(&call_exp);
+            auto result = type == type::unit()
+                              ? std::nullopt
+                              : std::optional<LeftValue>{func->newTemp(type, scope)};
             scope->append(
                 CallInst{.result = result, .func = gen(&call_exp.func), .args = std::move(args)});
-            return LeftValue{result};
+            return result ? Value{*result} : Value{ConstexprValue()};
         });
 }
 

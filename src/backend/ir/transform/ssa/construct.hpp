@@ -78,7 +78,7 @@ private:
             std::unordered_map<Block*, bool> has_phi;
             std::unordered_map<Block*, bool> visited;
 
-            auto val = alloc->value();
+            auto val = LeftValue{alloc->value()};
 
             while (worklist.size()) {
                 auto block = worklist.front();
@@ -224,8 +224,9 @@ template <typename Context> struct SSAValue2TempValue : Pass<Context> {
             for (auto& block : func->blocks()) {
                 for (auto& inst : block->insts()) {
                     auto result = match(inst, [&](auto& i) { return i.result; });
+                    if (!result) continue;
                     match(
-                        result,
+                        *result,
                         [&](const SSAValue& ssa) {
                             auto target = LeftValue{func->newTemp(ssa.type, block.get())};
                             ctx.ud.replace_all_uses_with(ssa, target);

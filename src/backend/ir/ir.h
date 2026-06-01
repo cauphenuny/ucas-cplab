@@ -116,28 +116,32 @@ auto type_of(const LeftValue& value) -> Type;
 auto type_of(const ConstexprValue& value) -> Type;
 auto type_of(const Value& value) -> Type;
 
+inline auto fmt_result(const std::optional<LeftValue>& result) {
+    return result ? fmt::format("{}: {} = ", *result, type_of(*result)) : "";
+}
+
 struct UnaryInst {
     UnaryInstOp op;
-    LeftValue result;
+    std::optional<LeftValue> result;
     Value operand;
 
-    SIMPLE_TO_STRING(fmt::format("{}: {} = {}{};", result, type_of(result), op, operand))
+    SIMPLE_TO_STRING(fmt::format("{}{}{};", fmt_result(result), op, operand))
 };
 
 struct BinaryInst {
     InstOp op;
-    LeftValue result;
+    std::optional<LeftValue> result;
     Value lhs, rhs;
 
     SIMPLE_TO_STRING((op == InstOp::BORROW_ELEM || op == InstOp::BORROW_ELEM_MUT)
-                         ? fmt::format("{}: {} = {}{}[{}];", result, type_of(result), op, lhs, rhs)
+                         ? fmt::format("{}{}{}[{}];", fmt_result(result), op, lhs, rhs)
                      : op == InstOp::LOAD_ELEM
-                         ? fmt::format("{}: {} = {}[{}];", result, type_of(result), lhs, rhs)
-                         : fmt::format("{}: {} = {} {} {};", result, type_of(result), lhs, op, rhs))
+                         ? fmt::format("{}{}[{}];", fmt_result(result), lhs, rhs)
+                         : fmt::format("{}{} {} {};", fmt_result(result), lhs, op, rhs))
 };
 
 struct CallInst {
-    LeftValue result;
+    std::optional<LeftValue> result;
     NamedValue func;
     std::vector<Value> args;
 
@@ -145,7 +149,7 @@ struct CallInst {
 };
 
 struct PhiInst {
-    LeftValue result;
+    std::optional<LeftValue> result;
     std::vector<std::pair<Block*, Value>> args;
     auto operator[](Block* block) const -> const Value&;
     [[nodiscard]] bool contains(Block* block) const;

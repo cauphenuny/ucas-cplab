@@ -149,7 +149,7 @@ private:
                 if (!std::holds_alternative<PhiInst>(inst)) break;
                 auto& phi = std::get<PhiInst>(inst);
                 auto src = phi.value(&block);
-                auto dest = phi.result;
+                auto dest = *phi.result;
                 copy_set.emplace(src, dest);
                 map[src] = src;
                 map[dest] = dest;

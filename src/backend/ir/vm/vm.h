@@ -151,6 +151,12 @@ private:
             [&](const ConstexprValue& c) { return view_of(c); });
     }
 
+    [[nodiscard]] auto view_of(const std::optional<LeftValue>& lval, const StackFrame& frame) const
+        -> View {
+        if (lval) return view_of(*lval, frame);
+        return View{.data = nullptr, .type = type::construct<void>()};
+    }
+
     void alloc(StackFrame& frame, Alloc* alloc, std::byte* buffer) const;
     [[nodiscard]] size_t stackSize(const std::unique_ptr<Alloc>& alloc) const;
     [[nodiscard]] size_t stackSize(const Type& type) const;

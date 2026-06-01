@@ -60,9 +60,8 @@ auto Generator::gen(const ast::BlockStmt* block_stmt, Func* func, Block* scope) 
                             auto val = LeftValue{alloc->value()};
                             auto init_val = Value{std::move(*alloc->init)};
                             if (alloc->reference) {
-                                scope->append(BinaryInst{InstOp::STORE,
-                                                         func->newTemp(type::unit(), scope), val,
-                                                         init_val});
+                                scope->append(
+                                    BinaryInst{InstOp::STORE, std::nullopt, val, init_val});
                             } else {
                                 scope->append(UnaryInst{UnaryInstOp::MOV, val, init_val});
                             }
@@ -123,7 +122,7 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
                     auto var = gen(&lval);
                     auto exp = gen(&assign_stmt.exp, func, scope);
                     if (var.type.isPointer()) {
-                        scope->append(BinaryInst{InstOp::STORE, func->newTemp(type::unit(), scope),
+                        scope->append(BinaryInst{InstOp::STORE, std::nullopt,
                                                  LeftValue{var}, std::move(exp)});
                     } else {
                         scope->append(UnaryInst{UnaryInstOp::MOV, std::move(var), std::move(exp)});
@@ -137,7 +136,7 @@ auto Generator::gen(const ast::Stmt* stmt, Func* func, Block* scope) -> Block* {
                     auto addr = func->newTemp(type_of(exp_val).borrow(false), scope);
                     scope->append(BinaryInst{InstOp::BORROW_ELEM_MUT, addr, std::move(array),
                                              std::move(index)});
-                    scope->append(BinaryInst{InstOp::STORE, func->newTemp(type::unit(), scope),
+                    scope->append(BinaryInst{InstOp::STORE, std::nullopt,
                                              LeftValue{addr}, std::move(exp_val)});
                     return scope;
                 });

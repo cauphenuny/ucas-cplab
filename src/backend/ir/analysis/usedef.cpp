@@ -110,11 +110,11 @@ DefInfo::~DefInfo() {
 }
 
 void DefInfo::after_add(Inst* it) {
-    def_sites[*utils::defined_var(*it)] = it;
+    if (auto def = utils::defined_var(*it)) def_sites[*def] = it;
 }
 
 void DefInfo::before_erase(Inst* it) {
-    def_sites.erase(*utils::defined_var(*it));
+    if (auto def = utils::defined_var(*it)) def_sites.erase(*def);
 }
 
 auto DefInfo::def_of(const LeftValue& val) const -> std::optional<DefSite> {

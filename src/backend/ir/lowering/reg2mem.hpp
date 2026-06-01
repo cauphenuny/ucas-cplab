@@ -7,6 +7,7 @@
 #include "backend/ir/transform/framework.hpp"
 
 #include <unordered_map>
+#include <optional>
 #include <unordered_set>
 #include <utility>
 #include <variant>
@@ -50,7 +51,7 @@ inline void replace_instruments(Func& func, const std::unordered_set<LeftValue>&
                 *def = temp;
                 block->insert(next_it, std::move(inst));
                 block->insert(next_it, BinaryInst{.op = InstOp::STORE,
-                                                  .result = func.newTemp(type::unit(), block.get()),
+                                                  .result = std::nullopt,
                                                   .lhs = target,
                                                   .rhs = temp});
             } else {
