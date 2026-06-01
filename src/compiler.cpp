@@ -400,11 +400,13 @@ int main(int argc, const char* argv[]) {
                     RegToMem(rv64::ABI).apply(program, ctx);
                     auto regalloc = RegisterAllocation(rv64::ABI);
                     regalloc.apply(program, ctx);
-                    echo(program, fmt::format("#{} After Register Allocation", pass_id++));
+                    echo(program, fmt::format("#{} Register Allocation", pass_id++));
                     RedundantMoveElimination<Context>(regalloc.colored, regalloc.precolored)
                         .apply(program, ctx);
-                    ir::transform::DeadAllocElimination<Context>().apply(program, ctx);
-                    echo(program, fmt::format("#{} After Redundant Move Elimination", pass_id++));
+                    echo(program, fmt::format("#{} Redundant Move Elimination", pass_id++));
+                    DeadAllocElimination<Context>().apply(program, ctx);
+                    DeadTempElimination<Context>().apply(program, ctx);
+                    echo(program, fmt::format("#{} Dead Alloc/Temp Elimination", pass_id++));
                 }
 
                 if (!silent) {
