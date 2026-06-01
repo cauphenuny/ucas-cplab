@@ -21,11 +21,13 @@
 
 namespace ir::type {
 
-struct Int;
-struct Bool;
-struct Float;
-struct Double;
-using Primitive = std::variant<Int, Float, Double, Bool>;
+struct Int1;
+struct Int32;
+struct Int;  // general integer type, compatible to int1/int32/pointer.
+struct Float32;
+struct Float64;
+struct Float;  // general float type compatible to float32/float64.
+using Primitive = std::variant<Int1, Int32, Float32, Float64, Int, Float>;
 
 struct Func;
 struct Array;
@@ -66,31 +68,43 @@ struct TypeBox {
     [[nodiscard]] auto borrow(bool readonly = false) const -> TypeBox;
 };
 
-struct Int : mixin::ToBoxed<Int, Type> {
-    using type = int;
-    SIMPLE_TO_STRING("i32");
-};
-
-struct Float : mixin::ToBoxed<Float, Type> {
-    using type = float;
-    SIMPLE_TO_STRING("f32");
-};
-
-struct Double : mixin::ToBoxed<Double, Type> {
-    using type = double;
-    SIMPLE_TO_STRING("f64");
-};
-
-struct Bool : mixin::ToBoxed<Bool, Type> {
+struct Int1 : mixin::ToBoxed<Int1, Type> {
     using type = bool;
     SIMPLE_TO_STRING("bool");
 };
 
+struct Int32 : mixin::ToBoxed<Int32, Type> {
+    using type = int;
+    SIMPLE_TO_STRING("i32");
+};
+
+struct Int : mixin::ToBoxed<Int, Type> {
+    using type = size_t;
+    SIMPLE_TO_STRING("int");
+};
+
+struct Float32 : mixin::ToBoxed<Float32, Type> {
+    using type = float;
+    SIMPLE_TO_STRING("f32");
+};
+
+struct Float64 : mixin::ToBoxed<Float64, Type> {
+    using type = double;
+    SIMPLE_TO_STRING("f64");
+};
+
+struct Float : mixin::ToBoxed<Float, Type> {
+    using type = double;
+    SIMPLE_TO_STRING("float");
+};
+
 template <typename T> struct is_primitive : std::false_type {};
-template <> struct is_primitive<Int> : std::true_type {};
+template <> struct is_primitive<Int32> : std::true_type {};
+template <> struct is_primitive<Float32> : std::true_type {};
+template <> struct is_primitive<Float64> : std::true_type {};
+template <> struct is_primitive<Int1> : std::true_type {};
 template <> struct is_primitive<Float> : std::true_type {};
-template <> struct is_primitive<Double> : std::true_type {};
-template <> struct is_primitive<Bool> : std::true_type {};
+template <> struct is_primitive<Int> : std::true_type {};
 
 template <typename T> inline constexpr bool is_primitive_v = is_primitive<T>::value;
 
@@ -168,6 +182,7 @@ struct Func : mixin::ToBoxed<Func, Type> {
 
 /// Unsized array / pointer type: &[elem]
 struct Reference : mixin::ToBoxed<Reference, Type> {
+    using type = void*;
     TypeBox elem;
     bool readonly;
     bool is_slice;
@@ -406,13 +421,15 @@ template <typename T> TypeBox construct() {
     using U = std::remove_cv_t<Raw>;
 
     if constexpr (std::is_same_v<U, int>) {
-        return Int{}.toBoxed();
+        return Int32{}.toBoxed();
     } else if constexpr (std::is_same_v<U, float>) {
-        return Float{}.toBoxed();
+        return Float32{}.toBoxed();
     } else if constexpr (std::is_same_v<U, double>) {
-        return Double{}.toBoxed();
+        return Float64{}.toBoxed();
+    } else if constexpr (std::is_same_v<U, size_t>) {
+        return Int{}.toBoxed();
     } else if constexpr (std::is_same_v<U, bool>) {
-        return Bool{}.toBoxed();
+        return Int1{}.toBoxed();
     } else if constexpr (std::is_same_v<U, std::any>) {
         return Top{}.toBoxed();
     } else if constexpr (std::is_pointer_v<U>) {
@@ -459,6 +476,38 @@ template <typename T1, typename T2> bool operator<=(const T1& from, const T2& to
 template <typename T, typename = std::enable_if_t<is_primitive_v<T>>>
 bool operator<=(const T&, const T&) {
     return true;  // same type is always a subtype
+}
+
+inline bool operator<=(const Int&, const Int32&) {
+    return true;
+}
+inline bool operator<=(const Int32&, const Int&) {
+    return true;
+}
+inline bool operator<=(const Int&, const Int1&) {
+    return true;
+}
+inline bool operator<=(const Int1&, const Int&) {
+    return true;
+}
+
+inline bool operator<=(const Float&, const Float32&) {
+    return true;
+}
+inline bool operator<=(const Float32&, const Float&) {
+    return true;
+}
+inline bool operator<=(const Float&, const Float64&) {
+    return true;
+}
+inline bool operator<=(const Float64&, const Float&) {
+    return true;
+}
+inline bool operator<=(const Int&, const Reference&) {
+    return true;
+}
+inline bool operator<=(const Reference&, const Int&) {
+    return true;
 }
 
 template <typename T, typename = std::enable_if_t<is_primitive_v<T>>>
@@ -671,6 +720,30 @@ inline TypeBox any() {
 
 inline TypeBox never() {
     return Bottom{}.toBoxed();
+}
+
+inline TypeBox int32() {
+    return Int32{}.toBoxed();
+}
+
+inline TypeBox int1() {
+    return Int1{}.toBoxed();
+}
+
+inline TypeBox float32() {
+    return Float32{}.toBoxed();
+}
+
+inline TypeBox float64() {
+    return Float64{}.toBoxed();
+}
+
+inline TypeBox integer() {
+    return Int{}.toBoxed();
+}
+
+inline TypeBox floating() {
+    return Float{}.toBoxed();
 }
 
 }  // namespace ir::type

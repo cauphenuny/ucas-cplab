@@ -6,9 +6,9 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <string>
 #include <variant>
 #include <vector>
-#include <string>
 
 namespace ir::lowering {
 
@@ -33,8 +33,9 @@ struct MemoryABI {
 
 inline bool is_fp(const Type& type) {
     using namespace type;
-    return type.is<Primitive>() && (std::holds_alternative<Float>(type.as<Primitive>()) ||
-                                    std::holds_alternative<Double>(type.as<Primitive>()));
+    return type.is<Primitive>() && (std::holds_alternative<Float32>(type.as<Primitive>()) ||
+                                    std::holds_alternative<Float64>(type.as<Primitive>()) ||
+                                    std::holds_alternative<Float>(type.as<Primitive>()));
 }
 
 struct TargetABI {

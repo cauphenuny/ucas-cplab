@@ -81,6 +81,17 @@ private:
         throw COMPILER_ERROR(fmt::format("Cannot assign {} to {}", src_type, dest_type));
     }
 
+    void assign(ir::type::Int, std::byte* dest,
+                std::variant<ir::type::Int32, ir::type::Int1, ir::type::Reference> src_type,
+                std::byte* src) const;
+    void assign(std::variant<ir::type::Int32, ir::type::Int1, ir::type::Reference> dest_type,
+                std::byte* dest, ir::type::Int, std::byte* src) const;
+
+    void assign(ir::type::Float, std::byte* dest,
+                std::variant<ir::type::Float32, ir::type::Float64> src_type, std::byte* src) const;
+    void assign(std::variant<ir::type::Float32, ir::type::Float64> dest_type, std::byte* dest,
+                ir::type::Float, std::byte* src) const;
+
     void assign(const ir::type::Reference& dest_type, std::byte* dest,
                 const ir::type::Primitive& src_type, const std::byte* src) const;
     void assign(const ir::type::Primitive& dest_type, std::byte* dest,
@@ -262,7 +273,7 @@ public:
 
         auto check_indexing = [](const TypeBox& base_type, const TypeBox& offset_type) {
             if (!offset_type.is<Primitive>() ||
-                !std::holds_alternative<Int>(offset_type.as<Primitive>())) {
+                !std::holds_alternative<Int32>(offset_type.as<Primitive>())) {
                 throw COMPILER_ERROR(
                     fmt::format("Offset must be an integer, but got {}", offset_type));
             }

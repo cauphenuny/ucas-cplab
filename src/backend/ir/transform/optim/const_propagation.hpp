@@ -146,7 +146,7 @@ private:
             if (auto branch = std::get_if<BranchExit>(&block->exit())) {
                 if (auto c = std::get_if<ConstexprValue>(&branch->cond)) {
                     if (c->type.is<type::Primitive>() &&
-                        std::holds_alternative<type::Bool>(c->type.as<type::Primitive>())) {
+                        std::holds_alternative<type::Int1>(c->type.as<type::Primitive>())) {
                         bool cond = std::get<bool>(c->val);
                         block->setExit(JumpExit{cond ? branch->true_target : branch->false_target});
                         changed = true;

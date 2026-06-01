@@ -17,6 +17,9 @@ auto NamedValue::toString() const -> std::string {
     return match(def, [&](const auto* def) { return "@" + def->name; });
 }
 
+auto toString(size_t val) -> std::string {
+    return fmt::format("{}", val);
+}
 auto toString(int val) -> std::string {
     return fmt::format("{}", val);
 }
@@ -171,7 +174,7 @@ size_t std::hash<ir::ConstexprValue>::operator()(const ir::ConstexprValue& v) co
             return hash_array(array_type.elem, buffer.get(), array_type.size);
         },
         [&](const auto&) {
-            return std::hash<std::variant<std::monostate, int, float, bool, double,
+            return std::hash<std::variant<std::monostate, int, size_t, float, bool, double,
                                           std::unique_ptr<std::byte[]>>>{}(v.val);
         });
 }

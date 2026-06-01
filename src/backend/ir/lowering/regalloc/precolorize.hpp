@@ -6,7 +6,7 @@
 #include "backend/ir/type.hpp"
 
 #include <optional>
-#include <tuple>
+#include <string>
 #include <unordered_map>
 #include <utility>
 #include <variant>
@@ -45,28 +45,21 @@ struct PreColorize : ir::transform::NonSSAPass {
 private:
     TargetABI abi;
 
-    auto proxy(Program& program, const Type& type, size_t id) {
-        auto& regs = abi.reg_of(type);
-        auto index = std::make_tuple(type, id);
-        if (proxies.count(index) == 0) {
-            auto name = fmt::format("__reg_{}_{}", type, regs.name(id));
-            auto proxy = Alloc::variable(name, type, std::nullopt, true);
-            proxies[index] = proxy.get();
-            program.addGlobal(std::move(proxy));
-        }
-        return proxies[index];
-    }
-
     void map_registers(Program& prog) {
-        auto map = [&](const Type& type) {
-            for (size_t idx = 0; idx < abi.reg_of(type).size; idx++) {
-                proxy(prog, type, idx);
+        auto map = [&](const Type& reg_type, const std::vector<Type>& types) {
+            auto& regs = abi.reg_of(reg_type);
+            for (size_t idx = 0; idx < regs.size; idx++) {
+                auto name = fmt::format("__reg_{}", regs.name(idx));
+                auto proxy = Alloc::variable(name, reg_type, std::nullopt, true);
+                for (const auto& type : types) {
+                    proxies[{type, idx}] = proxy.get();
+                }
+                prog.addGlobal(std::move(proxy));
             }
         };
-        map(type::construct<bool>());
-        map(type::construct<int>());
-        map(type::construct<float>());
-        map(type::construct<double>());
+        Type gpr = type::integer(), fpr = type::floating();
+        map(gpr, {gpr, type::int1(), type::int32()});
+        map(fpr, {fpr, type::float32(), type::float64()});
     }
 
     void colorize_param(Func& func, Program& prog) {

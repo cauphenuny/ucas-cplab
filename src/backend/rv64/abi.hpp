@@ -2,6 +2,7 @@
 
 #include "backend/ir/lowering/abi.hpp"
 #include "inst.hpp"
+
 #include <string>
 
 namespace rv64 {
@@ -38,8 +39,9 @@ inline size_t size_of(const ir::Type& type) {
     using namespace ir::type;
     if (type.is<Primitive>()) {
         return Match{type.as<Primitive>()}(
-            [](const Int&) { return 4; }, [](const Bool&) { return 1; },
-            [](const Float&) { return 4; }, [](const Double&) { return 8; });
+            [](const Int&) { return 8; }, [](const Float&) { return 8; },
+            [](const Int32&) { return 4; }, [](const Int1&) { return 1; },
+            [](const Float32&) { return 4; }, [](const Float64&) { return 8; });
     }
     if (type == ir::type::unit()) {
         return 0;

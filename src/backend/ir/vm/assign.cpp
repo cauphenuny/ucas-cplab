@@ -8,9 +8,46 @@
 #include <cstddef>
 #include <cstring>
 #include <type_traits>
+#include <variant>
 #include <vector>
 
 namespace ir::vm {
+
+void VirtualMachine::assign(
+    ir::type::Int, std::byte* dest,
+    std::variant<ir::type::Int32, ir::type::Int1, ir::type::Reference> src_type,
+    std::byte* src) const {
+    Match{src_type}([&](const auto& src_descrete_type) {
+        using T = typename std::decay_t<decltype(src_descrete_type)>::type;
+        *(size_t*)dest = (size_t)(*(T*)src);
+    });
+}
+
+void VirtualMachine::assign(
+    std::variant<ir::type::Int32, ir::type::Int1, ir::type::Reference> dest_type, std::byte* dest,
+    ir::type::Int, std::byte* src) const {
+    Match{dest_type}([&](const auto& dest_descrete_type) {
+        using T = typename std::decay_t<decltype(dest_descrete_type)>::type;
+        *(T*)dest = (T)(*(size_t*)src);
+    });
+}
+
+void VirtualMachine::assign(ir::type::Float, std::byte* dest,
+                            std::variant<ir::type::Float32, ir::type::Float64> src_type,
+                            std::byte* src) const {
+    Match{src_type}([&](auto src_descrete_type) {
+        using T = typename decltype(src_descrete_type)::type;
+        *(double*)dest = (double)(*(T*)src);
+    });
+}
+
+void VirtualMachine::assign(std::variant<ir::type::Float32, ir::type::Float64> dest_type,
+                            std::byte* dest, ir::type::Float, std::byte* src) const {
+    Match{dest_type}([&](auto dest_descrete_type) {
+        using T = typename decltype(dest_descrete_type)::type;
+        *(T*)dest = (T)(*(double*)src);
+    });
+}
 
 void VirtualMachine::assign(const ir::type::Primitive& dest_type, std::byte* dest,
                             const ir::type::Primitive& src_type, const std::byte* src) const {
@@ -18,7 +55,7 @@ void VirtualMachine::assign(const ir::type::Primitive& dest_type, std::byte* des
         if constexpr (std::is_same_v<decltype(dest_prim), decltype(src_prim)>) {
             memcpy(dest, src, ir::type::size_of(dest_type));
         } else {
-            throw COMPILER_ERROR(fmt::format("Cannot assign {} to {}", src_type, dest_type));
+            assign(dest_prim, dest, src_prim, src);
         }
     });
 }
