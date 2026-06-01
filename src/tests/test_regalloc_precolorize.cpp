@@ -2,7 +2,7 @@
 ///
 /// map_registers creates 64 global proxy allocs (shared across all functions):
 ///   32 integer-type GPR  (__reg_{name})
-///   32 floating-type FPR (__reg_f{id})
+///   32 floating-type FPR (__reg_{name})
 ///
 /// All 64 are pre-colored to their physical register numbers.
 /// Params, call-args, and returns reference these global proxies via MOV.
@@ -56,6 +56,45 @@ size_t count_movs(const Block& block) {
     return count;
 }
 
+/// Count callee-saved save MOVs at entrance:
+/// MOVs where result is a temp (TempValue) and operand is a global proxy (NamedValue).
+/// This includes both param MOVs and callee-saved saves.
+size_t count_saves(const Block& block) {
+    size_t count = 0;
+    for (const auto& inst : block.insts()) {
+        if (auto* unary = std::get_if<UnaryInst>(&inst)) {
+            if (unary->op == UnaryInstOp::MOV && unary->result) {
+                auto* operand = std::get_if<LeftValue>(&unary->operand);
+                if (operand &&
+                    std::holds_alternative<TempValue>(*unary->result) &&
+                    std::holds_alternative<NamedValue>(*operand)) {
+                    count++;
+                }
+            }
+        }
+    }
+    return count;
+}
+
+/// Count callee-saved restore MOVs before return:
+/// MOVs where result is a global proxy (NamedValue) and operand is a temp (TempValue).
+size_t count_restores(const Block& block) {
+    size_t count = 0;
+    for (const auto& inst : block.insts()) {
+        if (auto* unary = std::get_if<UnaryInst>(&inst)) {
+            if (unary->op == UnaryInstOp::MOV && unary->result) {
+                auto* operand = std::get_if<LeftValue>(&unary->operand);
+                if (operand &&
+                    std::holds_alternative<NamedValue>(*unary->result) &&
+                    std::holds_alternative<TempValue>(*operand)) {
+                    count++;
+                }
+            }
+        }
+    }
+    return count;
+}
+
 /// Find a global alloc by name. Returns nullptr if not found.
 const Alloc* find_global(const Program& prog, const std::string& name) {
     for (const auto& a : prog.globals())
@@ -85,9 +124,15 @@ void verify_all_64(const Program& prog, const PrecolorVars& precolored) {
             check(colors.at(LeftValue{alloc->value()}) == static_cast<ssize_t>(idx),
                   fmt::format("{} -> register {}", name, idx));
     }
-    // 32 floating-type FPR proxies
+    // 32 floating-type FPR proxies (ABI names)
+    constexpr std::array fpr_names{
+        "ft0", "ft1", "ft2", "ft3", "ft4", "ft5", "ft6", "ft7",
+        "fs0", "fs1", "fa0", "fa1", "fa2", "fa3", "fa4", "fa5",
+        "fa6", "fa7", "fs2", "fs3", "fs4", "fs5", "fs6", "fs7",
+        "fs8", "fs9", "fs10", "fs11", "ft8", "ft9", "ft10", "ft11"
+    };
     for (size_t idx = 0; idx < 32; idx++) {
-        auto name = fmt::format("__reg_f{}", idx);
+        auto name = fmt::format("__reg_{}", fpr_names[idx]);
         auto* alloc = find_global(prog, name);
         check(alloc != nullptr, fmt::format("{} exists", name));
         if (alloc)
@@ -190,8 +235,9 @@ fn main() -> i32 {
                      [](Program& prog, Precolorize& pass) {
                          check(pass.precolored.proxies.size() == 64, "64 proxies");
                          auto* entry = prog.findFunc("main").findBlock("entry");
-                         check(count_movs(*entry) == 10,
-                               "10 MOVs: 8 call arg MOVs + 1 retval MOV + 1 return MOV");
+                         // 25 save (13 GPR + 12 FPR) + 8 arg MOVs + 1 retval MOV + 1 return MOV + 25 restore = 60
+                         check(count_movs(*entry) == 60,
+                               "60 MOVs: 25 callee-saved save + 8 call arg MOVs + 1 retval MOV + 1 return MOV + 25 restore");
                      });
 
     test_precolorize("float (f32) args", R"(
@@ -273,9 +319,13 @@ fn main() -> i32 {
                      [](Program& prog, Precolorize& pass) {
                          check(pass.precolored.proxies.size() == 64, "64 proxies");
                          auto* ae = prog.findFunc("answer").entrance();
-                         check(count_movs(*ae) == 1, "1 MOV in answer (return -> __reg_a0)");
+                         // 25 save + 1 return MOV + 25 restore = 51
+                         check(count_movs(*ae) == 51,
+                               "51 MOVs in answer (25 callee-saved save + 1 return + 25 restore)");
                          auto* me = prog.findFunc("main").entrance();
-                         check(count_movs(*me) == 2, "2 MOVs in main (temp %0=1 + return -> __reg_a0)");
+                         // 25 save + 1 (%0=1) + 1 return MOV + 25 restore = 52
+                         check(count_movs(*me) == 52,
+                               "52 MOVs in main (25 saves + 1 %0=1 + 1 return + 25 restore)");
                      });
 
     test_precolorize("Return value (f64)", R"(
@@ -306,10 +356,12 @@ fn main() -> i32 {
 )",
                      [](Program& prog, Precolorize& pass) {
                          check(pass.precolored.proxies.size() == 64, "64 proxies");
-                         check(count_movs(*prog.findFunc("no_ret").entrance()) == 0,
-                               "no_ret has 0 MOVs");
-                         check(count_movs(*prog.findFunc("main").entrance()) == 2,
-                               "main has 2 MOVs");
+                         // no_ret has no return, so 25 saves but no restores
+                         check(count_movs(*prog.findFunc("no_ret").entrance()) == 25,
+                               "no_ret has 25 MOVs (callee-saved saves only, no return)");
+                         // main has 25 save + 1 (%0=1) + 1 return MOV + 25 restore = 52
+                         check(count_movs(*prog.findFunc("main").entrance()) == 52,
+                               "main has 52 MOVs (25 saves + 1 %0=1 + 1 return + 25 restores)");
                      });
 
     test_precolorize("Multiple calls -- proxies shared", R"(
@@ -433,9 +485,9 @@ fn main() -> i32 {
                          // GPR global proxies
                          check(find_global(prog, "__reg_a0") != nullptr, "__reg_a0 exists");
                          check(find_global(prog, "__reg_a1") != nullptr, "__reg_a1 exists");
-                         // FPR global proxies
-                         check(find_global(prog, "__reg_f10") != nullptr, "__reg_f10 exists");
-                         check(find_global(prog, "__reg_f11") != nullptr, "__reg_f11 exists");
+                         // FPR global proxies (ABI names)
+                         check(find_global(prog, "__reg_fa0") != nullptr, "__reg_fa0 exists");
+                         check(find_global(prog, "__reg_fa1") != nullptr, "__reg_fa1 exists");
                      });
 
     test_precolorize("9 params -- global proxies for a0-a7", R"(
@@ -527,13 +579,19 @@ fn f() -> i32 { 'entry: { return 0; } }
                          check_name("__reg_t6", 31);
                      });
 
-    test_precolorize("FPR registers f0-f31", R"(
+    test_precolorize("FPR registers ABI names (ft0-ft11, fs0-fs11, fa0-fa7)", R"(
 fn f() -> i32 { 'entry: { return 0; } }
 )",
                      [](Program& prog, Precolorize& pass) {
                          auto colors = build_color_map(pass.precolored);
+                         constexpr std::array fpr_names{
+                             "ft0", "ft1", "ft2", "ft3", "ft4", "ft5", "ft6", "ft7",
+                             "fs0", "fs1", "fa0", "fa1", "fa2", "fa3", "fa4", "fa5",
+                             "fa6", "fa7", "fs2", "fs3", "fs4", "fs5", "fs6", "fs7",
+                             "fs8", "fs9", "fs10", "fs11", "ft8", "ft9", "ft10", "ft11"
+                         };
                          for (size_t idx = 0; idx < 32; idx++) {
-                             auto name = fmt::format("__reg_f{}", idx);
+                             auto name = fmt::format("__reg_{}", fpr_names[idx]);
                              auto* alloc = find_global(prog, name);
                              check(alloc != nullptr, fmt::format("{} exists", name));
                              if (alloc)
@@ -541,6 +599,104 @@ fn f() -> i32 { 'entry: { return 0; } }
                                            == static_cast<ssize_t>(idx),
                                        fmt::format("{} -> register {}", name, idx));
                          }
+                     });
+
+    // ==================================================================
+    // Callee-saved register save/restore coloring.
+    // 13 GPR (ra, s0-s11) + 12 FPR (fs0-fs11) = 25 callee-saved registers.
+    // ==================================================================
+
+    test_precolorize("Callee-saved: GPR proxy names exist", R"(
+fn f() -> i32 { 'entry: { return 0; } }
+)",
+                     [](Program& prog, Precolorize&) {
+                         check(find_global(prog, "__reg_ra") != nullptr, "__reg_ra (callee-saved)");
+                         check(find_global(prog, "__reg_s0") != nullptr, "__reg_s0 (callee-saved)");
+                         check(find_global(prog, "__reg_s11") != nullptr, "__reg_s11 (callee-saved)");
+                         check(find_global(prog, "__reg_a0") != nullptr, "__reg_a0 (caller-saved)");
+                         check(find_global(prog, "__reg_t0") != nullptr, "__reg_t0 (caller-saved)");
+                     });
+
+    test_precolorize("Callee-saved: FPR proxy names exist", R"(
+fn f() -> i32 { 'entry: { return 0; } }
+)",
+                     [](Program& prog, Precolorize&) {
+                         check(find_global(prog, "__reg_fs0") != nullptr, "__reg_fs0 (callee-saved)");
+                         check(find_global(prog, "__reg_fs1") != nullptr, "__reg_fs1 (callee-saved)");
+                         check(find_global(prog, "__reg_fs11") != nullptr, "__reg_fs11 (callee-saved)");
+                         check(find_global(prog, "__reg_ft0") != nullptr, "__reg_ft0 (caller-saved)");
+                         check(find_global(prog, "__reg_fa0") != nullptr, "__reg_fa0 (caller-saved)");
+                     });
+
+    test_precolorize("Callee-saved: 25 saves + 25 restores at entrance", R"(
+fn f() -> i32 { 'entry: { return 0; } }
+)",
+                     [](Program& prog, Precolorize&) {
+                         auto* entry = prog.findFunc("f").entrance();
+                         check(count_saves(*entry) == 25,
+                               "25 callee-saved saves at entrance (0 param MOVs)");
+                         check(count_restores(*entry) == 25,
+                               "25 callee-saved restores at entrance");
+                         check(count_movs(*entry) == 51,
+                               "51 total MOVs (25 saves + 1 return + 25 restores)");
+                     });
+
+    test_precolorize("Callee-saved: no-return has saves only", R"(
+fn f() -> i32 { 'entry: { => 'entry; } }
+)",
+                     [](Program& prog, Precolorize&) {
+                         auto* entry = prog.findFunc("f").entrance();
+                         check(count_saves(*entry) == 25,
+                               "25 saves at entrance for no-return function");
+                         check(count_restores(*entry) == 0,
+                               "0 restores for no-return function (no return blocks)");
+                     });
+
+    test_precolorize("Callee-saved: multiple returns each get restores", R"(
+fn f(x: i32) -> i32 {
+    'entry: {
+        %0: bool = @x > 0;
+        => if %0 { 'pos } else { 'neg };
+    }
+    'pos: { return @x; }
+    'neg: { return 0; }
+}
+)",
+                     [](Program& prog, Precolorize&) {
+                         auto& func = prog.findFunc("f");
+                         // Entrance: 25 saves (param MOVs have NamedValue result, not counted)
+                         check(count_saves(*func.entrance()) == 25,
+                               "25 saves at entrance (param MOVs not counted as saves)");
+                         // Each return block: 25 restores
+                         for (auto& block : func.blocks()) {
+                             if (block->label == "entry") continue;
+                             check(count_restores(*block) == 25,
+                                   fmt::format("block '{} has 25 restores", block->label));
+                         }
+                     });
+
+    test_precolorize("Callee-saved: no save for caller-saved GPR (a0-a7, t0-t6)", R"(
+fn f() -> i32 { 'entry: { return 0; } }
+)",
+                     [](Program& prog, Precolorize&) {
+                         auto colors = build_color_map(PrecolorVars{});
+                         // Re-derive from the pass object isn't available,
+                         // but we can verify the globals exist (they were checked above).
+                         // The key assertion is that caller-saved GPRs (a0-a7, t0-t6)
+                         // exist as globals but are not saved/restored as callee-saved.
+                         auto* entry = prog.findFunc("f").entrance();
+                         // 25 saves = 13 GPR + 12 FPR, no extras from caller-saved
+                         check(count_saves(*entry) == 25,
+                               "25 saves only (no caller-saved GPR saves)");
+                     });
+
+    test_precolorize("Callee-saved: no save for caller-saved FPR (ft0-ft7, fa0-fa7, ft8-ft11)", R"(
+fn f() -> i32 { 'entry: { return 0; } }
+)",
+                     [](Program& prog, Precolorize&) {
+                         auto* entry = prog.findFunc("f").entrance();
+                         check(count_saves(*entry) == 25,
+                               "25 saves only (no caller-saved FPR saves)");
                      });
 
     // ==================================================================

@@ -423,9 +423,6 @@ int main(int argc, const char* argv[]) {
     } catch (const std::runtime_error& e) {
         std::cerr << e.what() << '\n';
         return RUNTIME_ERROR;
-    } catch (const CompilerError& e) {
-        std::cerr << e.what() << '\n';
-        throw;
     }
     return ret;
 }

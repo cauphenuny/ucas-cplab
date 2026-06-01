@@ -1,5 +1,7 @@
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.h"
+#include "backend/ir/lowering/reg2mem.hpp"
+#include "backend/ir/lowering/regalloc/main.hpp"
 #include "backend/ir/transform/framework.hpp"
 #include "backend/ir/transform/optim/common_expr.hpp"
 #include "backend/ir/transform/optim/const_propagation.hpp"
@@ -9,7 +11,9 @@
 #include "backend/ir/transform/optim/dead_def.hpp"
 #include "backend/ir/transform/optim/inline.hpp"
 #include "backend/ir/transform/ssa/construct.hpp"
+#include "backend/ir/transform/ssa/destruct.hpp"
 #include "backend/ir/vm/vm.h"
+#include "backend/rv64/abi.hpp"
 #include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/syntax/visit.hpp"
@@ -36,8 +40,21 @@ int main(int argc, const char* argv[]) {
     // first arg: comma-separated pass names, e.g. "cp,dde"
     // second arg: timeout in seconds (default 5)
     bool enum_mode = false;
+    bool exit_ssa = false;
+    bool apply_regalloc = false;
     if (argc > 1 && std::string(argv[1]) == "--enum") {
         enum_mode = true;
+        --argc;
+        ++argv;
+    }
+    if (argc > 1 && std::string(argv[1]) == "--exit-ssa") {
+        exit_ssa = true;
+        --argc;
+        ++argv;
+    }
+    if (argc > 1 && std::string(argv[1]) == "--regalloc") {
+        apply_regalloc = true;
+        exit_ssa = true;
         --argc;
         ++argv;
     }
@@ -88,7 +105,11 @@ int main(int argc, const char* argv[]) {
     std::map<std::string, PassFactory> factories = {
         {"copy", []() { return std::make_unique<ir::transform::CopyPropagation>(); }},
         {"def", []() { return std::make_unique<ir::transform::DeadDefElimination>(); }},
-        {"alloc", []() { return std::make_unique<ir::transform::DeadAllocElimination<ir::transform::SSAPassContext>>(); }},
+        {"alloc",
+         []() {
+             return std::make_unique<
+                 ir::transform::DeadAllocElimination<ir::transform::SSAPassContext>>();
+         }},
         {"temp",
          []() {
              return std::make_unique<
@@ -118,6 +139,10 @@ int main(int argc, const char* argv[]) {
                 fmt::println(stderr, "skip: {}", name);
             }
         }
+    }
+
+    if (apply_regalloc) {
+        fmt::println(stderr, "allocating register after optimizations");
     }
 
     fmt::println(stderr, "Using directory: {}\n", path.string());
@@ -234,36 +259,61 @@ int main(int argc, const char* argv[]) {
                 auto& combo_prog = *combo_prog_box;
 
                 ir::transform::ConstructSSA().apply(combo_prog);
-                ir::transform::SSAPassContext ctx(combo_prog);
-                ir::transform::SSAValue2TempValue<ir::transform::SSAPassContext>().apply(combo_prog,
-                                                                                         ctx);
 
-                std::vector<std::unique_ptr<ir::transform::SSAPass>> passes;
-                for (const auto& name : combo) {
-                    auto it = factories.find(name);
-                    if (it != factories.end()) {
-                        passes.push_back(it->second());
-                    } else {
-                        fmt::println(stderr, "Unknown pass: {} (skipping)", name);
+                {
+                    ir::transform::SSAPassContext ctx(combo_prog);
+                    ir::transform::SSAValue2TempValue<ir::transform::SSAPassContext>().apply(
+                        combo_prog, ctx);
+
+                    std::vector<std::unique_ptr<ir::transform::SSAPass>> passes;
+                    for (const auto& name : combo) {
+                        auto it = factories.find(name);
+                        if (it != factories.end()) {
+                            passes.push_back(it->second());
+                        } else {
+                            fmt::println(stderr, "Unknown pass: {} (skipping)", name);
+                        }
                     }
+
+                    auto apply =
+                        [&](ir::transform::SSAPassContext& ctx2,
+                            const std::vector<std::unique_ptr<ir::transform::SSAPass>>& ps) {
+                            bool changed = false;
+                            for (auto& pass : ps) {
+                                bool pass_changed = pass->apply(combo_prog, ctx2);
+                                if (pass_changed) {
+                                    log << fmt::format("----------\n{}\n", combo_prog);
+                                    ctx2.ud.verify();
+                                }
+                                changed |= pass_changed;
+                            }
+                            return changed;
+                        };
+                    log.clear();
+                    log << fmt::format("{}\n\n", combo_prog);
+                    while (apply(ctx, passes));
                 }
 
-                auto apply = [&](ir::transform::SSAPassContext& ctx2,
-                                 const std::vector<std::unique_ptr<ir::transform::SSAPass>>& ps) {
-                    bool changed = false;
-                    for (auto& pass : ps) {
-                        bool pass_changed = pass->apply(combo_prog, ctx2);
-                        if (pass_changed) {
-                            log << fmt::format("----------\n{}\n", combo_prog);
-                            ctx2.ud.verify();
-                        }
-                        changed |= pass_changed;
+                if (exit_ssa) {
+                    using namespace ir::lowering;
+                    using namespace ir::transform;
+                    NonSSAPassContext ctx(combo_prog);
+                    DestructSSA().apply(combo_prog, ctx);
+                    log << fmt::format("----------\n// After DestructSSA:\n{}\n\n", combo_prog);
+
+                    if (apply_regalloc) {
+                        RegToMem(rv64::ABI).apply(combo_prog, ctx);
+                        auto regalloc = RegisterAllocation(rv64::ABI);
+                        regalloc.apply(combo_prog, ctx);
+                        RedundantMoveElimination<NonSSAPassContext>(regalloc.colored,
+                                                                    regalloc.precolored)
+                            .apply(combo_prog, ctx);
+                        DeadAllocElimination<NonSSAPassContext>().apply(combo_prog, ctx);
+                        DeadTempElimination<NonSSAPassContext>().apply(combo_prog, ctx);
+                        log << fmt::format("----------\n// After register allocation:\n{}\n\n",
+                                           combo_prog);
                     }
-                    return changed;
-                };
-                log.clear();
-                log << fmt::format("{}\n", combo_prog);
-                while (apply(ctx, passes));
+                }
 
                 auto result_after = run_with_timeout(combo_prog_box);
                 if (!result_after) {
