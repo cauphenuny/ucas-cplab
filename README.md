@@ -169,6 +169,7 @@ src/
 │   ├── test_regalloc.cpp
 │   ├── test_regalloc_interfere.cpp
 │   ├── test_regalloc_precolorize.cpp
+│   ├── test_regalloc_ra.cpp
 │   ├── test_sem.cpp
 │   ├── test_serialize.cpp
 │   ├── test_spill.cpp
@@ -181,7 +182,7 @@ src/
     ├── traits.hpp
     └── tui.h
 
-19 directories, 82 files
+19 directories, 83 files
 ```
 <!--/source_tree-->
 

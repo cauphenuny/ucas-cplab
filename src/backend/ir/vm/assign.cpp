@@ -13,40 +13,54 @@
 
 namespace ir::vm {
 
-void VirtualMachine::assign(
-    ir::type::Int, std::byte* dest,
-    std::variant<ir::type::Int32, ir::type::Int1, ir::type::Reference> src_type,
-    std::byte* src) const {
-    Match{src_type}([&](const auto& src_descrete_type) {
-        using T = typename std::decay_t<decltype(src_descrete_type)>::type;
-        *(size_t*)dest = (size_t)(*(T*)src);
-    });
+void VirtualMachine::assign(ir::type::Int, std::byte* dest, ir::type::Int32,
+                            const std::byte* src) const {
+    *(size_t*)dest = (size_t)(*(int*)src);
 }
 
-void VirtualMachine::assign(
-    std::variant<ir::type::Int32, ir::type::Int1, ir::type::Reference> dest_type, std::byte* dest,
-    ir::type::Int, std::byte* src) const {
-    Match{dest_type}([&](const auto& dest_descrete_type) {
-        using T = typename std::decay_t<decltype(dest_descrete_type)>::type;
-        *(T*)dest = (T)(*(size_t*)src);
-    });
+void VirtualMachine::assign(ir::type::Int, std::byte* dest, ir::type::Int1,
+                            const std::byte* src) const {
+    *(size_t*)dest = (size_t)(*(bool*)src);
 }
 
-void VirtualMachine::assign(ir::type::Float, std::byte* dest,
-                            std::variant<ir::type::Float32, ir::type::Float64> src_type,
-                            std::byte* src) const {
-    Match{src_type}([&](auto src_descrete_type) {
-        using T = typename decltype(src_descrete_type)::type;
-        *(double*)dest = (double)(*(T*)src);
-    });
+void VirtualMachine::assign(ir::type::Int, std::byte* dest, const ir::type::Reference&,
+                            const std::byte* src) const {
+    *(size_t*)dest = (size_t)(*(void**)src);
 }
 
-void VirtualMachine::assign(std::variant<ir::type::Float32, ir::type::Float64> dest_type,
-                            std::byte* dest, ir::type::Float, std::byte* src) const {
-    Match{dest_type}([&](auto dest_descrete_type) {
-        using T = typename decltype(dest_descrete_type)::type;
-        *(T*)dest = (T)(*(double*)src);
-    });
+void VirtualMachine::assign(ir::type::Int32, std::byte* dest, ir::type::Int,
+                            const std::byte* src) const {
+    *(int*)dest = (int)(*(size_t*)src);
+}
+
+void VirtualMachine::assign(ir::type::Int1, std::byte* dest, ir::type::Int,
+                            const std::byte* src) const {
+    *(bool*)dest = (bool)(*(size_t*)src);
+}
+
+void VirtualMachine::assign(const ir::type::Reference&, std::byte* dest, ir::type::Int,
+                            const std::byte* src) const {
+    *(void**)dest = (void*)(*(size_t*)src);
+}
+
+void VirtualMachine::assign(ir::type::Float, std::byte* dest, ir::type::Float32,
+                            const std::byte* src) const {
+    *(double*)dest = (double)(*(float*)src);
+}
+
+void VirtualMachine::assign(ir::type::Float, std::byte* dest, ir::type::Float64,
+                            const std::byte* src) const {
+    *(double*)dest = *(double*)src;
+}
+
+void VirtualMachine::assign(ir::type::Float32, std::byte* dest, ir::type::Float,
+                            const std::byte* src) const {
+    *(float*)dest = (float)(*(double*)src);
+}
+
+void VirtualMachine::assign(ir::type::Float64, std::byte* dest, ir::type::Float,
+                            const std::byte* src) const {
+    *(double*)dest = *(double*)src;
 }
 
 void VirtualMachine::assign(const ir::type::Primitive& dest_type, std::byte* dest,
@@ -62,16 +76,12 @@ void VirtualMachine::assign(const ir::type::Primitive& dest_type, std::byte* des
 
 void VirtualMachine::assign(const ir::type::Reference& dest_type, std::byte* dest,
                             const ir::type::Primitive& src_type, const std::byte* src) const {
-    if (!dest_type.elem.is<ir::type::Primitive>()) {
-        throw COMPILER_ERROR(fmt::format("Cannot assign {} to {}", src_type, dest_type));
-    }
-    Match(dest_type.elem.as<ir::type::Primitive>(), src_type)([&](auto dest_prim, auto src_prim) {
-        if constexpr (std::is_same_v<decltype(dest_prim), decltype(src_prim)>) {
-            *(const std::byte**)dest = src;
-        } else {
-            throw COMPILER_ERROR(fmt::format("Cannot assign {} to {}", src_type, dest_type));
-        }
-    });
+    Match{src_type}([&](auto src_prim) { assign(dest_type, dest, src_prim, src); });
+}
+
+void VirtualMachine::assign(const ir::type::Primitive& dest_type, std::byte* dest,
+                            const ir::type::Reference& src_type, const std::byte* src) const {
+    Match{dest_type}([&](auto dest_prim) { assign(dest_prim, dest, src_type, src); });
 }
 
 void VirtualMachine::assign(const ir::type::Sum& dest_type, std::byte* dest,

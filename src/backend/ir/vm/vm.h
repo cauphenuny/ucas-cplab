@@ -81,21 +81,24 @@ private:
         throw COMPILER_ERROR(fmt::format("Cannot assign {} to {}", src_type, dest_type));
     }
 
-    void assign(ir::type::Int, std::byte* dest,
-                std::variant<ir::type::Int32, ir::type::Int1, ir::type::Reference> src_type,
-                std::byte* src) const;
-    void assign(std::variant<ir::type::Int32, ir::type::Int1, ir::type::Reference> dest_type,
-                std::byte* dest, ir::type::Int, std::byte* src) const;
+    void assign(ir::type::Int, std::byte* dest, ir::type::Int32, const std::byte* src) const;
+    void assign(ir::type::Int, std::byte* dest, ir::type::Int1, const std::byte* src) const;
+    void assign(ir::type::Int, std::byte* dest, const ir::type::Reference&, const std::byte* src) const;
+    void assign(ir::type::Int32, std::byte* dest, ir::type::Int, const std::byte* src) const;
+    void assign(ir::type::Int1, std::byte* dest, ir::type::Int, const std::byte* src) const;
+    void assign(const ir::type::Reference&, std::byte* dest, ir::type::Int, const std::byte* src) const;
 
-    void assign(ir::type::Float, std::byte* dest,
-                std::variant<ir::type::Float32, ir::type::Float64> src_type, std::byte* src) const;
-    void assign(std::variant<ir::type::Float32, ir::type::Float64> dest_type, std::byte* dest,
-                ir::type::Float, std::byte* src) const;
+    void assign(ir::type::Float, std::byte* dest, ir::type::Float32, const std::byte* src) const;
+    void assign(ir::type::Float, std::byte* dest, ir::type::Float64, const std::byte* src) const;
+    void assign(ir::type::Float32, std::byte* dest, ir::type::Float, const std::byte* src) const;
+    void assign(ir::type::Float64, std::byte* dest, ir::type::Float, const std::byte* src) const;
 
     void assign(const ir::type::Reference& dest_type, std::byte* dest,
                 const ir::type::Primitive& src_type, const std::byte* src) const;
     void assign(const ir::type::Primitive& dest_type, std::byte* dest,
                 const ir::type::Primitive& src_type, const std::byte* src) const;
+    void assign(const ir::type::Primitive& dest_type, std::byte* dest,
+                const ir::type::Reference& src_type, const std::byte* src) const;
     void assign(const ir::type::Sum& dest_type, std::byte* dest, const ir::Type& src_type,
                 const std::byte* src) const;
     void assign(const ir::type::Array& dest_type, std::byte* dest, const ir::type::Array& src_type,
@@ -283,19 +286,42 @@ public:
             }
         };
 
-        binary_ops[InstOp::LOAD_ELEM] = binary_ops[InstOp::BORROW_ELEM] =
-            binary_ops[InstOp::BORROW_ELEM_MUT] =
-                [this, check_ref, check_indexing](View& dest, const View& lhs, const View& rhs) {
-                    // NOTE: lhs: pointer, rhs: offset
-                    check_indexing(lhs.type, rhs.type);
-                    auto is_ref = lhs.type.is<Reference>();
-                    if (is_ref) check_ref(lhs.type, "binary load");
-                    auto offset = *(int*)rhs.data;
-                    auto elem_type =
-                        is_ref ? lhs.type.as<Reference>().elem : lhs.type.as<Array>().elem;
-                    auto base = is_ref ? *(std::byte**)lhs.data : lhs.data;
-                    assign(dest.type, dest.data, elem_type, base + offset * size_of(elem_type));
-                };
+        binary_ops[InstOp::LOAD_ELEM] =
+            [this, check_ref, check_indexing](View& dest, const View& lhs, const View& rhs) {
+                // NOTE: lhs: pointer, rhs: offset
+                check_indexing(lhs.type, rhs.type);
+                auto is_ref = lhs.type.is<Reference>();
+                if (is_ref) check_ref(lhs.type, "binary load");
+                auto offset = *(int*)rhs.data;
+                auto elem_type =
+                    is_ref ? lhs.type.as<Reference>().elem : lhs.type.as<Array>().elem;
+                auto base = is_ref ? *(std::byte**)lhs.data : lhs.data;
+                assign(dest.type, dest.data, elem_type, base + offset * size_of(elem_type));
+            };
+
+        auto borrow_elem = [this, check_ref, check_indexing](View& dest, const View& lhs,
+                                                              const View& rhs, bool readonly) {
+            check_indexing(lhs.type, rhs.type);
+            auto is_ref = lhs.type.is<Reference>();
+            if (is_ref) check_ref(lhs.type, "binary borrow_elem");
+            auto offset = *(int*)rhs.data;
+            auto elem_type =
+                is_ref ? lhs.type.as<Reference>().elem : lhs.type.as<Array>().elem;
+            auto base = is_ref ? *(std::byte**)lhs.data : lhs.data;
+            auto elem_ptr = base + offset * size_of(elem_type);
+            assign(dest.type, dest.data, elem_type.borrow(readonly),
+                   (std::byte*)&elem_ptr);
+        };
+
+        binary_ops[InstOp::BORROW_ELEM] =
+            [borrow_elem](View& dest, const View& lhs, const View& rhs) {
+                borrow_elem(dest, lhs, rhs, true);
+            };
+
+        binary_ops[InstOp::BORROW_ELEM_MUT] =
+            [borrow_elem](View& dest, const View& lhs, const View& rhs) {
+                borrow_elem(dest, lhs, rhs, false);
+            };
 
         binary_ops[InstOp::STORE] = [this, check_ref](View& dest, const View& lhs,
                                                       const View& rhs) {
