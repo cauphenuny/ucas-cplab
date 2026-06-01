@@ -77,7 +77,7 @@ template <typename Context> struct DeadTempElimination : Pass<Context> {
                 auto from_val =
                     TempValue{.type = func->temps()[from].type, .id = from, .func = func.get()};
                 auto to_val =
-                    TempValue{.type = func->temps()[to].type, .id = to, .func = func.get()};
+                    TempValue{.type = func->temps()[from].type, .id = to, .func = func.get()};
                 new_temps[to] = func->temps()[from];
                 if (from != to) {
                     changed = true;
