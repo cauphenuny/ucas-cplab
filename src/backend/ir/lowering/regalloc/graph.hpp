@@ -15,6 +15,9 @@
 
 namespace ir::lowering {
 
+constexpr int LIVE_PRIORITY = -1;
+constexpr int USEDEF_PRIORITY = 3;
+
 struct InterfereNode {
     LeftValue value;
     std::unordered_set<LeftValue> interfere;
@@ -159,6 +162,7 @@ struct InterfereGraph {
                 auto block_liveout = liveness.out.at(block.get());
                 if (auto exit_use = utils::used_var(block->exit())) {
                     block_liveout.insert(*exit_use);
+                    graph_of(*exit_use).prior[*exit_use]++;
                 }
 
                 auto lives = std::move(block_liveout).divide([](const LeftValue& v) {
@@ -171,7 +175,7 @@ struct InterfereGraph {
                 for (auto inst_it = block->insts().rbegin(); inst_it != block->insts().rend();
                      ++inst_it) {
                     auto& inst = *inst_it;
-                    for (auto var : utils::vars(inst)) graph_of(*var).ref_count[*var]++;
+                    for (auto var : utils::vars(inst)) graph_of(*var).prior[*var] += USEDEF_PRIORITY;
 
                     if (auto mov = std::get_if<UnaryInst>(&inst);
                         mov && mov->op == UnaryInstOp::MOV) {
@@ -195,6 +199,9 @@ struct InterfereGraph {
                             graph_of(d).interfere(d, l);
                         }
                     }
+
+                    for (const auto& l : lives.first) graph_of(l).prior[l] += LIVE_PRIORITY;
+                    for (const auto& l : lives.second) graph_of(l).prior[l] += LIVE_PRIORITY;
 
                     // forbid live variables cross call-inst to be colored as caller-saved registers
                     if (std::holds_alternative<CallInst>(inst)) {
@@ -256,13 +263,13 @@ struct InterfereGraph {
     }
 
     double priority(const LeftValue& value) {
-        return static_cast<double>(ref_count[value]) / nodes_[value].degree;
+        return static_cast<double>(prior[value]) / nodes_[value].degree;
     }
 
 private:
     std::unordered_map<LeftValue, LeftValue> aliases_;
     std::unordered_map<LeftValue, InterfereNode> nodes_;
-    std::unordered_map<LeftValue, size_t> ref_count;
+    std::unordered_map<LeftValue, int> prior;
 
     void ensure(const LeftValue& value) {
         if (nodes_.count(value) == 0) {

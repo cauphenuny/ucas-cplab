@@ -55,7 +55,7 @@ struct PrecolorVars {
 /// @note: colorized: func call, func param, return value, callee-saved registers
 
 struct Precolorize : ir::transform::NonSSAPass {
-    Precolorize(TargetABI abi) : abi(std::move(abi)) {}
+    Precolorize(TargetABI abi, bool verbose = false) : abi(std::move(abi)), verbose(verbose) {}
     bool apply(Program& prog, ir::transform::NonSSAPassContext& ctx) override {
         map_registers(prog);
         for (auto& func : prog.funcs()) {
@@ -66,12 +66,16 @@ struct Precolorize : ir::transform::NonSSAPass {
             auto exits = colorize_return(*func, prog);
             colorize_callee_saved(*func, prog, exits);
         }
+        if (verbose) {
+            fmt::println(stderr, "After precoloring:\n{}", prog);
+        }
         return true;
     }
     PrecolorVars precolored;
 
 private:
     TargetABI abi;
+    bool verbose;
 
     void map_registers(Program& prog) {
         auto map = [&](const Type& type) {

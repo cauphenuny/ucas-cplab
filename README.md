@@ -166,6 +166,7 @@ src/
 │   ├── test_liveness_all.cpp
 │   ├── test_optimize.cpp
 │   ├── test_reg2mem.cpp
+│   ├── test_regalloc.cpp
 │   ├── test_regalloc_interfere.cpp
 │   ├── test_regalloc_precolorize.cpp
 │   ├── test_sem.cpp
@@ -180,7 +181,7 @@ src/
     ├── traits.hpp
     └── tui.h
 
-19 directories, 81 files
+19 directories, 82 files
 ```
 <!--/source_tree-->
 

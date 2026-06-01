@@ -17,35 +17,43 @@ namespace ir::lowering {
 
 struct RegisterAllocation : transform::NonSSAPass {
     using TargetABI = lowering::TargetABI;
-    RegisterAllocation(TargetABI abi) : abi(std::move(abi)) {}
+    RegisterAllocation(TargetABI abi, bool verbose = false)
+        : abi(std::move(abi)), verbose(verbose) {}
     TargetABI abi;
+    bool verbose;
 
     bool apply(Program& prog, transform::NonSSAPassContext& ctx) override {
-        Precolorize precolor(abi);
+        Precolorize precolor(abi, verbose);
         precolor.apply(prog, ctx);
         precolored = precolor.precolored;
-        fmt::println("After precoloring:\n{}", prog);
+
+        for (auto& [key, alloc] : precolored) colored[alloc->value()] = key.second;
 
         while (true) {
             auto [general, floating] = InterfereGraph::build(prog, precolor.precolored, abi);
-            fmt::print(stderr, "general graph: {}\n", general);
-            fmt::print(stderr, "floating-point graph: {}\n", floating);
+            if (verbose) {
+                fmt::print(stderr, "General Graph: {}\n", general);
+                fmt::print(stderr, "Floating-point Graph: {}\n", floating);
+            }
             auto [general_spills, general_colors] = BriggsAllocator(general).colorize();
             auto [floating_spills, floating_colors] = BriggsAllocator(floating).colorize();
             if (general_spills.empty() && floating_spills.empty()) {
                 colored = merge(std::move(general_colors), std::move(floating_colors));
                 break;
             }
-            Spill(general_spills).apply(prog, ctx);
-            Spill(floating_spills).apply(prog, ctx);
+            Spill(general_spills, verbose).apply(prog, ctx);
+            Spill(floating_spills, verbose).apply(prog, ctx);
+
+            if (verbose) {
+                for (auto& [value, id] : colored) {
+                    auto& graph = is_fp(type_of(value)) ? floating : general;
+                    graph.pin(value, id);
+                }
+                fmt::print(stderr, "Colorized General Graph: {}\n", general);
+                fmt::print(stderr, "Colorized Floating-point Graph: {}\n", floating);
+            }
         }
 
-        fmt::println("Colorized: {}", colored);
-
-        for (auto& [key, alloc] : precolor.precolored) {
-            auto& [_, id] = key;
-            colored[alloc->value()] = id;
-        }
         return true;
     }
 
@@ -60,10 +68,12 @@ struct RegisterAllocation : transform::NonSSAPass {
     PrecolorVars precolored;
 };
 
+/// @brief replace colored values by their assigned registers, also remove redundant moves.
 template <typename T> struct RedundantMoveElimination : transform::Pass<T> {
-    RedundantMoveElimination(ColorMap color) : color(std::move(color)) {}
+    RedundantMoveElimination(ColorMap color, PrecolorVars precolored) : color(std::move(color)), precolored(std::move(precolored)) {}
     const ColorMap color;
-    bool apply(Program& program, T&) {
+    const PrecolorVars precolored;
+    bool apply(Program& program, T& ctx) override {
         bool changed = false;
         for (auto& func : program.funcs()) {
             for (auto& block : func->blocks()) {
@@ -78,7 +88,7 @@ template <typename T> struct RedundantMoveElimination : transform::Pass<T> {
                             auto src_color = color.at(*src);
                             auto dst_color = color.at(*mov->result);
                             if (src_color == dst_color) {
-                                it = insts.erase(it);
+                                it = block->erase(it);
                                 changed = true;
                                 continue;
                             }
@@ -86,6 +96,13 @@ template <typename T> struct RedundantMoveElimination : transform::Pass<T> {
                     }
                     ++it;
                 }
+            }
+        }
+        for (auto& [value, id] : color) {
+            LeftValue target = precolored.at({type_of(value), id})->value();
+            if (!(target == value)) {
+                ctx.ud.replace_all_defs_with(value, target);
+                ctx.ud.replace_all_uses_with(value, target);
             }
         }
         return changed;

@@ -5,6 +5,7 @@
 #include "utils/match.hpp"
 #include "utils/traits.hpp"
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <set>
@@ -12,12 +13,12 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
-#include <map>
-#include <unordered_map>
 #include <variant>
 #include <vector>
+#include <list>
 
 namespace fmt_indent {
 
@@ -77,7 +78,7 @@ template <typename T> auto toString(const std::unique_ptr<T>& ptr) -> std::strin
     }
 }
 
-template<typename K, typename V> auto toString(const std::pair<K, V>& p) -> std::string {
+template <typename K, typename V> auto toString(const std::pair<K, V>& p) -> std::string {
     return fmt::format("({}, {})", p.first, p.second);
 }
 
@@ -115,6 +116,18 @@ std::enable_if_t<std::disjunction_v<std::is_same<Container<T>, std::set<T>>,
                                     std::is_same<Container<T>, std::unordered_set<T>>>,
                  std::string>
 toString(const Container<T>& set) {
+    std::string res = "{";
+    bool first = true;
+    for (const auto& elem : set) {
+        if (!first) res += ", ";
+        res += fmt::format("{}", elem);
+        first = false;
+    }
+    res += "}";
+    return res;
+}
+
+template <typename T> std::string toString(const std::list<T>& set) {
     std::string res = "{";
     bool first = true;
     for (const auto& elem : set) {

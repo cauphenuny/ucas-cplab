@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Interference Graph Visualizer</title>
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: monospace; display: flex; height: 100vh; }
+#sidebar { width: 400px; display: flex; flex-direction: column; border-right: 1px solid #ccc; }
+#sidebar textarea { flex: 1; padding: 8px; font-size: 12px; resize: none; border: none; border-bottom: 1px solid #ccc; }
+#sidebar button { padding: 8px; cursor: pointer; font-size: 14px; }
+#graph { flex: 1; }
+.legend { padding: 6px 10px; font-size: 12px; border-bottom: 1px solid #ccc; background: #f8f8f8; }
+.legend span { margin-right: 16px; }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <div class="legend">
+    <span>── interfere</span>
+    <span>╌╌ move</span>
+    <span>🔵 uncolored</span>
+    <span>🟡 precolored</span>
+  </div>
+  <textarea id="input" placeholder="Paste InterfereGraph { ... } output here">general graph: InterfereGraph {
+  nodes_: {
+    (@a, InterfereNode {
+      value: @a,
+      interfere: {@b, %1, @d},
+      move: {@__reg_r0, @e},
+      degree: 3,
+      color: nullopt,
+    }),
+    (@e, InterfereNode {
+      value: @e,
+      interfere: {%0, @b, %1, @d},
+      move: {@a},
+      degree: 4,
+      color: nullopt,
+    }),
+    (%0, InterfereNode {
+      value: %0,
+      interfere: {@e, @b, %1, @d},
+      move: {},
+      degree: 4,
+      color: nullopt,
+    }),
+    (@b, InterfereNode {
+      value: @b,
+      interfere: {@a, %1, @d, %0, @__reg_r0, @e},
+      move: {@__reg_r1},
+      degree: 6,
+      color: nullopt,
+    }),
+    (@__reg_r0, InterfereNode {
+      value: @__reg_r0,
+      interfere: {%1, @b, @__reg_r2, @__reg_r1},
+      move: {@d, @a},
+      degree: 4,
+      color: 0,
+    }),
+    (%1, InterfereNode {
+      value: %1,
+      interfere: {@d, @__reg_r1, @a, %0, @__reg_r0, @b, @e},
+      move: {@__reg_r2},
+      degree: 7,
+      color: nullopt,
+    }),
+    (@d, InterfereNode {
+      value: @d,
+      interfere: {%0, %1, @a, @b, @e},
+      move: {@__reg_r0},
+      degree: 5,
+      color: nullopt,
+    }),
+    (@__reg_r1, InterfereNode {
+      value: @__reg_r1,
+      interfere: {%1, @__reg_r2, @__reg_r0},
+      move: {@b},
+      degree: 3,
+      color: 1,
+    }),
+    (@__reg_r2, InterfereNode {
+      value: @__reg_r2,
+      interfere: {@__reg_r1, @__reg_r0},
+      move: {%1},
+      degree: 2,
+      color: 2,
+    }),
+  },
+}</textarea>
+  <button onclick="render()">Render Graph</button>
+</div>
+<div id="graph"></div>
+<script>
+const COLORS = ['#ffadad','#caffbf','#a0c4ff','#ffd6a5','#e2c4f2','#b5ead7','#ffc6ff','#fdffb6','#ffdfba','#9bf6ff','#d0f4de','#f1c0e8','#cfbaf0','#a3d5ff','#fbf8cc','#ffe5d9','#bde0fe','#d4e09b'];
+
+function parse(text) {
+  const nodes = new Map();
+  const nodeRe = /\(([^,]+),\s*InterfereNode\s*\{[^}]*?interfere:\s*\{([^}]*)\}[^}]*?move:\s*\{([^}]*)\}[^}]*?color:\s*(\w+)/g;
+  let m;
+  while ((m = nodeRe.exec(text)) !== null) {
+    const id = m[1].trim();
+    const interfere = m[2].split(',').map(s => s.trim()).filter(Boolean);
+    const move = m[3].split(',').map(s => s.trim()).filter(Boolean);
+    const color = m[4] === 'nullopt' ? null : parseInt(m[4]);
+    nodes.set(id, { interfere, move, color });
+  }
+  return nodes;
+}
+
+function render() {
+  const text = document.getElementById('input').value;
+  const parsed = parse(text);
+  if (parsed.size === 0) { alert('No nodes parsed. Check input format.'); return; }
+
+  const visNodes = [];
+  const visEdges = [];
+  const edgeSet = new Set();
+
+  for (const [id, info] of parsed) {
+    visNodes.push({
+      id, label: id,
+      color: info.color !== null ? { background: COLORS[info.color % COLORS.length], border: '#333' } : { background: '#ffffff', border: '#999' },
+      font: { size: 14 },
+      shape: 'ellipse',
+    });
+  }
+
+  for (const [id, info] of parsed) {
+    for (const t of info.interfere) {
+      const key = [id, t].sort().join('|');
+      if (!edgeSet.has(key)) { edgeSet.add(key); visEdges.push({ from: id, to: t, color: { color: '#333' }, width: 2 }); }
+    }
+    for (const t of info.move) {
+      const key = [id, t].sort().join('||');
+      if (!edgeSet.has(key)) { edgeSet.add(key); visEdges.push({ from: id, to: t, dashes: [8, 4], color: { color: '#e67e22' }, width: 2 }); }
+    }
+  }
+
+  new vis.Network(document.getElementById('graph'), { nodes: visNodes, edges: visEdges }, {
+    physics: { solver: 'forceAtlas2Based', forceAtlas2Based: { gravitationalConstant: -80, springLength: 150 } },
+    edges: { smooth: { type: 'continuous' } },
+    interaction: { hover: true },
+  });
+}
+
+render();
+</script>
+</body>
+</html>

@@ -339,8 +339,9 @@ int main(int argc, const char* argv[]) {
                                             "Dead Definition Elimination");
                     }
                     if (optimize_alloc) {
-                        passes.emplace_back(std::make_unique<DeadAllocElimination<SSAPassContext>>(),
-                                            "Dead Allocation Elimination");
+                        passes.emplace_back(
+                            std::make_unique<DeadAllocElimination<SSAPassContext>>(),
+                            "Dead Allocation Elimination");
                     }
                     if (optimize_temp) {
                         passes.emplace_back(std::make_unique<DeadTempElimination<SSAPassContext>>(),
@@ -391,17 +392,16 @@ int main(int argc, const char* argv[]) {
                     }
                 }
 
-                if (false) {
+                {
                     using namespace ir::lowering;
                     using Context = ir::transform::NonSSAPassContext;
                     auto regalloc = RegisterAllocation(rv64::ABI);
                     regalloc.apply(program, ctx);
                     echo(program, fmt::format("#{} After Register Allocation", pass_id++));
-                    RedundantMoveElimination<Context>(regalloc.colored)
+                    RedundantMoveElimination<Context>(regalloc.colored, regalloc.precolored)
                         .apply(program, ctx);
                     ir::transform::DeadAllocElimination<Context>().apply(program, ctx);
-                    echo(program, fmt::format("#{} After Redundant Move Elimination",
-                                              pass_id++));
+                    echo(program, fmt::format("#{} After Redundant Move Elimination", pass_id++));
                 }
 
                 if (!silent) {

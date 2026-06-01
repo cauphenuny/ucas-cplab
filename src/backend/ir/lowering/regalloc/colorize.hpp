@@ -5,7 +5,9 @@
 #include "backend/ir/lowering/regalloc/graph.hpp"
 #include "backend/ir/lowering/regalloc/precolorize.hpp"
 
+#include <cstdio>
 #include <list>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -32,6 +34,9 @@ struct BriggsAllocator {
         std::list<LeftValue> colored;
 
         std::list<LeftValue> select_stack;
+
+        TO_STRING(Nodes, precolored, initial, simplify, freeze, to_spill, spilled, coalesced,
+                  colored, select_stack);
     } nodes;
 
     using NodeLocation = std::pair<std::list<LeftValue>*, std::list<LeftValue>::iterator>;
@@ -44,6 +49,8 @@ struct BriggsAllocator {
         std::list<Move> frozen;
         std::list<Move> ready;
         std::list<Move> scheduled;
+
+        TO_STRING(Moves, coalesced, constrained, frozen, ready, scheduled);
     } moves;
     using MoveLocation = std::pair<std::list<Move>*, std::list<Move>::iterator>;
     std::unordered_map<Move, MoveLocation> move_locations;
@@ -53,13 +60,13 @@ struct BriggsAllocator {
     ColorizeResult result;
 
     template <typename T>
-    void relocate(const T& value, std::list<T>& to,
+    void relocate(T value, std::list<T>& to,
                   std::unordered_map<T, std::pair<std::list<T>*, typename std::list<T>::iterator>>&
                       locations) {
         auto& [from_list, from_it] = locations.at(value);
         from_list->erase(from_it);
         to.push_back(value);
-        locations[value] = {&to, std::prev(to.end())};
+        locations[std::move(value)] = {&to, std::prev(to.end())};
     }
 
     BriggsAllocator(InterfereGraph graph) : graph(std::move(graph)) {
@@ -90,10 +97,10 @@ struct BriggsAllocator {
         return result;
     }
 
-    auto effective_moves(const LeftValue& value) {
+    auto effective_moves(const LeftValue& dest) {
         std::vector<Move> result;
-        for (auto& move_src : graph[value].move) {
-            auto mov = std::make_pair(value, move_src);
+        for (auto& src : graph[dest].move) {
+            auto mov = std::make_pair(dest, src);
             auto loc = move_locations.at(mov).first;
             if (loc == &moves.scheduled || loc == &moves.ready) {
                 result.push_back(mov);
@@ -137,6 +144,7 @@ struct BriggsAllocator {
     }
 
     void enable_moves(const LeftValue& dest) {
+        // fmt::println(stderr, "enabling moves for {}", dest);
         for (const auto& mov : effective_moves(dest)) {
             if (move_locations[mov].first == &moves.scheduled) {
                 relocate(mov, moves.ready, move_locations);
@@ -146,6 +154,7 @@ struct BriggsAllocator {
 
     void simplify() {
         auto n = nodes.simplify.front();
+        // fmt::println(stderr, "simplifying node {}", n);
         relocate(n, nodes.select_stack, node_locations);
         for (const auto& neighbor : adjacent(n)) {
             decrement_degree(neighbor);
@@ -153,9 +162,26 @@ struct BriggsAllocator {
     }
 
     void merge(const LeftValue& dest, const LeftValue& src) {
+        // fmt::println(stderr, "merging {} into {}", src, dest);
         relocate(src, nodes.coalesced, node_locations);
-        graph[dest].move.insert(graph[src].move.begin(), graph[src].move.end());
         enable_moves(src);
+        auto replace = [&](const Move& old_mov, std::optional<Move> new_mov) {
+            auto [list, it] = move_locations.at(old_mov);
+            move_locations.erase(old_mov), list->erase(it);
+            if (new_mov)
+                list->push_back(*new_mov),
+                    move_locations[*new_mov] = {list, std::prev(list->end())};
+        };
+        for (const auto& m : graph[src].move) {
+            if (graph[dest].move.count(m)) continue;
+            graph[m].move.erase(src);
+            if (!(m == dest)) graph[m].move.insert(dest);
+            replace({src, m}, m == dest ? std::nullopt : std::make_optional<Move>({dest, m}));
+            replace({m, src}, m == dest ? std::nullopt : std::make_optional<Move>({m, dest}));
+        }
+        graph[dest].move.insert(graph[src].move.begin(), graph[src].move.end());
+        graph[dest].move.erase(dest);
+        graph[dest].move.erase(src);
         for (const auto& neighbor : adjacent(src)) {
             graph.interfere(dest, neighbor);
             decrement_degree(neighbor);
@@ -167,12 +193,14 @@ struct BriggsAllocator {
     }
 
     void freeze() {
+        // fmt::println(stderr, "freezing node {}", nodes.freeze.front());
         auto f = nodes.freeze.front();
         relocate(f, nodes.simplify, node_locations);
         freeze_moves(f);
     }
 
     void freeze_moves(const LeftValue& dest) {
+        // fmt::println(stderr, "freezing moves for {}", dest);
         for (const auto& mov : effective_moves(dest)) {
             relocate(mov, moves.frozen, move_locations);
             auto [x, y] = mov;
@@ -189,12 +217,14 @@ struct BriggsAllocator {
         if (location == &nodes.precolored || move_related(value) ||
             graph[value].degree >= graph.max_color)
             return;
+        // fmt::println(stderr, "unfreezing {}", value);
         relocate(value, nodes.simplify, node_locations);
     }
 
     void coalesce() {
         auto mov = moves.ready.front();
         auto [x, y] = mov;
+        // fmt::println(stderr, "coalescing {} and {}", x, y);
         x = graph.alias(x), y = graph.alias(y);
         if (node_locations[y].first == &nodes.precolored) {
             swap(x, y);
@@ -206,9 +236,9 @@ struct BriggsAllocator {
             relocate(mov, moves.constrained, move_locations);
             unfreeze(x), unfreeze(y);
         } else if (graph.mergable(x, y)) {
+            relocate(mov, moves.coalesced, move_locations);
             merge(x, y);
             unfreeze(x);
-            relocate(mov, moves.coalesced, move_locations);
         } else {
             relocate(mov, moves.scheduled, move_locations);
         }
@@ -216,7 +246,10 @@ struct BriggsAllocator {
 
     void spill() {
         auto m = nodes.to_spill.front();
+        // fmt::println(stderr, "spilling {}", m);
         for (const auto& n : nodes.to_spill) {
+            // fmt::println(stderr, "spill candidate {} with priority {}, current best: {}/{}", n,
+            // graph.priority(n), m, graph.priority(m));
             if (graph.priority(n) < graph.priority(m)) m = n;
         }
         relocate(m, nodes.simplify, node_locations);
@@ -258,6 +291,8 @@ struct BriggsAllocator {
                 freeze();
             else if (nodes.to_spill.size())
                 spill();
+            // fmt::println("nodes: {}", nodes);
+            // fmt::println("moves: {}\n", moves);
         }
         assign_colors();
         for (auto& s : nodes.spilled) {

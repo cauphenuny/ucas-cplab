@@ -13,8 +13,9 @@
 namespace ir::lowering {
 
 struct Spill : transform::NonSSAPass {
-    Spill(std::vector<LeftValue> values) : values(std::move(values)) {}
+    Spill(std::vector<LeftValue> values, bool verbose = false) : values(std::move(values)), verbose(verbose) {}
     std::vector<LeftValue> values;
+    bool verbose;
     bool apply(Program& prog, transform::NonSSAPassContext& ctx) override {
         if (values.empty()) return false;
         std::unordered_set<Alloc*> workset;
@@ -33,6 +34,9 @@ struct Spill : transform::NonSSAPass {
                          });
         }
         spill(workset, &prog, ctx);
+        if (verbose) {
+            fmt::println(stderr, "After spilling {}:\n{}", values, prog);
+        }
         values.clear();
         return true;
     }
