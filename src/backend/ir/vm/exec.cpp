@@ -198,7 +198,7 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
     }
     for (size_t i = 0; i < func.params.size(); i++) {
         auto& param = func.params[i];
-        frame.vars[param.get()] = View{.data = cur, .type = param->type};
+        alloc(frame, param.get(), cur);
         assign(param->type, cur, args[i].type, args[i].data);
         cur += padding_to(stackSize(param), alignof(std::max_align_t));
     }

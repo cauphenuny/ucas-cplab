@@ -78,6 +78,7 @@ struct ReplacePhi : NonSSAPass {
             changed |= replace_phi(*func, prog);
         }
         legalize(prog, ctx);
+        prog.is_ssa = false;
         return changed;
     }
 

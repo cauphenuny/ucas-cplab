@@ -394,6 +394,7 @@ int main(int argc, const char* argv[]) {
                         echo(program, "Exit SSA Form");
 
                         RegToMem(rv64::ABI).apply(program, ctx);
+                        echo(program, "Register to Memory");
                         auto regalloc = RegisterAllocation(rv64::ABI);
                         regalloc.apply(program, ctx);
                         echo(program, "Register Allocation");

@@ -23,9 +23,6 @@ namespace ir::transform {
 template<typename Context>
 struct DeadBlockElimination : Pass<Context> {
     bool apply(Program& prog, Context& ctx) override {
-        if (!prog.is_ssa) {
-            throw COMPILER_ERROR("DeadBlockElimination requires SSA form");
-        }
         bool pass_changed = false;
         while (eliminate(prog)) pass_changed = true;
         return pass_changed;
