@@ -59,9 +59,17 @@ private:
 
     template <template <typename> class Op>
     void eval_comparison(View& dest, const View& lhs, const View& rhs) const {
-        match(lhs.type.as<ir::type::Primitive>(), [&](auto value) {
-            using type = typename decltype(value)::type;
-            *(bool*)dest.data = Op<type>{}(*(type*)lhs.data, *(type*)rhs.data);
+        using namespace ir::type;
+        Primitive dtype = dest.type.is<Reference>() ? Primitive{Int()} : dest.type.as<Primitive>();
+        Primitive ltype = lhs.type.is<Reference>() ? Primitive{Int()} : lhs.type.as<Primitive>();
+        Primitive rtype = rhs.type.is<Reference>() ? Primitive{Int()} : rhs.type.as<Primitive>();
+        Match{dtype, ltype, rtype}([&](auto d, auto l, auto r) {
+            using dtype = typename decltype(d)::type;
+            using ltype = typename decltype(l)::type;
+            using rtype = typename decltype(r)::type;
+            using type = std::common_type_t<ltype, rtype>;
+            bool result = Op<type>{}((type)(*(ltype*)lhs.data), (type)(*(rtype*)rhs.data));
+            *(dtype*)dest.data = result;
         });
     }
 

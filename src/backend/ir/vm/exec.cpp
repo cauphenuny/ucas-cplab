@@ -132,12 +132,12 @@ auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View&
     return match(
         exit,
         [&](const BranchExit& branch) -> Block* {
-            View cond = view_of(branch.cond, frame);
-            if (*(bool*)cond.data) {
-                return branch.true_target;
-            } else {
-                return branch.false_target;
-            }
+            View view = view_of(branch.cond, frame);
+            bool cond = Match{view.type.as<type::Primitive>()}([&](auto type) {
+                using T = typename decltype(type)::type;
+                return (bool)(*(T*)view.data);
+            });
+            return cond ? branch.true_target : branch.false_target;
         },
         [&](const JumpExit& jump) -> Block* { return jump.target; },
         [&](const ReturnExit& ret_exit) -> Block* {

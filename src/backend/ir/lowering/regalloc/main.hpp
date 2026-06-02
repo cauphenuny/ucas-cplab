@@ -128,6 +128,14 @@ template <typename T> struct RedundantMoveElimination : transform::Pass<T> {
                     }
                     ++it;
                 }
+                auto exit = block->exit();
+                if (auto use = utils::used_var(exit); use && color.count(*use)) {
+                    auto alloc = precolored.at({type_of(*use), color.at(*use)});
+                    auto value = alloc->value();
+                    value.type = dynamic_types[alloc];
+                    *use = value;
+                }
+                block->setExit(exit);
                 for (auto child : domtree.children(block)) {
                     self(self, child);
                 }
