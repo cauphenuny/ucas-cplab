@@ -1,5 +1,6 @@
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.h"
+#include "backend/ir/lowering/addr.hpp"
 #include "backend/ir/lowering/reg2mem.hpp"
 #include "backend/ir/lowering/regalloc/main.hpp"
 #include "backend/ir/transform/framework.hpp"
@@ -123,11 +124,14 @@ int main(int argc, const char* argv[]) {
                  ir::transform::SSAPassContext, ir::transform::DeadBlockElimination,
                  ir::transform::CommonSubexprElimination>>();
          }},
-        {"block", []() {
+        {"block",
+         []() {
              return std::make_unique<
                  ir::transform::Compose<ir::transform::SSAPassContext, ir::transform::SimplifyCFG,
                                         ir::transform::DeadBlockElimination>>();
-         }}};
+         }},
+        {"addr", []() { return std::make_unique<ir::lowering::AddressLowering>(rv64::ABI); }},
+    };
 
     if (pass_names.empty()) {
         for (const auto& [name, _] : factories) {
@@ -292,6 +296,11 @@ int main(int argc, const char* argv[]) {
                     log.clear();
                     log << fmt::format("{}\n\n", combo_prog);
                     while (apply(ctx, passes));
+                    if (apply_regalloc) {
+                        ir::lowering::AddressLowering(rv64::ABI).apply(combo_prog, ctx);
+                        log << fmt::format("----------\n// After AddressLowering:\n{}\n\n",
+                                           combo_prog);
+                    }
                 }
 
                 if (exit_ssa) {

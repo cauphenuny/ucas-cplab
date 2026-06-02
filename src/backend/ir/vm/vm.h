@@ -377,7 +377,10 @@ inline const std::unordered_map<std::string, BuiltinFunc> BUILTIN_FUNCS = {
                                std::ostream& output) {
          int value;
          input >> value;
-         memcpy(ret.data, &value, sizeof(int));
+         Match{ret.type.as<ir::type::Primitive>()}([&](auto type) {
+             using T = typename decltype(type)::type;
+             *(T*)ret.data = (T)value;
+         });
      }}},
     {"get_float", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
                                  std::ostream& output) {
@@ -389,32 +392,50 @@ inline const std::unordered_map<std::string, BuiltinFunc> BUILTIN_FUNCS = {
          } else {
              value = std::stof(str);
          }
-         memcpy(ret.data, &value, sizeof(float));
+         Match{ret.type.as<ir::type::Primitive>()}([&](auto type) {
+             using T = typename decltype(type)::type;
+             *(T*)ret.data = (T)value;
+         });
      }}},
     {"get_double", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
                                   std::ostream& output) {
          double value;
          input >> value;
-         memcpy(ret.data, &value, sizeof(double));
+         Match{ret.type.as<ir::type::Primitive>()}([&](auto type) {
+             using T = typename decltype(type)::type;
+             *(T*)ret.data = (T)value;
+         });
      }}},
     {"print_int", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
                                  std::ostream& output) {
-         int value = *(int*)args[0].data;
+         int value = Match{args[0].type.as<ir::type::Primitive>()}([&](auto type) {
+             using T = typename decltype(type)::type;
+             return (int)(*(T*)args[0].data);
+         });
          output << value << '\n';
      }}},
     {"print_float", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
                                    std::ostream& output) {
-         float value = *(float*)args[0].data;
+         float value = Match{args[0].type.as<ir::type::Primitive>()}([&](auto type) {
+             using T = typename decltype(type)::type;
+             return (float)(*(T*)args[0].data);
+         });
          output << fmt::format("{:.6f}\n", value);
      }}},
     {"print_double", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
                                     std::ostream& output) {
-         double value = *(double*)args[0].data;
+         double value = Match{args[0].type.as<ir::type::Primitive>()}([&](auto type) {
+             using T = typename decltype(type)::type;
+             return (double)(*(T*)args[0].data);
+         });
          output << fmt::format("{:.6f}\n", value);
      }}},
     {"print_bool", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
                                   std::ostream& output) {
-         bool value = *(bool*)args[0].data;
+         bool value = Match{args[0].type.as<ir::type::Primitive>()}([&](auto type) {
+             using T = typename decltype(type)::type;
+             return (bool)(*(T*)args[0].data);
+         });
          output << (value ? "true" : "false") << '\n';
      }}},
 };
