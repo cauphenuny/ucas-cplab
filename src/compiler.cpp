@@ -77,7 +77,9 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --optimize-exp          Apply Common Subexpression Elimination optimization
     -O1, --optimize         Apply above optimizations, --no-optimize-[...] to disable specific optimizations
 
-    --lowering              Apply lowering transformations to the IR
+    --lowering-addr         Apply address lowering transformation
+    --lowering-reg          Apply register allocation transformation (must run after --lowering-addr)
+    --lowering              Apply above lowering transformations
 
     --exec                  Execute the generated IR
     --silent                Suppress all compiler output except the return value when executing
@@ -145,8 +147,6 @@ int main(int argc, const char* argv[]) {
 
     bool retain_ssa_value = false;
 
-    bool lowering = false;
-
     bool optimize_alloc = false;
     bool optimize_def = false;
     bool optimize_exp = false;
@@ -154,6 +154,9 @@ int main(int argc, const char* argv[]) {
     bool optimize_const = false;
     bool optimize_block = false;
     bool optimize_temp = false;
+
+    bool lowering_addr = false;
+    bool lowering_reg = false;
 
     std::vector<std::pair<std::string, std::reference_wrapper<bool>>> optimizations = {
         {"alloc", optimize_alloc}, {"def", optimize_def},     {"exp", optimize_exp},
@@ -182,8 +185,14 @@ int main(int argc, const char* argv[]) {
             execute = true;
         } else if (arg == "--silent") {
             silent = true;
+        } else if (arg == "--lowering-addr") {
+            lowering_addr = true;
+        } else if (arg == "--lowering-reg") {
+            lowering_addr = true;
+            lowering_reg = true;
         } else if (arg == "--lowering") {
-            lowering = true;
+            lowering_addr = true;
+            lowering_reg = true;
         } else if (arg == "-O1" || arg == "--optimize") {
             optimize_copy = true;
             optimize_const = true;
@@ -237,6 +246,7 @@ int main(int argc, const char* argv[]) {
 
     bool optimize = optimize_def || optimize_exp || optimize_copy || optimize_alloc ||
                     optimize_const || optimize_inline || optimize_temp;
+    bool lowering = lowering_addr || lowering_reg;
 
     if (optimize && !silent) {
         std::stringstream ss;
@@ -362,7 +372,7 @@ int main(int argc, const char* argv[]) {
                             passes.emplace_back(std::make_unique<Inlining>(optimize_inline),
                                                 "Function Call Inlining");
                         }
-                        if (lowering) {
+                        if (lowering_addr) {
                             passes.emplace_back(std::make_unique<ir::lowering::AddressLowering>(rv64::ABI),
                                                 "Address Lowering");
                         }
@@ -378,7 +388,7 @@ int main(int argc, const char* argv[]) {
                 {
                     ir::transform::NonSSAPassContext ctx(program);
 
-                    if (lowering && false) {
+                    if (lowering_reg) {
                         using namespace ir::lowering;
                         using namespace ir::transform;
                         using Context = ir::transform::NonSSAPassContext;

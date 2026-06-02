@@ -48,8 +48,7 @@ private:
 
     template <template <typename> class Op> void eval_unary(View& dest, const View& operand) const {
         using namespace ir::type;
-        auto dtype = operand.type.is<Reference>() ? Primitive{Int()}
-                                                  : operand.type.as<Primitive>();
+        auto dtype = operand.type.is<Reference>() ? Primitive{Int()} : operand.type.as<Primitive>();
         auto otype = dest.type.is<Reference>() ? Primitive{Int()} : dest.type.as<Primitive>();
         Match{dtype, otype}([&](auto d, auto o) {
             using dtype = typename decltype(d)::type;
@@ -141,8 +140,13 @@ private:
                 val,
                 [&](const NamedValue& var) -> std::optional<View> {
                     auto it = frame.vars.find(var.def);
-                    if (it != frame.vars.end()) return it->second;
-                    return std::nullopt;
+                    if (it == frame.vars.end()) return std::nullopt;
+                    auto view = it->second;
+                    // use runtime dynamic type
+                    // (NamedValue can be assigned multiple times with different types
+                    // (for simulating polymorphism of registers in ir::lowering))
+                    view.type = var.type;
+                    return view;
                 },
                 [&](const TempValue& temp) -> std::optional<View> {
                     if (temp.id < frame.temps.size()) return frame.temps[temp.id];
@@ -214,9 +218,10 @@ public:
 
     VirtualMachine(std::istream& input, std::ostream& output) : input(input), output(output) {
         using namespace type;
-        unary_ops[UnaryInstOp::MOV] = unary_ops[UnaryInstOp::CONVERT] = [&](View& dest, const View& operand) {
-            assign(dest.type, dest.data, operand.type, operand.data);
-        };
+        unary_ops[UnaryInstOp::MOV] =
+            unary_ops[UnaryInstOp::CONVERT] = [&](View& dest, const View& operand) {
+                assign(dest.type, dest.data, operand.type, operand.data);
+            };
         unary_ops[UnaryInstOp::NOT] = [this](View& dest, const View& operand) {
             eval_unary<std::logical_not>(dest, operand);
         };
@@ -236,7 +241,7 @@ public:
         auto check_ref = [](const TypeBox& type, const char* op_name) {
             if (!type.is<Reference>()) {
                 throw COMPILER_ERROR(
-                    fmt::format("{} expected {} reference type, but got {}", op_name, type));
+                    fmt::format("{} expected reference type, but got {}", op_name, type));
             }
         };
 

@@ -127,9 +127,12 @@ struct UnaryInst {
     std::optional<LeftValue> result;
     Value operand;
 
-    SIMPLE_TO_STRING(op != UnaryInstOp::CONVERT
-                         ? fmt::format("{}{}{};", fmt_result(result), op, operand)
-                         : fmt::format("{}{} as {};", fmt_result(result), operand, type_of(*result)));
+    SIMPLE_TO_STRING(
+        op != UnaryInstOp::LOAD
+            ? (op != UnaryInstOp::CONVERT
+                   ? fmt::format("{}{}{};", fmt_result(result), op, operand)
+                   : fmt::format("{}{} as {};", fmt_result(result), operand, type_of(*result)))
+            : fmt::format("{}{}({}){};", fmt_result(result), op, type_of(operand), operand));
 };
 
 struct BinaryInst {

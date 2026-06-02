@@ -1,5 +1,7 @@
 #pragma once
 
+#include "backend/ir/analysis/dataflow/dominance.hpp"
+#include "backend/ir/analysis/dominance.hpp"
 #include "backend/ir/ir.h"
 #include "backend/ir/lowering/abi.hpp"
 #include "backend/ir/lowering/regalloc/colorize.hpp"
@@ -74,14 +76,39 @@ template <typename T> struct RedundantMoveElimination : transform::Pass<T> {
         : color(std::move(color)), precolored(std::move(precolored)) {}
     const ColorMap color;
     const PrecolorVars precolored;
+    std::unordered_map<Alloc*, Type> dynamic_types;  // for dynamic type of registers
     bool apply(Program& program, T& ctx) override {
+        using namespace ir::analysis;
+        for (const auto& [key, alloc] : precolored) {
+            auto& [type, id] = key;
+            dynamic_types[alloc] = type;
+        }
         bool changed = false;
         for (auto& func : program.funcs()) {
-            for (auto& block : func->blocks()) {
+            auto cfg = ControlFlowGraph(*func);
+            auto dominance = DataFlow<flow::Dominance>(cfg, program);
+            auto domtree = DominanceTree(dominance);
+            auto dfs = [&](auto self, auto block) -> void {
                 auto& insts = block->insts();
                 for (auto it = insts.begin(); it != insts.end();) {
+                    auto inst = *it;
+                    for (auto use : utils::used_vars(inst)) {
+                        if (!color.count(*use)) continue;
+                        auto alloc = precolored.at({type_of(*use), color.at(*use)});
+                        auto value = alloc->value();
+                        value.type = dynamic_types[alloc];
+                        *use = value;
+                    }
+                    if (auto def = utils::defined_var(inst); def && color.count(*def)) {
+                        auto type = type_of(*def);
+                        auto alloc = precolored.at({type, color.at(*def)});
+                        auto value = alloc->value();
+                        value.type = dynamic_types[alloc] = type;
+                        *def = value;
+                    }
+                    block->replace(&(*it), inst);
                     if (auto mov = std::get_if<UnaryInst>(&*it)) {
-                        if (mov->op != UnaryInstOp::MOV) {
+                        if (mov->op != UnaryInstOp::MOV && mov->op != UnaryInstOp::CONVERT) {
                             ++it;
                             continue;
                         }
@@ -101,16 +128,11 @@ template <typename T> struct RedundantMoveElimination : transform::Pass<T> {
                     }
                     ++it;
                 }
-            }
-        }
-        for (auto& [value, id] : color) {
-            auto type = type_of(value);
-            LeftValue target = precolored.at({type, id})->value();
-            match(target, [&](auto& val) { val.type = type; });
-            if (!(target == value)) {
-                ctx.ud.replace_all_defs_with(value, target);
-                ctx.ud.replace_all_uses_with(value, target);
-            }
+                for (auto child : domtree.children(block)) {
+                    self(self, child);
+                }
+            };
+            dfs(dfs, func->entrance());
         }
         return changed;
     }
