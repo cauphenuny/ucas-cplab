@@ -188,7 +188,7 @@ let ref mut g2: i32 = 0;
 
 fn main() -> i32 {
     'entry: {
-        %0: i32 = * @g1;
+        %0: i32 = * (i32) @g1;
         return %0;
     }
 }

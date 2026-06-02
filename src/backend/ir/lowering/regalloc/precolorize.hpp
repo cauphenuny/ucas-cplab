@@ -6,11 +6,11 @@
 #include "backend/ir/type.hpp"
 
 #include <optional>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <variant>
-#include <set>
 #include <vector>
 
 namespace ir::lowering {
@@ -107,10 +107,12 @@ private:
         for (auto& block : func.blocks()) {
             if (auto ret = std::get_if<ReturnExit>(&block->exit())) {
                 auto type = type_of(ret->exp);
-                LeftValue proxy = precolored[{type, abi.reg_of(type).return_value}]->value();
-                block->append(
-                    UnaryInst{.op = UnaryInstOp::MOV, .result = proxy, .operand = ret->exp});
-                block->setExit(ReturnExit{proxy});
+                if (!(type == type::unit())) {
+                    LeftValue proxy = precolored[{type, abi.reg_of(type).return_value}]->value();
+                    block->append(
+                        UnaryInst{.op = UnaryInstOp::MOV, .result = proxy, .operand = ret->exp});
+                    block->setExit(ReturnExit{proxy});
+                }
 
                 ret_blocks.push_back(block.get());
             }

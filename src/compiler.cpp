@@ -78,7 +78,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     -O1, --optimize         Apply above optimizations, --no-optimize-[...] to disable specific optimizations
 
     --lowering-addr         Apply address lowering transformation
-    --lowering-reg          Apply register allocation transformation (must run after --lowering-addr)
+    --lowering-reg          Apply register allocation transformation
     --lowering              Apply above lowering transformations
 
     --exec                  Execute the generated IR
@@ -188,7 +188,6 @@ int main(int argc, const char* argv[]) {
         } else if (arg == "--lowering-addr") {
             lowering_addr = true;
         } else if (arg == "--lowering-reg") {
-            lowering_addr = true;
             lowering_reg = true;
         } else if (arg == "--lowering") {
             lowering_addr = true;
