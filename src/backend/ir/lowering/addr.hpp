@@ -5,6 +5,7 @@
 #include "backend/ir/ir.h"
 #include "backend/ir/lowering/abi.hpp"
 #include "backend/ir/transform/framework.hpp"
+#include "backend/ir/type.hpp"
 
 namespace ir::lowering {
 
@@ -37,17 +38,27 @@ private:
                 auto base = binary->lhs;
                 auto offset = binary->rhs;
                 auto result = *binary->result;
-                LeftValue offset_bytes = func.newTemp(type::construct<int>(), &block);
+                LeftValue offset_bytes = func.newTemp(type::int32(), &block);
+                auto elem_type = match(
+                    type_of(base).var(), [](const type::Reference& ref) { return ref.elem; },
+                    [](const type::Array& arr) { return arr.elem; },
+                    [&](auto&) -> Type {
+                        throw COMPILER_ERROR(fmt::format(
+                            "Expected array or reference type, but got {}", type_of(base)));
+                    });
+                LeftValue base_int = func.newTemp(type::integer(), &block);
+                LeftValue result_int = func.newTemp(type::integer(), &block);
                 block.insert(
                     it, BinaryInst{.op = InstOp::MUL,
                                    .result = offset_bytes,
                                    .lhs = offset,
-                                   .rhs = ConstexprValue((int)abi.mem.size(type_of(base)))});
-                block.replace(&inst, BinaryInst{.op = InstOp::ADD,
-                                                .result = result,
-                                                .lhs = base,
+                                   .rhs = ConstexprValue((int)abi.mem.size(elem_type))});
+                block.insert(it, UnaryInst{.op = UnaryInstOp::CONVERT, .result = base_int, .operand = base});
+                block.insert(it, BinaryInst{.op = InstOp::ADD,
+                                                .result = result_int,
+                                                .lhs = base_int,
                                                 .rhs = offset_bytes});
-                ctx.ud.replace_all_uses_with(result, LeftValue{result});
+                block.replace(&inst, UnaryInst{.op = UnaryInstOp::CONVERT, .result = result, .operand = result_int});
             }
         }
         return changed;

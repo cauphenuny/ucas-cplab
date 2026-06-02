@@ -7,7 +7,7 @@
 
 namespace ir {
 
-enum class UnaryInstOp : uint8_t { MOV, NOT, NEG, LOAD, BORROW, BORROW_MUT };
+enum class UnaryInstOp : uint8_t { MOV, NOT, NEG, LOAD, BORROW, BORROW_MUT, CONVERT };
 
 enum class InstOp : uint8_t {
     MUL,
@@ -37,6 +37,7 @@ inline std::string toString(UnaryInstOp op) {
         case UnaryInstOp::LOAD: return "* ";
         case UnaryInstOp::BORROW: return "& ";
         case UnaryInstOp::BORROW_MUT: return "&mut ";
+        case UnaryInstOp::CONVERT: return "as ";
     }
 }
 

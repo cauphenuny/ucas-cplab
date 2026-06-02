@@ -478,38 +478,6 @@ bool operator<=(const T&, const T&) {
     return true;  // same type is always a subtype
 }
 
-inline bool operator<=(const Int&, const Int32&) {
-    return true;
-}
-inline bool operator<=(const Int32&, const Int&) {
-    return true;
-}
-inline bool operator<=(const Int&, const Int1&) {
-    return true;
-}
-inline bool operator<=(const Int1&, const Int&) {
-    return true;
-}
-
-inline bool operator<=(const Float&, const Float32&) {
-    return true;
-}
-inline bool operator<=(const Float32&, const Float&) {
-    return true;
-}
-inline bool operator<=(const Float&, const Float64&) {
-    return true;
-}
-inline bool operator<=(const Float64&, const Float&) {
-    return true;
-}
-inline bool operator<=(const Int&, const Reference&) {
-    return true;
-}
-inline bool operator<=(const Reference&, const Int&) {
-    return true;
-}
-
 template <typename T, typename = std::enable_if_t<is_primitive_v<T>>>
 bool operator<=(const Primitive& from, const T& to) {
     return Match{from}([&](const auto& from) -> bool { return from <= to; });

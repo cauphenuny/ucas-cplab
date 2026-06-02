@@ -214,7 +214,7 @@ public:
 
     VirtualMachine(std::istream& input, std::ostream& output) : input(input), output(output) {
         using namespace type;
-        unary_ops[UnaryInstOp::MOV] = [&](View& dest, const View& operand) {
+        unary_ops[UnaryInstOp::MOV] = unary_ops[UnaryInstOp::CONVERT] = [&](View& dest, const View& operand) {
             assign(dest.type, dest.data, operand.type, operand.data);
         };
         unary_ops[UnaryInstOp::NOT] = [this](View& dest, const View& operand) {
