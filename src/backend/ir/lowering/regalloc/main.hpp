@@ -76,14 +76,17 @@ template <typename T> struct RedundantMoveElimination : transform::Pass<T> {
         : color(std::move(color)), precolored(std::move(precolored)) {}
     const ColorMap color;
     const PrecolorVars precolored;
-    std::unordered_map<Alloc*, Type> dynamic_types;  // for dynamic type of registers
     bool apply(Program& program, T& ctx) override {
         using namespace ir::analysis;
-        for (const auto& [key, alloc] : precolored) {
-            auto& [type, id] = key;
-            dynamic_types[alloc] = type;
-        }
         bool changed = false;
+        auto replace = [&](const LeftValue& v, bool retain_valtype = true) -> LeftValue {
+            if (!color.count(v)) return v;
+            auto alloc = precolored.at({type_of(v), color.at(v)});
+            auto value = alloc->value();
+            if (retain_valtype) value.type = type_of(v);
+            changed = true;
+            return value;
+        };
         for (auto& func : program.funcs()) {
             auto cfg = ControlFlowGraph(*func);
             auto dominance = DataFlow<flow::Dominance>(cfg, program);
@@ -92,48 +95,32 @@ template <typename T> struct RedundantMoveElimination : transform::Pass<T> {
                 auto& insts = block->insts();
                 for (auto it = insts.begin(); it != insts.end();) {
                     auto inst = *it;
-                    for (auto use : utils::used_vars(inst)) {
-                        if (!color.count(*use)) continue;
-                        auto alloc = precolored.at({type_of(*use), color.at(*use)});
-                        auto value = alloc->value();
-                        value.type = dynamic_types[alloc];
-                        *use = value;
-                    }
-                    if (auto def = utils::defined_var(inst); def && color.count(*def)) {
-                        auto type = type_of(*def);
-                        auto alloc = precolored.at({type, color.at(*def)});
-                        auto value = alloc->value();
-                        value.type = dynamic_types[alloc] = type;
-                        *def = value;
-                    }
+                    if (auto var = utils::defined_var(inst)) *var = replace(*var, false);
+                    for (auto var : utils::used_vars(inst)) *var = replace(*var);
                     block->replace(&(*it), inst);
-                    if (auto mov = std::get_if<UnaryInst>(&*it)) {
-                        if (mov->op != UnaryInstOp::MOV && mov->op != UnaryInstOp::CONVERT) {
-                            ++it;
-                            continue;
-                        }
-                        if (auto src = std::get_if<LeftValue>(&mov->operand)) {
-                            if (!color.count(*src) || !color.count(*mov->result)) {
-                                ++it;
-                                continue;
+                    it = [&] {
+                        if (auto mov = std::get_if<UnaryInst>(&*it)) {
+                            if (mov->op != UnaryInstOp::MOV && mov->op != UnaryInstOp::CONVERT) {
+                                return std::next(it);
                             }
-                            auto src_color = color.at(*src);
-                            auto dst_color = color.at(*mov->result);
-                            if (src_color == dst_color) {
-                                it = block->erase(it);
-                                changed = true;
-                                continue;
+                            if (auto src = std::get_if<LeftValue>(&mov->operand)) {
+                                if (!color.count(*src) || !color.count(*mov->result)) {
+                                    return std::next(it);
+                                }
+                                auto src_color = color.at(*src);
+                                auto dst_color = color.at(*mov->result);
+                                if (src_color == dst_color) {
+                                    changed = true;
+                                    return block->erase(it);
+                                }
                             }
                         }
-                    }
-                    ++it;
+                        return std::next(it);
+                    }();
                 }
                 auto exit = block->exit();
-                if (auto use = utils::used_var(exit); use && color.count(*use)) {
-                    auto alloc = precolored.at({type_of(*use), color.at(*use)});
-                    auto value = alloc->value();
-                    value.type = dynamic_types[alloc];
-                    *use = value;
+                if (auto use = utils::used_var(exit)) {
+                    *use = replace(*use);
                 }
                 block->setExit(exit);
                 for (auto child : domtree.children(block)) {

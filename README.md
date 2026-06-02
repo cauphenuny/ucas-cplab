@@ -39,7 +39,9 @@ compiler [args]... files ...
     --optimize-exp          Apply Common Subexpression Elimination optimization
     -O1, --optimize         Apply above optimizations, --no-optimize-[...] to disable specific optimizations
 
-    --lowering              Apply lowering transformations to the IR
+    --lowering-addr         Apply address lowering transformation
+    --lowering-reg          Apply register allocation transformation (must run after --lowering-addr)
+    --lowering              Apply above lowering transformations
 
     --exec                  Execute the generated IR
     --silent                Suppress all compiler output except the return value when executing
