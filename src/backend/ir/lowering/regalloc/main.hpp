@@ -70,7 +70,8 @@ struct RegisterAllocation : transform::NonSSAPass {
 
 /// @brief replace colored values by their assigned registers, also remove redundant moves.
 template <typename T> struct RedundantMoveElimination : transform::Pass<T> {
-    RedundantMoveElimination(ColorMap color, PrecolorVars precolored) : color(std::move(color)), precolored(std::move(precolored)) {}
+    RedundantMoveElimination(ColorMap color, PrecolorVars precolored)
+        : color(std::move(color)), precolored(std::move(precolored)) {}
     const ColorMap color;
     const PrecolorVars precolored;
     bool apply(Program& program, T& ctx) override {
@@ -103,7 +104,9 @@ template <typename T> struct RedundantMoveElimination : transform::Pass<T> {
             }
         }
         for (auto& [value, id] : color) {
-            LeftValue target = precolored.at({type_of(value), id})->value();
+            auto type = type_of(value);
+            LeftValue target = precolored.at({type, id})->value();
+            match(target, [&](auto& val) { val.type = type; });
             if (!(target == value)) {
                 ctx.ud.replace_all_defs_with(value, target);
                 ctx.ud.replace_all_uses_with(value, target);

@@ -29,21 +29,32 @@ struct VirtualMachine {
 private:
     template <template <typename> class Op>
     void eval_binary(View& dest, const View& lhs, const View& rhs) const {
-        match(dest.type.as<ir::type::Primitive>(), [&](auto value) {
-            using type = typename decltype(value)::type;
-            if constexpr (std::is_floating_point_v<type> &&
-                          std::is_same_v<Op<type>, std::modulus<type>>) {
-                *(type*)dest.data = std::fmod(*(type*)lhs.data, *(type*)rhs.data);
+        using namespace ir::type;
+        Primitive dtype = dest.type.is<Reference>() ? Primitive{Int()} : dest.type.as<Primitive>();
+        Primitive ltype = lhs.type.is<Reference>() ? Primitive{Int()} : lhs.type.as<Primitive>();
+        Primitive rtype = rhs.type.is<Reference>() ? Primitive{Int()} : rhs.type.as<Primitive>();
+        Match{dtype, ltype, rtype}([&](auto d, auto l, auto r) {
+            using dtype = typename decltype(d)::type;
+            using ltype = typename decltype(l)::type;
+            using rtype = typename decltype(r)::type;
+            if constexpr (std::is_floating_point_v<dtype> &&
+                          std::is_same_v<Op<dtype>, std::modulus<dtype>>) {
+                *(dtype*)dest.data = std::fmod(*(ltype*)lhs.data, *(rtype*)rhs.data);
             } else {
-                *(type*)dest.data = Op<type>{}(*(type*)lhs.data, *(type*)rhs.data);
+                *(dtype*)dest.data = Op<dtype>{}(*(ltype*)lhs.data, *(rtype*)rhs.data);
             }
         });
     }
 
     template <template <typename> class Op> void eval_unary(View& dest, const View& operand) const {
-        match(dest.type.as<ir::type::Primitive>(), [&](auto value) {
-            using type = typename decltype(value)::type;
-            *(type*)dest.data = Op<type>{}(*(type*)operand.data);
+        using namespace ir::type;
+        auto dtype = operand.type.is<Reference>() ? Primitive{Int()}
+                                                  : operand.type.as<Primitive>();
+        auto otype = dest.type.is<Reference>() ? Primitive{Int()} : dest.type.as<Primitive>();
+        Match{dtype, otype}([&](auto d, auto o) {
+            using dtype = typename decltype(d)::type;
+            using otype = typename decltype(o)::type;
+            *(dtype*)dest.data = Op<dtype>{}(*(otype*)operand.data);
         });
     }
 
@@ -83,10 +94,12 @@ private:
 
     void assign(ir::type::Int, std::byte* dest, ir::type::Int32, const std::byte* src) const;
     void assign(ir::type::Int, std::byte* dest, ir::type::Int1, const std::byte* src) const;
-    void assign(ir::type::Int, std::byte* dest, const ir::type::Reference&, const std::byte* src) const;
+    void assign(ir::type::Int, std::byte* dest, const ir::type::Reference&,
+                const std::byte* src) const;
     void assign(ir::type::Int32, std::byte* dest, ir::type::Int, const std::byte* src) const;
     void assign(ir::type::Int1, std::byte* dest, ir::type::Int, const std::byte* src) const;
-    void assign(const ir::type::Reference&, std::byte* dest, ir::type::Int, const std::byte* src) const;
+    void assign(const ir::type::Reference&, std::byte* dest, ir::type::Int,
+                const std::byte* src) const;
 
     void assign(ir::type::Float, std::byte* dest, ir::type::Float32, const std::byte* src) const;
     void assign(ir::type::Float, std::byte* dest, ir::type::Float64, const std::byte* src) const;
@@ -293,35 +306,32 @@ public:
                 auto is_ref = lhs.type.is<Reference>();
                 if (is_ref) check_ref(lhs.type, "binary load");
                 auto offset = *(int*)rhs.data;
-                auto elem_type =
-                    is_ref ? lhs.type.as<Reference>().elem : lhs.type.as<Array>().elem;
+                auto elem_type = is_ref ? lhs.type.as<Reference>().elem : lhs.type.as<Array>().elem;
                 auto base = is_ref ? *(std::byte**)lhs.data : lhs.data;
                 assign(dest.type, dest.data, elem_type, base + offset * size_of(elem_type));
             };
 
         auto borrow_elem = [this, check_ref, check_indexing](View& dest, const View& lhs,
-                                                              const View& rhs, bool readonly) {
+                                                             const View& rhs, bool readonly) {
             check_indexing(lhs.type, rhs.type);
             auto is_ref = lhs.type.is<Reference>();
             if (is_ref) check_ref(lhs.type, "binary borrow_elem");
             auto offset = *(int*)rhs.data;
-            auto elem_type =
-                is_ref ? lhs.type.as<Reference>().elem : lhs.type.as<Array>().elem;
+            auto elem_type = is_ref ? lhs.type.as<Reference>().elem : lhs.type.as<Array>().elem;
             auto base = is_ref ? *(std::byte**)lhs.data : lhs.data;
             auto elem_ptr = base + offset * size_of(elem_type);
-            assign(dest.type, dest.data, elem_type.borrow(readonly),
-                   (std::byte*)&elem_ptr);
+            assign(dest.type, dest.data, elem_type.borrow(readonly), (std::byte*)&elem_ptr);
         };
 
-        binary_ops[InstOp::BORROW_ELEM] =
-            [borrow_elem](View& dest, const View& lhs, const View& rhs) {
-                borrow_elem(dest, lhs, rhs, true);
-            };
+        binary_ops[InstOp::BORROW_ELEM] = [borrow_elem](View& dest, const View& lhs,
+                                                        const View& rhs) {
+            borrow_elem(dest, lhs, rhs, true);
+        };
 
-        binary_ops[InstOp::BORROW_ELEM_MUT] =
-            [borrow_elem](View& dest, const View& lhs, const View& rhs) {
-                borrow_elem(dest, lhs, rhs, false);
-            };
+        binary_ops[InstOp::BORROW_ELEM_MUT] = [borrow_elem](View& dest, const View& lhs,
+                                                            const View& rhs) {
+            borrow_elem(dest, lhs, rhs, false);
+        };
 
         binary_ops[InstOp::STORE] = [this, check_ref](View& dest, const View& lhs,
                                                       const View& rhs) {

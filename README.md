@@ -27,18 +27,19 @@ compiler [args]... files ...
     --ir                    Print the generated IR
     --ir-info               Print analysis result of the generated IR
 
-    --ssa                   Convert generated IR to SSA form
     --retain-ssa-value      Do not convert SSAValue to TempValue in IR
 
-    --optimize-copy         Apply Copy Propagation optimization (triggers --ssa)
-    --optimize-const        Apply Const Propagation optimization (triggers --ssa)
-    --optimize-def          Apply Dead Definition Elimination optimization (triggers --ssa)
-    --optimize-alloc        Apply Dead Allocation Elimination optimization (triggers --ssa, better with --ssa2temp)
-    --optimize-temp         Apply Dead Temporary Value Elimination optimization (triggers --ssa)
-    --optimize-block        Apply Dead/Trivial Block Elimination optimization (triggers --ssa)
-    --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts) (triggers --ssa)
-    --optimize-exp          Apply Common Subexpression Elimination optimization (triggers --ssa)
+    --optimize-copy         Apply Copy Propagation optimization
+    --optimize-const        Apply Const Propagation optimization
+    --optimize-def          Apply Dead Definition Elimination optimization
+    --optimize-alloc        Apply Dead Allocation Elimination optimization (better with --ssa2temp)
+    --optimize-temp         Apply Dead Temporary Value Elimination optimization
+    --optimize-block        Apply Dead/Trivial Block Elimination optimization
+    --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts)
+    --optimize-exp          Apply Common Subexpression Elimination optimization
     -O1, --optimize         Apply above optimizations, --no-optimize-[...] to disable specific optimizations
+
+    --lowering              Apply lowering transformations to the IR
 
     --exec                  Execute the generated IR
     --silent                Suppress all compiler output except the return value when executing
@@ -103,6 +104,7 @@ src/
 │   │   ├── ir.h
 │   │   ├── lowering/
 │   │   │   ├── abi.hpp
+│   │   │   ├── addr.hpp
 │   │   │   ├── reg2mem.hpp
 │   │   │   └── regalloc/
 │   │   │       ├── colorize.hpp:	Chaitin-Briggs Graph Coloring Register Allocator
@@ -182,7 +184,7 @@ src/
     ├── traits.hpp
     └── tui.h
 
-19 directories, 83 files
+19 directories, 84 files
 ```
 <!--/source_tree-->
 

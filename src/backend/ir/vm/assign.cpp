@@ -8,7 +8,6 @@
 #include <cstddef>
 #include <cstring>
 #include <type_traits>
-#include <variant>
 #include <vector>
 
 namespace ir::vm {

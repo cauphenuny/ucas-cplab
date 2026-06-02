@@ -5,8 +5,9 @@
 #include "backend/ir/analysis/dominance.hpp"
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.h"
-#include "backend/ir/lowering/regalloc/main.hpp"
+#include "backend/ir/lowering/addr.hpp"
 #include "backend/ir/lowering/reg2mem.hpp"
+#include "backend/ir/lowering/regalloc/main.hpp"
 #include "backend/ir/transform/framework.hpp"
 #include "backend/ir/transform/optim/common_expr.hpp"
 #include "backend/ir/transform/optim/const_propagation.hpp"
@@ -64,18 +65,19 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --ir                    Print the generated IR
     --ir-info               Print analysis result of the generated IR
 
-    --ssa                   Convert generated IR to SSA form
     --retain-ssa-value      Do not convert SSAValue to TempValue in IR
 
-    --optimize-copy         Apply Copy Propagation optimization (triggers --ssa)
-    --optimize-const        Apply Const Propagation optimization (triggers --ssa)
-    --optimize-def          Apply Dead Definition Elimination optimization (triggers --ssa)
-    --optimize-alloc        Apply Dead Allocation Elimination optimization (triggers --ssa, better with --ssa2temp)
-    --optimize-temp         Apply Dead Temporary Value Elimination optimization (triggers --ssa)
-    --optimize-block        Apply Dead/Trivial Block Elimination optimization (triggers --ssa)
-    --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts) (triggers --ssa)
-    --optimize-exp          Apply Common Subexpression Elimination optimization (triggers --ssa)
+    --optimize-copy         Apply Copy Propagation optimization
+    --optimize-const        Apply Const Propagation optimization
+    --optimize-def          Apply Dead Definition Elimination optimization
+    --optimize-alloc        Apply Dead Allocation Elimination optimization (better with --ssa2temp)
+    --optimize-temp         Apply Dead Temporary Value Elimination optimization
+    --optimize-block        Apply Dead/Trivial Block Elimination optimization
+    --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts)
+    --optimize-exp          Apply Common Subexpression Elimination optimization
     -O1, --optimize         Apply above optimizations, --no-optimize-[...] to disable specific optimizations
+
+    --lowering              Apply lowering transformations to the IR
 
     --exec                  Execute the generated IR
     --silent                Suppress all compiler output except the return value when executing
@@ -140,8 +142,10 @@ int main(int argc, const char* argv[]) {
     bool print_ir_info = false;
     bool execute = false;
     bool silent = false;
-    bool to_ssa = false;
+
     bool retain_ssa_value = false;
+
+    bool lowering = false;
 
     bool optimize_alloc = false;
     bool optimize_def = false;
@@ -172,14 +176,14 @@ int main(int argc, const char* argv[]) {
             print_ast_info = true;
         } else if (arg == "--ir-info") {
             print_ir_info = true;
-        } else if (arg == "--ssa") {
-            to_ssa = true;
         } else if (arg == "--retain-ssa-value") {
             retain_ssa_value = true;
         } else if (arg == "--exec") {
             execute = true;
         } else if (arg == "--silent") {
             silent = true;
+        } else if (arg == "--lowering") {
+            lowering = true;
         } else if (arg == "-O1" || arg == "--optimize") {
             optimize_copy = true;
             optimize_const = true;
@@ -233,10 +237,6 @@ int main(int argc, const char* argv[]) {
 
     bool optimize = optimize_def || optimize_exp || optimize_copy || optimize_alloc ||
                     optimize_const || optimize_inline || optimize_temp;
-    if (optimize && !to_ssa) {
-        // warning("Optimization requires SSA form. Auto enabling SSA form.");
-        to_ssa = true;
-    }
 
     if (optimize && !silent) {
         std::stringstream ss;
@@ -313,70 +313,91 @@ int main(int argc, const char* argv[]) {
 
                 {
                     using namespace ir::transform;
-                    if (to_ssa) {
-                        ConstructSSA().apply(program);
-                        echo(program, fmt::format("#{} SSA Form", pass_id++));
-                    }
-                }
-
-                if (optimize) {
-                    using namespace ir::transform;
-                    std::vector<std::pair<std::unique_ptr<SSAPass>, std::string>> passes;
+                    ConstructSSA().apply(program);
+                    echo(program, fmt::format("#{} SSA Form", pass_id++));
                     SSAPassContext ctx(program);
-                    if (!retain_ssa_value) {
-                        passes.emplace_back(std::make_unique<SSAValue2TempValue<SSAPassContext>>(),
-                                            "SSAValue to TempValue");
+                    if (optimize || lowering) {
+                        using namespace ir::transform;
+                        std::vector<std::pair<std::unique_ptr<SSAPass>, std::string>> passes;
+                        if (!retain_ssa_value) {
+                            passes.emplace_back(
+                                std::make_unique<SSAValue2TempValue<SSAPassContext>>(),
+                                "SSAValue to TempValue");
+                        }
+                        if (optimize_copy) {
+                            passes.emplace_back(std::make_unique<CopyPropagation>(),
+                                                "Copy Propagation");
+                        }
+                        if (optimize_const) {
+                            passes.emplace_back(std::make_unique<ConstPropagation>(),
+                                                "Const Propagation");
+                        }
+                        if (optimize_def) {
+                            passes.emplace_back(std::make_unique<DeadDefElimination>(),
+                                                "Dead Definition Elimination");
+                        }
+                        if (optimize_alloc) {
+                            passes.emplace_back(
+                                std::make_unique<DeadAllocElimination<SSAPassContext>>(),
+                                "Dead Allocation Elimination");
+                        }
+                        if (optimize_temp) {
+                            passes.emplace_back(
+                                std::make_unique<DeadTempElimination<SSAPassContext>>(),
+                                "Dead Temporary Value Elimination");
+                        }
+                        if (optimize_exp) {
+                            passes.emplace_back(std::make_unique<DeadBlockElimination>(),
+                                                "Dead Block Elimination");
+                            passes.emplace_back(std::make_unique<CommonSubexprElimination>(),
+                                                "Common Subexpression Elimination");
+                        }
+                        if (optimize_block) {
+                            passes.emplace_back(std::make_unique<SimplifyCFG>(),
+                                                "CFG Simplification");
+                            passes.emplace_back(std::make_unique<DeadBlockElimination>(),
+                                                "Dead Block Elimination");
+                        }
+                        if (optimize_inline) {
+                            passes.emplace_back(std::make_unique<Inlining>(optimize_inline),
+                                                "Function Call Inlining");
+                        }
+                        if (lowering) {
+                            passes.emplace_back(std::make_unique<ir::lowering::AddressLowering>(rv64::ABI),
+                                                "Address Lowering");
+                        }
+                        while (apply(program, ctx, passes));
                     }
-                    if (optimize_copy) {
-                        passes.emplace_back(std::make_unique<CopyPropagation>(),
-                                            "Copy Propagation");
-                    }
-                    if (optimize_const) {
-                        passes.emplace_back(std::make_unique<ConstPropagation>(),
-                                            "Const Propagation");
-                    }
-                    if (optimize_def) {
-                        passes.emplace_back(std::make_unique<DeadDefElimination>(),
-                                            "Dead Definition Elimination");
-                    }
-                    if (optimize_alloc) {
-                        passes.emplace_back(
-                            std::make_unique<DeadAllocElimination<SSAPassContext>>(),
-                            "Dead Allocation Elimination");
-                    }
-                    if (optimize_temp) {
-                        passes.emplace_back(std::make_unique<DeadTempElimination<SSAPassContext>>(),
-                                            "Dead Temporary Value Elimination");
-                    }
-                    if (optimize_exp) {
-                        passes.emplace_back(std::make_unique<DeadBlockElimination>(),
-                                            "Dead Block Elimination");
-                        passes.emplace_back(std::make_unique<CommonSubexprElimination>(),
-                                            "Common Subexpression Elimination");
-                    }
-                    if (optimize_block) {
-                        passes.emplace_back(std::make_unique<SimplifyCFG>(), "CFG Simplification");
-                        passes.emplace_back(std::make_unique<DeadBlockElimination>(),
-                                            "Dead Block Elimination");
-                    }
-                    if (optimize_inline) {
-                        passes.emplace_back(std::make_unique<Inlining>(optimize_inline),
-                                            "Function Call Inlining");
-                    }
-                    while (apply(program, ctx, passes));
+
                 }
 
                 if (output_file && print_ir) {
                     fmt::println(output_file, "{}", program);
                 }
 
-                ir::transform::NonSSAPassContext ctx(program);
+                {
+                    ir::transform::NonSSAPassContext ctx(program);
 
-                // exit SSA
-                if (to_ssa) {
-                    using namespace ir::transform;
-                    DestructSSA().apply(program, ctx);
-                    echo(program, fmt::format("#{} Exit SSA Form", pass_id++));
+                    if (lowering && false) {
+                        using namespace ir::lowering;
+                        using namespace ir::transform;
+                        using Context = ir::transform::NonSSAPassContext;
+                        DestructSSA().apply(program, ctx);
+                        echo(program, fmt::format("#{} Exit SSA Form", pass_id++));
+
+                        RegToMem(rv64::ABI).apply(program, ctx);
+                        auto regalloc = RegisterAllocation(rv64::ABI);
+                        regalloc.apply(program, ctx);
+                        echo(program, fmt::format("#{} Register Allocation", pass_id++));
+
+                        RedundantMoveElimination<Context>(regalloc.colored, regalloc.precolored)
+                            .apply(program, ctx);
+                        echo(program, fmt::format("#{} Redundant Move Elimination", pass_id++));
+
+                        DeadAllocElimination<Context>().apply(program, ctx);
+                        DeadTempElimination<Context>().apply(program, ctx);
+                        echo(program, fmt::format("#{} Dead Alloc/Temp Elimination", pass_id++));
+                    }
                 }
 
                 if (execute) {
@@ -391,22 +412,6 @@ int main(int argc, const char* argv[]) {
                     } else {
                         fmt::println("{}", ret);
                     }
-                }
-
-                {
-                    using namespace ir::lowering;
-                    using namespace ir::transform;
-                    using Context = ir::transform::NonSSAPassContext;
-                    RegToMem(rv64::ABI).apply(program, ctx);
-                    auto regalloc = RegisterAllocation(rv64::ABI);
-                    regalloc.apply(program, ctx);
-                    echo(program, fmt::format("#{} Register Allocation", pass_id++));
-                    RedundantMoveElimination<Context>(regalloc.colored, regalloc.precolored)
-                        .apply(program, ctx);
-                    echo(program, fmt::format("#{} Redundant Move Elimination", pass_id++));
-                    DeadAllocElimination<Context>().apply(program, ctx);
-                    DeadTempElimination<Context>().apply(program, ctx);
-                    echo(program, fmt::format("#{} Dead Alloc/Temp Elimination", pass_id++));
                 }
 
                 if (!silent) {

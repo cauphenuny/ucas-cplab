@@ -3,8 +3,6 @@
 #include "backend/ir/lowering/abi.hpp"
 #include "inst.hpp"
 
-#include <string>
-
 namespace rv64 {
 
 namespace abi {
@@ -28,7 +26,7 @@ inline const ir::lowering::RegisterABI FPR = {
     .name = [](size_t index) { return fmt::format("{}", FloatReg(index)); },
 };
 
-inline size_t size_of(const ir::Type& type) {
+inline size_t size(const ir::Type& type) {
     using namespace ir::type;
     if (type.is<Primitive>()) {
         return Match{type.as<Primitive>()}(
@@ -39,14 +37,21 @@ inline size_t size_of(const ir::Type& type) {
     if (type == ir::type::unit()) {
         return 0;
     }
-    throw UNIMPLEMENTED_ERROR("size_of: non-primitive type");
+    if (type.is<Reference>()) {
+        return 8;
+    }
+    if (type.is<Array>()) {
+        auto& array_type = type.as<Array>();
+        return size(array_type.elem) * array_type.size;
+    }
+    throw UNIMPLEMENTED_ERROR(fmt::format("size: non-trivial type {}", type));
 }
 
 }  // namespace abi
 
 inline const ir::lowering::TargetABI ABI = {
     .reg = {.generals = abi::GPR, .floats = abi::FPR, .return_addr = 1},
-    .mem = {.stack_alignment = 16, .size = abi::size_of, .align = abi::size_of},
+    .mem = {.stack_alignment = 16, .size = abi::size, .align = abi::size},
 };
 
 }  // namespace rv64
