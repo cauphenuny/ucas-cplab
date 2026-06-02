@@ -120,6 +120,58 @@ private:
                         if (auto folded = ConstexprFolder::fold(binary->op, *cl, *cr)) {
                             changed |= ctx.ud.replace_all_uses_with(*binary->result, *folded);
                         }
+                    } else if (binary->result) {
+                        // Identity element simplification: x+0, x-0, x*1, 0+x, 1*x
+                        auto is_zero = [](const ConstexprValue& c) {
+                            return std::visit(
+                                [](const auto& v) -> bool {
+                                    if constexpr (std::is_same_v<std::decay_t<decltype(v)>,
+                                                                 std::monostate> ||
+                                                  std::is_same_v<std::decay_t<decltype(v)>,
+                                                                 std::unique_ptr<std::byte[]>>)
+                                        return false;
+                                    else
+                                        return v == decltype(v){0};
+                                },
+                                c.val);
+                        };
+                        auto is_one = [](const ConstexprValue& c) {
+                            return std::visit(
+                                [](const auto& v) -> bool {
+                                    if constexpr (std::is_same_v<std::decay_t<decltype(v)>,
+                                                                 std::monostate> ||
+                                                  std::is_same_v<std::decay_t<decltype(v)>,
+                                                                 std::unique_ptr<std::byte[]>> ||
+                                                  std::is_same_v<std::decay_t<decltype(v)>, bool>)
+                                        return false;
+                                    else
+                                        return v == decltype(v){1};
+                                },
+                                c.val);
+                        };
+                        std::optional<Value> identity_result;
+                        switch (binary->op) {
+                            case InstOp::ADD:
+                                if (cr && is_zero(*cr))
+                                    identity_result = binary->lhs;
+                                else if (cl && is_zero(*cl))
+                                    identity_result = binary->rhs;
+                                break;
+                            case InstOp::SUB:
+                                if (cr && is_zero(*cr)) identity_result = binary->lhs;
+                                break;
+                            case InstOp::MUL:
+                                if (cr && is_one(*cr))
+                                    identity_result = binary->lhs;
+                                else if (cl && is_one(*cl))
+                                    identity_result = binary->rhs;
+                                break;
+                            default: break;
+                        }
+                        if (identity_result) {
+                            changed |=
+                                ctx.ud.replace_all_uses_with(*binary->result, *identity_result);
+                        }
                     }
                 } else if (auto phi = std::get_if<PhiInst>(&inst)) {
                     std::optional<ConstexprValue> common;
