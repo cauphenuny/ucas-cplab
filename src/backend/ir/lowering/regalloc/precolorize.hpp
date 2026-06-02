@@ -133,8 +133,8 @@ private:
                 }
             }
         };
-        save(abi.reg.generals.callee_saved, "x", type::construct<int>());
-        save(abi.reg.floats.callee_saved, "f", type::construct<double>());
+        save(abi.reg.generals.callee_saved, "x", type::integer());
+        save(abi.reg.floats.callee_saved, "f", type::floating());
     }
 
     void colorize_call(Block& block, Func& func, Program& prog) {

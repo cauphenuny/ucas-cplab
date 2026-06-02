@@ -123,7 +123,7 @@ src/
 │   │   │   │   ├── const_propagation.hpp:	Const Propagation Pass, requires SSA
 │   │   │   │   ├── copy_propagation.hpp:	Copy Propagation Pass, requires SSA
 │   │   │   │   ├── dead_alloc.hpp:	Dead Allocation Elimination Pass
-│   │   │   │   ├── dead_block.hpp:	CFG Simplification & Dead Block Elimination Pass, requires SSA
+│   │   │   │   ├── dead_block.hpp:	CFG Simplification & Dead Block Elimination Pass
 │   │   │   │   ├── dead_def.hpp:	Dead Definition Elimination Pass, requires SSA
 │   │   │   │   └── inline.hpp:	Inline Pass, requires SSA
 │   │   │   └── ssa/

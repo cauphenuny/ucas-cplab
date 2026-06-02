@@ -287,44 +287,41 @@ int main(int argc, const char* argv[]) {
                 auto program_box = ir::gen::generate(code);
                 auto& program = *program_box;
 
+                size_t pass_id = 0;
+
                 auto echo = [&](const ir::Program& program, const std::string& name) {
                     if (print_ir) {
-                        fmt::println("{}:\n{}\n", name, program);
+                        fmt::println("#{} {}:\n{}\n", pass_id++, name, program);
                     }
                     if (print_ir_info) {
                         analysis(program);
                     }
                 };
 
-                size_t pass_id = 0;
+                auto apply = [&](ir::Program& program, auto& ctx, const auto& passes) {
+                    bool any_changed = false;
+                    for (auto& [pass, name] : passes) {
+                        try {
 
-                auto apply =
-                    [&](ir::Program& program, ir::transform::SSAPassContext& ctx,
-                        const std::vector<std::pair<std::unique_ptr<ir::transform::SSAPass>,
-                                                    std::string>>& passes) {
-                        bool any_changed = false;
-                        for (auto& [pass, name] : passes) {
-                            try {
-
-                                bool pass_changed = pass->apply(program, ctx);
-                                if (pass_changed) {
-                                    echo(program, fmt::format("#{} {}", pass_id++, name));
-                                }
-                                any_changed |= pass_changed;
-                            } catch (const CompilerError& e) {
-                                fmt::println("Error during pass '{}': {}", name, e.what());
-                                exit(RUNTIME_ERROR);
+                            bool pass_changed = pass->apply(program, ctx);
+                            if (pass_changed) {
+                                echo(program, name);
                             }
+                            any_changed |= pass_changed;
+                        } catch (const CompilerError& e) {
+                            fmt::println("Error during pass '{}': {}", name, e.what());
+                            exit(RUNTIME_ERROR);
                         }
-                        return any_changed;
-                    };
+                    }
+                    return any_changed;
+                };
 
                 echo(program, "Generated IR");
 
                 {
                     using namespace ir::transform;
                     ConstructSSA().apply(program);
-                    echo(program, fmt::format("#{} SSA Form", pass_id++));
+                    echo(program, "SSA Form");
                     SSAPassContext ctx(program);
                     if (optimize || lowering) {
                         using namespace ir::transform;
@@ -357,28 +354,30 @@ int main(int argc, const char* argv[]) {
                                 "Dead Temporary Value Elimination");
                         }
                         if (optimize_exp) {
-                            passes.emplace_back(std::make_unique<DeadBlockElimination>(),
-                                                "Dead Block Elimination");
+                            passes.emplace_back(
+                                std::make_unique<DeadBlockElimination<SSAPassContext>>(),
+                                "Dead Block Elimination");
                             passes.emplace_back(std::make_unique<CommonSubexprElimination>(),
                                                 "Common Subexpression Elimination");
                         }
                         if (optimize_block) {
-                            passes.emplace_back(std::make_unique<SimplifyCFG>(),
+                            passes.emplace_back(std::make_unique<SimplifyCFG<SSAPassContext>>(),
                                                 "CFG Simplification");
-                            passes.emplace_back(std::make_unique<DeadBlockElimination>(),
-                                                "Dead Block Elimination");
+                            passes.emplace_back(
+                                std::make_unique<DeadBlockElimination<SSAPassContext>>(),
+                                "Dead Block Elimination");
                         }
                         if (optimize_inline) {
                             passes.emplace_back(std::make_unique<Inlining>(optimize_inline),
                                                 "Function Call Inlining");
                         }
                         if (lowering_addr) {
-                            passes.emplace_back(std::make_unique<ir::lowering::AddressLowering>(rv64::ABI),
-                                                "Address Lowering");
+                            passes.emplace_back(
+                                std::make_unique<ir::lowering::AddressLowering>(rv64::ABI),
+                                "Address Lowering");
                         }
                         while (apply(program, ctx, passes));
                     }
-
                 }
 
                 if (output_file && print_ir) {
@@ -393,20 +392,31 @@ int main(int argc, const char* argv[]) {
                         using namespace ir::transform;
                         using Context = ir::transform::NonSSAPassContext;
                         DestructSSA().apply(program, ctx);
-                        echo(program, fmt::format("#{} Exit SSA Form", pass_id++));
+                        echo(program, "Exit SSA Form");
 
                         RegToMem(rv64::ABI).apply(program, ctx);
                         auto regalloc = RegisterAllocation(rv64::ABI);
                         regalloc.apply(program, ctx);
-                        echo(program, fmt::format("#{} Register Allocation", pass_id++));
+                        echo(program, "Register Allocation");
 
                         RedundantMoveElimination<Context>(regalloc.colored, regalloc.precolored)
                             .apply(program, ctx);
-                        echo(program, fmt::format("#{} Redundant Move Elimination", pass_id++));
+                        echo(program, "Redundant Move Elimination");
 
-                        DeadAllocElimination<Context>().apply(program, ctx);
-                        DeadTempElimination<Context>().apply(program, ctx);
-                        echo(program, fmt::format("#{} Dead Alloc/Temp Elimination", pass_id++));
+                        std::vector<std::pair<std::unique_ptr<NonSSAPass>, std::string>> passes;
+                        if (optimize_alloc)
+                            passes.emplace_back(std::make_unique<DeadAllocElimination<Context>>(),
+                                                "Dead Allocation Elimination");
+                        if (optimize_temp)
+                            passes.emplace_back(std::make_unique<DeadTempElimination<Context>>(),
+                                                "Dead Temporary Elimination");
+                        if (optimize_block) {
+                            passes.emplace_back(std::make_unique<DeadBlockElimination<Context>>(),
+                                                "Dead Block Elimination");
+                            passes.emplace_back(std::make_unique<SimplifyCFG<Context>>(),
+                                                "CFG Simplification");
+                        }
+                        while (apply(program, ctx, passes));
                     }
                 }
 

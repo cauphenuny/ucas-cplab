@@ -1,4 +1,4 @@
-/// @brief CFG Simplification & Dead Block Elimination Pass, requires SSA
+/// @brief CFG Simplification & Dead Block Elimination Pass
 
 #pragma once
 
@@ -20,8 +20,9 @@ namespace ir::transform {
 
 /// @note eliminate unreachable blocks.
 
-struct DeadBlockElimination : SSAPass {
-    bool apply(Program& prog, SSAPassContext& ctx) override {
+template<typename Context>
+struct DeadBlockElimination : Pass<Context> {
+    bool apply(Program& prog, Context& ctx) override {
         if (!prog.is_ssa) {
             throw COMPILER_ERROR("DeadBlockElimination requires SSA form");
         }
@@ -107,8 +108,9 @@ private:
 /// 1. replace block with only a jump exit by its target
 /// 2. redirect empty entrance to its target
 
-struct SimplifyCFG : SSAPass {
-    bool apply(Program& prog, SSAPassContext& ctx) override {
+template<typename Context>
+struct SimplifyCFG : Pass<Context> {
+    bool apply(Program& prog, Context& ctx) override {
         bool changed = false;
         while (replace(prog)) changed = true;
         return changed;

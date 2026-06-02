@@ -121,14 +121,16 @@ int main(int argc, const char* argv[]) {
         {"exp",
          []() {
              return std::make_unique<ir::transform::Compose<
-                 ir::transform::SSAPassContext, ir::transform::DeadBlockElimination,
+                 ir::transform::SSAPassContext,
+                 ir::transform::DeadBlockElimination<ir::transform::SSAPassContext>,
                  ir::transform::CommonSubexprElimination>>();
          }},
         {"block",
          []() {
-             return std::make_unique<
-                 ir::transform::Compose<ir::transform::SSAPassContext, ir::transform::SimplifyCFG,
-                                        ir::transform::DeadBlockElimination>>();
+             return std::make_unique<ir::transform::Compose<
+                 ir::transform::SSAPassContext,
+                 ir::transform::SimplifyCFG<ir::transform::SSAPassContext>,
+                 ir::transform::DeadBlockElimination<ir::transform::SSAPassContext>>>();
          }},
         {"addr", []() { return std::make_unique<ir::lowering::AddressLowering>(rv64::ABI); }},
     };
