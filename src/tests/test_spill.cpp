@@ -68,8 +68,7 @@ InstCounts count_io(const Block& block) {
 /// verification callback.
 using ValuesFactory = std::function<std::vector<LeftValue>(Program&)>;
 
-void test_spill(const std::string& name, const std::string& ir_text,
-                ValuesFactory make_values,
+void test_spill(const std::string& name, const std::string& ir_text, ValuesFactory make_values,
                 const std::function<void(Program&, bool changed)>& verify) {
     fmt::println("Test: {}", name);
     try {
@@ -142,7 +141,8 @@ int main() {
     // Test 1: Empty spill list.
     // Spill({}) should return false and leave the IR unchanged.
     // ------------------------------------------------------------------
-    test_spill("Empty spill list", R"(
+    test_spill(
+        "Empty spill list", R"(
 fn main() -> i32 {
     'entry: {
         %0: i32 = 42;
@@ -150,22 +150,23 @@ fn main() -> i32 {
     }
 }
 )",
-              [](Program&) { return std::vector<LeftValue>{}; },
-              [](Program& prog, bool changed) {
-                  check(!changed, "apply returns false (empty spill list)");
-                  auto& func = prog.findFunc("main");
-                  auto* entry = func.findBlock("entry");
-                  auto counts = count_io(*entry);
-                  check(counts.loads == 0, "no LOAD instructions");
-                  check(counts.stores == 0, "no STORE instructions");
-              });
+        [](Program&) { return std::vector<LeftValue>{}; },
+        [](Program& prog, bool changed) {
+            check(!changed, "apply returns false (empty spill list)");
+            auto& func = prog.findFunc("main");
+            auto* entry = func.findBlock("entry");
+            auto counts = count_io(*entry);
+            check(counts.loads == 0, "no LOAD instructions");
+            check(counts.stores == 0, "no STORE instructions");
+        });
 
     // ------------------------------------------------------------------
     // Test 2: Spill a NamedValue (local variable).
     //   @x: i32 = 42; return @x;
     // After spill: @x is reference, LOAD/STORE inserted.
     // ------------------------------------------------------------------
-    test_spill("Spill NamedValue (local)", R"(
+    test_spill(
+        "Spill NamedValue (local)", R"(
 fn main() -> i32 {
     let mut x: i32;
     'entry: {
@@ -174,27 +175,28 @@ fn main() -> i32 {
     }
 }
 )",
-              [](Program& prog) {
-                  auto& func = prog.findFunc("main");
-                  return std::vector{named(func, "x")};
-              },
-              [](Program& prog, bool changed) {
-                  check(changed, "apply returns true");
-                  auto& func = prog.findFunc("main");
-                  auto* xalloc = func.findAlloc("x");
-                  check(xalloc->reference, "@x alloc is reference after spill");
-                  auto* entry = func.findBlock("entry");
-                  auto counts = count_io(*entry);
-                  check(counts.loads >= 1, "at least 1 LOAD in entry");
-                  check(counts.stores >= 1, "at least 1 STORE in entry");
-              });
+        [](Program& prog) {
+            auto& func = prog.findFunc("main");
+            return std::vector{named(func, "x")};
+        },
+        [](Program& prog, bool changed) {
+            check(changed, "apply returns true");
+            auto& func = prog.findFunc("main");
+            auto* xalloc = func.findAlloc("x");
+            check(xalloc->reference, "@x alloc is reference after spill");
+            auto* entry = func.findBlock("entry");
+            auto counts = count_io(*entry);
+            check(counts.loads >= 1, "at least 1 LOAD in entry");
+            check(counts.stores >= 1, "at least 1 STORE in entry");
+        });
 
     // ------------------------------------------------------------------
     // Test 3: Spill a TempValue.
     //   %0: i32 = 42; return %0;
     // Spill creates __spill_0 alloc, then spills it.
     // ------------------------------------------------------------------
-    test_spill("Spill TempValue", R"(
+    test_spill(
+        "Spill TempValue", R"(
 fn main() -> i32 {
     'entry: {
         %0: i32 = 42;
@@ -202,27 +204,28 @@ fn main() -> i32 {
     }
 }
 )",
-              [](Program& prog) {
-                  auto& func = prog.findFunc("main");
-                  return std::vector{temp(func, 0)};
-              },
-              [](Program& prog, bool changed) {
-                  check(changed, "apply returns true");
-                  auto& func = prog.findFunc("main");
-                  auto* spill_alloc = func.findAlloc("__spill_0");
-                  check(spill_alloc != nullptr, "__spill_0 alloc was created");
-                  check(spill_alloc->reference, "__spill_0 alloc is reference after spill");
-                  auto* entry = func.findBlock("entry");
-                  auto counts = count_io(*entry);
-                  check(counts.loads >= 1, "at least 1 LOAD in entry");
-                  check(counts.stores >= 1, "at least 1 STORE in entry");
-              });
+        [](Program& prog) {
+            auto& func = prog.findFunc("main");
+            return std::vector{temp(func, 0)};
+        },
+        [](Program& prog, bool changed) {
+            check(changed, "apply returns true");
+            auto& func = prog.findFunc("main");
+            auto* spill_alloc = func.findAlloc("__spill_0");
+            check(spill_alloc != nullptr, "__spill_0 alloc was created");
+            check(spill_alloc->reference, "__spill_0 alloc is reference after spill");
+            auto* entry = func.findBlock("entry");
+            auto counts = count_io(*entry);
+            check(counts.loads >= 1, "at least 1 LOAD in entry");
+            check(counts.stores >= 1, "at least 1 STORE in entry");
+        });
 
     // ------------------------------------------------------------------
     // Test 4: Spill both NamedValue and TempValue together.
     //   @x: i32 = 10; %0: i32 = @x + 5; return %0;
     // ------------------------------------------------------------------
-    test_spill("Spill mixed NamedValue + TempValue", R"(
+    test_spill(
+        "Spill mixed NamedValue + TempValue", R"(
 fn main() -> i32 {
     let mut x: i32;
     'entry: {
@@ -232,47 +235,48 @@ fn main() -> i32 {
     }
 }
 )",
-              [](Program& prog) {
-                  auto& func = prog.findFunc("main");
-                  return std::vector{named(func, "x"), temp(func, 0)};
-              },
-              [](Program& prog, bool changed) {
-                  check(changed, "apply returns true");
-                  auto& func = prog.findFunc("main");
-                  auto* xalloc = func.findAlloc("x");
-                  check(xalloc->reference, "@x alloc is reference after spill");
-                  auto* spill_alloc = func.findAlloc("__spill_0");
-                  check(spill_alloc != nullptr, "__spill_0 alloc was created");
-                  check(spill_alloc->reference, "__spill_0 alloc is reference after spill");
-                  auto* entry = func.findBlock("entry");
-                  auto counts = count_io(*entry);
-                  check(counts.loads >= 2, "at least 2 LOADs in entry");
-                  check(counts.stores >= 2, "at least 2 STOREs in entry");
-              });
+        [](Program& prog) {
+            auto& func = prog.findFunc("main");
+            return std::vector{named(func, "x"), temp(func, 0)};
+        },
+        [](Program& prog, bool changed) {
+            check(changed, "apply returns true");
+            auto& func = prog.findFunc("main");
+            auto* xalloc = func.findAlloc("x");
+            check(xalloc->reference, "@x alloc is reference after spill");
+            auto* spill_alloc = func.findAlloc("__spill_0");
+            check(spill_alloc != nullptr, "__spill_0 alloc was created");
+            check(spill_alloc->reference, "__spill_0 alloc is reference after spill");
+            auto* entry = func.findBlock("entry");
+            auto counts = count_io(*entry);
+            check(counts.loads >= 2, "at least 2 LOADs in entry");
+            check(counts.stores >= 2, "at least 2 STOREs in entry");
+        });
 
     // ------------------------------------------------------------------
     // Test 5: Spill a function parameter (NamedValue).
     // ------------------------------------------------------------------
-    test_spill("Spill function param", R"(
+    test_spill(
+        "Spill function param", R"(
 fn main(n: i32) -> i32 {
     'entry: {
         return @n;
     }
 }
 )",
-              [](Program& prog) {
-                  auto& func = prog.findFunc("main");
-                  return std::vector{named(func, "n")};
-              },
-              [](Program& prog, bool changed) {
-                  check(changed, "apply returns true");
-                  auto& func = prog.findFunc("main");
-                  auto* nalloc = func.findAlloc("n");
-                  check(nalloc->reference, "@n alloc is reference after spill");
-                  auto* entry = func.findBlock("entry");
-                  auto counts = count_io(*entry);
-                  check(counts.loads >= 1, "at least 1 LOAD in entry");
-              });
+        [](Program& prog) {
+            auto& func = prog.findFunc("main");
+            return std::vector{named(func, "n")};
+        },
+        [](Program& prog, bool changed) {
+            check(changed, "apply returns true");
+            auto& func = prog.findFunc("main");
+            auto* nalloc = func.findAlloc("n");
+            check(nalloc->reference, "@n alloc is reference after spill");
+            auto* entry = func.findBlock("entry");
+            auto counts = count_io(*entry);
+            check(counts.loads >= 1, "at least 1 LOAD in entry");
+        });
 
     // ------------------------------------------------------------------
     // Test 6: Spill SSAValue throws UNIMPLEMENTED_ERROR.
@@ -286,18 +290,18 @@ fn main() -> i32 {
     }
 }
 )",
-                     [](Program& prog) {
-                         auto& func = prog.findFunc("main");
-                         auto* x = func.findAlloc("x");
-                         return std::vector{
-                             LeftValue{SSAValue{type::construct<int>(), x, 0}}};
-                     });
+                      [](Program& prog) {
+                          auto& func = prog.findFunc("main");
+                          auto* x = func.findAlloc("x");
+                          return std::vector{LeftValue{SSAValue{type::construct<int>(), x, 0}}};
+                      });
 
     // ------------------------------------------------------------------
     // Test 7: Functional — spill NamedValue, execute via VM.
     //   @x = 10; @y = @x + @x; return @y;  -->  20
     // ------------------------------------------------------------------
-    test_spill_and_run("Spill NamedValue — VM execution", R"(
+    test_spill_and_run(
+        "Spill NamedValue — VM execution", R"(
 fn main() -> i32 {
     let mut x: i32;
     let mut y: i32;
@@ -309,17 +313,18 @@ fn main() -> i32 {
     }
 }
 )",
-                       [](Program& prog) {
-                           auto& func = prog.findFunc("main");
-                           return std::vector{named(func, "x"), named(func, "y")};
-                       },
-                       20);
+        [](Program& prog) {
+            auto& func = prog.findFunc("main");
+            return std::vector{named(func, "x"), named(func, "y")};
+        },
+        20);
 
     // ------------------------------------------------------------------
     // Test 8: Functional — spill TempValue, execute via VM.
     //   %0 = 7; %1 = %0 * 3; return %1;  -->  21
     // ------------------------------------------------------------------
-    test_spill_and_run("Spill TempValue — VM execution", R"(
+    test_spill_and_run(
+        "Spill TempValue — VM execution", R"(
 fn main() -> i32 {
     'entry: {
         %0: i32 = 7;
@@ -328,17 +333,18 @@ fn main() -> i32 {
     }
 }
 )",
-                       [](Program& prog) {
-                           auto& func = prog.findFunc("main");
-                           return std::vector{temp(func, 0), temp(func, 1)};
-                       },
-                       21);
+        [](Program& prog) {
+            auto& func = prog.findFunc("main");
+            return std::vector{temp(func, 0), temp(func, 1)};
+        },
+        21);
 
     // ------------------------------------------------------------------
     // Test 9: Functional — spill both NamedValue and TempValue, execute via VM.
     //   @x = 10; %0 = @x + 5; return %0;  -->  15
     // ------------------------------------------------------------------
-    test_spill_and_run("Spill mixed NamedValue + TempValue — VM execution", R"(
+    test_spill_and_run(
+        "Spill mixed NamedValue + TempValue — VM execution", R"(
 fn main() -> i32 {
     let mut x: i32;
     'entry: {
@@ -348,17 +354,18 @@ fn main() -> i32 {
     }
 }
 )",
-                       [](Program& prog) {
-                           auto& func = prog.findFunc("main");
-                           return std::vector{named(func, "x"), temp(func, 0)};
-                       },
-                       15);
+        [](Program& prog) {
+            auto& func = prog.findFunc("main");
+            return std::vector{named(func, "x"), temp(func, 0)};
+        },
+        15);
 
     // ------------------------------------------------------------------
     // Test 10: Spill with loop — all blocks get LOAD/STORE.
     //   Sum 0..4 = 10 using @sum and @i.
     // ------------------------------------------------------------------
-    test_spill("Spill loop variables", R"(
+    test_spill(
+        "Spill loop variables", R"(
 fn main() -> i32 {
     let mut sum: i32;
     let mut i: i32;
@@ -383,28 +390,29 @@ fn main() -> i32 {
     }
 }
 )",
-              [](Program& prog) {
-                  auto& func = prog.findFunc("main");
-                  return std::vector{named(func, "sum"), named(func, "i")};
-              },
-              [](Program& prog, bool changed) {
-                  check(changed, "apply returns true");
-                  auto& func = prog.findFunc("main");
-                  check(func.findAlloc("sum")->reference, "@sum is reference");
-                  check(func.findAlloc("i")->reference, "@i is reference");
-                  for (auto* bname : {"entry", "cond", "body", "exit"}) {
-                      auto* block = func.findBlock(bname);
-                      auto counts = count_io(*block);
-                      check(counts.loads + counts.stores > 0,
-                            fmt::format("block '{} has LOAD/STORE", bname));
-                  }
-              });
+        [](Program& prog) {
+            auto& func = prog.findFunc("main");
+            return std::vector{named(func, "sum"), named(func, "i")};
+        },
+        [](Program& prog, bool changed) {
+            check(changed, "apply returns true");
+            auto& func = prog.findFunc("main");
+            check(func.findAlloc("sum")->reference, "@sum is reference");
+            check(func.findAlloc("i")->reference, "@i is reference");
+            for (auto* bname : {"entry", "cond", "body", "exit"}) {
+                auto* block = func.findBlock(bname);
+                auto counts = count_io(*block);
+                check(counts.loads + counts.stores > 0,
+                      fmt::format("block '{} has LOAD/STORE", bname));
+            }
+        });
 
     // ------------------------------------------------------------------
     // Test 11: Functional — loop with spilled variables, execute via VM.
     //   Sum 0..4 = 10 using @sum and @i.
     // ------------------------------------------------------------------
-    test_spill_and_run("Spill loop — VM execution", R"(
+    test_spill_and_run(
+        "Spill loop — VM execution", R"(
 fn main() -> i32 {
     let mut sum: i32;
     let mut i: i32;
@@ -429,16 +437,17 @@ fn main() -> i32 {
     }
 }
 )",
-                       [](Program& prog) {
-                           auto& func = prog.findFunc("main");
-                           return std::vector{named(func, "sum"), named(func, "i")};
-                       },
-                       10);
+        [](Program& prog) {
+            auto& func = prog.findFunc("main");
+            return std::vector{named(func, "sum"), named(func, "i")};
+        },
+        10);
 
     // ------------------------------------------------------------------
     // Test 12: Spill a global variable (NamedValue from global Alloc).
     // ------------------------------------------------------------------
-    test_spill("Spill global variable", R"(
+    test_spill(
+        "Spill global variable", R"(
 let x: i32 = 100;
 fn main() -> i32 {
     let mut y: i32;
@@ -449,21 +458,22 @@ fn main() -> i32 {
     }
 }
 )",
-              [](Program& prog) {
-                  auto* x = prog.findAlloc("x");
-                  return std::vector{LeftValue{x->value()}};
-              },
-              [](Program& prog, bool changed) {
-                  check(changed, "apply returns true");
-                  auto* xalloc = prog.findAlloc("x");
-                  check(xalloc->reference, "global x is reference after spill");
-              });
+        [](Program& prog) {
+            auto* x = prog.findAlloc("x");
+            return std::vector{LeftValue{x->value()}};
+        },
+        [](Program& prog, bool changed) {
+            check(changed, "apply returns true");
+            auto* xalloc = prog.findAlloc("x");
+            check(xalloc->reference, "global x is reference after spill");
+        });
 
     // ------------------------------------------------------------------
     // Test 13: Spill with diamond control flow — all blocks get LOAD/STORE.
     //   x=11, y=2, return 13.
     // ------------------------------------------------------------------
-    test_spill_and_run("Spill diamond control flow — VM execution", R"(
+    test_spill_and_run(
+        "Spill diamond control flow — VM execution", R"(
 fn main() -> i32 {
     let mut x: i32;
     let mut y: i32;
@@ -489,11 +499,11 @@ fn main() -> i32 {
     }
 }
 )",
-                       [](Program& prog) {
-                           auto& func = prog.findFunc("main");
-                           return std::vector{named(func, "x"), named(func, "y")};
-                       },
-                       13);
+        [](Program& prog) {
+            auto& func = prog.findFunc("main");
+            return std::vector{named(func, "x"), named(func, "y")};
+        },
+        13);
 
     fmt::println("\nResults: {} passed, {} failed", tests_passed, tests_failed);
     return tests_failed > 0 ? 1 : 0;

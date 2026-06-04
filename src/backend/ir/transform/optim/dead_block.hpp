@@ -20,8 +20,7 @@ namespace ir::transform {
 
 /// @note eliminate unreachable blocks.
 
-template<typename Context>
-struct DeadBlockElimination : Pass<Context> {
+template <typename Context> struct DeadBlockElimination : Pass<Context> {
     bool apply(Program& prog, Context& ctx) override {
         bool pass_changed = false;
         while (eliminate(prog)) pass_changed = true;
@@ -105,8 +104,7 @@ private:
 /// 1. replace block with only a jump exit by its target
 /// 2. redirect empty entrance to its target
 
-template<typename Context>
-struct SimplifyCFG : Pass<Context> {
+template <typename Context> struct SimplifyCFG : Pass<Context> {
     bool apply(Program& prog, Context& ctx) override {
         bool changed = false;
         while (replace(prog)) changed = true;

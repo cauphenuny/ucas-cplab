@@ -5,6 +5,7 @@
 #include "utils/match.hpp"
 #include "utils/traits.hpp"
 
+#include <list>
 #include <map>
 #include <memory>
 #include <optional>
@@ -18,7 +19,6 @@
 #include <utility>
 #include <variant>
 #include <vector>
-#include <list>
 
 namespace fmt_indent {
 

@@ -175,7 +175,8 @@ struct InterfereGraph {
                 for (auto inst_it = block->insts().rbegin(); inst_it != block->insts().rend();
                      ++inst_it) {
                     auto& inst = *inst_it;
-                    for (auto var : utils::vars(inst)) graph_of(*var).prior[*var] += USEDEF_PRIORITY;
+                    for (auto var : utils::vars(inst))
+                        graph_of(*var).prior[*var] += USEDEF_PRIORITY;
 
                     if (auto mov = std::get_if<UnaryInst>(&inst);
                         mov && (mov->op == UnaryInstOp::MOV || mov->op == UnaryInstOp::CONVERT)) {

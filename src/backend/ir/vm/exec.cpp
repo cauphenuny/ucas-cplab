@@ -95,6 +95,7 @@ auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View&
 
     while (it != block.insts().end()) {
         const auto& inst = *it;
+        // fmt::println(stderr, "-> {}", inst);
         try {
             match(
                 inst,
@@ -128,6 +129,7 @@ auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View&
         }
     }
     auto& exit = block.exit();
+    // fmt::println(stderr, "-> exit {}", exit);
     perf_counter.num_insts++;  // count exit instruction as well
     return match(
         exit,

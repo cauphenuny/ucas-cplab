@@ -13,7 +13,8 @@
 namespace ir::lowering {
 
 struct Spill : transform::NonSSAPass {
-    Spill(std::vector<LeftValue> values, bool verbose = false) : values(std::move(values)), verbose(verbose) {}
+    Spill(std::vector<LeftValue> values, bool verbose = false)
+        : values(std::move(values)), verbose(verbose) {}
     std::vector<LeftValue> values;
     bool verbose;
     bool apply(Program& prog, transform::NonSSAPassContext& ctx) override {

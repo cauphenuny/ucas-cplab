@@ -42,9 +42,8 @@ void check(bool cond, const std::string& msg) {
 
 using Graphs = std::pair<InterfereGraph, InterfereGraph>;
 
-void test_interfere(
-    const std::string& name, const std::string& ir_text,
-    const std::function<void(Program&, Graphs&, Precolorize&)>& verify) {
+void test_interfere(const std::string& name, const std::string& ir_text,
+                    const std::function<void(Program&, Graphs&, Precolorize&)>& verify) {
     fmt::println("Test: {}", name);
     try {
         auto stream = std::istringstream(ir_text);
@@ -145,8 +144,9 @@ fn f() -> i32 {
                    });
 
     // Test 4: GPR caller-saved — var live across call.
-    test_interfere("GPR caller-saved: var live across call → caller-saved proxies interfere",
-                   R"(
+    test_interfere(
+        "GPR caller-saved: var live across call → caller-saved proxies interfere",
+        R"(
 fn g() -> i32 {
     'entry: {
         return 1;
@@ -162,18 +162,17 @@ fn f() -> i32 {
     }
 }
 )",
-                   [](Program& prog, Graphs& gs, Precolorize& precolor) {
-                       auto& g = gs.first;
-                       auto& func = prog.findFunc("f");
-                       auto x = named(func, "x");
-                       for (auto reg : rv64::abi::GPR.caller_saved) {
-                           auto proxy_lv = LeftValue{
-                               precolor.precolored.at({ir::type::construct<int>(), reg})->value()};
-                           check(g.interferes(x, proxy_lv),
-                                 fmt::format("x interferes with GPR caller-saved proxy (reg {})",
-                                             reg));
-                       }
-                   });
+        [](Program& prog, Graphs& gs, Precolorize& precolor) {
+            auto& g = gs.first;
+            auto& func = prog.findFunc("f");
+            auto x = named(func, "x");
+            for (auto reg : rv64::abi::GPR.caller_saved) {
+                auto proxy_lv =
+                    LeftValue{precolor.precolored.at({ir::type::construct<int>(), reg})->value()};
+                check(g.interferes(x, proxy_lv),
+                      fmt::format("x interferes with GPR caller-saved proxy (reg {})", reg));
+            }
+        });
 
     // Test 5: GPR caller-saved — var dead before call.
     test_interfere("GPR caller-saved: var dead before call → no caller-saved interference",
@@ -210,8 +209,9 @@ fn f() -> i32 {
                    });
 
     // Test 6: FPR caller-saved — float var live across call.
-    test_interfere("FPR caller-saved: float var live across call → FPR proxies interfere",
-                   R"(
+    test_interfere(
+        "FPR caller-saved: float var live across call → FPR proxies interfere",
+        R"(
 fn h() -> f64 {
     'entry: {
         return 0.0;
@@ -227,18 +227,17 @@ fn f() -> f64 {
     }
 }
 )",
-                   [](Program& prog, Graphs& gs, Precolorize& precolor) {
-                       auto& g = gs.second;
-                       auto& func = prog.findFunc("f");
-                       auto v = named(func, "v");
-                       for (auto reg : rv64::abi::FPR.caller_saved) {
-                           auto proxy_lv = LeftValue{
-                               precolor.precolored.at({ir::type::construct<double>(), reg})->value()};
-                           check(g.interferes(v, proxy_lv),
-                                 fmt::format("v interferes with FPR caller-saved proxy (reg {})",
-                                             reg));
-                       }
-                   });
+        [](Program& prog, Graphs& gs, Precolorize& precolor) {
+            auto& g = gs.second;
+            auto& func = prog.findFunc("f");
+            auto v = named(func, "v");
+            for (auto reg : rv64::abi::FPR.caller_saved) {
+                auto proxy_lv = LeftValue{
+                    precolor.precolored.at({ir::type::construct<double>(), reg})->value()};
+                check(g.interferes(v, proxy_lv),
+                      fmt::format("v interferes with FPR caller-saved proxy (reg {})", reg));
+            }
+        });
 
     // Test 7: Cross-block loop — loop-carried vars interfere.
     test_interfere("loop: loop-carried vars interfere", R"(

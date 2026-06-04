@@ -60,8 +60,8 @@ fn f(a: i32, b: i32) -> i32 {
     ints.name = [](size_t index) { return fmt::format("r{}", index); };
     floats.name = [](size_t index) { return fmt::format("f{}", index); };
     TargetABI simple_target = {.reg = {.generals = ints, .floats = floats, .return_addr = 2},
-                        .mem = rv64::ABI.mem};
-    
+                               .mem = rv64::ABI.mem};
+
     test(code, simple_target);
 
     auto code2 = R"(

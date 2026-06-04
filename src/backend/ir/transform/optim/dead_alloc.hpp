@@ -16,8 +16,7 @@
 
 namespace ir::transform {
 
-template<typename T>
-struct DeadAllocElimination : Pass<T> {
+template <typename T> struct DeadAllocElimination : Pass<T> {
     bool apply(Program& prog, T&) override {
         bool changed = false;
         std::unordered_map<const Alloc*, bool> referenced;

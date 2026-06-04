@@ -48,17 +48,19 @@ private:
                     });
                 LeftValue base_int = func.newTemp(type::integer(), &block);
                 LeftValue result_int = func.newTemp(type::integer(), &block);
+                block.insert(it, BinaryInst{.op = InstOp::MUL,
+                                            .result = offset_bytes,
+                                            .lhs = offset,
+                                            .rhs = ConstexprValue((int)abi.mem.size(elem_type))});
                 block.insert(
-                    it, BinaryInst{.op = InstOp::MUL,
-                                   .result = offset_bytes,
-                                   .lhs = offset,
-                                   .rhs = ConstexprValue((int)abi.mem.size(elem_type))});
-                block.insert(it, UnaryInst{.op = UnaryInstOp::CONVERT, .result = base_int, .operand = base});
+                    it, UnaryInst{.op = UnaryInstOp::CONVERT, .result = base_int, .operand = base});
                 block.insert(it, BinaryInst{.op = InstOp::ADD,
-                                                .result = result_int,
-                                                .lhs = base_int,
-                                                .rhs = offset_bytes});
-                block.replace(&inst, UnaryInst{.op = UnaryInstOp::CONVERT, .result = result, .operand = result_int});
+                                            .result = result_int,
+                                            .lhs = base_int,
+                                            .rhs = offset_bytes});
+                block.replace(
+                    &inst,
+                    UnaryInst{.op = UnaryInstOp::CONVERT, .result = result, .operand = result_int});
             }
         }
         return changed;
