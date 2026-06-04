@@ -40,7 +40,7 @@ compiler [args]... files ...
     -O1, --optimize         Apply above optimizations, --no-optimize-[...] to disable specific optimizations
 
     --lowering-addr         Apply address lowering transformation
-    --lowering-reg          Apply register allocation transformation (must run after --lowering-addr)
+    --lowering-reg          Apply register allocation transformation
     --lowering              Apply above lowering transformations
 
     --exec                  Execute the generated IR

@@ -9,9 +9,9 @@ namespace abi {
 
 inline const ir::lowering::RegisterABI GPR = {
     .size = 32,
-    .caller_saved = {5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 28, 29, 30, 31},
+    .caller_saved = {6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 28, 29, 30, 31},
     .callee_saved = {1, 8, 9, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27},
-    .reserved = {0, 2, 3, 4},
+    .reserved = {0, 2, 3, 4, 5},  // x5(t0) is reserved for instruction selection
     .parameters = {10, 11, 12, 13, 14, 15, 16, 17},
     .return_value = 10,
     .name = [](size_t index) { return fmt::format("{}", GeneralReg(index)); },
