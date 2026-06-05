@@ -89,7 +89,12 @@ struct ConstPropagation : SSAPass {
             throw COMPILER_ERROR("ConstPropagation requires SSA form");
         }
         bool result = false;
-        bool changed;
+        bool changed = false;
+        for (auto& global : prog.globals()) {
+            if (global->comptime && !global->reference) {
+                changed |= ctx.ud.replace_all_uses_with(global->value(), *global->init);
+            }
+        }
         do {
             changed = false;
             for (auto& func : prog.funcs()) {
@@ -104,6 +109,11 @@ struct ConstPropagation : SSAPass {
 private:
     bool propagate(Func& func, SSAPassContext& ctx) {
         bool changed = false;
+        for (auto& local : func.locals()) {
+            if (local->comptime && !local->reference) {
+                changed |= ctx.ud.replace_all_uses_with(local->value(), *local->init);
+            }
+        }
         for (auto& block : func.blocks()) {
             for (auto& inst : block->insts()) {
                 if (!utils::defined_var(inst)) continue;
