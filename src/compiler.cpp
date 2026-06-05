@@ -86,6 +86,9 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
 
     --exec                  Execute the generated IR
     --silent                Suppress all compiler output except the return value when executing
+
+    --exec-debug            Enable debug mode in execution (add breakpoints, execute step by step, etc.)
+    --exec-trace            Trace execution with detailed instruction and block information
 )",
         prog_name);
     exit(ret);
@@ -139,14 +142,14 @@ auto analysis(const ir::Program& program) {
 }
 
 int main(int argc, const char* argv[]) {
+    std::cout << std::unitbuf;
+
     int ret = SUCCESS;
 
     bool print_ast = false;
     bool print_ir = false;
     bool print_ast_info = false;
     bool print_ir_info = false;
-    bool execute = false;
-    bool silent = false;
 
     bool retain_ssa_value = false;
 
@@ -163,6 +166,11 @@ int main(int argc, const char* argv[]) {
     bool lowering_reg_replace = false;
     bool lowering_prune = false;
     bool lowering_optim = false;
+
+    bool execute = false;
+    bool execute_trace = false;
+    bool execute_debug = false;
+    bool silent = false;
 
     std::vector<std::pair<std::string, std::reference_wrapper<bool>>> optimizations = {
         {"alloc", optimize_alloc}, {"def", optimize_def},     {"exp", optimize_exp},
@@ -191,6 +199,10 @@ int main(int argc, const char* argv[]) {
             execute = true;
         } else if (arg == "--silent") {
             silent = true;
+        } else if (arg == "--exec-debug") {
+            execute_debug = true;
+        } else if (arg == "--exec-trace") {
+            execute_trace = true;
         } else if (arg == "--lowering-addr") {
             lowering_addr = true;
         } else if (arg == "--lowering-reg") {
@@ -451,7 +463,8 @@ int main(int argc, const char* argv[]) {
                         fmt::println("Executing program...");
                     }
                     ir::vm::VirtualMachine env(std::cin, std::cout);
-                    uint8_t ret = env.execute(program);
+                    uint8_t ret =
+                        env.execute(program, execute_trace ? &std::cout : nullptr, execute_debug);
                     if (!silent) {
                         fmt::println("Program returned {} after executing {} instructions", ret,
                                      env.perf().num_insts);

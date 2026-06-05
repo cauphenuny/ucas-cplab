@@ -138,6 +138,7 @@ src/
 │   │   ├── value.cpp
 │   │   └── vm/
 │   │       ├── assign.cpp
+│   │       ├── debug.cpp
 │   │       ├── exec.cpp
 │   │       ├── view.hpp
 │   │       └── vm.h
@@ -189,7 +190,7 @@ src/
     ├── traits.hpp
     └── tui.h
 
-19 directories, 84 files
+19 directories, 85 files
 ```
 <!--/source_tree-->
 

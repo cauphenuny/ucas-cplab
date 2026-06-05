@@ -12,6 +12,7 @@
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -217,8 +218,37 @@ private:
         size_t num_insts{0};
     } perf_counter;
 
+    std::ostream* trace_stream;
+
+    struct DebugState {
+        std::unordered_set<const void*> breakpoints;
+        bool stepping{false};
+        std::vector<std::function<bool()>> breakpoint_conditions;
+    } debug_state;
+
+    void debug_trigger(const void* location = nullptr) {
+        if (location && debug_state.breakpoints.count(location)) {
+            info(fmt::format("hit breakpoint at {}", fmt::ptr(location)));
+            debug_state.stepping = true;
+        }
+        for (size_t i = 0; i < debug_state.breakpoint_conditions.size(); i++) {
+            auto& cond = debug_state.breakpoint_conditions[i];
+            if (cond()) {
+                info(fmt::format("hit conditional breakpoint #{}", i));
+                debug_state.stepping = true;
+                break;
+            }
+        }
+        if (debug_state.stepping) {
+            debug_tui();
+        }
+    }
+
+    void debug_tui();
+
 public:
-    uint8_t execute(const Program& program);
+    uint8_t execute(const Program& program, std::ostream* trace_stream = nullptr,
+                    bool debug = false);
 
     [[nodiscard]] auto perf() const {
         return perf_counter;
@@ -349,6 +379,10 @@ public:
         binary_ops[InstOp::STORE] = [this, check_ref](View& dest, const View& lhs,
                                                       const View& rhs) {
             auto addr = *(std::byte**)lhs.data;
+            if ((size_t)addr < 0x1000) {
+                throw COMPILER_ERROR(
+                    fmt::format("invalid memory access at address {}", fmt::ptr(addr)));
+            }
             check_ref(lhs.type, "store");
             auto ref_type = lhs.type.as<Reference>();
             auto elem_type = ref_type.elem;

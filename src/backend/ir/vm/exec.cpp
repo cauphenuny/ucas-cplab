@@ -66,6 +66,7 @@ void VirtualMachine::execute(const BuiltinFunc& func, const std::vector<View>& a
 }
 
 auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View& ret) -> Block* {
+    if (trace_stream) (*trace_stream) << fmt::format("'{}:", block.label);
     struct PhiUpdate {
         View dest;
         std::vector<std::byte> data;
@@ -95,7 +96,7 @@ auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View&
 
     while (it != block.insts().end()) {
         const auto& inst = *it;
-        // fmt::println(stderr, "-> {}", inst);
+        if (trace_stream) (*trace_stream) << fmt::format("  {}", inst);
         try {
             match(
                 inst,
@@ -129,7 +130,7 @@ auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View&
         }
     }
     auto& exit = block.exit();
-    // fmt::println(stderr, "-> exit {}", exit);
+    if (trace_stream) (*trace_stream) << fmt::format("  {}", exit);
     perf_counter.num_insts++;  // count exit instruction as well
     return match(
         exit,
@@ -223,10 +224,11 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
     }
 }
 
-uint8_t VirtualMachine::execute(const Program& program) {
+uint8_t VirtualMachine::execute(const Program& program, std::ostream* trace_stream, bool debug) {
     this->program = &program;
     this->global_frame = StackFrame();
     this->perf_counter = {};
+    this->trace_stream = trace_stream;
 
     size_t global_size = 0;
     /// global variables
