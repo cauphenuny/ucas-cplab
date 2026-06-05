@@ -96,7 +96,7 @@ auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View&
 
     while (it != block.insts().end()) {
         const auto& inst = *it;
-        if (trace_stream) (*trace_stream) << fmt::format("  {}", inst);
+        if (trace_stream) (*trace_stream) << fmt::format("({})  {}", perf_counter.num_insts, inst);
         try {
             match(
                 inst,
@@ -130,7 +130,7 @@ auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View&
         }
     }
     auto& exit = block.exit();
-    if (trace_stream) (*trace_stream) << fmt::format("  {}", exit);
+    if (trace_stream) (*trace_stream) << fmt::format("({})  {}", perf_counter.num_insts, exit);
     perf_counter.num_insts++;  // count exit instruction as well
     return match(
         exit,
@@ -192,6 +192,7 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
     auto buffer = make_aligned_unique<std::byte>(stack_size, alignof(std::max_align_t));
     memset(buffer.get(), 0, stack_size);
     StackFrame frame;
+    active_frames.emplace_back(&frame, &func);
     std::byte* cur = buffer.get();
     /// params
     if (func.params.size() != args.size()) {
@@ -222,6 +223,8 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
         prev = cur_block;
         cur_block = next;
     }
+
+    active_frames.pop_back();
 }
 
 uint8_t VirtualMachine::execute(const Program& program, std::ostream* trace_stream, bool debug) {

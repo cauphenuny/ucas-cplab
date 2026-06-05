@@ -213,6 +213,7 @@ private:
     std::ostream& output;
 
     StackFrame global_frame;
+    std::vector<std::pair<StackFrame*, const Func*>> active_frames;
 
     struct Perf {
         size_t num_insts{0};
