@@ -20,6 +20,8 @@
 #include "backend/ir/transform/ssa/destruct.hpp"
 #include "backend/ir/vm/vm.h"
 #include "backend/rv64/abi.hpp"
+#include "backend/rv64/emit.hpp"
+#include "backend/rv64/isel.hpp"
 #include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/syntax/visit.hpp"
@@ -89,6 +91,9 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
 
     --exec-debug            Enable debug mode in execution (add breakpoints, execute step by step, etc.)
     --exec-trace            Trace execution with detailed instruction and block information
+
+    -S                      Output RV64 assembly file
+    -o <file>               Specify output file for assembly (requires -S)
 )",
         prog_name);
     exit(ret);
@@ -172,6 +177,9 @@ int main(int argc, const char* argv[]) {
     bool execute_debug = false;
     bool silent = false;
 
+    bool output_asm = false;
+    std::string asm_output_file;
+
     std::vector<std::pair<std::string, std::reference_wrapper<bool>>> optimizations = {
         {"alloc", optimize_alloc}, {"def", optimize_def},     {"exp", optimize_exp},
         {"copy", optimize_copy},   {"const", optimize_const}, {"block", optimize_block},
@@ -203,6 +211,13 @@ int main(int argc, const char* argv[]) {
             execute_debug = true;
         } else if (arg == "--exec-trace") {
             execute_trace = true;
+        } else if (arg == "-S") {
+            output_asm = true;
+        } else if (arg == "-o") {
+            if (i + 1 >= argc) {
+                usage(argv[0], INVALID_ARGUMENT);
+            }
+            asm_output_file = argv[++i];
         } else if (arg == "--lowering-addr") {
             lowering_addr = true;
         } else if (arg == "--lowering-reg") {
@@ -263,6 +278,19 @@ int main(int argc, const char* argv[]) {
         } else {
             files.insert(arg);
         }
+    }
+
+    if (output_asm && execute) {
+        fmt::println(stderr, "error: -S and --exec are mutually exclusive\n");
+        usage(argv[0], INVALID_ARGUMENT);
+    }
+
+    // -S implies --lowering
+    if (output_asm) {
+        lowering_addr = true;
+        lowering_reg = true;
+        lowering_reg_replace = true;
+        lowering_prune = true;
     }
 
     if (output_file && files.size() > 1) {
@@ -455,6 +483,18 @@ int main(int argc, const char* argv[]) {
                             }
                             while (apply(program, ctx, passes));
                         }
+                    }
+                }
+
+                if (output_asm) {
+                    auto module = rv64::isel::lower(program, rv64::ABI);
+                    if (!asm_output_file.empty()) {
+                        std::ofstream ofs(asm_output_file);
+                        rv64::emit::emit(ofs, module);
+                    } else {
+                        auto out_name = file.substr(0, file.rfind('.')) + ".s";
+                        std::ofstream ofs(out_name);
+                        rv64::emit::emit(ofs, module);
                     }
                 }
 

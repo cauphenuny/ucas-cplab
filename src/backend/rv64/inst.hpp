@@ -11,7 +11,8 @@
 namespace rv64 {
 
 struct GeneralReg {
-    uint8_t id;  // x0 - x31
+    uint8_t id = 0;  // x0 - x31
+    GeneralReg() = default;
     GeneralReg(uint8_t id) : id(id) {
         if (id >= 32) {
             throw COMPILER_ERROR(fmt::format("Invalid general register x{}", id));
@@ -27,7 +28,7 @@ struct GeneralReg {
 };
 
 struct FloatReg {
-    uint8_t id;  // f0 - f31
+    uint8_t id = 0;  // f0 - f31
     [[nodiscard]] auto toString() const -> std::string {
         static std::array<const char*, 32> names = {
             "ft0", "ft1", "ft2", "ft3", "ft4",  "ft5",  "ft6", "ft7", "fs0",  "fs1", "fa0",
@@ -35,6 +36,7 @@ struct FloatReg {
             "fs6", "fs7", "fs8", "fs9", "fs10", "fs11", "ft8", "ft9", "ft10", "ft11"};
         return names[id];
     }
+    FloatReg() = default;
     FloatReg(uint8_t id) : id(id) {
         if (id >= 32) {
             throw COMPILER_ERROR(fmt::format("Invalid float register f{}", id));

@@ -172,7 +172,7 @@ inline void expand_pseudo(const PseudoInst& pi, std::vector<std::string>& out) {
 
 // Emit a single instruction as a string
 inline std::string emit_inst_str(const Inst& inst) {
-    return ir::Match{inst}(
+    return Match{inst}(
         [](const InstR& i) {
             return "    " + op_name(i.op) + " " + i.rd.toString() + ", " + i.rs1.toString() +
                    ", " + i.rs2.toString();
@@ -245,7 +245,7 @@ inline void emit(std::ostream& os, const Module& mod) {
                     os << ".globl " << g.name << "\n";
                     os << g.name << ":\n";
                     // extract init value
-                    ir::Match{g.init->val}(
+                    Match{g.init->val}(
                         [&](int v) { os << "    .word " << v << "\n"; },
                         [&](int64_t v) { os << "    .dword " << v << "\n"; },
                         [&](float v) { os << "    .word " << *(int32_t*)&v << "\n"; },
@@ -287,7 +287,7 @@ inline void emit(std::ostream& os, const Module& mod) {
         for (auto& lit : mod.float_literals) {
             os << ".balign 8\n";
             os << lit.label << ":\n";
-            ir::Match{lit.value.val}(
+            Match{lit.value.val}(
                 [&](float v) { os << "    .word " << *(int32_t*)&v << "\n"; },
                 [&](double v) { os << "    .dword " << *(int64_t*)&v << "\n"; },
                 [&](auto&&) {});

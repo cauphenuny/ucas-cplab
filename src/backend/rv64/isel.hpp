@@ -22,7 +22,7 @@
 namespace rv64::isel {
 
 inline std::string name_of(const ir::NameDef& def) {
-    return ir::Match{def}([&](const auto* p) -> std::string { return p->name; });
+    return Match{def}([&](const auto* p) -> std::string { return p->name; });
 }
 
 inline bool is_reg_proxy(const ir::Alloc& a) {
@@ -30,13 +30,19 @@ inline bool is_reg_proxy(const ir::Alloc& a) {
 }
 
 inline std::optional<GeneralReg> parse_gpr(const std::string& name) {
-    auto pos = name.find("__reg_x");
-    if (pos == std::string::npos) return std::nullopt;
-    try {
-        return GeneralReg{(uint8_t)std::stoi(name.substr(pos + 7))};
-    } catch (...) {
-        return std::nullopt;
-    }
+    static const std::unordered_map<std::string, uint8_t> gpr_map = {
+        {"__reg_zero", 0}, {"__reg_ra", 1}, {"__reg_sp", 2}, {"__reg_gp", 3},
+        {"__reg_tp", 4},   {"__reg_t0", 5}, {"__reg_t1", 6}, {"__reg_t2", 7},
+        {"__reg_s0", 8},   {"__reg_s1", 9}, {"__reg_a0", 10}, {"__reg_a1", 11},
+        {"__reg_a2", 12},  {"__reg_a3", 13}, {"__reg_a4", 14}, {"__reg_a5", 15},
+        {"__reg_a6", 16},  {"__reg_a7", 17}, {"__reg_s2", 18}, {"__reg_s3", 19},
+        {"__reg_s4", 20},  {"__reg_s5", 21}, {"__reg_s6", 22}, {"__reg_s7", 23},
+        {"__reg_s8", 24},  {"__reg_s9", 25}, {"__reg_s10", 26}, {"__reg_s11", 27},
+        {"__reg_t3", 28},  {"__reg_t4", 29}, {"__reg_t5", 30}, {"__reg_t6", 31},
+    };
+    auto it = gpr_map.find(name);
+    if (it != gpr_map.end()) return GeneralReg{it->second};
+    return std::nullopt;
 }
 
 inline std::optional<FloatReg> parse_fpr(const std::string& name) {
@@ -60,7 +66,7 @@ inline std::optional<int64_t> extract_imm(const ir::ConstexprValue& cv) {
     using namespace ir::type;
     int64_t val = 0;
     bool ok = false;
-    ir::Match{cv.val}(
+    Match{cv.val}(
         [&](int v) { val = v; ok = true; },
         [&](int64_t v) { val = v; ok = true; },
         [&](bool v) { val = v ? 1 : 0; ok = true; },
@@ -99,11 +105,25 @@ inline std::optional<GeneralReg> resolve_gpr(const ir::Value& val) {
     return std::nullopt;
 }
 
+inline std::optional<GeneralReg> resolve_gpr(const ir::LeftValue& lv) {
+    if (auto* nv = std::get_if<ir::NamedValue>(&lv)) {
+        return parse_gpr(name_of(nv->def));
+    }
+    return std::nullopt;
+}
+
 inline std::optional<FloatReg> resolve_fpr(const ir::Value& val) {
     if (auto* lv = std::get_if<ir::LeftValue>(&val)) {
         if (auto* nv = std::get_if<ir::NamedValue>(&*lv)) {
             return parse_fpr(name_of(nv->def));
         }
+    }
+    return std::nullopt;
+}
+
+inline std::optional<FloatReg> resolve_fpr(const ir::LeftValue& lv) {
+    if (auto* nv = std::get_if<ir::NamedValue>(&lv)) {
+        return parse_fpr(name_of(nv->def));
     }
     return std::nullopt;
 }
@@ -203,7 +223,7 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                 if (!src) throw std::runtime_error("NEG: expected FPR operand");
                 bool is_double = !is_32bit_op(ir::type_of(*inst.result));
                 blk.insts.push_back(
-                    InstFR{is_double ? OpFR::FSGNJN_D : OpFR::FSGNJN_S, *dst_fpr, *src_fpr, *src_fpr});
+                    InstFR{is_double ? OpFR::FSGNJN_D : OpFR::FSGNJN_S, *dst_fpr, *src, *src});
             }
             break;
         }
@@ -386,15 +406,13 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
 
 inline void translate_call(const ir::CallInst& inst, AsmBlock& blk) {
     PseudoInst pi{Pseudo::CALL, GeneralReg{0}, GeneralReg{0}};
-    if (auto* nv = std::get_if<ir::NamedValue>(&inst.func)) {
-        pi.target = name_of(nv->def);
-    }
+    pi.target = name_of(inst.func.def);
     blk.insts.push_back(pi);
 }
 
 inline void translate_inst(const ir::Inst& inst, AsmBlock& blk, const FrameLayout& frame,
                            const ir::lowering::TargetABI& abi) {
-    ir::Match{inst}(
+    Match{inst}(
         [&](const ir::UnaryInst& u) { translate_unary(u, blk, frame, abi); },
         [&](const ir::BinaryInst& b) { translate_binary(b, blk, frame, abi); },
         [&](const ir::CallInst& c) { translate_call(c, blk); },
@@ -404,7 +422,7 @@ inline void translate_inst(const ir::Inst& inst, AsmBlock& blk, const FrameLayou
 }
 
 inline void translate_exit(const ir::Exit& exit, AsmBlock& blk, const std::string& func_name) {
-    ir::Match{exit}(
+    Match{exit}(
         [&](const ir::ReturnExit&) {
             blk.insts.push_back(PseudoInst{Pseudo::J, GeneralReg{0}, GeneralReg{0}, 0,
                                           ".L_" + func_name + "_epilogue"});
