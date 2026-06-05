@@ -176,8 +176,8 @@ struct BriggsAllocator {
             if (graph[dest].move.count(m)) continue;
             graph[m].move.erase(src);
             if (!(m == dest)) graph[m].move.insert(dest);
-            replace({src, m}, m == dest ? std::nullopt : std::make_optional<Move>({dest, m}));
-            replace({m, src}, m == dest ? std::nullopt : std::make_optional<Move>({m, dest}));
+            replace({src, m}, m == dest ? std::nullopt : std::make_optional<Move>(Move{dest, m}));
+            replace({m, src}, m == dest ? std::nullopt : std::make_optional<Move>(Move{m, dest}));
         }
         graph[dest].move.insert(graph[src].move.begin(), graph[src].move.end());
         graph[dest].move.erase(dest);
