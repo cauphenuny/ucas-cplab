@@ -1,7 +1,5 @@
 #pragma once
 
-#include "backend/ir/analysis/dataflow/dominance.hpp"
-#include "backend/ir/analysis/dominance.hpp"
 #include "backend/ir/ir.h"
 #include "backend/ir/lowering/abi.hpp"
 #include "backend/ir/lowering/regalloc/colorize.hpp"
@@ -70,9 +68,9 @@ struct RegisterAllocation : transform::NonSSAPass {
     PrecolorVars precolored;
 };
 
-/// @brief replace colored values by their assigned registers, also remove redundant moves.
-template <typename T> struct RedundantMoveElimination : transform::Pass<T> {
-    RedundantMoveElimination(ColorMap color, PrecolorVars precolored)
+/// @brief replace colored values by their assigned registers
+template <typename T> struct RegisterReplacement : transform::Pass<T> {
+    RegisterReplacement(ColorMap color, PrecolorVars precolored)
         : color(std::move(color)), precolored(std::move(precolored)) {}
     const ColorMap color;
     const PrecolorVars precolored;
@@ -88,28 +86,40 @@ template <typename T> struct RedundantMoveElimination : transform::Pass<T> {
             return value;
         };
         for (auto& func : program.funcs()) {
-            auto cfg = ControlFlowGraph(*func);
-            auto dominance = DataFlow<flow::Dominance>(cfg, program);
-            auto domtree = DominanceTree(dominance);
-            auto dfs = [&](auto self, auto block) -> void {
+            for (auto& block : func->blocks()) {
+                for (auto& inst : block->insts()) {
+                    auto new_inst = inst;
+                    if (auto var = utils::defined_var(new_inst)) *var = replace(*var, false);
+                    for (auto var : utils::used_vars(new_inst)) *var = replace(*var);
+                    block->replace(&inst, new_inst);
+                }
+                auto exit = block->exit();
+                if (auto use = utils::used_var(exit)) {
+                    *use = replace(*use);
+                }
+                block->setExit(exit);
+            }
+        }
+        return changed;
+    }
+};
+
+/// @brief remove redundant moves.
+template <typename T> struct RedundantMoveElimination : transform::Pass<T> {
+    bool apply(Program& program, T& ctx) override {
+        using namespace ir::analysis;
+        bool changed = false;
+        for (auto& func : program.funcs()) {
+            for (auto& block : func->blocks()) {
                 auto& insts = block->insts();
                 for (auto it = insts.begin(); it != insts.end();) {
-                    auto inst = *it;
-                    if (auto var = utils::defined_var(inst)) *var = replace(*var, false);
-                    for (auto var : utils::used_vars(inst)) *var = replace(*var);
-                    block->replace(&(*it), inst);
                     it = [&] {
                         if (auto mov = std::get_if<UnaryInst>(&*it)) {
                             if (mov->op != UnaryInstOp::MOV && mov->op != UnaryInstOp::CONVERT) {
                                 return std::next(it);
                             }
-                            if (auto src = std::get_if<LeftValue>(&mov->operand)) {
-                                if (!color.count(*src) || !color.count(*mov->result)) {
-                                    return std::next(it);
-                                }
-                                auto src_color = color.at(*src);
-                                auto dst_color = color.at(*mov->result);
-                                if (src_color == dst_color) {
+                            if (auto lval = std::get_if<LeftValue>(&mov->operand)) {
+                                if (*lval == mov->result) {
                                     changed = true;
                                     return block->erase(it);
                                 }
@@ -118,16 +128,7 @@ template <typename T> struct RedundantMoveElimination : transform::Pass<T> {
                         return std::next(it);
                     }();
                 }
-                auto exit = block->exit();
-                if (auto use = utils::used_var(exit)) {
-                    *use = replace(*use);
-                }
-                block->setExit(exit);
-                for (auto child : domtree.children(block)) {
-                    self(self, child);
-                }
-            };
-            dfs(dfs, func->entrance());
+            }
         }
         return changed;
     }

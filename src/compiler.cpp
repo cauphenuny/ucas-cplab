@@ -79,6 +79,9 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
 
     --lowering-addr         Apply address lowering transformation
     --lowering-reg          Apply register allocation transformation
+    --lowering-reg-repl     Apply register replacement transformation after register allocation
+    --lowering-prune        Apply redundant move elimination after register allocation
+    --lowering-optim        Apply optimizations after register allocation
     --lowering              Apply above lowering transformations
 
     --exec                  Execute the generated IR
@@ -157,6 +160,9 @@ int main(int argc, const char* argv[]) {
 
     bool lowering_addr = false;
     bool lowering_reg = false;
+    bool lowering_reg_replace = false;
+    bool lowering_prune = false;
+    bool lowering_optim = false;
 
     std::vector<std::pair<std::string, std::reference_wrapper<bool>>> optimizations = {
         {"alloc", optimize_alloc}, {"def", optimize_def},     {"exp", optimize_exp},
@@ -189,9 +195,18 @@ int main(int argc, const char* argv[]) {
             lowering_addr = true;
         } else if (arg == "--lowering-reg") {
             lowering_reg = true;
+        } else if (arg == "--lowering-reg-repl") {
+            lowering_reg_replace = true;
+        } else if (arg == "--lowering-prune") {
+            lowering_prune = true;
+        } else if (arg == "--lowering-optim") {
+            lowering_optim = true;
         } else if (arg == "--lowering") {
             lowering_addr = true;
             lowering_reg = true;
+            lowering_reg_replace = true;
+            lowering_prune = true;
+            lowering_optim = true;
         } else if (arg == "-O1" || arg == "--optimize") {
             optimize_copy = true;
             optimize_const = true;
@@ -399,24 +414,35 @@ int main(int argc, const char* argv[]) {
                         regalloc.apply(program, ctx);
                         echo(program, "Register Allocation");
 
-                        RedundantMoveElimination<Context>(regalloc.colored, regalloc.precolored)
-                            .apply(program, ctx);
-                        echo(program, "Redundant Move Elimination");
-
-                        std::vector<std::pair<std::unique_ptr<NonSSAPass>, std::string>> passes;
-                        if (optimize_alloc)
-                            passes.emplace_back(std::make_unique<DeadAllocElimination<Context>>(),
-                                                "Dead Allocation Elimination");
-                        if (optimize_temp)
-                            passes.emplace_back(std::make_unique<DeadTempElimination<Context>>(),
-                                                "Dead Temporary Elimination");
-                        if (optimize_block) {
-                            passes.emplace_back(std::make_unique<DeadBlockElimination<Context>>(),
-                                                "Dead Block Elimination");
-                            passes.emplace_back(std::make_unique<SimplifyCFG<Context>>(),
-                                                "CFG Simplification");
+                        if (lowering_reg_replace) {
+                            RegisterReplacement<Context>(regalloc.colored, regalloc.precolored)
+                                .apply(program, ctx);
+                            echo(program, "Register Replacement");
                         }
-                        while (apply(program, ctx, passes));
+                        if (lowering_prune) {
+                            RedundantMoveElimination<Context>().apply(program, ctx);
+                            echo(program, "Redundant Move Elimination");
+                        }
+
+                        if (lowering_optim) {
+                            std::vector<std::pair<std::unique_ptr<NonSSAPass>, std::string>> passes;
+                            if (optimize_alloc)
+                                passes.emplace_back(
+                                    std::make_unique<DeadAllocElimination<Context>>(),
+                                    "Dead Allocation Elimination");
+                            if (optimize_temp)
+                                passes.emplace_back(
+                                    std::make_unique<DeadTempElimination<Context>>(),
+                                    "Dead Temporary Elimination");
+                            if (optimize_block) {
+                                passes.emplace_back(
+                                    std::make_unique<DeadBlockElimination<Context>>(),
+                                    "Dead Block Elimination");
+                                passes.emplace_back(std::make_unique<SimplifyCFG<Context>>(),
+                                                    "CFG Simplification");
+                            }
+                            while (apply(program, ctx, passes));
+                        }
                     }
                 }
 

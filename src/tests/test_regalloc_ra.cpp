@@ -93,8 +93,8 @@ int main() {
     regalloc.apply(prog, ctx);
     ctx.ud.verify();
     fmt::println("=== After Register Allocation ===\n{}", prog);
-    RedundantMoveElimination<NonSSAPassContext>(regalloc.colored, regalloc.precolored)
-        .apply(prog, ctx);
+    RegisterReplacement<NonSSAPassContext>(regalloc.colored, regalloc.precolored).apply(prog, ctx);
+    RedundantMoveElimination<NonSSAPassContext>().apply(prog, ctx);
     ctx.ud.verify();
     fmt::println("=== After Redundant Move Elimination ===\n{}", prog);
 

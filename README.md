@@ -41,6 +41,9 @@ compiler [args]... files ...
 
     --lowering-addr         Apply address lowering transformation
     --lowering-reg          Apply register allocation transformation
+    --lowering-reg-repl     Apply register replacement transformation after register allocation
+    --lowering-prune        Apply redundant move elimination after register allocation
+    --lowering-optim        Apply optimizations after register allocation
     --lowering              Apply above lowering transformations
 
     --exec                  Execute the generated IR

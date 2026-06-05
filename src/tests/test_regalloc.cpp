@@ -19,8 +19,8 @@ void test(const char* code, const TargetABI& abi) {
     ctx.ud.verify();
     fmt::println("Final program:\n{}", prog);
     fmt::println("colored: {}", regalloc.colored);
-    RedundantMoveElimination<NonSSAPassContext>(regalloc.colored, regalloc.precolored)
-        .apply(prog, ctx);
+    RegisterReplacement<NonSSAPassContext>(regalloc.colored, regalloc.precolored).apply(prog, ctx);
+    RedundantMoveElimination<NonSSAPassContext>().apply(prog, ctx);
     ctx.ud.verify();
     fmt::println("After redundant move elimination:\n{}", prog);
     fmt::println("---------------");

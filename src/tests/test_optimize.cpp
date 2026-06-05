@@ -316,9 +316,10 @@ int main(int argc, const char* argv[]) {
                         RegToMem(rv64::ABI).apply(combo_prog, ctx);
                         auto regalloc = RegisterAllocation(rv64::ABI);
                         regalloc.apply(combo_prog, ctx);
-                        RedundantMoveElimination<NonSSAPassContext>(regalloc.colored,
-                                                                    regalloc.precolored)
+                        RegisterReplacement<NonSSAPassContext>(regalloc.colored,
+                                                               regalloc.precolored)
                             .apply(combo_prog, ctx);
+                        RedundantMoveElimination<NonSSAPassContext>().apply(combo_prog, ctx);
                         DeadAllocElimination<NonSSAPassContext>().apply(combo_prog, ctx);
                         DeadTempElimination<NonSSAPassContext>().apply(combo_prog, ctx);
                         log << fmt::format("----------\n// After register allocation:\n{}\n\n",
