@@ -49,6 +49,9 @@ compiler [args]... files ...
     --exec                  Execute the generated IR
     --silent                Suppress all compiler output except the return value when executing
 
+    --exec-debug            Enable debug mode in execution (add breakpoints, execute step by step, etc.)
+    --exec-trace            Trace execution with detailed instruction and block information
+
 interpreter [--help] [--silent] [--print] IR_file
     --help      Show this help message
     --print     Show reconstructed IR, without executing
@@ -65,6 +68,12 @@ Examples:
 - execute source program, sliently (without any output except program IO and return code): `build/compiler --exec --silent source.cact`
 - execute IR program: `build/interpreter ir_code.riir`
 - execute IR program, silently: `build/interpreter ir_code.riir --silent`
+
+---
+
+TUI demo
+
+![TUI](assets/tui.png)
 
 ---
 

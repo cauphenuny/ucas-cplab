@@ -221,6 +221,8 @@ set(FTXUI_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(FTXUI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(deps/FTXUI)
 
+target_link_libraries(compiler_core PUBLIC ftxui::screen ftxui::dom ftxui::component)
+
 # Add targets for each .cpp file directly in src/
 FILE(GLOB SRC_EXECUTABLES "src/*.cpp")
 foreach(EXEC_SOURCE ${SRC_EXECUTABLES})

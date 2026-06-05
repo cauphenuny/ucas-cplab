@@ -9,6 +9,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -215,6 +216,12 @@ private:
     StackFrame global_frame;
     std::vector<std::pair<StackFrame*, const Func*>> active_frames;
 
+    // Captured program output/input during debug mode
+    std::ostringstream debug_output_buf;
+    std::streambuf* saved_output_buf{nullptr};
+    std::istringstream debug_input_buf;
+    std::streambuf* saved_input_buf{nullptr};
+
     struct Perf {
         size_t num_insts{0};
     } perf_counter;
@@ -225,6 +232,11 @@ private:
         std::unordered_set<const void*> breakpoints;
         bool stepping{false};
         std::vector<std::function<bool()>> breakpoint_conditions;
+
+        // execution context — set by exec.cpp before each debug_trigger() call
+        const Block* current_block{nullptr};
+        const void* current_inst{nullptr};  // &Inst or &Exit (for highlighting)
+        size_t selected_frame_idx{0};       // which frame to show vars for; f up/down moves this
     } debug_state;
 
     void debug_trigger(const void* location = nullptr) {

@@ -96,6 +96,9 @@ auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View&
 
     while (it != block.insts().end()) {
         const auto& inst = *it;
+        debug_state.current_block = &block;
+        debug_state.current_inst = &inst;
+        debug_trigger(&inst);
         if (trace_stream) (*trace_stream) << fmt::format("({})  {}", perf_counter.num_insts, inst);
         try {
             match(
@@ -129,6 +132,9 @@ auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View&
             throw COMPILER_ERROR(fmt::format("Error at instruction '{}':\n{}", inst, e.what()));
         }
     }
+    debug_state.current_block = &block;
+    debug_state.current_inst = &block.exit();
+    debug_trigger(&block.exit());
     auto& exit = block.exit();
     if (trace_stream) (*trace_stream) << fmt::format("({})  {}", perf_counter.num_insts, exit);
     perf_counter.num_insts++;  // count exit instruction as well
@@ -192,6 +198,8 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
     auto buffer = make_aligned_unique<std::byte>(stack_size, alignof(std::max_align_t));
     memset(buffer.get(), 0, stack_size);
     StackFrame frame;
+    if (debug_state.selected_frame_idx == active_frames.size() - 1)
+        debug_state.selected_frame_idx++;
     active_frames.emplace_back(&frame, &func);
     std::byte* cur = buffer.get();
     /// params
@@ -224,6 +232,8 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
         cur_block = next;
     }
 
+    if (debug_state.selected_frame_idx == active_frames.size() - 1)
+        debug_state.selected_frame_idx--;
     active_frames.pop_back();
 }
 
@@ -231,6 +241,12 @@ uint8_t VirtualMachine::execute(const Program& program, std::ostream* trace_stre
     this->program = &program;
     this->global_frame = StackFrame();
     this->perf_counter = {};
+    if (debug) {
+        debug_state.stepping = true;
+        saved_output_buf = output.rdbuf(debug_output_buf.rdbuf());
+        debug_input_buf.str("");
+        saved_input_buf = input.rdbuf(debug_input_buf.rdbuf());
+    }
     this->trace_stream = trace_stream;
 
     size_t global_size = 0;
@@ -254,6 +270,14 @@ uint8_t VirtualMachine::execute(const Program& program, std::ostream* trace_stre
     auto& main_func = program.findFunc("main");
     std::vector<View> args;
     execute(main_func, args, ret);
+    if (saved_output_buf) {
+        output.rdbuf(saved_output_buf);
+        saved_output_buf = nullptr;
+    }
+    if (saved_input_buf) {
+        input.rdbuf(saved_input_buf);
+        saved_input_buf = nullptr;
+    }
     return *(int*)ret.data;
 }
 
