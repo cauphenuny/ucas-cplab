@@ -215,12 +215,18 @@ endif()
 
 find_package(Threads REQUIRED)
 
+# FTXUI
+set(FTXUI_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(FTXUI_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(FTXUI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory(deps/FTXUI)
+
 # Add targets for each .cpp file directly in src/
 FILE(GLOB SRC_EXECUTABLES "src/*.cpp")
 foreach(EXEC_SOURCE ${SRC_EXECUTABLES})
     get_filename_component(EXEC_NAME ${EXEC_SOURCE} NAME_WE)
     add_executable(${EXEC_NAME} ${EXEC_SOURCE})
-    target_link_libraries(${EXEC_NAME} compiler_core antlr Threads::Threads)
+    target_link_libraries(${EXEC_NAME} compiler_core antlr Threads::Threads ftxui::screen ftxui::dom ftxui::component)
     if(ENABLE_FORMAT AND CLANG_FORMAT_EXECUTABLE)
         add_dependencies(${EXEC_NAME} format)
     endif()
@@ -231,7 +237,7 @@ FILE(GLOB TEST_FILES "src/tests/*.cpp")
 foreach(TEST_SOURCE ${TEST_FILES})
     get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
     add_executable(${TEST_NAME} ${TEST_SOURCE})
-    target_link_libraries(${TEST_NAME} compiler_core antlr Threads::Threads)
+    target_link_libraries(${TEST_NAME} compiler_core antlr Threads::Threads ftxui::screen ftxui::dom ftxui::component)
     if(ENABLE_FORMAT AND CLANG_FORMAT_EXECUTABLE)
         add_dependencies(${TEST_NAME} format)
     endif()
