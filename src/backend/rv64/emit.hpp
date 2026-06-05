@@ -7,6 +7,7 @@
 #include "utils/match.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <ostream>
 #include <sstream>
 #include <string>
@@ -228,7 +229,6 @@ inline void emit(std::ostream& os, const Module& mod) {
             if (g.init) {
                 using namespace ir::type;
                 if (g.type.is<Array>()) {
-                    // array initializer: emit flattened values
                     size_t elem_count = flat.as<Array>().size;
                     auto elem = flat.as<Array>().elem;
                     size_t elem_size = ir::type::size_of(elem);
@@ -237,7 +237,18 @@ inline void emit(std::ostream& os, const Module& mod) {
                         os << ".balign " << elem_size << "\n";
                         os << ".globl " << g.name << "\n";
                         os << g.name << ":\n";
-                        os << ".fill " << std::to_string(elem_count) << ", " << elem_size << ", 0\n";
+                        auto& buffer = std::get<std::unique_ptr<std::byte[]>>(g.init->val);
+                        std::byte* ptr = buffer.get();
+                        for (size_t i = 0; i < elem_count; i++) {
+                            Match{prim}(
+                                [&](ir::type::Int1) { os << "    .byte " << (int)*(bool*)ptr << "\n"; },
+                                [&](ir::type::Int32) { os << "    .word " << *(int32_t*)ptr << "\n"; },
+                                [&](ir::type::Int) { os << "    .dword " << *(int64_t*)ptr << "\n"; },
+                                [&](ir::type::Float32) { os << "    .word " << *(int32_t*)ptr << "\n"; },
+                                [&](ir::type::Float64) { os << "    .dword " << *(int64_t*)ptr << "\n"; },
+                                [&](auto) { os << "    .zero " << elem_size << "\n"; });
+                            ptr += elem_size;
+                        }
                     }
                 } else if (g.type.is<Primitive>()) {
                     size_t sz = ir::type::size_of(g.type);
