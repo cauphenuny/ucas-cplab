@@ -242,17 +242,19 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
         }
         case ir::UnaryInstOp::LOAD: {
             auto* ref_alloc = resolve_alloc(inst.operand);
-            if (ref_alloc && !is_reg_proxy(*ref_alloc)) {
-                if (dst_gpr) {
-                    PseudoInst pi{Pseudo::LOAD_GLOBAL, *dst_gpr, GeneralReg{0}};
-                    pi.symbol = ref_alloc->name;
-                    pi.elem_size = abi.mem.size(ref_alloc->type);
-                    blk.insts.push_back(pi);
-                }
-            } else if (ref_alloc && is_reg_proxy(*ref_alloc)) {
-                // load through a register pointer
+            if (ref_alloc && frame.has_spill(ref_alloc) && dst_gpr) {
+                size_t off = frame.offset_of(ref_alloc);
+                blk.insts.push_back(
+                    InstI{is_32bit_op(ir::type_of(*inst.result)) ? OpI::LW : OpI::LD,
+                          *dst_gpr, GeneralReg{2}, (int32_t)off});
+            } else if (ref_alloc && !is_reg_proxy(*ref_alloc) && dst_gpr) {
+                PseudoInst pi{Pseudo::LOAD_GLOBAL, *dst_gpr, GeneralReg{0}};
+                pi.symbol = ref_alloc->name;
+                pi.elem_size = abi.mem.size(ref_alloc->type);
+                blk.insts.push_back(pi);
+            } else if (ref_alloc && is_reg_proxy(*ref_alloc) && dst_gpr) {
                 auto base = resolve_gpr(inst.operand);
-                if (dst_gpr && base) {
+                if (base) {
                     blk.insts.push_back(
                         InstI{is_32bit_op(ir::type_of(*inst.result)) ? OpI::LW : OpI::LD,
                               *dst_gpr, *base, 0});
