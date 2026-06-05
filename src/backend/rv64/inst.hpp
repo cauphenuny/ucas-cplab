@@ -58,6 +58,41 @@ enum class OpR : uint8_t {
     REM,
 };
 
+enum class OpFR : uint8_t {
+    FADD_S,
+    FADD_D,
+    FSUB_S,
+    FSUB_D,
+    FMUL_S,
+    FMUL_D,
+    FDIV_S,
+    FDIV_D,
+    FSQRT_S,
+    FSQRT_D,
+    FSGNJ_S,
+    FSGNJ_D,
+    FSGNJN_S,
+    FSGNJN_D,
+    FEQ_S,
+    FEQ_D,
+    FLT_S,
+    FLT_D,
+    FLE_S,
+    FLE_D,
+    FCVT_W_S,
+    FCVT_W_D,
+    FCVT_L_S,
+    FCVT_L_D,
+    FCVT_S_W,
+    FCVT_D_W,
+    FCVT_S_L,
+    FCVT_D_L,
+    FCVT_S_D,
+    FCVT_D_S,
+    FMV_X_W,
+    FMV_W_X,
+};
+
 enum class OpI : uint8_t {
     ADDI,
     SLLI,
@@ -71,6 +106,7 @@ enum class OpI : uint8_t {
 
     LD,
     LW,
+    LWU,
     LB,
     LBU,
     LH,
@@ -89,17 +125,53 @@ enum class OpI : uint8_t {
     BGE,
     BLTU,
     BGEU,
+
+    ADDIW,
+    SLLIW,
+    SRLIW,
+    SRAIW,
+    ADDW,
+    SUBW,
+    SLLW,
+    SRLW,
+    SRAW,
+    MULW,
+    DIVW,
+    REMW,
+};
+
+enum class OpFI : uint8_t {
+    FLW,
+    FLD,
+    FSW,
+    FSD,
 };
 
 enum class OpJ : uint8_t {
     JAL,
-    LA,
 };
 
 enum class OpU : uint8_t {
     LUI,
     AUIPC,
+};
+
+enum class Pseudo : uint8_t {
     LI,
+    MV,
+    NOT,
+    NEG,
+    NEGW,
+    SEQZ,
+    SNEZ,
+    BEQZ,
+    BNEZ,
+    J,
+    CALL,
+    RET,
+    LA,
+    LOAD_GLOBAL,
+    STORE_GLOBAL,
 };
 
 struct Module;
@@ -109,16 +181,27 @@ struct InstR {
     GeneralReg rd, rs1, rs2;
 };
 
+struct InstFR {
+    OpFR op;
+    FloatReg rd, rs1, rs2;
+};
+
 struct InstI {
     OpI op;
     GeneralReg rd, rs1;
     int32_t imm;
 };
 
+struct InstFI {
+    OpFI op;
+    FloatReg rd, rs1;
+    int32_t imm;
+};
+
 struct InstJ {
     OpJ op;
     GeneralReg rd;
-    Module* target;
+    std::string target;
 };
 
 struct InstU {
@@ -127,6 +210,17 @@ struct InstU {
     int64_t imm;
 };
 
-using Inst = std::variant<InstR, InstI, InstJ, InstU>;
+struct PseudoInst {
+    Pseudo op;
+    GeneralReg rd;
+    GeneralReg rs1;
+    int64_t imm;
+    std::string target;
+    std::string symbol;
+    FloatReg frd, frs1;
+    size_t elem_size{4};
+};
+
+using Inst = std::variant<InstR, InstFR, InstI, InstFI, InstJ, InstU, PseudoInst>;
 
 }  // namespace rv64
