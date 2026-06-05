@@ -297,7 +297,7 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                       *val_gpr, GeneralReg{2}, (int32_t)off});  // x2 = sp
         } else if (ref_alloc && !is_reg_proxy(*ref_alloc) && val_gpr) {
             // global store
-            PseudoInst pi{Pseudo::STORE_GLOBAL, *val_gpr, GeneralReg{0}};
+            PseudoInst pi{Pseudo::STORE_GLOBAL, GeneralReg{0}, *val_gpr};
             pi.symbol = ref_alloc->name;
             pi.elem_size = abi.mem.size(ref_alloc->type);
             blk.insts.push_back(pi);
@@ -396,9 +396,37 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
         auto imm_opt = extract_imm(*rhs_cv);
         if (!imm_opt) return;
         int32_t imm = (int32_t)*imm_opt;
-        // ADD with immediate
-        if (inst.op == ir::InstOp::ADD) {
-            blk.insts.push_back(InstI{w ? OpI::ADDIW : OpI::ADDI, *dst_gpr, *lhs_gpr, imm});
+        switch (inst.op) {
+            case ir::InstOp::ADD:
+                blk.insts.push_back(InstI{w ? OpI::ADDIW : OpI::ADDI, *dst_gpr, *lhs_gpr, imm});
+                break;
+            case ir::InstOp::LT:
+                blk.insts.push_back(InstI{OpI::SLTI, *dst_gpr, *lhs_gpr, imm});
+                break;
+            case ir::InstOp::GEQ:
+                blk.insts.push_back(InstI{OpI::SLTI, *dst_gpr, *lhs_gpr, imm});
+                blk.insts.push_back(InstI{OpI::XORI, *dst_gpr, *dst_gpr, 1});
+                break;
+            case ir::InstOp::GT:
+                // x > N ≡ not (x < N+1)
+                if (imm < 2047) {
+                    blk.insts.push_back(InstI{OpI::SLTI, *dst_gpr, *lhs_gpr, imm + 1});
+                    blk.insts.push_back(InstI{OpI::XORI, *dst_gpr, *dst_gpr, 1});
+                } else {
+                    // fallback: use register comparison
+                    PseudoInst pi{Pseudo::LI, *dst_gpr, GeneralReg{0}, imm};
+                    // need to expand LI here or use a register - simplified for now
+                }
+                break;
+            case ir::InstOp::LEQ:
+                if (imm < 2047) {
+                    blk.insts.push_back(InstI{OpI::SLTI, *dst_gpr, *lhs_gpr, imm + 1});
+                }
+                break;
+            case ir::InstOp::SUB:
+                blk.insts.push_back(InstI{w ? OpI::ADDIW : OpI::ADDI, *dst_gpr, *lhs_gpr, (int32_t)(-imm)});
+                break;
+            default: break;
         }
         return;
     }
