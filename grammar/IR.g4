@@ -21,6 +21,7 @@ JUMP: '=>';
 IF: 'if';
 ELSE: 'else';
 PHI: 'phi';
+AS: 'as';
 
 ID: [a-zA-Z_][a-zA-Z0-9_]*;
 
@@ -54,7 +55,7 @@ funcDecl:
 	)* block* '}';
 
 paramList: param (',' param)*;
-param: MUT? ID ':' type;
+param: REF? MUT? ID ':' type;
 
 temp: '%' INT_LITERAL;
 ssa: '%' ID '.' INT_LITERAL;
@@ -79,7 +80,9 @@ inst
 	| def value '[' value ']' ';'								# loadElemInst
 	| def '&' MUT? var '[' value ']' ';'						# borrowElemInst
 	| def? value binop value ';'								# binaryInst
-	| def ('!' value | '-' value | value) ';'					# unaryInst;
+	| def ('!' value | '-' value | value) ';'					# unaryInst
+	| def value AS type ';'										# asInst
+	;
 
 phiInst:
 	var ':' type '=' PHI '(' (

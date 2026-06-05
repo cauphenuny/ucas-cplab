@@ -82,7 +82,7 @@ private:
             auto& regs = abi.reg_of(type);
             for (size_t idx = 0; idx < regs.size; idx++) {
                 auto name = fmt::format("__reg_{}", regs.name(idx));
-                auto proxy = Alloc::variable(name, type, std::nullopt, true);
+                auto proxy = Alloc::variable(name, type, std::nullopt, false);
                 precolored[{type, idx}] = proxy.get();
                 prog.addGlobal(std::move(proxy));
             }

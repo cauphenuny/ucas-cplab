@@ -222,9 +222,10 @@ public:
 
     std::any visitParam(IRParser::ParamContext* ctx) override {
         auto name = ctx->ID()->getText();
+        auto ref = ctx->REF() != nullptr;
         auto mut = ctx->MUT() != nullptr;
         auto type = take<ir::type::TypeBox>(visit(ctx->type()));
-        return wrap(new ir::Alloc(name, std::move(type), false, !mut));
+        return wrap(new ir::Alloc(name, std::move(type), false, !mut, ref));
     }
 
     std::any visitBlock(IRParser::BlockContext* ctx) override {
@@ -341,6 +342,19 @@ public:
         auto val = take<ir::Value>(visit(ctx->value()));
         current_block_->append(
             ir::UnaryInst{.op = op, .result = std::move(result), .operand = std::move(val)});
+        return {};
+    }
+
+    std::any visitAsInst(IRParser::AsInstContext* ctx) override {
+        auto result = resolveDef(ctx->def());
+        auto operand = take<ir::Value>(visit(ctx->value()));
+        auto target_type = take<ir::type::TypeBox>(visit(ctx->type()));
+        match(
+            operand, [&](ConstexprValue& c) { c.type = target_type; },
+            [&](auto& v) { match(v, [&](auto& inner) { inner.type = target_type; }); });
+        current_block_->append(ir::UnaryInst{.op = ir::UnaryInstOp::CONVERT,
+                                             .result = std::move(result),
+                                             .operand = std::move(operand)});
         return {};
     }
 
