@@ -212,31 +212,41 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
         case ir::UnaryInstOp::NEG: {
             if (dst_gpr) {
                 auto src = resolve_gpr(inst.operand);
-                if (!src) throw std::runtime_error("NEG: expected GPR operand");
-                if (is_32bit_op(ir::type_of(*inst.result))) {
-                    blk.insts.push_back(PseudoInst{Pseudo::NEGW, *dst_gpr, *src});
-                } else {
-                    blk.insts.push_back(PseudoInst{Pseudo::NEG, *dst_gpr, *src});
+                if (src) {
+                    if (is_32bit_op(ir::type_of(*inst.result))) {
+                        blk.insts.push_back(PseudoInst{Pseudo::NEGW, *dst_gpr, *src});
+                    } else {
+                        blk.insts.push_back(PseudoInst{Pseudo::NEG, *dst_gpr, *src});
+                    }
+                } else if (auto* cv = std::get_if<ir::ConstexprValue>(&inst.operand)) {
+                    if (auto imm = extract_imm(*cv)) {
+                        blk.insts.push_back(PseudoInst{Pseudo::LI, *dst_gpr, GeneralReg{0}, -*imm});
+                    }
                 }
             } else if (dst_fpr) {
                 auto src = resolve_fpr(inst.operand);
-                if (!src) throw std::runtime_error("NEG: expected FPR operand");
-                bool is_double = !is_32bit_op(ir::type_of(*inst.result));
-                blk.insts.push_back(
-                    InstFR{is_double ? OpFR::FSGNJN_D : OpFR::FSGNJN_S, *dst_fpr, *src, *src});
+                if (src) {
+                    bool is_double = !is_32bit_op(ir::type_of(*inst.result));
+                    blk.insts.push_back(
+                        InstFR{is_double ? OpFR::FSGNJN_D : OpFR::FSGNJN_S, *dst_fpr, *src, *src});
+                }
             }
             break;
         }
         case ir::UnaryInstOp::NOT: {
-            if (!dst_gpr) throw std::runtime_error("NOT: expected GPR destination");
+            if (!dst_gpr) break;
             auto src = resolve_gpr(inst.operand);
-            if (!src) throw std::runtime_error("NOT: expected GPR operand");
-            auto t = ir::type_of(*inst.result);
-            if (t.is<Primitive>() && std::holds_alternative<Int1>(t.as<Primitive>())) {
-                // bool NOT: x ^ 1
-                blk.insts.push_back(InstI{OpI::XORI, *dst_gpr, *src, 1});
-            } else {
-                blk.insts.push_back(PseudoInst{Pseudo::SEQZ, *dst_gpr, *src});
+            if (src) {
+                auto t = ir::type_of(*inst.result);
+                if (t.is<Primitive>() && std::holds_alternative<Int1>(t.as<Primitive>())) {
+                    blk.insts.push_back(InstI{OpI::XORI, *dst_gpr, *src, 1});
+                } else {
+                    blk.insts.push_back(PseudoInst{Pseudo::SEQZ, *dst_gpr, *src});
+                }
+            } else if (auto* cv = std::get_if<ir::ConstexprValue>(&inst.operand)) {
+                if (auto imm = extract_imm(*cv)) {
+                    blk.insts.push_back(PseudoInst{Pseudo::LI, *dst_gpr, GeneralReg{0}, *imm ? 0 : 1});
+                }
             }
             break;
         }

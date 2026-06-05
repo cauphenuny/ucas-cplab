@@ -52,6 +52,9 @@ compiler [args]... files ...
     --exec-debug            Enable debug mode in execution (add breakpoints, execute step by step, etc.)
     --exec-trace            Trace execution with detailed instruction and block information
 
+    -S                      Output RV64 assembly file
+    -o <file>               Specify output file for assembly (requires -S)
+
 interpreter [--help] [--silent] [--print] IR_file
     --help      Show this help message
     --print     Show reconstructed IR, without executing
@@ -153,7 +156,10 @@ src/
 │   │       └── vm.h
 │   └── rv64/
 │       ├── abi.hpp
-│       └── inst.hpp
+│       ├── emit.hpp
+│       ├── inst.hpp
+│       ├── isel.hpp
+│       └── module.hpp
 ├── compiler.cpp
 ├── frontend/
 │   ├── ast/
@@ -199,7 +205,7 @@ src/
     ├── traits.hpp
     └── tui.h
 
-19 directories, 85 files
+19 directories, 88 files
 ```
 <!--/source_tree-->
 
