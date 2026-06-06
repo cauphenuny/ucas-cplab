@@ -15,7 +15,7 @@
 
 namespace ir::lowering {
 
-using ColorMap = std::unordered_map<LeftValue, ssize_t>;
+using ColorMap = std::unordered_map<LeftValue, size_t>;
 Type register_type(const Type& ir_type) {
     return is_fp(ir_type) ? type::floating() : type::integer();
 }

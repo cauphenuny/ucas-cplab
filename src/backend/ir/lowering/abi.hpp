@@ -3,6 +3,7 @@
 #include "backend/ir/ir.h"
 
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <set>
@@ -22,7 +23,7 @@ struct RegisterABI {
     std::vector<size_t> parameters;
     size_t return_value;
 
-    std::string (*name)(size_t index);
+    std::function<std::string(size_t)> name;
 };
 
 struct MemoryABI {
