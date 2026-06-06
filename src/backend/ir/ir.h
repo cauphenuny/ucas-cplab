@@ -44,6 +44,9 @@ struct NamedValue {
     friend bool operator==(const NamedValue& lhs, const NamedValue& rhs) {
         return lhs.def == rhs.def;
     }
+    friend bool operator<(const NamedValue& lhs, const NamedValue& rhs) {
+        return lhs.def < rhs.def;
+    }
 
     [[nodiscard]] auto toString() const -> std::string;
 };
@@ -55,6 +58,9 @@ struct TempValue {
 
     friend bool operator==(const TempValue& lhs, const TempValue& rhs) {
         return lhs.func == rhs.func && lhs.id == rhs.id;
+    }
+    friend bool operator<(const TempValue& lhs, const TempValue& rhs) {
+        return lhs.func == rhs.func ? lhs.id < rhs.id : lhs.func < rhs.func;
     }
 
     SIMPLE_TO_STRING(fmt::format("%{}", id));
@@ -104,6 +110,9 @@ struct SSAValue {
 
     friend bool operator==(const SSAValue& lhs, const SSAValue& rhs) {
         return lhs.def == rhs.def && lhs.version == rhs.version;
+    }
+    friend bool operator<(const SSAValue& lhs, const SSAValue& rhs) {
+        return lhs.def == rhs.def ? lhs.version < rhs.version : lhs.def < rhs.def;
     }
     [[nodiscard]] auto toString() const -> std::string;
     SSAValue(Type type, const Alloc* def, size_t version)

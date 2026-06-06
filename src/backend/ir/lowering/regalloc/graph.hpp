@@ -6,9 +6,9 @@
 #include "backend/ir/lowering/abi.hpp"
 #include "backend/ir/lowering/regalloc/precolorize.hpp"
 
+#include <map>
 #include <optional>
-#include <unordered_map>
-#include <unordered_set>
+#include <set>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -20,8 +20,8 @@ constexpr int USEDEF_PRIORITY = 3;
 
 struct InterfereNode {
     LeftValue value;
-    std::unordered_set<LeftValue> interfere;
-    std::unordered_set<LeftValue> move;
+    std::set<LeftValue> interfere;
+    std::set<LeftValue> move;
     size_t degree;
     std::optional<size_t> color;
     TO_STRING(InterfereNode, value, interfere, move, degree, color);
@@ -242,7 +242,7 @@ struct InterfereGraph {
 
         return graphs;
     }
-    [[nodiscard]] const std::unordered_map<LeftValue, InterfereNode>& nodes() const {
+    [[nodiscard]] const std::map<LeftValue, InterfereNode>& nodes() const {
         return nodes_;
     }
 
@@ -268,9 +268,9 @@ struct InterfereGraph {
     }
 
 private:
-    std::unordered_map<LeftValue, LeftValue> aliases_;
-    std::unordered_map<LeftValue, InterfereNode> nodes_;
-    std::unordered_map<LeftValue, int> prior;
+    std::map<LeftValue, LeftValue> aliases_;
+    std::map<LeftValue, InterfereNode> nodes_;
+    std::map<LeftValue, int> prior;
 
     void ensure(const LeftValue& value) {
         if (nodes_.count(value) == 0) {
