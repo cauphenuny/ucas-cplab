@@ -100,17 +100,20 @@ inline std::string op_name(OpU op) {
 // LI immediate decomposition: 32-bit signed
 inline void emit_li(GeneralReg rd, int64_t imm64, std::vector<std::string>& out) {
     int32_t imm = (int32_t)imm64;
-    // 12-bit immediate range
     if (imm >= -2048 && imm < 2048) {
         out.push_back("    addi " + rd.toString() + ", zero, " + std::to_string(imm));
         return;
     }
-    // lui + addi with sign extension fix
-    int32_t hi = (imm + 0x800) >> 12;  // hi20 with adjustment
-    int32_t lo = imm - (hi << 12);
-    out.push_back("    lui " + rd.toString() + ", " + std::to_string(hi));
-    if (lo != 0) {
-        out.push_back("    addi " + rd.toString() + ", " + rd.toString() + ", " + std::to_string(lo));
+    // standard RV64 li decomposition
+    int32_t hi20 = imm >> 12;       // sign-extended upper 20 bits
+    int32_t lo12 = imm & 0xFFF;     // lower 12 bits
+    if (lo12 & 0x800) {             // addi sign-extends; adjust lui
+        hi20 += 1;
+        lo12 -= 0x1000;
+    }
+    out.push_back("    lui " + rd.toString() + ", " + std::to_string((uint32_t)hi20 & 0xFFFFF));
+    if (lo12 != 0) {
+        out.push_back("    addi " + rd.toString() + ", " + rd.toString() + ", " + std::to_string(lo12));
     }
 }
 
