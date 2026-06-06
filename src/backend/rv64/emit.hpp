@@ -222,66 +222,113 @@ inline std::string emit_inst_str(const Inst& inst) {
         });
 }
 
+// Emit a single global variable with its value
+inline void emit_global_val(std::ostream& os, const Global& g, size_t elem_size,
+                            const ir::Type& elem_type) {
+    auto prim = elem_type.as<ir::type::Primitive>();
+    auto& buffer = std::get<std::unique_ptr<std::byte[]>>(g.init->val);
+    std::byte* ptr = buffer.get();
+    size_t elem_count = g.type.flatten().as<ir::type::Array>().size;
+    for (size_t i = 0; i < elem_count; i++) {
+        Match{prim}(
+            [&](ir::type::Int1) { os << "    .byte " << (int)*(bool*)ptr << "\n"; },
+            [&](ir::type::Int32) { os << "    .word " << *(int32_t*)ptr << "\n"; },
+            [&](ir::type::Int) { os << "    .dword " << *(int64_t*)ptr << "\n"; },
+            [&](ir::type::Float32) { os << "    .word " << *(int32_t*)ptr << "\n"; },
+            [&](ir::type::Float64) { os << "    .dword " << *(int64_t*)ptr << "\n"; },
+            [&](auto) { os << "    .zero " << elem_size << "\n"; });
+        ptr += elem_size;
+    }
+}
+
 inline void emit(std::ostream& os, const Module& mod) {
-    // .data section
-    if (!mod.globals.empty()) {
-        os << ".section .data\n";
+    using namespace ir::type;
+    os << ".option nopic\n";
+    os << ".attribute arch, \"rv64i2p0_m2p0_a2p0_f2p0_d2p0_c2p0\"\n";
+    os << ".attribute unaligned_access, 0\n";
+    os << ".attribute stack_align, 16\n";
+
+    // .rodata: const globals
+    bool has_rodata = false;
+    for (auto& g : mod.globals) {
+        if (g.comptime) { has_rodata = true; break; }
+    }
+    if (has_rodata) {
+        os << "\n.section .rodata\n";
         for (auto& g : mod.globals) {
-            auto flat = g.type.flatten();
-            size_t total_size = ir::type::size_of(g.type);
-            if (g.init) {
-                using namespace ir::type;
-                if (g.type.is<Array>()) {
-                    size_t elem_count = flat.as<Array>().size;
-                    auto elem = flat.as<Array>().elem;
-                    size_t elem_size = ir::type::size_of(elem);
-                    if (elem.is<Primitive>()) {
-                        auto prim = elem.as<Primitive>();
-                        os << ".balign " << elem_size << "\n";
-                        os << ".globl " << g.name << "\n";
-                        os << g.name << ":\n";
-                        auto& buffer = std::get<std::unique_ptr<std::byte[]>>(g.init->val);
-                        std::byte* ptr = buffer.get();
-                        for (size_t i = 0; i < elem_count; i++) {
-                            Match{prim}(
-                                [&](ir::type::Int1) { os << "    .byte " << (int)*(bool*)ptr << "\n"; },
-                                [&](ir::type::Int32) { os << "    .word " << *(int32_t*)ptr << "\n"; },
-                                [&](ir::type::Int) { os << "    .dword " << *(int64_t*)ptr << "\n"; },
-                                [&](ir::type::Float32) { os << "    .word " << *(int32_t*)ptr << "\n"; },
-                                [&](ir::type::Float64) { os << "    .dword " << *(int64_t*)ptr << "\n"; },
-                                [&](auto) { os << "    .zero " << elem_size << "\n"; });
-                            ptr += elem_size;
-                        }
-                    }
-                } else if (g.type.is<Primitive>()) {
-                    size_t sz = ir::type::size_of(g.type);
-                    os << ".balign " << sz << "\n";
-                    os << ".globl " << g.name << "\n";
-                    os << g.name << ":\n";
-                    // extract init value
-                    Match{g.init->val}(
-                        [&](int v) { os << "    .word " << v << "\n"; },
-                        [&](int64_t v) { os << "    .dword " << v << "\n"; },
-                        [&](float v) { os << "    .word " << *(int32_t*)&v << "\n"; },
-                        [&](double v) { os << "    .dword " << *(int64_t*)&v << "\n"; },
-                        [&](bool v) { os << "    .byte " << (v ? 1 : 0) << "\n"; },
-                        [&](auto&&) { os << "    .zero " << sz << "\n"; });
-                }
-            } else {
-                os << ".balign " << ir::type::size_of(g.type) << "\n";
-                os << ".comm " << g.name << ", " << total_size << ", " << total_size << "\n";
+            if (!g.comptime || g.is_zero_init()) continue;
+            size_t sz = ir::type::size_of(g.type);
+            os << ".align 2\n";
+            os << ".size " << g.name << ", " << sz << "\n";
+            os << ".globl " << g.name << "\n";
+            os << g.name << ":\n";
+            if (g.type.is<Array>()) {
+                auto flat = g.type.flatten();
+                emit_global_val(os, g, ir::type::size_of(flat.as<Array>().elem), flat.as<Array>().elem);
+            } else if (g.type.is<Primitive>()) {
+                Match{g.init->val}(
+                    [&](int v) { os << "    .word " << v << "\n"; },
+                    [&](int64_t v) { os << "    .dword " << v << "\n"; },
+                    [&](float v) { os << "    .word " << *(int32_t*)&v << "\n"; },
+                    [&](double v) { os << "    .dword " << *(int64_t*)&v << "\n"; },
+                    [&](bool v) { os << "    .byte " << (v ? 1 : 0) << "\n"; },
+                    [&](auto&&) {});
             }
         }
     }
 
-    // .text section
-    os << ".section .text\n";
+    // .data: initialized non-const, non-zero globals
+    bool has_data = false;
+    for (auto& g : mod.globals) {
+        if (!g.comptime && !g.is_zero_init()) { has_data = true; break; }
+    }
+    if (has_data) {
+        os << "\n.data\n";
+        for (auto& g : mod.globals) {
+            if (g.comptime || g.is_zero_init()) continue;
+            size_t sz = ir::type::size_of(g.type);
+            os << ".align 2\n";
+            os << ".size " << g.name << ", " << sz << "\n";
+            os << ".globl " << g.name << "\n";
+            os << g.name << ":\n";
+            if (g.type.is<Array>()) {
+                auto flat = g.type.flatten();
+                emit_global_val(os, g, ir::type::size_of(flat.as<Array>().elem), flat.as<Array>().elem);
+            } else if (g.type.is<Primitive>()) {
+                Match{g.init->val}(
+                    [&](int v) { os << "    .word " << v << "\n"; },
+                    [&](int64_t v) { os << "    .dword " << v << "\n"; },
+                    [&](float v) { os << "    .word " << *(int32_t*)&v << "\n"; },
+                    [&](double v) { os << "    .dword " << *(int64_t*)&v << "\n"; },
+                    [&](bool v) { os << "    .byte " << (v ? 1 : 0) << "\n"; },
+                    [&](auto&&) {});
+            }
+        }
+    }
+
+    // .bss: zero-initialized non-const globals
+    bool has_bss = false;
+    for (auto& g : mod.globals) {
+        if (!g.comptime && g.is_zero_init()) { has_bss = true; break; }
+    }
+    if (has_bss) {
+        os << "\n.bss\n";
+        for (auto& g : mod.globals) {
+            if (g.comptime || !g.is_zero_init()) continue;
+            size_t sz = ir::type::size_of(g.type);
+            os << ".align 2\n";
+            os << ".lcomm " << g.name << ", " << sz << "\n";
+        }
+    }
+
+    // .text
+    os << "\n.text\n";
+    os << ".align 1\n";
     for (auto& f : mod.funcs) {
-        os << ".balign 4\n";
         os << ".globl " << f.name << "\n";
-        bool seen_entry_label = false;  // function name IS the entry label
+        os << ".type " << f.name << ", @function\n";
+        bool seen_entry_label = false;
         for (auto& b : f.blocks) {
-            // first block's label is the function name itself
             if (!seen_entry_label && b.label == f.name) {
                 os << f.name << ":\n";
                 seen_entry_label = true;
@@ -292,7 +339,7 @@ inline void emit(std::ostream& os, const Module& mod) {
                 os << emit_inst_str(inst) << "\n";
             }
         }
-        os << "\n";
+        os << ".size " << f.name << ", .-" << f.name << "\n\n";
     }
 
     // .rodata for float literals
@@ -307,6 +354,8 @@ inline void emit(std::ostream& os, const Module& mod) {
                 [&](auto&&) {});
         }
     }
+
+    os << ".ident \"CACT compiler\"\n";
 }
 
 }  // namespace rv64::emit

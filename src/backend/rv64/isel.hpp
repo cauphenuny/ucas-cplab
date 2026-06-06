@@ -533,7 +533,7 @@ inline Module lower(const ir::Program& prog, const ir::lowering::TargetABI& abi)
     // collect user globals (exclude register proxies)
     for (auto& g : prog.globals()) {
         if (is_reg_proxy(*g)) continue;
-        Global gl{g->name, g->type, g->init ? std::optional<ir::ConstexprValue>(*g->init) : std::nullopt};
+        Global gl{g->name, g->type, g->init ? std::optional<ir::ConstexprValue>(*g->init) : std::nullopt, g->comptime};
         mod.globals.push_back(std::move(gl));
     }
 
