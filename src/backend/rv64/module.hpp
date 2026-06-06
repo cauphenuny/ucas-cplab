@@ -3,12 +3,15 @@
 #include "backend/ir/ir.h"
 #include "backend/ir/type.hpp"
 #include "inst.hpp"
+#include "utils/match.hpp"
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace rv64 {

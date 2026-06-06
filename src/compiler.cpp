@@ -218,6 +218,26 @@ int main(int argc, const char* argv[]) {
                 usage(argv[0], INVALID_ARGUMENT);
             }
             asm_output_file = argv[++i];
+        } else if (arg == "-O0") {
+            // default: no optimization
+        } else if (arg == "-O1") {
+            optimize_copy = true;
+            optimize_const = true;
+            optimize_def = true;
+            optimize_alloc = true;
+            optimize_temp = true;
+            optimize_exp = true;
+            optimize_block = true;
+            optimize_inline = default_inline_threshold;
+        } else if (arg == "-O2") {
+            optimize_copy = true;
+            optimize_const = true;
+            optimize_def = true;
+            optimize_alloc = true;
+            optimize_temp = true;
+            optimize_exp = true;
+            optimize_block = true;
+            optimize_inline = default_inline_threshold;
         } else if (arg == "--lowering-addr") {
             lowering_addr = true;
         } else if (arg == "--lowering-phi") {
@@ -279,6 +299,11 @@ int main(int argc, const char* argv[]) {
         } else {
             files.insert(arg);
         }
+    }
+
+    // Default: if no output mode specified, output RV64 assembly
+    if (!output_asm && !execute && !print_ir && !print_ast && !print_ast_info && !print_ir_info) {
+        output_asm = true;
     }
 
     if (output_asm && execute) {
