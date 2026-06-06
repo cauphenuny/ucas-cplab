@@ -94,7 +94,12 @@ body { font-family: monospace; display: flex; height: 100vh; }
 </div>
 <div id="graph"></div>
 <script>
-const COLORS = ['#ffadad','#caffbf','#a0c4ff','#ffd6a5','#e2c4f2','#b5ead7','#ffc6ff','#fdffb6','#ffdfba','#9bf6ff','#d0f4de','#f1c0e8','#cfbaf0','#a3d5ff','#fbf8cc','#ffe5d9','#bde0fe','#d4e09b'];
+const COLORS = [
+  '#e74c3c','#2ecc71','#3498db','#f39c12','#9b59b6',
+  '#1abc9c','#e67e22','#2980b9','#c0392b','#27ae60',
+  '#8e44ad','#16a085','#d35400','#2c3e50','#f1c40f',
+  '#7f8c8d','#e91e63','#00bcd4','#ff5722','#795548',
+];
 
 function parse(text) {
   const nodes = new Map();
@@ -120,11 +125,16 @@ function render() {
   const edgeSet = new Set();
 
   for (const [id, info] of parsed) {
+    const isColored = info.color !== null;
+    const colorIdx = isColored ? info.color % COLORS.length : 0;
     visNodes.push({
-      id, label: id,
-      color: info.color !== null ? { background: COLORS[info.color % COLORS.length], border: '#333' } : { background: '#ffffff', border: '#999' },
-      font: { size: 14 },
-      shape: 'ellipse',
+      id, label: isColored ? `${id}\n[r${info.color}]` : id,
+      color: isColored
+        ? { background: COLORS[colorIdx], border: '#111' }
+        : { background: '#ffffff', border: '#999' },
+      font: { size: 14, color: isColored ? '#111' : '#555' },
+      shape: isColored ? 'box' : 'ellipse',
+      borderWidth: isColored ? 3 : 1,
     });
   }
 
