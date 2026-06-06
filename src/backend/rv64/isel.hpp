@@ -206,6 +206,13 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                     blk.insts.push_back(
                         InstFR{is_double ? OpFR::FSGNJ_D : OpFR::FSGNJ_S, *dst_fpr, *src_fpr, *src_fpr});
                 }
+            } else if (auto* alloc = resolve_alloc(inst.operand)) {
+                // comptime Alloc: load init value
+                if (dst_gpr && alloc->comptime && alloc->init) {
+                    if (auto imm = extract_imm(*alloc->init)) {
+                        blk.insts.push_back(PseudoInst{Pseudo::LI, *dst_gpr, GeneralReg{0}, *imm});
+                    }
+                }
             }
             break;
         }
@@ -438,6 +445,27 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
             case ir::InstOp::SUB:
                 blk.insts.push_back(InstI{w ? OpI::ADDIW : OpI::ADDI, *dst_gpr, *lhs_gpr, (int32_t)(-imm)});
                 break;
+            case ir::InstOp::MUL:
+            case ir::InstOp::DIV:
+            case ir::InstOp::MOD:
+            case ir::InstOp::AND:
+            case ir::InstOp::OR: {
+                // LI imm into dst, then R-type with dst as rhs
+                blk.insts.push_back(PseudoInst{Pseudo::LI, *dst_gpr, GeneralReg{0}, imm});
+                OpR op_r;
+                OpI op_w;
+                switch (inst.op) {
+                    case ir::InstOp::MUL: op_r = OpR::MUL; op_w = OpI::MULW; break;
+                    case ir::InstOp::DIV: op_r = OpR::DIV; op_w = OpI::DIVW; break;
+                    case ir::InstOp::MOD: op_r = OpR::REM; op_w = OpI::REMW; break;
+                    case ir::InstOp::AND: blk.insts.push_back(InstR{OpR::AND, *dst_gpr, *lhs_gpr, *dst_gpr}); return;
+                    case ir::InstOp::OR:  blk.insts.push_back(InstR{OpR::OR, *dst_gpr, *lhs_gpr, *dst_gpr}); return;
+                    default: return;
+                }
+                if (w) blk.insts.push_back(InstI{op_w, *dst_gpr, *lhs_gpr, (int32_t)dst_gpr->id});
+                else   blk.insts.push_back(InstR{op_r, *dst_gpr, *lhs_gpr, *dst_gpr});
+                break;
+            }
             default: break;
         }
         return;
