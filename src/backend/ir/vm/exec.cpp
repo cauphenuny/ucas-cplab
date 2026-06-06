@@ -66,94 +66,100 @@ void VirtualMachine::execute(const BuiltinFunc& func, const std::vector<View>& a
 }
 
 auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View& ret) -> Block* {
-    if (trace_stream) (*trace_stream) << fmt::format("'{}:", block.label);
-    struct PhiUpdate {
-        View dest;
-        std::vector<std::byte> data;
-    };
-    std::vector<PhiUpdate> phi_updates;
+    try {
+        if (trace_stream) (*trace_stream) << fmt::format("'{}:\n", block.label);
+        struct PhiUpdate {
+            View dest;
+            std::vector<std::byte> data;
+        };
+        std::vector<PhiUpdate> phi_updates;
 
-    auto it = block.insts().begin();
-    while (it != block.insts().end()) {
-        if (auto phi = std::get_if<PhiInst>(&*it)) {
-            auto operand = view_of((*phi)[prev], frame);
-            auto dest = view_of(phi->result, frame);
-            size_t size = ir::type::size_of(dest.type);
-            std::vector<std::byte> buffer(size);
-            memcpy(buffer.data(), operand.data, size);
-            phi_updates.push_back({dest, std::move(buffer)});
-            it++;
-            perf_counter.num_insts++;
-        } else {
-            break;
+        auto it = block.insts().begin();
+        while (it != block.insts().end()) {
+            if (auto phi = std::get_if<PhiInst>(&*it)) {
+                auto operand = view_of((*phi)[prev], frame);
+                auto dest = view_of(phi->result, frame);
+                size_t size = ir::type::size_of(dest.type);
+                std::vector<std::byte> buffer(size);
+                memcpy(buffer.data(), operand.data, size);
+                phi_updates.push_back({dest, std::move(buffer)});
+                it++;
+                perf_counter.num_insts++;
+            } else {
+                break;
+            }
         }
-    }
 
-    for (auto& update : phi_updates) {
-        View src_buffer_view{.data = update.data.data(), .type = update.dest.type};
-        assign(update.dest, src_buffer_view);
-    }
+        for (auto& update : phi_updates) {
+            View src_buffer_view{.data = update.data.data(), .type = update.dest.type};
+            assign(update.dest, src_buffer_view);
+        }
 
-    while (it != block.insts().end()) {
-        const auto& inst = *it;
+        while (it != block.insts().end()) {
+            const auto& inst = *it;
+            debug_state.current_block = &block;
+            debug_state.current_inst = &inst;
+            debug_trigger(&inst);
+            if (trace_stream)
+                (*trace_stream) << fmt::format("({})  {}\n", perf_counter.num_insts, inst);
+            try {
+                match(
+                    inst,
+                    [&](const UnaryInst& unary) {
+                        auto operand = view_of(unary.operand, frame);
+                        auto result = view_of(unary.result, frame);
+                        execute(unary, operand, result);
+                    },
+                    [&](const BinaryInst& binary) {
+                        auto lhs = view_of(binary.lhs, frame);
+                        auto rhs = view_of(binary.rhs, frame);
+                        auto result = view_of(binary.result, frame);
+                        execute(binary, lhs, rhs, result);
+                    },
+                    [&](const CallInst& call) {
+                        auto result = view_of(call.result, frame);
+                        std::vector<View> srcs;
+                        srcs.reserve(call.args.size());
+                        for (const auto& arg : call.args) {
+                            srcs.push_back(view_of(arg, frame));
+                        }
+                        execute(call, srcs, result);
+                    },
+                    [&](const PhiInst& phi) {
+                        throw COMPILER_ERROR("Phi instruction must be at the beginning of a block");
+                    });
+                perf_counter.num_insts++;
+                it++;
+            } catch (const CompilerError& e) {
+                throw COMPILER_ERROR(fmt::format("Error at instruction '{}':\n{}", inst, e.what()));
+            }
+        }
         debug_state.current_block = &block;
-        debug_state.current_inst = &inst;
-        debug_trigger(&inst);
-        if (trace_stream) (*trace_stream) << fmt::format("({})  {}", perf_counter.num_insts, inst);
-        try {
-            match(
-                inst,
-                [&](const UnaryInst& unary) {
-                    auto operand = view_of(unary.operand, frame);
-                    auto result = view_of(unary.result, frame);
-                    execute(unary, operand, result);
-                },
-                [&](const BinaryInst& binary) {
-                    auto lhs = view_of(binary.lhs, frame);
-                    auto rhs = view_of(binary.rhs, frame);
-                    auto result = view_of(binary.result, frame);
-                    execute(binary, lhs, rhs, result);
-                },
-                [&](const CallInst& call) {
-                    auto result = view_of(call.result, frame);
-                    std::vector<View> srcs;
-                    srcs.reserve(call.args.size());
-                    for (const auto& arg : call.args) {
-                        srcs.push_back(view_of(arg, frame));
-                    }
-                    execute(call, srcs, result);
-                },
-                [&](const PhiInst& phi) {
-                    throw COMPILER_ERROR("Phi instruction must be at the beginning of a block");
+        debug_state.current_inst = &block.exit();
+        debug_trigger(&block.exit());
+        auto& exit = block.exit();
+        if (trace_stream)
+            (*trace_stream) << fmt::format("({})  {}\n", perf_counter.num_insts, exit);
+        perf_counter.num_insts++;  // count exit instruction as well
+        return match(
+            exit,
+            [&](const BranchExit& branch) -> Block* {
+                View view = view_of(branch.cond, frame);
+                bool cond = Match{view.type.as<type::Primitive>()}([&](auto type) {
+                    using T = typename decltype(type)::type;
+                    return (bool)(*(T*)view.data);
                 });
-            perf_counter.num_insts++;
-            it++;
-        } catch (const CompilerError& e) {
-            throw COMPILER_ERROR(fmt::format("Error at instruction '{}':\n{}", inst, e.what()));
-        }
-    }
-    debug_state.current_block = &block;
-    debug_state.current_inst = &block.exit();
-    debug_trigger(&block.exit());
-    auto& exit = block.exit();
-    if (trace_stream) (*trace_stream) << fmt::format("({})  {}", perf_counter.num_insts, exit);
-    perf_counter.num_insts++;  // count exit instruction as well
-    return match(
-        exit,
-        [&](const BranchExit& branch) -> Block* {
-            View view = view_of(branch.cond, frame);
-            bool cond = Match{view.type.as<type::Primitive>()}([&](auto type) {
-                using T = typename decltype(type)::type;
-                return (bool)(*(T*)view.data);
+                return cond ? branch.true_target : branch.false_target;
+            },
+            [&](const JumpExit& jump) -> Block* { return jump.target; },
+            [&](const ReturnExit& ret_exit) -> Block* {
+                View exp = view_of(ret_exit.exp, frame);
+                assign(ret, exp);
+                return nullptr;
             });
-            return cond ? branch.true_target : branch.false_target;
-        },
-        [&](const JumpExit& jump) -> Block* { return jump.target; },
-        [&](const ReturnExit& ret_exit) -> Block* {
-            View exp = view_of(ret_exit.exp, frame);
-            assign(ret, exp);
-            return nullptr;
-        });
+    } catch (const CompilerError& e) {
+        throw COMPILER_ERROR(fmt::format("Error at block '{}':\n{}", block.label, e.what()));
+    }
 }
 
 void VirtualMachine::alloc(StackFrame& frame, Alloc* alloc, std::byte* buffer) const {
@@ -225,11 +231,15 @@ void VirtualMachine::execute(const Func& func, const std::vector<View>& args, Vi
         cur += padding_to(stackSize(temp.type), alignof(std::max_align_t));
     }
 
-    Block *cur_block = func.entrance(), *prev = nullptr;
-    while (cur_block) {
-        auto next = execute(*cur_block, prev, frame, ret);
-        prev = cur_block;
-        cur_block = next;
+    try {
+        Block *cur_block = func.entrance(), *prev = nullptr;
+        while (cur_block) {
+            auto next = execute(*cur_block, prev, frame, ret);
+            prev = cur_block;
+            cur_block = next;
+        }
+    } catch (const CompilerError& e) {
+        throw COMPILER_ERROR(fmt::format("In function '{}':\n{}", func.name, e.what()));
     }
 
     if (debug_state.selected_frame_idx == active_frames.size() - 1)
