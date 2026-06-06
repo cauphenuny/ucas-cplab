@@ -59,7 +59,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
 
     --help                  Show this help message
 
-    --output <file>         Write the generated IR also to the specified file
+    -o, --output <file>     Write the generated IR also to the specified file
 
     --ast                   Print the AST of the input files
     --ast-info              Print the semantic analysis result of the AST
@@ -72,7 +72,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --optimize-copy         Apply Copy Propagation optimization
     --optimize-const        Apply Const Propagation optimization
     --optimize-def          Apply Dead Definition Elimination optimization
-    --optimize-alloc        Apply Dead Allocation Elimination optimization (better with --ssa2temp)
+    --optimize-alloc        Apply Dead Allocation Elimination optimization
     --optimize-temp         Apply Dead Temporary Value Elimination optimization
     --optimize-block        Apply Dead/Trivial Block Elimination optimization
     --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts)
@@ -80,10 +80,10 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     -O1, --optimize         Apply above optimizations, --no-optimize-[...] to disable specific optimizations
 
     --lowering-addr         Apply address lowering transformation
-    --lowering-reg          Apply register allocation transformation
-    --lowering-reg-repl     Apply register replacement transformation after register allocation
+    --lowering-phi          Eliminate phi instructions by inserting move instructions
+    --lowering-reg          Apply register allocation transformation (triggers --lowering-phi)
     --lowering-prune        Apply redundant move elimination after register allocation
-    --lowering-optim        Apply optimizations after register allocation
+    --lowering-optim        Apply optimizations after lowering transformations
     --lowering              Apply above lowering transformations
 
     --exec                  Execute the generated IR
@@ -167,8 +167,8 @@ int main(int argc, const char* argv[]) {
     bool optimize_temp = false;
 
     bool lowering_addr = false;
+    bool lowering_phi = false;
     bool lowering_reg = false;
-    bool lowering_reg_replace = false;
     bool lowering_prune = false;
     bool lowering_optim = false;
 
@@ -220,18 +220,19 @@ int main(int argc, const char* argv[]) {
             asm_output_file = argv[++i];
         } else if (arg == "--lowering-addr") {
             lowering_addr = true;
+        } else if (arg == "--lowering-phi") {
+            lowering_phi = true;
         } else if (arg == "--lowering-reg") {
+            lowering_phi = true;
             lowering_reg = true;
-        } else if (arg == "--lowering-reg-repl") {
-            lowering_reg_replace = true;
         } else if (arg == "--lowering-prune") {
             lowering_prune = true;
         } else if (arg == "--lowering-optim") {
             lowering_optim = true;
         } else if (arg == "--lowering") {
             lowering_addr = true;
+            lowering_phi = true;
             lowering_reg = true;
-            lowering_reg_replace = true;
             lowering_prune = true;
             lowering_optim = true;
         } else if (arg == "-O1" || arg == "--optimize") {
@@ -253,7 +254,7 @@ int main(int argc, const char* argv[]) {
             } else {
                 optimize_inline = default_inline_threshold;
             }
-        } else if (arg == "--output") {
+        } else if (arg == "-o" || arg == "--output") {
             if (i + 1 >= argc) {
                 usage(argv[0], INVALID_ARGUMENT);
             }
@@ -300,7 +301,7 @@ int main(int argc, const char* argv[]) {
 
     bool optimize = optimize_def || optimize_exp || optimize_copy || optimize_alloc ||
                     optimize_const || optimize_inline || optimize_temp;
-    bool lowering = lowering_addr || lowering_reg;
+    bool lowering = lowering_addr || lowering_reg || lowering_phi;
 
     if (optimize && !silent) {
         std::stringstream ss;
@@ -344,9 +345,8 @@ int main(int argc, const char* argv[]) {
                 size_t pass_id = 0;
 
                 auto echo = [&](const ir::Program& program, const std::string& name) {
-                    if (print_ir) {
-                        fmt::println("#{} {}:\n{}\n", pass_id++, name, program);
-                    }
+                    fmt::print("#{}: {}{}", pass_id++, name,
+                               (print_ir) ? fmt::format(":\n{}\n\n", program) : "\n");
                     if (print_ir_info) {
                         analysis(program);
                     }
@@ -434,56 +434,56 @@ int main(int argc, const char* argv[]) {
                     }
                 }
 
-                if (output_file && print_ir) {
-                    fmt::println(output_file, "{}", program);
-                }
-
                 {
-                    ir::transform::NonSSAPassContext ctx(program);
 
-                    if (lowering_reg) {
-                        using namespace ir::lowering;
-                        using namespace ir::transform;
-                        using Context = ir::transform::NonSSAPassContext;
+                    using namespace ir::lowering;
+                    using namespace ir::transform;
+                    using Context = ir::transform::NonSSAPassContext;
+                    Context ctx(program);
+
+                    if (lowering_phi) {
                         DestructSSA().apply(program, ctx);
                         echo(program, "Exit SSA Form");
+                    }
 
+                    if (lowering_reg) {
                         RegToMem(rv64::ABI).apply(program, ctx);
                         echo(program, "Register to Memory");
+
                         auto regalloc = RegisterAllocation(rv64::ABI);
                         regalloc.apply(program, ctx);
                         echo(program, "Register Allocation");
 
-                        if (lowering_reg_replace) {
-                            RegisterReplacement<Context>(regalloc.colored, regalloc.precolored)
-                                .apply(program, ctx);
-                            echo(program, "Register Replacement");
-                        }
-                        if (lowering_prune) {
-                            RedundantMoveElimination<Context>().apply(program, ctx);
-                            echo(program, "Redundant Move Elimination");
-                        }
-
-                        if (lowering_optim) {
-                            std::vector<std::pair<std::unique_ptr<NonSSAPass>, std::string>> passes;
-                            if (optimize_alloc)
-                                passes.emplace_back(
-                                    std::make_unique<DeadAllocElimination<Context>>(),
-                                    "Dead Allocation Elimination");
-                            if (optimize_temp)
-                                passes.emplace_back(
-                                    std::make_unique<DeadTempElimination<Context>>(),
-                                    "Dead Temporary Elimination");
-                            if (optimize_block) {
-                                passes.emplace_back(
-                                    std::make_unique<DeadBlockElimination<Context>>(),
-                                    "Dead Block Elimination");
-                                passes.emplace_back(std::make_unique<SimplifyCFG<Context>>(),
-                                                    "CFG Simplification");
-                            }
-                            while (apply(program, ctx, passes));
-                        }
+                        RegisterReplacement<Context>(regalloc.colored, regalloc.precolored)
+                            .apply(program, ctx);
+                        echo(program, "Register Replacement");
                     }
+
+                    if (lowering_prune) {
+                        RedundantMoveElimination<Context>().apply(program, ctx);
+                        echo(program, "Redundant Move Elimination");
+                    }
+
+                    if (lowering_optim) {
+                        std::vector<std::pair<std::unique_ptr<NonSSAPass>, std::string>> passes;
+                        if (optimize_alloc)
+                            passes.emplace_back(std::make_unique<DeadAllocElimination<Context>>(),
+                                                "Dead Allocation Elimination");
+                        if (optimize_temp)
+                            passes.emplace_back(std::make_unique<DeadTempElimination<Context>>(),
+                                                "Dead Temporary Elimination");
+                        if (optimize_block) {
+                            passes.emplace_back(std::make_unique<DeadBlockElimination<Context>>(),
+                                                "Dead Block Elimination");
+                            passes.emplace_back(std::make_unique<SimplifyCFG<Context>>(),
+                                                "CFG Simplification");
+                        }
+                        while (apply(program, ctx, passes));
+                    }
+                }
+
+                if (output_file) {
+                    fmt::println(output_file, "{}", program);
                 }
 
                 if (output_asm) {

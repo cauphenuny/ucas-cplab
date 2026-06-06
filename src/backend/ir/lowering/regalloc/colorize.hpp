@@ -6,6 +6,7 @@
 #include "backend/ir/lowering/regalloc/precolorize.hpp"
 
 #include <cstdio>
+#include <functional>
 #include <list>
 #include <optional>
 #include <unordered_map>
@@ -59,6 +60,8 @@ struct BriggsAllocator {
 
     ColorizeResult result;
 
+    std::function<int(size_t)> priority;
+
     template <typename T>
     void relocate(T value, std::list<T>& to,
                   std::unordered_map<T, std::pair<std::list<T>*, typename std::list<T>::iterator>>&
@@ -69,7 +72,9 @@ struct BriggsAllocator {
         locations[std::move(value)] = {&to, std::prev(to.end())};
     }
 
-    BriggsAllocator(InterfereGraph graph) : graph(std::move(graph)) {
+    BriggsAllocator(
+        InterfereGraph graph, std::function<int(size_t)> priority = [](size_t) { return 0; })
+        : graph(std::move(graph)), priority(std::move(priority)) {
         for (const auto& [value, node] : this->graph.nodes()) {
             if (node.color) {
                 nodes.precolored.push_back(value);
@@ -270,7 +275,20 @@ struct BriggsAllocator {
             if (ok_colors.empty()) {
                 relocate(n, nodes.spilled, node_locations);
             } else {
-                result.colors[n] = *ok_colors.begin();
+                ssize_t best = -1;
+                for (const auto& move : graph[n].move) {
+                    auto alias = graph.alias(move);
+                    if (result.colors.count(alias) && ok_colors.count(result.colors.at(alias))) {
+                        best = result.colors.at(alias);
+                    }
+                }
+                if (best == -1) {
+                    for (const auto& c : ok_colors) {
+                        if (best == -1 || priority(c) > priority(best)) best = c;
+                    }
+                }
+                // fmt::println(stderr, "assigning color {} to {}", best, n);
+                result.colors[n] = best;
                 relocate(n, nodes.colored, node_locations);
             }
         }

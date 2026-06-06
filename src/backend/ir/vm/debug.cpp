@@ -168,10 +168,14 @@ void VirtualMachine::debug_tui() {
                     func_lines.push_back(entry);
                 }
             }
+            for (auto& func : program->funcs()) {
+                if (func.get() == cur_func) continue;
+                func_lines.push_back(text("  fn " + func->name) | bold);
+            }
         } else {
             func_lines.push_back(text("  (no active function)"));
         }
-        auto func_panel = window(text(" Current Function "), vbox(std::move(func_lines)));
+        auto func_panel = window(text(" Overview "), vbox(std::move(func_lines)));
 
         // --- Globals panel ---
         std::vector<std::pair<std::string, const View*>> sorted_globals;

@@ -19,7 +19,7 @@ compiler [args]... files ...
 
     --help                  Show this help message
 
-    --output <file>         Write the generated IR also to the specified file
+    -o, --output <file>     Write the generated IR also to the specified file
 
     --ast                   Print the AST of the input files
     --ast-info              Print the semantic analysis result of the AST
@@ -32,7 +32,7 @@ compiler [args]... files ...
     --optimize-copy         Apply Copy Propagation optimization
     --optimize-const        Apply Const Propagation optimization
     --optimize-def          Apply Dead Definition Elimination optimization
-    --optimize-alloc        Apply Dead Allocation Elimination optimization (better with --ssa2temp)
+    --optimize-alloc        Apply Dead Allocation Elimination optimization
     --optimize-temp         Apply Dead Temporary Value Elimination optimization
     --optimize-block        Apply Dead/Trivial Block Elimination optimization
     --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts)
@@ -40,10 +40,10 @@ compiler [args]... files ...
     -O1, --optimize         Apply above optimizations, --no-optimize-[...] to disable specific optimizations
 
     --lowering-addr         Apply address lowering transformation
-    --lowering-reg          Apply register allocation transformation
-    --lowering-reg-repl     Apply register replacement transformation after register allocation
+    --lowering-phi          Eliminate phi instructions by inserting move instructions
+    --lowering-reg          Apply register allocation transformation (triggers --lowering-phi)
     --lowering-prune        Apply redundant move elimination after register allocation
-    --lowering-optim        Apply optimizations after register allocation
+    --lowering-optim        Apply optimizations after lowering transformations
     --lowering              Apply above lowering transformations
 
     --exec                  Execute the generated IR
@@ -191,6 +191,9 @@ src/
 │   ├── test_reg2mem.cpp
 │   ├── test_regalloc.cpp
 │   ├── test_regalloc_interfere.cpp
+│   ├── test_regalloc_inversion.cpp:	Reproduce the "inverted" register allocation pattern.
+│   ├── test_regalloc_inversion_example.cpp:	Minimal example of inverted register allocation.
+│   ├── test_regalloc_inversion_simplify.cpp:	Find minimal ABI + function for inverted register allocation.
 │   ├── test_regalloc_precolorize.cpp
 │   ├── test_regalloc_ra.cpp
 │   ├── test_sem.cpp

@@ -9,6 +9,7 @@
 #include "backend/ir/op.hpp"
 #include "backend/ir/transform/framework.hpp"
 
+#include <cstddef>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -35,23 +36,29 @@ struct RegisterAllocation : transform::NonSSAPass {
                 fmt::print(stderr, "General Graph: {}\n", general);
                 fmt::print(stderr, "Floating-point Graph: {}\n", floating);
             }
-            auto [general_spills, general_colors] = BriggsAllocator(general).colorize();
-            auto [floating_spills, floating_colors] = BriggsAllocator(floating).colorize();
+            auto [general_spills, general_colors] =
+                BriggsAllocator(general, [&](size_t reg) {
+                    return abi.reg.generals.caller_saved.count(reg);
+                }).colorize();
+            auto [floating_spills, floating_colors] =
+                BriggsAllocator(floating, [&](size_t reg) {
+                    return abi.reg.floats.caller_saved.count(reg);
+                }).colorize();
+
+            if (verbose) {
+                for (auto& [value, id] : general_colors) general.pin(value, id);
+                for (auto& [value, id] : floating_colors) floating.pin(value, id);
+                fmt::print(stderr, "Colorized General Graph: {}\n", general);
+                fmt::print(stderr, "Colorized Floating-point Graph: {}\n", floating);
+            }
+
             if (general_spills.empty() && floating_spills.empty()) {
                 colored = merge(std::move(general_colors), std::move(floating_colors));
                 break;
             }
+
             Spill(general_spills, verbose).apply(prog, ctx);
             Spill(floating_spills, verbose).apply(prog, ctx);
-
-            if (verbose) {
-                for (auto& [value, id] : colored) {
-                    auto& graph = is_fp(type_of(value)) ? floating : general;
-                    graph.pin(value, id);
-                }
-                fmt::print(stderr, "Colorized General Graph: {}\n", general);
-                fmt::print(stderr, "Colorized Floating-point Graph: {}\n", floating);
-            }
         }
 
         return true;
