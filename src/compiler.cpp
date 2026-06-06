@@ -289,8 +289,8 @@ int main(int argc, const char* argv[]) {
     // -S implies --lowering
     if (output_asm) {
         lowering_addr = true;
+        lowering_phi = true;
         lowering_reg = true;
-        lowering_reg_replace = true;
         lowering_prune = true;
     }
 
