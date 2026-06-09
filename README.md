@@ -19,7 +19,7 @@ compiler [args]... files ...
 
     --help                  Show this help message
 
-    -o, --output <file>     Write the generated IR also to the specified file
+    -o, --output <file>     Write the generated IR or assembly to the specified file
 
     --ast                   Print the AST of the input files
     --ast-info              Print the semantic analysis result of the AST
@@ -37,11 +37,10 @@ compiler [args]... files ...
     --optimize-block        Apply Dead/Trivial Block Elimination optimization
     --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts)
     --optimize-exp          Apply Common Subexpression Elimination optimization
-    -O1, --optimize         Apply above optimizations, --no-optimize-[...] to disable specific optimizations
+    -O1, -O2, --optimize    Apply above optimizations, --no-optimize-[...] to disable specific optimizations
 
     --lowering-addr         Apply address lowering transformation
-    --lowering-phi          Eliminate phi instructions by inserting move instructions
-    --lowering-reg          Apply register allocation transformation (triggers --lowering-phi)
+    --lowering-reg          Apply register allocation transformation
     --lowering-prune        Apply redundant move elimination after register allocation
     --lowering-optim        Apply optimizations after lowering transformations
     --lowering              Apply above lowering transformations
@@ -52,8 +51,7 @@ compiler [args]... files ...
     --exec-debug            Enable debug mode in execution (add breakpoints, execute step by step, etc.)
     --exec-trace            Trace execution with detailed instruction and block information
 
-    -S                      Output RV64 assembly file
-    -o <file>               Specify output file for assembly (requires -S)
+    -S, --asm               Output RV64 assembly code (implies --lowering)
 
 interpreter [--help] [--silent] [--print] IR_file
     --help      Show this help message
@@ -208,7 +206,7 @@ src/
     ├── traits.hpp
     └── tui.h
 
-19 directories, 88 files
+19 directories, 91 files
 ```
 <!--/source_tree-->
 

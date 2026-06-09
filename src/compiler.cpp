@@ -59,7 +59,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
 
     --help                  Show this help message
 
-    -o, --output <file>     Write the generated IR also to the specified file
+    -o, --output <file>     Write the generated IR or assembly to the specified file
 
     --ast                   Print the AST of the input files
     --ast-info              Print the semantic analysis result of the AST
@@ -77,11 +77,10 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --optimize-block        Apply Dead/Trivial Block Elimination optimization
     --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts)
     --optimize-exp          Apply Common Subexpression Elimination optimization
-    -O1, --optimize         Apply above optimizations, --no-optimize-[...] to disable specific optimizations
+    -O1, -O2, --optimize    Apply above optimizations, --no-optimize-[...] to disable specific optimizations
 
     --lowering-addr         Apply address lowering transformation
-    --lowering-phi          Eliminate phi instructions by inserting move instructions
-    --lowering-reg          Apply register allocation transformation (triggers --lowering-phi)
+    --lowering-reg          Apply register allocation transformation
     --lowering-prune        Apply redundant move elimination after register allocation
     --lowering-optim        Apply optimizations after lowering transformations
     --lowering              Apply above lowering transformations
@@ -92,8 +91,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --exec-debug            Enable debug mode in execution (add breakpoints, execute step by step, etc.)
     --exec-trace            Trace execution with detailed instruction and block information
 
-    -S                      Output RV64 assembly file
-    -o <file>               Specify output file for assembly (requires -S)
+    -S, --asm               Output RV64 assembly code (implies --lowering)
 )",
         prog_name);
     exit(ret);
@@ -155,6 +153,7 @@ int main(int argc, const char* argv[]) {
     bool print_ir = false;
     bool print_ast_info = false;
     bool print_ir_info = false;
+    bool print_asm = false;
 
     bool retain_ssa_value = false;
 
@@ -167,7 +166,6 @@ int main(int argc, const char* argv[]) {
     bool optimize_temp = false;
 
     bool lowering_addr = false;
-    bool lowering_phi = false;
     bool lowering_reg = false;
     bool lowering_prune = false;
     bool lowering_optim = false;
@@ -177,13 +175,16 @@ int main(int argc, const char* argv[]) {
     bool execute_debug = false;
     bool silent = false;
 
-    bool output_asm = false;
-    std::string asm_output_file;
-
     std::vector<std::pair<std::string, std::reference_wrapper<bool>>> optimizations = {
         {"alloc", optimize_alloc}, {"def", optimize_def},     {"exp", optimize_exp},
         {"copy", optimize_copy},   {"const", optimize_const}, {"block", optimize_block},
         {"temp", optimize_temp}};
+
+    std::vector<std::pair<std::string, std::reference_wrapper<bool>>> lowerings = {
+        {"addr", lowering_addr},
+        {"reg", lowering_reg},
+        {"prune", lowering_prune},
+        {"optim", lowering_optim}};
 
     size_t optimize_inline = 0;
     constexpr size_t default_inline_threshold = 8;
@@ -211,58 +212,16 @@ int main(int argc, const char* argv[]) {
             execute_debug = true;
         } else if (arg == "--exec-trace") {
             execute_trace = true;
-        } else if (arg == "-S") {
-            output_asm = true;
-        } else if (arg == "-o") {
-            if (i + 1 >= argc) {
-                usage(argv[0], INVALID_ARGUMENT);
-            }
-            asm_output_file = argv[++i];
+        } else if (arg == "-S" || arg == "--asm") {
+            print_asm = true;
+            // -S/--asm implies --lowering
+            for (auto& [name, flag] : lowerings) flag.get() = true;
+        } else if (arg == "--lowering") {
+            for (auto& [name, flag] : lowerings) flag.get() = true;
         } else if (arg == "-O0") {
             // default: no optimization
-        } else if (arg == "-O1") {
-            optimize_copy = true;
-            optimize_const = true;
-            optimize_def = true;
-            optimize_alloc = true;
-            optimize_temp = true;
-            optimize_exp = true;
-            optimize_block = true;
-            optimize_inline = default_inline_threshold;
-        } else if (arg == "-O2") {
-            optimize_copy = true;
-            optimize_const = true;
-            optimize_def = true;
-            optimize_alloc = true;
-            optimize_temp = true;
-            optimize_exp = true;
-            optimize_block = true;
-            optimize_inline = default_inline_threshold;
-        } else if (arg == "--lowering-addr") {
-            lowering_addr = true;
-        } else if (arg == "--lowering-phi") {
-            lowering_phi = true;
-        } else if (arg == "--lowering-reg") {
-            lowering_phi = true;
-            lowering_reg = true;
-        } else if (arg == "--lowering-prune") {
-            lowering_prune = true;
-        } else if (arg == "--lowering-optim") {
-            lowering_optim = true;
-        } else if (arg == "--lowering") {
-            lowering_addr = true;
-            lowering_phi = true;
-            lowering_reg = true;
-            lowering_prune = true;
-            lowering_optim = true;
-        } else if (arg == "-O1" || arg == "--optimize") {
-            optimize_copy = true;
-            optimize_const = true;
-            optimize_def = true;
-            optimize_alloc = true;
-            optimize_temp = true;
-            optimize_exp = true;
-            optimize_block = true;
+        } else if (arg == "--optimize" || arg == "-O1" || arg == "-O2") {
+            for (auto& [name, flag] : optimizations) flag.get() = true;
             optimize_inline = default_inline_threshold;
         } else if (arg == "--optimize-inline" || arg == "--no-optimize-inline") {
             if (arg == "--no-optimize-inline") {
@@ -292,6 +251,12 @@ int main(int argc, const char* argv[]) {
                     break;
                 }
             }
+            for (auto& [name, flag] : lowerings) {
+                if (arg == "--lowering-" + name) {
+                    flag.get() = true, recognized = true;
+                    break;
+                }
+            }
             if (!recognized) {
                 fmt::println(stderr, "unknown option: {}\n", arg);
                 usage(argv[0], INVALID_ARGUMENT);
@@ -301,32 +266,19 @@ int main(int argc, const char* argv[]) {
         }
     }
 
-    // Default: if no output mode specified, output RV64 assembly
-    if (!output_asm && !execute && !print_ir && !print_ast && !print_ast_info && !print_ir_info) {
-        output_asm = true;
-    }
-
-    if (output_asm && execute) {
-        fmt::println(stderr, "error: -S and --exec are mutually exclusive\n");
-        usage(argv[0], INVALID_ARGUMENT);
-    }
-
-    // -S implies --lowering
-    if (output_asm) {
-        lowering_addr = true;
-        lowering_phi = true;
-        lowering_reg = true;
-        lowering_prune = true;
-    }
-
     if (output_file && files.size() > 1) {
         warning("multiple input files, but only one output file specified. Output will be "
                 "overwritten.");
     }
 
+    if (output_file && (!print_ir && !print_asm)) {
+        warning("output file specified, but neither --ir nor --asm is enabled. No output will "
+                "be written.");
+    }
+
     bool optimize = optimize_def || optimize_exp || optimize_copy || optimize_alloc ||
                     optimize_const || optimize_inline || optimize_temp;
-    bool lowering = lowering_addr || lowering_reg || lowering_phi;
+    bool lowering = lowering_addr || lowering_reg || lowering_prune || lowering_optim;
 
     if (optimize && !silent) {
         std::stringstream ss;
@@ -335,6 +287,15 @@ int main(int argc, const char* argv[]) {
             ss << fmt::format("{}{} ", flag.get() ? "+" : "-", name);
         }
         ss << fmt::format("{}{} ", optimize_inline > 0 ? "+" : "-", "inline");
+        info(ss.str());
+    }
+
+    if (lowering && !silent) {
+        std::stringstream ss;
+        ss << "enabled lowering transformations: ";
+        for (auto& [name, flag] : lowerings) {
+            ss << fmt::format("{}{} ", flag.get() ? "+" : "-", name);
+        }
         info(ss.str());
     }
 
@@ -364,14 +325,18 @@ int main(int argc, const char* argv[]) {
                     fmt::println("\n");
                 }
 
+                if (print_ast || print_ast_info) fmt::println("---\n");
+
                 auto program_box = ir::gen::generate(code);
                 auto& program = *program_box;
 
                 size_t pass_id = 0;
 
                 auto echo = [&](const ir::Program& program, const std::string& name) {
-                    fmt::print("#{}: {}{}", pass_id++, name,
-                               (print_ir) ? fmt::format(":\n{}\n\n", program) : "\n");
+                    if (!silent)
+                        fmt::print("{}. {}{}", ++pass_id, name,
+                                   (print_ir) ? fmt::format(":\n\n```rust\n{}\n```\n\n", program)
+                                              : "\n");
                     if (print_ir_info) {
                         analysis(program);
                     }
@@ -395,12 +360,13 @@ int main(int argc, const char* argv[]) {
                     return any_changed;
                 };
 
+                if (!silent) fmt::println("IR transformations:\n");
                 echo(program, "Generated IR");
 
                 {
                     using namespace ir::transform;
                     ConstructSSA().apply(program);
-                    echo(program, "SSA Form");
+                    echo(program, "Construct SSA");
                     SSAPassContext ctx(program);
                     if (optimize || lowering) {
                         using namespace ir::transform;
@@ -466,10 +432,8 @@ int main(int argc, const char* argv[]) {
                     using Context = ir::transform::NonSSAPassContext;
                     Context ctx(program);
 
-                    if (lowering_phi) {
-                        DestructSSA().apply(program, ctx);
-                        echo(program, "Exit SSA Form");
-                    }
+                    DestructSSA().apply(program, ctx);
+                    echo(program, "Destruct SSA");
 
                     if (lowering_reg) {
                         RegToMem(rv64::ABI).apply(program, ctx);
@@ -477,11 +441,10 @@ int main(int argc, const char* argv[]) {
 
                         auto regalloc = RegisterAllocation(rv64::ABI);
                         regalloc.apply(program, ctx);
-                        echo(program, "Register Allocation");
-
                         RegisterReplacement<Context>(regalloc.colored, regalloc.precolored)
                             .apply(program, ctx);
-                        echo(program, "Register Replacement");
+
+                        echo(program, "Register Allocation");
                     }
 
                     if (lowering_prune) {
@@ -507,19 +470,19 @@ int main(int argc, const char* argv[]) {
                     }
                 }
 
-                if (output_file) {
+                if (output_file && print_ir && !print_asm) {
                     fmt::println(output_file, "{}", program);
                 }
 
-                if (output_asm) {
+                if (!silent) fmt::println("\n---\n");
+
+                if (print_asm) {
                     auto module = rv64::isel::lower(program, rv64::ABI);
-                    if (!asm_output_file.empty()) {
-                        std::ofstream ofs(asm_output_file);
-                        rv64::emit::emit(ofs, module);
-                    } else {
-                        auto out_name = file.substr(0, file.rfind('.')) + ".s";
-                        std::ofstream ofs(out_name);
-                        rv64::emit::emit(ofs, module);
+                    std::ostringstream ss;
+                    rv64::emit::emit(ss, module);
+                    fmt::println("Generated RV64 Assembly:\n\n```asm\n{}\n```\n", ss.str());
+                    if (output_file) {
+                        fmt::print(output_file, "{}", ss.str());
                     }
                 }
 
