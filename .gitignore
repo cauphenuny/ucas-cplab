@@ -16,3 +16,6 @@ grammar/*.tokens
 .antlr
 
 out
+
+**/__pycache__/
+**/*.pyc
