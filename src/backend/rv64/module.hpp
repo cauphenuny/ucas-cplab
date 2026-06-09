@@ -24,14 +24,10 @@ struct Global {
     bool is_zero_init() const {
         if (!init) return true;
         bool zero = false;
-        Match{init->val}(
-            [&](std::monostate) { zero = true; },
-            [&](int v) { zero = (v == 0); },
-            [&](int64_t v) { zero = (v == 0); },
-            [&](float v) { zero = (v == 0.0f); },
-            [&](double v) { zero = (v == 0.0); },
-            [&](bool v) { zero = !v; },
-            [&](const std::unique_ptr<std::byte[]>&) { zero = false; });
+        Match{init->val}([&](std::monostate) { zero = true; }, [&](int v) { zero = (v == 0); },
+                         [&](int64_t v) { zero = (v == 0); }, [&](float v) { zero = (v == 0.0f); },
+                         [&](double v) { zero = (v == 0.0); }, [&](bool v) { zero = !v; },
+                         [&](const std::unique_ptr<std::byte[]>&) { zero = false; });
         return zero;
     }
 };

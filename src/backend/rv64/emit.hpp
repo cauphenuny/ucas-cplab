@@ -1,9 +1,9 @@
 #pragma once
 
 #include "abi.hpp"
+#include "backend/ir/type.hpp"
 #include "inst.hpp"
 #include "module.hpp"
-#include "backend/ir/type.hpp"
 #include "utils/match.hpp"
 
 #include <cstdint>
@@ -18,10 +18,18 @@ namespace rv64::emit {
 // opcode name strings
 inline std::string op_name(OpR op) {
     switch (op) {
-        case OpR::ADD: return "add"; case OpR::SUB: return "sub"; case OpR::SLL: return "sll";
-        case OpR::SLT: return "slt"; case OpR::SLTU: return "sltu"; case OpR::XOR: return "xor";
-        case OpR::SRL: return "srl"; case OpR::SRA: return "sra"; case OpR::OR: return "or";
-        case OpR::AND: return "and"; case OpR::MUL: return "mul"; case OpR::DIV: return "div";
+        case OpR::ADD: return "add";
+        case OpR::SUB: return "sub";
+        case OpR::SLL: return "sll";
+        case OpR::SLT: return "slt";
+        case OpR::SLTU: return "sltu";
+        case OpR::XOR: return "xor";
+        case OpR::SRL: return "srl";
+        case OpR::SRA: return "sra";
+        case OpR::OR: return "or";
+        case OpR::AND: return "and";
+        case OpR::MUL: return "mul";
+        case OpR::DIV: return "div";
         case OpR::REM: return "rem";
     }
     return "?";
@@ -29,56 +37,93 @@ inline std::string op_name(OpR op) {
 
 inline std::string op_name(OpFR op) {
     switch (op) {
-        case OpFR::FADD_S: return "fadd.s"; case OpFR::FADD_D: return "fadd.d";
-        case OpFR::FSUB_S: return "fsub.s"; case OpFR::FSUB_D: return "fsub.d";
-        case OpFR::FMUL_S: return "fmul.s"; case OpFR::FMUL_D: return "fmul.d";
-        case OpFR::FDIV_S: return "fdiv.s"; case OpFR::FDIV_D: return "fdiv.d";
-        case OpFR::FSQRT_S: return "fsqrt.s"; case OpFR::FSQRT_D: return "fsqrt.d";
-        case OpFR::FSGNJ_S: return "fsgnj.s"; case OpFR::FSGNJ_D: return "fsgnj.d";
-        case OpFR::FSGNJN_S: return "fsgnjn.s"; case OpFR::FSGNJN_D: return "fsgnjn.d";
-        case OpFR::FEQ_S: return "feq.s"; case OpFR::FEQ_D: return "feq.d";
-        case OpFR::FLT_S: return "flt.s"; case OpFR::FLT_D: return "flt.d";
-        case OpFR::FLE_S: return "fle.s"; case OpFR::FLE_D: return "fle.d";
-        case OpFR::FCVT_W_S: return "fcvt.w.s"; case OpFR::FCVT_W_D: return "fcvt.w.d";
-        case OpFR::FCVT_L_S: return "fcvt.l.s"; case OpFR::FCVT_L_D: return "fcvt.l.d";
-        case OpFR::FCVT_S_W: return "fcvt.s.w"; case OpFR::FCVT_D_W: return "fcvt.d.w";
-        case OpFR::FCVT_S_L: return "fcvt.s.l"; case OpFR::FCVT_D_L: return "fcvt.d.l";
-        case OpFR::FCVT_S_D: return "fcvt.s.d"; case OpFR::FCVT_D_S: return "fcvt.d.s";
-        case OpFR::FMV_X_W: return "fmv.x.w"; case OpFR::FMV_W_X: return "fmv.w.x";
+        case OpFR::FADD_S: return "fadd.s";
+        case OpFR::FADD_D: return "fadd.d";
+        case OpFR::FSUB_S: return "fsub.s";
+        case OpFR::FSUB_D: return "fsub.d";
+        case OpFR::FMUL_S: return "fmul.s";
+        case OpFR::FMUL_D: return "fmul.d";
+        case OpFR::FDIV_S: return "fdiv.s";
+        case OpFR::FDIV_D: return "fdiv.d";
+        case OpFR::FSQRT_S: return "fsqrt.s";
+        case OpFR::FSQRT_D: return "fsqrt.d";
+        case OpFR::FSGNJ_S: return "fsgnj.s";
+        case OpFR::FSGNJ_D: return "fsgnj.d";
+        case OpFR::FSGNJN_S: return "fsgnjn.s";
+        case OpFR::FSGNJN_D: return "fsgnjn.d";
+        case OpFR::FEQ_S: return "feq.s";
+        case OpFR::FEQ_D: return "feq.d";
+        case OpFR::FLT_S: return "flt.s";
+        case OpFR::FLT_D: return "flt.d";
+        case OpFR::FLE_S: return "fle.s";
+        case OpFR::FLE_D: return "fle.d";
+        case OpFR::FCVT_W_S: return "fcvt.w.s";
+        case OpFR::FCVT_W_D: return "fcvt.w.d";
+        case OpFR::FCVT_L_S: return "fcvt.l.s";
+        case OpFR::FCVT_L_D: return "fcvt.l.d";
+        case OpFR::FCVT_S_W: return "fcvt.s.w";
+        case OpFR::FCVT_D_W: return "fcvt.d.w";
+        case OpFR::FCVT_S_L: return "fcvt.s.l";
+        case OpFR::FCVT_D_L: return "fcvt.d.l";
+        case OpFR::FCVT_S_D: return "fcvt.s.d";
+        case OpFR::FCVT_D_S: return "fcvt.d.s";
+        case OpFR::FMV_X_W: return "fmv.x.w";
+        case OpFR::FMV_W_X: return "fmv.w.x";
     }
     return "?";
 }
 
 inline std::string op_name(OpI op) {
     switch (op) {
-        case OpI::ADDI: return "addi"; case OpI::SLLI: return "slli";
-        case OpI::SLTI: return "slti"; case OpI::SLTIU: return "sltiu";
-        case OpI::XORI: return "xori"; case OpI::SRLI: return "srli";
-        case OpI::SRAI: return "srai"; case OpI::ORI: return "ori";
+        case OpI::ADDI: return "addi";
+        case OpI::SLLI: return "slli";
+        case OpI::SLTI: return "slti";
+        case OpI::SLTIU: return "sltiu";
+        case OpI::XORI: return "xori";
+        case OpI::SRLI: return "srli";
+        case OpI::SRAI: return "srai";
+        case OpI::ORI: return "ori";
         case OpI::ANDI: return "andi";
-        case OpI::LD: return "ld"; case OpI::LW: return "lw"; case OpI::LWU: return "lwu";
-        case OpI::LB: return "lb"; case OpI::LBU: return "lbu";
-        case OpI::LH: return "lh"; case OpI::LHU: return "lhu";
+        case OpI::LD: return "ld";
+        case OpI::LW: return "lw";
+        case OpI::LWU: return "lwu";
+        case OpI::LB: return "lb";
+        case OpI::LBU: return "lbu";
+        case OpI::LH: return "lh";
+        case OpI::LHU: return "lhu";
         case OpI::JALR: return "jalr";
-        case OpI::SD: return "sd"; case OpI::SW: return "sw";
-        case OpI::SB: return "sb"; case OpI::SH: return "sh";
-        case OpI::BEQ: return "beq"; case OpI::BNE: return "bne";
-        case OpI::BLT: return "blt"; case OpI::BGE: return "bge";
-        case OpI::BLTU: return "bltu"; case OpI::BGEU: return "bgeu";
-        case OpI::ADDIW: return "addiw"; case OpI::SLLIW: return "slliw";
-        case OpI::SRLIW: return "srliw"; case OpI::SRAIW: return "sraiw";
-        case OpI::ADDW: return "addw"; case OpI::SUBW: return "subw";
-        case OpI::SLLW: return "sllw"; case OpI::SRLW: return "srlw";
-        case OpI::SRAW: return "sraw"; case OpI::MULW: return "mulw";
-        case OpI::DIVW: return "divw"; case OpI::REMW: return "remw";
+        case OpI::SD: return "sd";
+        case OpI::SW: return "sw";
+        case OpI::SB: return "sb";
+        case OpI::SH: return "sh";
+        case OpI::BEQ: return "beq";
+        case OpI::BNE: return "bne";
+        case OpI::BLT: return "blt";
+        case OpI::BGE: return "bge";
+        case OpI::BLTU: return "bltu";
+        case OpI::BGEU: return "bgeu";
+        case OpI::ADDIW: return "addiw";
+        case OpI::SLLIW: return "slliw";
+        case OpI::SRLIW: return "srliw";
+        case OpI::SRAIW: return "sraiw";
+        case OpI::ADDW: return "addw";
+        case OpI::SUBW: return "subw";
+        case OpI::SLLW: return "sllw";
+        case OpI::SRLW: return "srlw";
+        case OpI::SRAW: return "sraw";
+        case OpI::MULW: return "mulw";
+        case OpI::DIVW: return "divw";
+        case OpI::REMW: return "remw";
     }
     return "?";
 }
 
 inline std::string op_name(OpFI op) {
     switch (op) {
-        case OpFI::FLW: return "flw"; case OpFI::FLD: return "fld";
-        case OpFI::FSW: return "fsw"; case OpFI::FSD: return "fsd";
+        case OpFI::FLW: return "flw";
+        case OpFI::FLD: return "fld";
+        case OpFI::FSW: return "fsw";
+        case OpFI::FSD: return "fsd";
     }
     return "?";
 }
@@ -92,7 +137,8 @@ inline std::string op_name(OpJ op) {
 
 inline std::string op_name(OpU op) {
     switch (op) {
-        case OpU::LUI: return "lui"; case OpU::AUIPC: return "auipc";
+        case OpU::LUI: return "lui";
+        case OpU::AUIPC: return "auipc";
     }
     return "?";
 }
@@ -105,24 +151,23 @@ inline void emit_li(GeneralReg rd, int64_t imm64, std::vector<std::string>& out)
         return;
     }
     // standard RV64 li decomposition
-    int32_t hi20 = imm >> 12;       // sign-extended upper 20 bits
-    int32_t lo12 = imm & 0xFFF;     // lower 12 bits
-    if (lo12 & 0x800) {             // addi sign-extends; adjust lui
+    int32_t hi20 = imm >> 12;    // sign-extended upper 20 bits
+    int32_t lo12 = imm & 0xFFF;  // lower 12 bits
+    if (lo12 & 0x800) {          // addi sign-extends; adjust lui
         hi20 += 1;
         lo12 -= 0x1000;
     }
     out.push_back("    lui " + rd.toString() + ", " + std::to_string((uint32_t)hi20 & 0xFFFFF));
     if (lo12 != 0) {
-        out.push_back("    addi " + rd.toString() + ", " + rd.toString() + ", " + std::to_string(lo12));
+        out.push_back("    addi " + rd.toString() + ", " + rd.toString() + ", " +
+                      std::to_string(lo12));
     }
 }
 
 // Expand a single PseudoInst into real instruction strings
 inline void expand_pseudo(const PseudoInst& pi, std::vector<std::string>& out) {
     switch (pi.op) {
-        case Pseudo::LI:
-            emit_li(pi.rd, pi.imm, out);
-            break;
+        case Pseudo::LI: emit_li(pi.rd, pi.imm, out); break;
         case Pseudo::MV:
             out.push_back("    addi " + pi.rd.toString() + ", " + pi.rs1.toString() + ", 0");
             break;
@@ -147,18 +192,10 @@ inline void expand_pseudo(const PseudoInst& pi, std::vector<std::string>& out) {
         case Pseudo::BNEZ:
             out.push_back("    bne " + pi.rd.toString() + ", zero, " + pi.target);
             break;
-        case Pseudo::J:
-            out.push_back("    j " + pi.target);
-            break;
-        case Pseudo::CALL:
-            out.push_back("    call " + pi.target);
-            break;
-        case Pseudo::RET:
-            out.push_back("    ret");
-            break;
-        case Pseudo::LA:
-            out.push_back("    la " + pi.rd.toString() + ", " + pi.symbol);
-            break;
+        case Pseudo::J: out.push_back("    j " + pi.target); break;
+        case Pseudo::CALL: out.push_back("    call " + pi.target); break;
+        case Pseudo::RET: out.push_back("    ret"); break;
+        case Pseudo::LA: out.push_back("    la " + pi.rd.toString() + ", " + pi.symbol); break;
         case Pseudo::LOAD_GLOBAL: {
             out.push_back("    la t0, " + pi.symbol);
             std::string load_op = (pi.elem_size == 8) ? "ld" : "lw";
@@ -178,36 +215,35 @@ inline void expand_pseudo(const PseudoInst& pi, std::vector<std::string>& out) {
 inline std::string emit_inst_str(const Inst& inst) {
     return Match{inst}(
         [](const InstR& i) {
-            return "    " + op_name(i.op) + " " + i.rd.toString() + ", " + i.rs1.toString() +
-                   ", " + i.rs2.toString();
+            return "    " + op_name(i.op) + " " + i.rd.toString() + ", " + i.rs1.toString() + ", " +
+                   i.rs2.toString();
         },
         [](const InstFR& i) {
-            return "    " + op_name(i.op) + " " + i.rd.toString() + ", " + i.rs1.toString() +
-                   ", " + i.rs2.toString();
+            return "    " + op_name(i.op) + " " + i.rd.toString() + ", " + i.rs1.toString() + ", " +
+                   i.rs2.toString();
         },
         [](const InstI& i) {
-            bool is_load = (i.op == OpI::LD || i.op == OpI::LW || i.op == OpI::LWU ||
-                            i.op == OpI::LB || i.op == OpI::LBU || i.op == OpI::LH ||
-                            i.op == OpI::LHU);
-            bool is_store = (i.op == OpI::SD || i.op == OpI::SW || i.op == OpI::SB ||
-                             i.op == OpI::SH);
+            bool is_load =
+                (i.op == OpI::LD || i.op == OpI::LW || i.op == OpI::LWU || i.op == OpI::LB ||
+                 i.op == OpI::LBU || i.op == OpI::LH || i.op == OpI::LHU);
+            bool is_store =
+                (i.op == OpI::SD || i.op == OpI::SW || i.op == OpI::SB || i.op == OpI::SH);
             if (is_load || is_store) {
                 return "    " + op_name(i.op) + " " + i.rd.toString() + ", " +
                        std::to_string(i.imm) + "(" + i.rs1.toString() + ")";
             }
-            return "    " + op_name(i.op) + " " + i.rd.toString() + ", " + i.rs1.toString() +
-                   ", " + std::to_string(i.imm);
+            return "    " + op_name(i.op) + " " + i.rd.toString() + ", " + i.rs1.toString() + ", " +
+                   std::to_string(i.imm);
         },
         [](const InstFI& i) {
-            return "    " + op_name(i.op) + " " + i.rd.toString() + ", " +
-                   std::to_string(i.imm) + "(" + i.rs1.toString() + ")";
+            return "    " + op_name(i.op) + " " + i.rd.toString() + ", " + std::to_string(i.imm) +
+                   "(" + i.rs1.toString() + ")";
         },
         [](const InstJ& i) {
             return "    " + op_name(i.op) + " " + i.rd.toString() + ", " + i.target;
         },
         [](const InstU& i) {
-            return "    " + op_name(i.op) + " " + i.rd.toString() + ", " +
-                   std::to_string(i.imm);
+            return "    " + op_name(i.op) + " " + i.rd.toString() + ", " + std::to_string(i.imm);
         },
         [](const PseudoInst& pi) -> std::string {
             std::vector<std::string> lines;
@@ -230,13 +266,12 @@ inline void emit_global_val(std::ostream& os, const Global& g, size_t elem_size,
     std::byte* ptr = buffer.get();
     size_t elem_count = g.type.flatten().as<ir::type::Array>().size;
     for (size_t i = 0; i < elem_count; i++) {
-        Match{prim}(
-            [&](ir::type::Int1) { os << "    .byte " << (int)*(bool*)ptr << "\n"; },
-            [&](ir::type::Int32) { os << "    .word " << *(int32_t*)ptr << "\n"; },
-            [&](ir::type::Int) { os << "    .dword " << *(int64_t*)ptr << "\n"; },
-            [&](ir::type::Float32) { os << "    .word " << *(int32_t*)ptr << "\n"; },
-            [&](ir::type::Float64) { os << "    .dword " << *(int64_t*)ptr << "\n"; },
-            [&](auto) { os << "    .zero " << elem_size << "\n"; });
+        Match{prim}([&](ir::type::Int1) { os << "    .byte " << (int)*(bool*)ptr << "\n"; },
+                    [&](ir::type::Int32) { os << "    .word " << *(int32_t*)ptr << "\n"; },
+                    [&](ir::type::Int) { os << "    .dword " << *(int64_t*)ptr << "\n"; },
+                    [&](ir::type::Float32) { os << "    .word " << *(int32_t*)ptr << "\n"; },
+                    [&](ir::type::Float64) { os << "    .dword " << *(int64_t*)ptr << "\n"; },
+                    [&](auto) { os << "    .zero " << elem_size << "\n"; });
         ptr += elem_size;
     }
 }
@@ -251,7 +286,10 @@ inline void emit(std::ostream& os, const Module& mod) {
     // .rodata: const globals
     bool has_rodata = false;
     for (auto& g : mod.globals) {
-        if (g.comptime) { has_rodata = true; break; }
+        if (g.comptime) {
+            has_rodata = true;
+            break;
+        }
     }
     if (has_rodata) {
         os << "\n.section .rodata\n";
@@ -264,15 +302,15 @@ inline void emit(std::ostream& os, const Module& mod) {
             os << g.name << ":\n";
             if (g.type.is<Array>()) {
                 auto flat = g.type.flatten();
-                emit_global_val(os, g, ir::type::size_of(flat.as<Array>().elem), flat.as<Array>().elem);
+                emit_global_val(os, g, ir::type::size_of(flat.as<Array>().elem),
+                                flat.as<Array>().elem);
             } else if (g.type.is<Primitive>()) {
-                Match{g.init->val}(
-                    [&](int v) { os << "    .word " << v << "\n"; },
-                    [&](int64_t v) { os << "    .dword " << v << "\n"; },
-                    [&](float v) { os << "    .word " << *(int32_t*)&v << "\n"; },
-                    [&](double v) { os << "    .dword " << *(int64_t*)&v << "\n"; },
-                    [&](bool v) { os << "    .byte " << (v ? 1 : 0) << "\n"; },
-                    [&](auto&&) {});
+                Match{g.init->val}([&](int v) { os << "    .word " << v << "\n"; },
+                                   [&](int64_t v) { os << "    .dword " << v << "\n"; },
+                                   [&](float v) { os << "    .word " << *(int32_t*)&v << "\n"; },
+                                   [&](double v) { os << "    .dword " << *(int64_t*)&v << "\n"; },
+                                   [&](bool v) { os << "    .byte " << (v ? 1 : 0) << "\n"; },
+                                   [&](auto&&) {});
             }
         }
     }
@@ -280,7 +318,10 @@ inline void emit(std::ostream& os, const Module& mod) {
     // .data: initialized non-const, non-zero globals
     bool has_data = false;
     for (auto& g : mod.globals) {
-        if (!g.comptime && !g.is_zero_init()) { has_data = true; break; }
+        if (!g.comptime && !g.is_zero_init()) {
+            has_data = true;
+            break;
+        }
     }
     if (has_data) {
         os << "\n.data\n";
@@ -293,15 +334,15 @@ inline void emit(std::ostream& os, const Module& mod) {
             os << g.name << ":\n";
             if (g.type.is<Array>()) {
                 auto flat = g.type.flatten();
-                emit_global_val(os, g, ir::type::size_of(flat.as<Array>().elem), flat.as<Array>().elem);
+                emit_global_val(os, g, ir::type::size_of(flat.as<Array>().elem),
+                                flat.as<Array>().elem);
             } else if (g.type.is<Primitive>()) {
-                Match{g.init->val}(
-                    [&](int v) { os << "    .word " << v << "\n"; },
-                    [&](int64_t v) { os << "    .dword " << v << "\n"; },
-                    [&](float v) { os << "    .word " << *(int32_t*)&v << "\n"; },
-                    [&](double v) { os << "    .dword " << *(int64_t*)&v << "\n"; },
-                    [&](bool v) { os << "    .byte " << (v ? 1 : 0) << "\n"; },
-                    [&](auto&&) {});
+                Match{g.init->val}([&](int v) { os << "    .word " << v << "\n"; },
+                                   [&](int64_t v) { os << "    .dword " << v << "\n"; },
+                                   [&](float v) { os << "    .word " << *(int32_t*)&v << "\n"; },
+                                   [&](double v) { os << "    .dword " << *(int64_t*)&v << "\n"; },
+                                   [&](bool v) { os << "    .byte " << (v ? 1 : 0) << "\n"; },
+                                   [&](auto&&) {});
             }
         }
     }
@@ -309,7 +350,10 @@ inline void emit(std::ostream& os, const Module& mod) {
     // .bss: zero-initialized non-const globals
     bool has_bss = false;
     for (auto& g : mod.globals) {
-        if (!g.comptime && g.is_zero_init()) { has_bss = true; break; }
+        if (!g.comptime && g.is_zero_init()) {
+            has_bss = true;
+            break;
+        }
     }
     if (has_bss) {
         os << "\n.bss\n";
@@ -348,10 +392,9 @@ inline void emit(std::ostream& os, const Module& mod) {
         for (auto& lit : mod.float_literals) {
             os << ".balign 8\n";
             os << lit.label << ":\n";
-            Match{lit.value.val}(
-                [&](float v) { os << "    .word " << *(int32_t*)&v << "\n"; },
-                [&](double v) { os << "    .dword " << *(int64_t*)&v << "\n"; },
-                [&](auto&&) {});
+            Match{lit.value.val}([&](float v) { os << "    .word " << *(int32_t*)&v << "\n"; },
+                                 [&](double v) { os << "    .dword " << *(int64_t*)&v << "\n"; },
+                                 [&](auto&&) {});
         }
     }
 
