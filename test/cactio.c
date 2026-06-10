@@ -31,7 +31,7 @@ SCOPE int get_int(void)
 SCOPE float get_float(void)
 {
 	float x = 0.0f;
-	scanf("%f", &x);
+	scanf("%ff", &x);
 	return x;
 }
 SCOPE double get_double(void)

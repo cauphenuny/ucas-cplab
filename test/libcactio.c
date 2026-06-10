@@ -30,7 +30,7 @@ int get_int() {
 float get_float() {
     float x;
     //fprintf(stderr, "please enter a float number:\n");
-    scanf("%f", &x);
+    scanf("%ff", &x);
     return x;
 }
 
