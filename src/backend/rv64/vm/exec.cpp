@@ -238,6 +238,48 @@ void VirtualMachine::exec_r(const InstR& i) {
         case R::OR: regs[i.rd.id] = regs[i.rs1.id] | regs[i.rs2.id]; break;
         case R::AND: regs[i.rd.id] = regs[i.rs1.id] & regs[i.rs2.id]; break;
         case R::MUL: regs[i.rd.id] = (int64_t)regs[i.rs1.id] * (int64_t)regs[i.rs2.id]; break;
+        case R::ADDW:
+            regs[i.rd.id] = (int64_t)(int32_t)((int32_t)regs[i.rs1.id] + (int32_t)regs[i.rs2.id]);
+            break;
+        case R::SUBW:
+            regs[i.rd.id] = (int64_t)(int32_t)((int32_t)regs[i.rs1.id] - (int32_t)regs[i.rs2.id]);
+            break;
+        case R::SLLW:
+            regs[i.rd.id] = (int64_t)(int32_t)((int32_t)regs[i.rs1.id] << (regs[i.rs2.id] & 0x1F));
+            break;
+        case R::SRLW:
+            regs[i.rd.id] = (int64_t)(int32_t)((uint32_t)regs[i.rs1.id] >> (regs[i.rs2.id] & 0x1F));
+            break;
+        case R::SRAW:
+            regs[i.rd.id] = (int64_t)(int32_t)((int32_t)regs[i.rs1.id] >> (regs[i.rs2.id] & 0x1F));
+            break;
+        case R::MULW:
+            regs[i.rd.id] = (int64_t)(int32_t)((int32_t)regs[i.rs1.id] * (int32_t)regs[i.rs2.id]);
+            break;
+        case R::DIVW: {
+            int32_t a = (int32_t)regs[i.rs1.id];
+            int32_t b = (int32_t)regs[i.rs2.id];
+            if (b == 0) {
+                regs[i.rd.id] = ~0ULL;
+            } else if (a == INT32_MIN && b == -1) {
+                regs[i.rd.id] = (int64_t)a;
+            } else {
+                regs[i.rd.id] = (int64_t)(a / b);
+            }
+            break;
+        }
+        case R::REMW: {
+            int32_t a = (int32_t)regs[i.rs1.id];
+            int32_t b = (int32_t)regs[i.rs2.id];
+            if (b == 0) {
+                regs[i.rd.id] = (int64_t)a;
+            } else if (a == INT32_MIN && b == -1) {
+                regs[i.rd.id] = 0;
+            } else {
+                regs[i.rd.id] = (int64_t)(a % b);
+            }
+            break;
+        }
         case R::DIV: {
             if (regs[i.rs2.id] == 0) {
                 regs[i.rd.id] = ~0ULL;
@@ -394,64 +436,6 @@ void VirtualMachine::exec_i(const InstI& i, const FlatInst& fi) {
             uint64_t tmp = pc;
             pc = (regs[i.rs1.id] + i.imm) & ~1ULL;
             if (i.rd.id != 0) regs[i.rd.id] = tmp;
-            break;
-        }
-
-        // ---- W-variant R-type (imm encodes rs2 register index) ----
-        case I::ADDW: {
-            uint32_t rs2v = (uint32_t)regs[(uint8_t)i.imm];
-            regs[i.rd.id] = (int64_t)(int32_t)((int32_t)regs[i.rs1.id] + (int32_t)rs2v);
-            break;
-        }
-        case I::SUBW: {
-            uint32_t rs2v = (uint32_t)regs[(uint8_t)i.imm];
-            regs[i.rd.id] = (int64_t)(int32_t)((int32_t)regs[i.rs1.id] - (int32_t)rs2v);
-            break;
-        }
-        case I::SLLW: {
-            uint32_t rs2v = (uint32_t)regs[(uint8_t)i.imm];
-            regs[i.rd.id] = (int64_t)(int32_t)((int32_t)regs[i.rs1.id] << (rs2v & 0x1F));
-            break;
-        }
-        case I::SRLW: {
-            uint32_t rs2v = (uint32_t)regs[(uint8_t)i.imm];
-            regs[i.rd.id] = (int64_t)(int32_t)((uint32_t)regs[i.rs1.id] >> (rs2v & 0x1F));
-            break;
-        }
-        case I::SRAW: {
-            uint32_t rs2v = (uint32_t)regs[(uint8_t)i.imm];
-            regs[i.rd.id] = (int64_t)(int32_t)((int32_t)regs[i.rs1.id] >> (rs2v & 0x1F));
-            break;
-        }
-        case I::MULW: {
-            uint32_t rs2v = (uint32_t)regs[(uint8_t)i.imm];
-            regs[i.rd.id] = (int64_t)(int32_t)((int32_t)regs[i.rs1.id] * (int32_t)rs2v);
-            break;
-        }
-        case I::DIVW: {
-            uint32_t rs2v = (uint32_t)regs[(uint8_t)i.imm];
-            int32_t a = (int32_t)regs[i.rs1.id];
-            int32_t b = (int32_t)rs2v;
-            if (b == 0) {
-                regs[i.rd.id] = ~0ULL;
-            } else if (a == INT32_MIN && b == -1) {
-                regs[i.rd.id] = (int64_t)a;
-            } else {
-                regs[i.rd.id] = (int64_t)(a / b);
-            }
-            break;
-        }
-        case I::REMW: {
-            uint32_t rs2v = (uint32_t)regs[(uint8_t)i.imm];
-            int32_t a = (int32_t)regs[i.rs1.id];
-            int32_t b = (int32_t)rs2v;
-            if (b == 0) {
-                regs[i.rd.id] = (int64_t)a;
-            } else if (a == INT32_MIN && b == -1) {
-                regs[i.rd.id] = 0;
-            } else {
-                regs[i.rd.id] = (int64_t)(a % b);
-            }
             break;
         }
 

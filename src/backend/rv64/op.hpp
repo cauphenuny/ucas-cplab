@@ -65,6 +65,14 @@ enum class OpR : uint8_t {
     MUL,
     DIV,
     REM,
+    ADDW,
+    SUBW,
+    SLLW,
+    SRLW,
+    SRAW,
+    MULW,
+    DIVW,
+    REMW,
 };
 
 enum class OpFR : uint8_t {
@@ -139,14 +147,6 @@ enum class OpI : uint8_t {
     SLLIW,
     SRLIW,
     SRAIW,
-    ADDW,
-    SUBW,
-    SLLW,
-    SRLW,
-    SRAW,
-    MULW,
-    DIVW,
-    REMW,
 };
 
 enum class OpFI : uint8_t {
@@ -181,6 +181,14 @@ inline std::string toString(OpR op) {
         case OpR::MUL: return "mul";
         case OpR::DIV: return "div";
         case OpR::REM: return "rem";
+        case OpR::ADDW: return "addw";
+        case OpR::SUBW: return "subw";
+        case OpR::SLLW: return "sllw";
+        case OpR::SRLW: return "srlw";
+        case OpR::SRAW: return "sraw";
+        case OpR::MULW: return "mulw";
+        case OpR::DIVW: return "divw";
+        case OpR::REMW: return "remw";
     }
     return "?";
 }
@@ -256,14 +264,6 @@ inline std::string toString(OpI op) {
         case OpI::SLLIW: return "slliw";
         case OpI::SRLIW: return "srliw";
         case OpI::SRAIW: return "sraiw";
-        case OpI::ADDW: return "addw";
-        case OpI::SUBW: return "subw";
-        case OpI::SLLW: return "sllw";
-        case OpI::SRLW: return "srlw";
-        case OpI::SRAW: return "sraw";
-        case OpI::MULW: return "mulw";
-        case OpI::DIVW: return "divw";
-        case OpI::REMW: return "remw";
     }
     return "?";
 }

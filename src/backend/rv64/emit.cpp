@@ -19,6 +19,19 @@ std::string InstR::toString() const {
 }
 
 std::string InstFR::toString() const {
+    switch (op) {
+        case OpFR::FCVT_W_S:
+        case OpFR::FCVT_W_D:
+        case OpFR::FCVT_L_S:
+        case OpFR::FCVT_L_D: return fmt::format("    {} {}, {}", op, GeneralReg{rd.id}, rs1);
+        case OpFR::FCVT_S_W:
+        case OpFR::FCVT_D_W:
+        case OpFR::FCVT_S_L:
+        case OpFR::FCVT_D_L: return fmt::format("    {} {}, {}", op, rd, GeneralReg{rs1.id});
+        case OpFR::FMV_X_W: return fmt::format("    {} {}, {}", op, GeneralReg{rd.id}, rs1);
+        case OpFR::FMV_W_X: return fmt::format("    {} {}, {}", op, rd, GeneralReg{rs1.id});
+        default: break;
+    }
     return fmt::format("    {} {}, {}, {}", op, rd, rs1, rs2);
 }
 
