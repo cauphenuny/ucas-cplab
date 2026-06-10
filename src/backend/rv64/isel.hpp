@@ -254,19 +254,51 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
             // Derive load width from the operand's reference element type,
             // not from the result type (which may be widened after regalloc).
             auto load_elem = type_of(inst.operand).as<ir::type::Reference>().elem;
+            bool load_fp = is_fp_op(load_elem);
+            // int load op: Int1→lbu, Int32/Float32→lw, Int/Float64→ld
+            auto int_load_op = [](const ir::Type& t) -> OpI {
+                if (t.is<ir::type::Primitive>() &&
+                    std::holds_alternative<ir::type::Int1>(t.as<ir::type::Primitive>()))
+                    return OpI::LBU;
+                return is_32bit_op(t) ? OpI::LW : OpI::LD;
+            };
             if (ref_alloc && frame.has_spill(ref_alloc)) {
                 size_t off = frame.offset_of(ref_alloc);
-                blk.insts.emplace_back(InstI{is_32bit_op(load_elem) ? OpI::LW : OpI::LD, gpr(*rd),
-                                             GeneralReg{2}, (int32_t)off});
+                if (load_fp) {
+                    bool is_double = !is_32bit_op(load_elem);
+                    blk.insts.emplace_back(InstFI{is_double ? OpFI::FLD : OpFI::FLW, fpr(*rd),
+                                                  GeneralReg{2}, (int32_t)off});
+                } else {
+                    blk.insts.emplace_back(
+                        InstI{int_load_op(load_elem), gpr(*rd), GeneralReg{2}, (int32_t)off});
+                }
             } else if (auto base = lookup_reg(regs, inst.operand)) {
                 // register dereference — operand has a register, use it as a pointer
-                blk.insts.emplace_back(
-                    InstI{is_32bit_op(load_elem) ? OpI::LW : OpI::LD, gpr(*rd), gpr(*base), 0});
+                if (load_fp) {
+                    bool is_double = !is_32bit_op(load_elem);
+                    blk.insts.emplace_back(
+                        InstFI{is_double ? OpFI::FLD : OpFI::FLW, fpr(*rd), gpr(*base), 0});
+                } else {
+                    blk.insts.emplace_back(InstI{int_load_op(load_elem), gpr(*rd), gpr(*base), 0});
+                }
             } else if (ref_alloc) {
                 // symbol without register: load from the symbol address
                 auto sz = abi.mem.size(ref_alloc->type);
-                PseudoL pi{sz == 8 ? PseudoL::LGD : PseudoL::LGW, gpr(*rd), ref_alloc->name};
-                blk.insts.emplace_back(pi);
+                if (load_fp) {
+                    bool is_double = !is_32bit_op(load_elem);
+                    blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(5), ref_alloc->name});
+                    blk.insts.emplace_back(
+                        InstFI{is_double ? OpFI::FLD : OpFI::FLW, fpr(*rd), gpr(5), 0});
+                } else {
+                    if (sz == 1) {
+                        blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(5), ref_alloc->name});
+                        blk.insts.emplace_back(InstI{OpI::LBU, gpr(*rd), gpr(5), 0});
+                    } else {
+                        PseudoL pi{sz == 8 ? PseudoL::LGD : PseudoL::LGW, gpr(*rd),
+                                   ref_alloc->name};
+                        blk.insts.emplace_back(pi);
+                    }
+                }
             }
             break;
         }
@@ -350,25 +382,46 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
 
         if (!val) return;
 
+        // int store op: Int1→sb, Int32/Float32→sw, Int/Float64→sd
+        auto int_store_op = [](const ir::Type& t) -> OpI {
+            if (t.is<ir::type::Primitive>() &&
+                std::holds_alternative<ir::type::Int1>(t.as<ir::type::Primitive>()))
+                return OpI::SB;
+            return is_32bit_op(t) ? OpI::SW : OpI::SD;
+        };
+
         // 1) Stack slot (reference with known offset)
         if (ref_alloc && frame.has_spill(ref_alloc)) {
             size_t off = frame.offset_of(ref_alloc);
-            blk.insts.emplace_back(InstI{is_32bit_op(ir::type_of(inst.rhs)) ? OpI::SW : OpI::SD,
-                                         gpr(*val), GeneralReg{2}, (int32_t)off});
+            if (is_fp_op(ir::type_of(inst.rhs))) {
+                bool is_double = !is_32bit_op(ir::type_of(inst.rhs));
+                blk.insts.emplace_back(InstFI{is_double ? OpFI::FSD : OpFI::FSW, fpr(*val),
+                                              GeneralReg{2}, (int32_t)off});
+            } else {
+                blk.insts.emplace_back(InstI{int_store_op(ir::type_of(inst.rhs)), gpr(*val),
+                                             GeneralReg{2}, (int32_t)off});
+            }
         } else if (auto base = lookup_reg(regs, inst.lhs)) {
             // 2) Register-dereference store: *base = val
-            blk.insts.emplace_back(InstI{is_32bit_op(ir::type_of(inst.rhs)) ? OpI::SW : OpI::SD,
-                                         gpr(*val), gpr(*base), 0});
+            if (is_fp_op(ir::type_of(inst.rhs))) {
+                bool is_double = !is_32bit_op(ir::type_of(inst.rhs));
+                blk.insts.emplace_back(
+                    InstFI{is_double ? OpFI::FSD : OpFI::FSW, fpr(*val), gpr(*base), 0});
+            } else {
+                blk.insts.emplace_back(
+                    InstI{int_store_op(ir::type_of(inst.rhs)), gpr(*val), gpr(*base), 0});
+            }
         } else if (ref_alloc) {
             // 3) Global symbol store
-            auto sz = abi.mem.size(ref_alloc->type);
-            if (sz == 8) {
-                // la t0, symbol; sd val, 0(t0)
+            if (is_fp_op(ir::type_of(inst.rhs))) {
+                bool is_double = !is_32bit_op(ir::type_of(inst.rhs));
                 blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(5), ref_alloc->name});
-                blk.insts.emplace_back(InstI{OpI::SD, gpr(*val), gpr(5), 0});
+                blk.insts.emplace_back(
+                    InstFI{is_double ? OpFI::FSD : OpFI::FSW, fpr(*val), gpr(5), 0});
             } else {
                 blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(5), ref_alloc->name});
-                blk.insts.emplace_back(InstI{OpI::SW, gpr(*val), gpr(5), 0});
+                blk.insts.emplace_back(
+                    InstI{int_store_op(ir::type_of(inst.rhs)), gpr(*val), gpr(5), 0});
             }
         }
         return;

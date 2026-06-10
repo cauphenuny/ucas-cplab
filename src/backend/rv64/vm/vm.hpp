@@ -41,7 +41,7 @@ struct VirtualMachine {
 
     // Stats
     size_t num_insts{0};
-    size_t max_insts{10'000'000};
+    size_t max_insts{1'000'000'000};
 
     // Program counter (flat instruction index)
     size_t pc{0};
