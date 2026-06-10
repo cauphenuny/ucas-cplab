@@ -230,7 +230,7 @@ template <typename T> bool TypeBox::is() const {
 
 template <typename T> const T& TypeBox::as() const {
     if (!is<T>()) {
-        throw std::bad_variant_access();
+        throw COMPILER_ERROR(fmt::format("Type is not {}, but {}", typeid(T).name(), *this));
     }
     return std::get<T>(*item);
 }

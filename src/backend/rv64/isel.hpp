@@ -241,16 +241,19 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
         }
         case ir::UnaryInstOp::LOAD: {
             auto* ref_alloc = resolve_alloc(inst.operand);
+            // Derive load width from the operand's reference element type,
+            // not from the result type (which may be widened after regalloc).
+            auto load_elem = type_of(inst.operand)
+                    .as<ir::type::Reference>()
+                    .elem;
             if (ref_alloc && frame.has_spill(ref_alloc)) {
                 size_t off = frame.offset_of(ref_alloc);
-                blk.insts.emplace_back(
-                    InstI{is_32bit_op(ir::type_of(*inst.result)) ? OpI::LW : OpI::LD, gpr(*rd),
-                          GeneralReg{2}, (int32_t)off});
+                blk.insts.emplace_back(InstI{is_32bit_op(load_elem) ? OpI::LW : OpI::LD, gpr(*rd),
+                                             GeneralReg{2}, (int32_t)off});
             } else if (auto base = lookup_reg(regs, inst.operand)) {
                 // register dereference — operand has a register, use it as a pointer
                 blk.insts.emplace_back(
-                    InstI{is_32bit_op(ir::type_of(*inst.result)) ? OpI::LW : OpI::LD, gpr(*rd),
-                          gpr(*base), 0});
+                    InstI{is_32bit_op(load_elem) ? OpI::LW : OpI::LD, gpr(*rd), gpr(*base), 0});
             } else if (ref_alloc) {
                 // symbol without register: load from the symbol address
                 auto sz = abi.mem.size(ref_alloc->type);
@@ -537,8 +540,10 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
             case ir::InstOp::MOD:
             case ir::InstOp::AND:
             case ir::InstOp::OR: {
-                // LI imm into rd, then R-type with rd as rhs
-                blk.insts.emplace_back(PseudoLI{gpr(*rd), imm});
+                // LI imm into temp register (t0 if rd == lhs to avoid clobbering lhs)
+                bool clobber = (*rd == *lhs);
+                auto tmp = clobber ? gpr(5) : gpr(*rd);
+                blk.insts.emplace_back(PseudoLI{tmp, imm});
                 OpR op_r;
                 OpI op_w;
                 switch (inst.op) {
@@ -555,17 +560,17 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                         op_w = OpI::REMW;
                         break;
                     case ir::InstOp::AND:
-                        blk.insts.emplace_back(InstR{OpR::AND, gpr(*rd), gpr(*lhs), gpr(*rd)});
+                        blk.insts.emplace_back(InstR{OpR::AND, gpr(*rd), gpr(*lhs), tmp});
                         return;
                     case ir::InstOp::OR:
-                        blk.insts.emplace_back(InstR{OpR::OR, gpr(*rd), gpr(*lhs), gpr(*rd)});
+                        blk.insts.emplace_back(InstR{OpR::OR, gpr(*rd), gpr(*lhs), tmp});
                         return;
                     default: return;
                 }
                 if (w)
                     blk.insts.emplace_back(InstI{op_w, gpr(*rd), gpr(*lhs), (int32_t)(*rd)});
                 else
-                    blk.insts.emplace_back(InstR{op_r, gpr(*rd), gpr(*lhs), gpr(*rd)});
+                    blk.insts.emplace_back(InstR{op_r, gpr(*rd), gpr(*lhs), tmp});
                 break;
             }
             default: break;
@@ -586,54 +591,72 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                     InstI{w ? OpI::ADDIW : OpI::ADDI, gpr(*rd), gpr(*rhs), (int32_t)cv});
                 break;
             case ir::InstOp::MUL:
-                blk.insts.emplace_back(PseudoLI{gpr(*rd), cv});
-                if (w)
-                    blk.insts.emplace_back(InstI{OpI::MULW, gpr(*rd), gpr(*rhs), (int32_t)(*rd)});
-                else
-                    blk.insts.emplace_back(InstR{OpR::MUL, gpr(*rd), gpr(*rhs), gpr(*rd)});
-                break;
             case ir::InstOp::AND:
-                blk.insts.emplace_back(PseudoLI{gpr(*rd), cv});
-                blk.insts.emplace_back(InstR{OpR::AND, gpr(*rd), gpr(*rhs), gpr(*rd)});
-                break;
             case ir::InstOp::OR:
-                blk.insts.emplace_back(PseudoLI{gpr(*rd), cv});
-                blk.insts.emplace_back(InstR{OpR::OR, gpr(*rd), gpr(*rhs), gpr(*rd)});
-                break;
-            case ir::InstOp::EQ: {
-                blk.insts.emplace_back(PseudoLI{gpr(*rd), cv});
-                blk.insts.emplace_back(InstR{OpR::SUB, gpr(*rd), gpr(*rhs), gpr(*rd)});
-                blk.insts.emplace_back(PseudoR{PseudoR::SEQZ, gpr(*rd), gpr(*rd)});
-                break;
-            }
+            case ir::InstOp::EQ:
             case ir::InstOp::NEQ: {
-                blk.insts.emplace_back(PseudoLI{gpr(*rd), cv});
-                blk.insts.emplace_back(InstR{OpR::SUB, gpr(*rd), gpr(*rhs), gpr(*rd)});
-                blk.insts.emplace_back(PseudoR{PseudoR::SNEZ, gpr(*rd), gpr(*rd)});
+                // Use t0 to avoid clobbering rhs when rd == rhs
+                auto tmp = (*rd == *rhs) ? gpr(5) : gpr(*rd);
+                blk.insts.emplace_back(PseudoLI{tmp, cv});
+                switch (inst.op) {
+                    case ir::InstOp::MUL:
+                        if (w)
+                            blk.insts.emplace_back(
+                                InstI{OpI::MULW, gpr(*rd), gpr(*rhs), (int32_t)(*rd)});
+                        else
+                            blk.insts.emplace_back(InstR{OpR::MUL, gpr(*rd), gpr(*rhs), tmp});
+                        break;
+                    case ir::InstOp::AND:
+                        blk.insts.emplace_back(InstR{OpR::AND, gpr(*rd), gpr(*rhs), tmp});
+                        break;
+                    case ir::InstOp::OR:
+                        blk.insts.emplace_back(InstR{OpR::OR, gpr(*rd), gpr(*rhs), tmp});
+                        break;
+                    case ir::InstOp::EQ:
+                        blk.insts.emplace_back(InstR{OpR::SUB, gpr(*rd), gpr(*rhs), tmp});
+                        blk.insts.emplace_back(PseudoR{PseudoR::SEQZ, gpr(*rd), gpr(*rd)});
+                        break;
+                    case ir::InstOp::NEQ:
+                        blk.insts.emplace_back(InstR{OpR::SUB, gpr(*rd), gpr(*rhs), tmp});
+                        blk.insts.emplace_back(PseudoR{PseudoR::SNEZ, gpr(*rd), gpr(*rd)});
+                        break;
+                    default: break;
+                }
                 break;
             }
             // non-commutative: load const, then R-type
             case ir::InstOp::SUB:
-                blk.insts.emplace_back(PseudoLI{gpr(*rd), cv});
-                if (w)
-                    blk.insts.emplace_back(InstI{OpI::SUBW, gpr(*rd), gpr(*rd), (int32_t)(*rhs)});
-                else
-                    blk.insts.emplace_back(InstR{OpR::SUB, gpr(*rd), gpr(*rd), gpr(*rhs)});
-                break;
             case ir::InstOp::DIV:
-                blk.insts.emplace_back(PseudoLI{gpr(*rd), cv});
-                if (w)
-                    blk.insts.emplace_back(InstI{OpI::DIVW, gpr(*rd), gpr(*rd), (int32_t)(*rhs)});
-                else
-                    blk.insts.emplace_back(InstR{OpR::DIV, gpr(*rd), gpr(*rd), gpr(*rhs)});
+            case ir::InstOp::MOD: {
+                // Use t0 to avoid clobbering rhs when rd == rhs
+                auto tmp = (*rd == *rhs) ? gpr(5) : gpr(*rd);
+                blk.insts.emplace_back(PseudoLI{tmp, cv});
+                switch (inst.op) {
+                    case ir::InstOp::SUB:
+                        if (w)
+                            blk.insts.emplace_back(
+                                InstI{OpI::SUBW, gpr(*rd), tmp, (int32_t)(*rhs)});
+                        else
+                            blk.insts.emplace_back(InstR{OpR::SUB, gpr(*rd), tmp, gpr(*rhs)});
+                        break;
+                    case ir::InstOp::DIV:
+                        if (w)
+                            blk.insts.emplace_back(
+                                InstI{OpI::DIVW, gpr(*rd), tmp, (int32_t)(*rhs)});
+                        else
+                            blk.insts.emplace_back(InstR{OpR::DIV, gpr(*rd), tmp, gpr(*rhs)});
+                        break;
+                    case ir::InstOp::MOD:
+                        if (w)
+                            blk.insts.emplace_back(
+                                InstI{OpI::REMW, gpr(*rd), tmp, (int32_t)(*rhs)});
+                        else
+                            blk.insts.emplace_back(InstR{OpR::REM, gpr(*rd), tmp, gpr(*rhs)});
+                        break;
+                    default: break;
+                }
                 break;
-            case ir::InstOp::MOD:
-                blk.insts.emplace_back(PseudoLI{gpr(*rd), cv});
-                if (w)
-                    blk.insts.emplace_back(InstI{OpI::REMW, gpr(*rd), gpr(*rd), (int32_t)(*rhs)});
-                else
-                    blk.insts.emplace_back(InstR{OpR::REM, gpr(*rd), gpr(*rd), gpr(*rhs)});
-                break;
+            }
             case ir::InstOp::GT: {
                 // c > x ≡ x < c → SLTI if c fits, else PseudoLI + SLT
                 if ((int32_t)cv == cv && cv < 2047) {
