@@ -96,6 +96,46 @@ else()
     # But since this is inside if(PYTHON_EXECUTABLE), and executables are outside, we need to defer
 endif()
 
+set(RV_LIB_NAME ${CMAKE_CURRENT_BINARY_DIR}/libcactio.a)
+set(RV_OBJ_NAME ${CMAKE_CURRENT_BINARY_DIR}/cactio.o)
+set(RV_SRC_FILE ${CMAKE_CURRENT_SOURCE_DIR}/test/libcactio.c)
+
+find_program(RISCV_GCC
+    NAMES
+        riscv64-unknown-elf-gcc
+        riscv64-linux-gnu-gcc
+        riscv64-unknown-linux-gnu-gcc
+)
+
+find_program(RISCV_AR
+    NAMES
+        riscv64-unknown-elf-ar
+        riscv64-linux-gnu-ar
+        riscv64-unknown-linux-gnu-ar
+)
+
+if(RISCV_GCC AND RISCV_AR)
+    message(STATUS "Found RISC-V toolchain: ${RISCV_GCC}")
+
+    add_custom_command(
+        OUTPUT ${RV_LIB_NAME}
+        COMMAND ${RISCV_GCC} ${RV_SRC_FILE} -c -o ${RV_OBJ_NAME}
+        COMMAND ${RISCV_AR} rcs ${RV_LIB_NAME} ${RV_OBJ_NAME}
+        DEPENDS ${RV_SRC_FILE}
+        COMMENT "Cross-compiling libcactio.a for RISC-V 64..."
+    )
+
+    add_custom_target(cactio_rv64 ALL
+        DEPENDS ${RV_LIB_NAME}
+    )
+else()
+    message(WARNING
+        "No RISC-V toolchain found "
+        "(tried riscv64-unknown-elf-gcc and riscv64-linux-gnu-gcc). "
+        "Skipping cactio_rv64 target."
+    )
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -255,16 +295,3 @@ if(PYTHON_EXECUTABLE AND TARGET compiler AND TARGET interpreter)
     )
     add_dependencies(update_usage compiler interpreter)
 endif()
-
-set(RV_LIB_NAME ${CMAKE_CURRENT_BINARY_DIR}/libcactio.a)
-set(RV_OBJ_NAME ${CMAKE_CURRENT_BINARY_DIR}/cactio.o)
-set(RV_SRC_FILE ${CMAKE_CURRENT_SOURCE_DIR}/test/libcactio.c)
-
-add_custom_command(
-    OUTPUT ${RV_LIB_NAME}
-    COMMAND riscv64-unknown-elf-gcc ${RV_SRC_FILE} -c -o ${RV_OBJ_NAME}
-    COMMAND riscv64-unknown-elf-ar rcs ${RV_LIB_NAME} ${RV_OBJ_NAME}
-    DEPENDS ${RV_SRC_FILE}
-    COMMENT "Cross-compiling libcactio.a for RISC-V 64..."
-)
-add_custom_target(cactio_rv64 ALL DEPENDS ${RV_LIB_NAME})
