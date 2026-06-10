@@ -255,3 +255,16 @@ if(PYTHON_EXECUTABLE AND TARGET compiler AND TARGET interpreter)
     )
     add_dependencies(update_usage compiler interpreter)
 endif()
+
+set(RV_LIB_NAME ${CMAKE_CURRENT_BINARY_DIR}/libcactio.a)
+set(RV_OBJ_NAME ${CMAKE_CURRENT_BINARY_DIR}/cactio.o)
+set(RV_SRC_FILE ${CMAKE_CURRENT_SOURCE_DIR}/test/libcactio.c)
+
+add_custom_command(
+    OUTPUT ${RV_LIB_NAME}
+    COMMAND riscv64-unknown-elf-gcc ${RV_SRC_FILE} -c -o ${RV_OBJ_NAME}
+    COMMAND riscv64-unknown-elf-ar rcs ${RV_LIB_NAME} ${RV_OBJ_NAME}
+    DEPENDS ${RV_SRC_FILE}
+    COMMENT "Cross-compiling libcactio.a for RISC-V 64..."
+)
+add_custom_target(cactio_rv64 ALL DEPENDS ${RV_LIB_NAME})
