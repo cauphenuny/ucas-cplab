@@ -276,6 +276,10 @@ int main(int argc, const char* argv[]) {
                 "be written.");
     }
 
+    if (output_file) {
+        silent = true;
+    }
+
     bool optimize = optimize_def || optimize_exp || optimize_copy || optimize_alloc ||
                     optimize_const || optimize_inline || optimize_temp;
     bool lowering = lowering_addr || lowering_reg || lowering_prune || lowering_optim;
@@ -480,7 +484,8 @@ int main(int argc, const char* argv[]) {
                     auto module = rv64::isel::lower(program, rv64::ABI);
                     std::ostringstream ss;
                     rv64::emit::emit(ss, module);
-                    fmt::println("Generated RV64 Assembly:\n\n```asm\n{}\n```\n", ss.str());
+                    if (!silent)
+                        fmt::println("Generated RV64 Assembly:\n\n```asm\n{}\n```\n", ss.str());
                     if (output_file) {
                         fmt::print(output_file, "{}", ss.str());
                     }

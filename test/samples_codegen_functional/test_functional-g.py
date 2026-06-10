@@ -6,8 +6,8 @@ lib_path = "../../build"
 # Set the `compler_path` to [where compiler is located]
 compiler_path = "../../build/compiler"
 # Set the `compiler_flags` to the flags passed to CACT compiler
-compiler_flags = "-O0"
-temp_path = "temp/"
+compiler_flags = ["-O0", "--asm"]
+temp_path = "build/"
 inout_path = "./"
 
 info_prefix = "\033[1;36mINFO: \033[0m\t"
@@ -67,7 +67,8 @@ def test(use_gcc = False):
                 f.write(c_code)
             ret = subprocess.run(["riscv64-unknown-elf-gcc", c_file, "-S", "-o", s_file])
         else:
-            ret = subprocess.run([compiler_path, cact_file, "-S", "-o", s_file, compiler_flags])
+            ret = subprocess.run(
+                [compiler_path, cact_file, "-S", "-o", s_file, *compiler_flags])
         if ret.returncode != 0:
             print(error_prefix, "Failed to compile:", cact_file)
             i += 1
@@ -90,6 +91,7 @@ def test(use_gcc = False):
             ret = subprocess.run(["spike", "pk", exe_file], stdout=subprocess.PIPE)
         # save return code to file
         with open(out_file, 'w') as f:
+            f.write("bbl loader\n")
             f.write(ret.stdout.decode())
             f.write(str(ret.returncode))
             f.write("\n")
@@ -102,6 +104,8 @@ def test(use_gcc = False):
             out_ref_content = f.read()
         if out_content != out_ref_content:
             print(error_prefix, "Failed to compare:", cact_file)
+            print(error_prefix, "Expected output:\n", out_ref_content)
+            print(error_prefix, "Actual output:\n", out_content)
             i += 1
             err += 1
             continue
