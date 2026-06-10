@@ -41,3 +41,13 @@ jobs:
       # Execute tests defined by the CMake configuration.
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest -C ${{env.BUILD_TYPE}}
+
+    - name: Test Instruction Selection
+      run: bash scripts/test_isel.sh
+
+    - name: Test Instruction Selection with Optimized IR
+      run: bash scripts/test_isel.sh -O1
+
+    - name: Test Codegen Functional
+      working-directory: ${{github.workspace}}/test/samples_codegen_functional
+      run: python3 test_functional-g.py
