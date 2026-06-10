@@ -24,6 +24,14 @@ struct GeneralReg {
             "s6",   "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"};
         return names[id];
     }
+    static GeneralReg fromString(const std::string& name) {
+        for (uint8_t i = 0; i < 32; i++) {
+            if (name == GeneralReg(i).toString()) {
+                return {i};
+            }
+        }
+        throw COMPILER_ERROR(fmt::format("Invalid register name '{}'", name));
+    }
 };
 
 struct FloatReg {

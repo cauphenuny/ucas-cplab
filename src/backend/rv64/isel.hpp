@@ -401,17 +401,28 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                 blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
                 break;
             case ir::InstOp::GT:
-                // x > N ≡ not (x < N+1)
                 if (imm < 2047) {
+                    // x > N ≡ not (x < N+1)
                     blk.insts.emplace_back(InstI{OpI::SLTI, gpr(*rd), gpr(*lhs), imm + 1});
                     blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
                 } else {
-                    // x > N when N ≥ 2047: materialize N and use register SLT
+                    // x > N ≡ N < x
+                    auto t0 = GeneralReg::fromString("t0");
+                    blk.insts.emplace_back(PseudoLI{t0, imm});
+                    blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), t0, gpr(*lhs)});
                 }
                 break;
             case ir::InstOp::LEQ:
                 if (imm < 2047) {
+                    // x <= N ≡ not (x < N+1)
                     blk.insts.emplace_back(InstI{OpI::SLTI, gpr(*rd), gpr(*lhs), imm + 1});
+                    blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
+                } else {
+                    // x <= N ≡ not (N < x)
+                    auto t0 = GeneralReg::fromString("t0");
+                    blk.insts.emplace_back(PseudoLI{t0, imm});
+                    blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), t0, gpr(*lhs)});
+                    blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
                 }
                 break;
             case ir::InstOp::SUB:
