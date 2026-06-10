@@ -20,35 +20,41 @@ struct Module;
 struct InstR {
     OpR op;
     GeneralReg rd, rs1, rs2;
+    [[nodiscard]] std::string toString() const;
 };
 
 struct InstFR {
     OpFR op;
     FloatReg rd, rs1, rs2;
+    [[nodiscard]] std::string toString() const;
 };
 
 struct InstI {
     OpI op;
     GeneralReg rd, rs1;
     int32_t imm;
+    [[nodiscard]] std::string toString() const;
 };
 
 struct InstFI {
     OpFI op;
     FloatReg rd, rs1;
     int32_t imm;
+    [[nodiscard]] std::string toString() const;
 };
 
 struct InstJ {
     OpJ op;
     GeneralReg rd;
     std::string target;
+    [[nodiscard]] std::string toString() const;
 };
 
 struct InstU {
     OpU op;
     GeneralReg rd;
     int64_t imm;
+    [[nodiscard]] std::string toString() const;
 };
 
 struct PseudoR {
@@ -61,11 +67,13 @@ struct PseudoR {
         SNEZ,
     } op;
     GeneralReg rd, rs1;
+    [[nodiscard]] std::string toString() const;
 };
 
 struct PseudoLI {
     GeneralReg rd;
     int64_t imm;
+    [[nodiscard]] std::string toString() const;
 };
 
 struct PseudoB {
@@ -75,6 +83,7 @@ struct PseudoB {
     } op;
     GeneralReg rs1;
     std::string target;
+    [[nodiscard]] std::string toString() const;
 };
 
 struct PseudoJ {
@@ -83,6 +92,7 @@ struct PseudoJ {
         CALL,
     } op;
     std::string target;
+    [[nodiscard]] std::string toString() const;
 };
 
 struct PseudoL {
@@ -95,9 +105,12 @@ struct PseudoL {
     } op;
     GeneralReg rd;
     std::string symbol;
+    [[nodiscard]] std::string toString() const;
 };
 
-struct PseudoRet {};
+struct PseudoRet {
+    [[nodiscard]] std::string toString() const;
+};
 
 using Inst = std::variant<InstR, InstFR, InstI, InstFI, InstJ, InstU, PseudoR, PseudoLI, PseudoL,
                           PseudoB, PseudoJ, PseudoRet>;
@@ -107,7 +120,7 @@ struct Global {
     ir::Type type;
     std::optional<ir::ConstexprValue> init;
     bool comptime{false};
-    bool is_zero_init() const {
+    [[nodiscard]] bool is_zero_init() const {
         if (!init) return true;
         bool zero = false;
         Match{init->val}([&](std::monostate) { zero = true; }, [&](int v) { zero = (v == 0); },
@@ -116,6 +129,7 @@ struct Global {
                          [&](const std::unique_ptr<std::byte[]>&) { zero = false; });
         return zero;
     }
+    [[nodiscard]] std::string toString() const;
 };
 
 struct FrameLayout {
@@ -136,23 +150,27 @@ struct FrameLayout {
 struct AsmBlock {
     std::string label;
     std::vector<Inst> insts;
+    [[nodiscard]] std::string toString() const;
 };
 
 struct AsmFunc {
     std::string name;
     FrameLayout frame;
     std::vector<AsmBlock> blocks;
+    [[nodiscard]] std::string toString() const;
 };
 
 struct FloatLiteral {
     std::string label;
     ir::ConstexprValue value;
+    [[nodiscard]] std::string toString() const;
 };
 
 struct Module {
     std::vector<Global> globals;
     std::vector<AsmFunc> funcs;
     std::vector<FloatLiteral> float_literals;
+    [[nodiscard]] std::string toString() const;
 };
 
 }  // namespace rv64

@@ -20,7 +20,6 @@
 #include "backend/ir/transform/ssa/destruct.hpp"
 #include "backend/ir/vm/vm.h"
 #include "backend/rv64/abi.hpp"
-#include "backend/rv64/emit.hpp"
 #include "backend/rv64/isel.hpp"
 #include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"
@@ -483,12 +482,11 @@ int main(int argc, const char* argv[]) {
 
                 if (print_asm) {
                     auto module = rv64::isel::lower(program, rv64::ABI);
-                    std::ostringstream ss;
-                    rv64::emit::emit(ss, module);
+                    auto asm_code = fmt::format("{}", module);
                     if (!silent)
-                        fmt::println("Generated RV64 Assembly:\n\n```asm\n{}\n```\n", ss.str());
+                        fmt::println("Generated RV64 Assembly:\n\n```asm\n{}\n```\n", asm_code);
                     if (output_file) {
-                        fmt::print(output_file, "{}", ss.str());
+                        fmt::print(output_file, "{}", asm_code);
                     }
                 }
 
