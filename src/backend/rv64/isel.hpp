@@ -314,6 +314,29 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                 }
             }
         }
+        // Handle byte-buffer literal store (array initializer)
+        // Use 4-byte chunks because PseudoLI truncates to int32_t
+        if (!val) {
+            if (auto* cv = std::get_if<ir::ConstexprValue>(&inst.rhs)) {
+                if (auto* buf = std::get_if<std::unique_ptr<std::byte[]>>(&cv->val)) {
+                    if (ref_alloc && frame.has_spill(ref_alloc)) {
+                        size_t off = frame.offset_of(ref_alloc);
+                        size_t sz = abi.mem.size(cv->type);
+                        for (size_t i = 0; i < sz; i += 4) {
+                            size_t chunk = std::min(sz - i, size_t(4));
+                            int32_t v32 = 0;
+                            std::memcpy(&v32, buf->get() + i, chunk);
+                            OpI op = (chunk == 4) ? OpI::SW : (chunk == 2) ? OpI::SH : OpI::SB;
+                            blk.insts.emplace_back(PseudoLI{gpr(5), (int64_t)v32});
+                            blk.insts.emplace_back(
+                                InstI{op, gpr(5), GeneralReg{2}, (int32_t)(off + i)});
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+
         if (!val) return;
 
         // 1) Stack slot (reference with known offset)
@@ -492,6 +515,18 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                     blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), t0, gpr(*lhs)});
                     blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
                 }
+                break;
+            case ir::InstOp::EQ:
+                // x == c → t0 = c; rd = x - t0; rd = (rd == 0)
+                blk.insts.emplace_back(PseudoLI{gpr(5), imm});
+                blk.insts.emplace_back(InstR{OpR::SUB, gpr(*rd), gpr(*lhs), gpr(5)});
+                blk.insts.emplace_back(PseudoR{PseudoR::SEQZ, gpr(*rd), gpr(*rd)});
+                break;
+            case ir::InstOp::NEQ:
+                // x != c → t0 = c; rd = x - t0; rd = (rd != 0)
+                blk.insts.emplace_back(PseudoLI{gpr(5), imm});
+                blk.insts.emplace_back(InstR{OpR::SUB, gpr(*rd), gpr(*lhs), gpr(5)});
+                blk.insts.emplace_back(PseudoR{PseudoR::SNEZ, gpr(*rd), gpr(*rd)});
                 break;
             case ir::InstOp::SUB:
                 blk.insts.emplace_back(
