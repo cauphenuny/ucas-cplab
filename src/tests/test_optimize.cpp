@@ -1,6 +1,7 @@
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.h"
 #include "backend/ir/lowering/addr.hpp"
+#include "backend/ir/lowering/global.hpp"
 #include "backend/ir/lowering/reg2mem.hpp"
 #include "backend/ir/lowering/regalloc/main.hpp"
 #include "backend/ir/transform/framework.hpp"
@@ -317,6 +318,7 @@ int main(int argc, const char* argv[]) {
                     log << fmt::format("----------\n// After DestructSSA:\n{}\n\n", combo_prog);
 
                     if (apply_regalloc) {
+                        GlobalProxyLowering<NonSSAPassContext>().apply(combo_prog, ctx);
                         RegToMem(rv64::ABI).apply(combo_prog, ctx);
                         auto regalloc = RegisterAllocation(rv64::ABI);
                         regalloc.apply(combo_prog, ctx);

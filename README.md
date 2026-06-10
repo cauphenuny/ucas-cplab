@@ -43,6 +43,7 @@ compiler [args]... files ...
     --lowering-reg          Apply register allocation transformation
     --lowering-prune        Apply redundant move elimination after register allocation
     --lowering-optim        Apply optimizations after lowering transformations
+    --lowering-global       Apply global variable access proxy lowering (implies --lowering-addr)
     --lowering              Apply above lowering transformations
 
     --exec                  Execute the generated IR or assembly
@@ -121,6 +122,7 @@ src/
 │   │   ├── lowering/
 │   │   │   ├── abi.hpp
 │   │   │   ├── addr.hpp
+│   │   │   ├── global.hpp
 │   │   │   ├── reg2mem.hpp
 │   │   │   └── regalloc/
 │   │   │       ├── colorize.hpp:	Chaitin-Briggs Graph Coloring Register Allocator
@@ -210,7 +212,7 @@ src/
     ├── traits.hpp
     └── tui.h
 
-20 directories, 93 files
+20 directories, 94 files
 ```
 <!--/source_tree-->
 

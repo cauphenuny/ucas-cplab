@@ -6,6 +6,7 @@
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.h"
 #include "backend/ir/lowering/addr.hpp"
+#include "backend/ir/lowering/global.hpp"
 #include "backend/ir/lowering/reg2mem.hpp"
 #include "backend/ir/lowering/regalloc/main.hpp"
 #include "backend/ir/transform/framework.hpp"
@@ -83,6 +84,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --lowering-reg          Apply register allocation transformation
     --lowering-prune        Apply redundant move elimination after register allocation
     --lowering-optim        Apply optimizations after lowering transformations
+    --lowering-global       Apply global variable access proxy lowering (implies --lowering-addr)
     --lowering              Apply above lowering transformations
 
     --exec                  Execute the generated IR or assembly
@@ -167,6 +169,7 @@ int main(int argc, const char* argv[]) {
     bool optimize_temp = false;
 
     bool lowering_addr = false;
+    bool lowering_global = false;
     bool lowering_reg = false;
     bool lowering_prune = false;
     bool lowering_optim = false;
@@ -185,6 +188,7 @@ int main(int argc, const char* argv[]) {
 
     std::vector<std::pair<std::string, std::reference_wrapper<bool>>> lowerings = {
         {"addr", lowering_addr},
+        {"global", lowering_global},
         {"reg", lowering_reg},
         {"prune", lowering_prune},
         {"optim", lowering_optim}};
@@ -449,6 +453,11 @@ int main(int argc, const char* argv[]) {
                     echo(program, "Destruct SSA");
 
                     ColorMap regs;
+
+                    if (lowering_global) {
+                        bool changed = GlobalProxyLowering<Context>().apply(program, ctx);
+                        if (changed) echo(program, "Global Variable Access Proxy Lowering");
+                    }
 
                     if (lowering_reg) {
                         RegToMem(rv64::ABI).apply(program, ctx);
