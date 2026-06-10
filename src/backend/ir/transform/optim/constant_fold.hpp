@@ -5,10 +5,9 @@
 
 #pragma once
 #include "../framework.hpp"
+#include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.h"
 #include "backend/ir/type.hpp"
-#include "copy_propagation.hpp"
-#include "utils/diagnosis.hpp"
 
 #include <memory>
 #include <optional>
@@ -83,31 +82,22 @@ struct ConstexprFolder {
     }
 };
 
-struct ConstPropagation : SSAPass {
-    bool apply(Program& prog, SSAPassContext& ctx) override {
-        if (!prog.is_ssa) {
-            throw COMPILER_ERROR("ConstPropagation requires SSA form");
-        }
-        bool result = false;
+template <typename T> struct ConstantFolding : Pass<T> {
+    bool apply(Program& prog, T& ctx) override {
         bool changed = false;
         for (auto& global : prog.globals()) {
             if (global->comptime && !global->reference) {
                 changed |= ctx.ud.replace_all_uses_with(global->value(), *global->init);
             }
         }
-        do {
-            changed = false;
-            for (auto& func : prog.funcs()) {
-                changed |= propagate(*func, ctx);
-            }
-            changed |= CopyPropagation().apply(prog, ctx);
-            result |= changed;
-        } while (changed);
-        return result;
+        for (auto& func : prog.funcs()) {
+            changed |= propagate(*func, ctx);
+        }
+        return changed;
     }
 
 private:
-    bool propagate(Func& func, SSAPassContext& ctx) {
+    bool propagate(Func& func, T& ctx) {
         bool changed = false;
         for (auto& local : func.locals()) {
             if (local->comptime && !local->reference) {
@@ -117,10 +107,13 @@ private:
         for (auto& block : func.blocks()) {
             for (auto& inst : block->insts()) {
                 if (!utils::defined_var(inst)) continue;
+                bool inst_changed = false;
+                auto new_inst = inst;
                 if (auto unary = std::get_if<UnaryInst>(&inst)) {
                     if (auto c = std::get_if<ConstexprValue>(&unary->operand)) {
                         if (auto folded = ConstexprFolder::fold(unary->op, *c)) {
-                            changed |= ctx.ud.replace_all_uses_with(*unary->result, *folded);
+                            inst_changed = true;
+                            new_inst = UnaryInst{UnaryInstOp::MOV, unary->result, *folded};
                         }
                     }
                 } else if (auto binary = std::get_if<BinaryInst>(&inst)) {
@@ -128,7 +121,8 @@ private:
                     auto cr = std::get_if<ConstexprValue>(&binary->rhs);
                     if (cl && cr) {
                         if (auto folded = ConstexprFolder::fold(binary->op, *cl, *cr)) {
-                            changed |= ctx.ud.replace_all_uses_with(*binary->result, *folded);
+                            inst_changed = true;
+                            new_inst = UnaryInst{UnaryInstOp::MOV, binary->result, *folded};
                         }
                     } else if (binary->result) {
                         // Identity element simplification: x+0, x-0, x*1, 0+x, 1*x
@@ -179,8 +173,9 @@ private:
                             default: break;
                         }
                         if (identity_result) {
-                            changed |=
-                                ctx.ud.replace_all_uses_with(*binary->result, *identity_result);
+                            inst_changed = true;
+                            new_inst =
+                                UnaryInst{UnaryInstOp::MOV, binary->result, *identity_result};
                         }
                     }
                 } else if (auto phi = std::get_if<PhiInst>(&inst)) {
@@ -200,8 +195,13 @@ private:
                         }
                     }
                     if (foldable && common) {
-                        changed |= ctx.ud.replace_all_uses_with(*phi->result, *common);
+                        inst_changed = true;
+                        new_inst = UnaryInst{UnaryInstOp::MOV, phi->result, *common};
                     }
+                }
+                if (inst_changed) {
+                    changed = true;
+                    block->replace(&inst, new_inst);
                 }
             }
 

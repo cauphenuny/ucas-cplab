@@ -5,7 +5,7 @@
 #include "backend/ir/lowering/regalloc/main.hpp"
 #include "backend/ir/transform/framework.hpp"
 #include "backend/ir/transform/optim/common_expr.hpp"
-#include "backend/ir/transform/optim/const_propagation.hpp"
+#include "backend/ir/transform/optim/constant_fold.hpp"
 #include "backend/ir/transform/optim/copy_propagation.hpp"
 #include "backend/ir/transform/optim/dead_alloc.hpp"
 #include "backend/ir/transform/optim/dead_block.hpp"
@@ -116,7 +116,11 @@ int main(int argc, const char* argv[]) {
              return std::make_unique<
                  ir::transform::DeadTempElimination<ir::transform::SSAPassContext>>();
          }},
-        {"const", []() { return std::make_unique<ir::transform::ConstPropagation>(); }},
+        {"const",
+         []() {
+             return std::make_unique<
+                 ir::transform::ConstantFolding<ir::transform::SSAPassContext>>();
+         }},
         {"inline", []() { return std::make_unique<ir::transform::Inlining>(); }},
         {"exp",
          []() {

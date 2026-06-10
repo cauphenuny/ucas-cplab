@@ -30,7 +30,7 @@ compiler [args]... files ...
     --retain-ssa-value      Do not convert SSAValue to TempValue in IR
 
     --optimize-copy         Apply Copy Propagation optimization
-    --optimize-const        Apply Const Propagation optimization
+    --optimize-const        Apply Constant Folding optimization
     --optimize-def          Apply Dead Definition Elimination optimization
     --optimize-alloc        Apply Dead Allocation Elimination optimization
     --optimize-temp         Apply Dead Temporary Value Elimination optimization
@@ -136,7 +136,7 @@ src/
 │   │   │   ├── framework.hpp
 │   │   │   ├── optim/
 │   │   │   │   ├── common_expr.hpp:	Common Subexpressions Elimination, requires SSA
-│   │   │   │   ├── const_propagation.hpp:	Const Propagation Pass, requires SSA
+│   │   │   │   ├── constant_fold.hpp:	Const Propagation Pass, requires SSA
 │   │   │   │   ├── copy_propagation.hpp:	Copy Propagation Pass, requires SSA
 │   │   │   │   ├── dead_alloc.hpp:	Dead Allocation Elimination Pass
 │   │   │   │   ├── dead_block.hpp:	CFG Simplification & Dead Block Elimination Pass

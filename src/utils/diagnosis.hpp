@@ -63,6 +63,10 @@ inline void warning(const std::string& desc, const std::string& scope) {
     fmt::println(stderr, YELLOW BOLD "warning " NONE "in {}: {}", desc, scope);
 }
 
+inline void error(const std::string& desc) {
+    fmt::println(stderr, RED BOLD "error: " NONE "{}", desc);
+}
+
 inline void info(const std::string& desc) {
     fmt::println(stderr, BLUE BOLD "info: " NONE "{}", desc);
 }

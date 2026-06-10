@@ -10,7 +10,7 @@
 #include "backend/ir/lowering/regalloc/main.hpp"
 #include "backend/ir/transform/framework.hpp"
 #include "backend/ir/transform/optim/common_expr.hpp"
-#include "backend/ir/transform/optim/const_propagation.hpp"
+#include "backend/ir/transform/optim/constant_fold.hpp"
 #include "backend/ir/transform/optim/copy_propagation.hpp"
 #include "backend/ir/transform/optim/dead_alloc.hpp"
 #include "backend/ir/transform/optim/dead_block.hpp"
@@ -70,7 +70,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --retain-ssa-value      Do not convert SSAValue to TempValue in IR
 
     --optimize-copy         Apply Copy Propagation optimization
-    --optimize-const        Apply Const Propagation optimization
+    --optimize-const        Apply Constant Folding optimization
     --optimize-def          Apply Dead Definition Elimination optimization
     --optimize-alloc        Apply Dead Allocation Elimination optimization
     --optimize-temp         Apply Dead Temporary Value Elimination optimization
@@ -394,8 +394,8 @@ int main(int argc, const char* argv[]) {
                                                 "Copy Propagation");
                         }
                         if (optimize_const) {
-                            passes.emplace_back(std::make_unique<ConstPropagation>(),
-                                                "Const Propagation");
+                            passes.emplace_back(std::make_unique<ConstantFolding<SSAPassContext>>(),
+                                                "Constant Folding");
                         }
                         if (optimize_def) {
                             passes.emplace_back(std::make_unique<DeadDefElimination>(),
@@ -470,19 +470,29 @@ int main(int argc, const char* argv[]) {
                         echo(program, "Redundant Move Elimination");
                     }
 
-                    if (lowering_optim) {
+                    {
                         std::vector<std::pair<std::unique_ptr<NonSSAPass>, std::string>> passes;
-                        if (optimize_alloc)
-                            passes.emplace_back(std::make_unique<DeadAllocElimination<Context>>(),
-                                                "Dead Allocation Elimination");
-                        if (optimize_temp)
-                            passes.emplace_back(std::make_unique<DeadTempElimination<Context>>(),
-                                                "Dead Temporary Elimination");
-                        if (optimize_block) {
-                            passes.emplace_back(std::make_unique<DeadBlockElimination<Context>>(),
-                                                "Dead Block Elimination");
-                            passes.emplace_back(std::make_unique<SimplifyCFG<Context>>(),
-                                                "CFG Simplification");
+                        if (lowering_optim) {
+                            if (optimize_alloc)
+                                passes.emplace_back(
+                                    std::make_unique<DeadAllocElimination<Context>>(),
+                                    "Dead Allocation Elimination");
+                            if (optimize_temp)
+                                passes.emplace_back(
+                                    std::make_unique<DeadTempElimination<Context>>(),
+                                    "Dead Temporary Elimination");
+                            if (optimize_block) {
+                                passes.emplace_back(
+                                    std::make_unique<DeadBlockElimination<Context>>(),
+                                    "Dead Block Elimination");
+                                passes.emplace_back(std::make_unique<SimplifyCFG<Context>>(),
+                                                    "CFG Simplification");
+                            }
+                        }
+                        if (print_asm) {
+                            passes.emplace_back(
+                                std::make_unique<ConstantFolding<Context>>(),
+                                "Constant Folding");  // riscv asm only allows one immediate operand
                         }
                         while (apply(program, ctx, passes));
                     }
@@ -531,14 +541,14 @@ int main(int argc, const char* argv[]) {
                 }
 
                 if (!silent) {
-                    fmt::println("{}: " BOLD GREEN "OK" NONE, file);
+                    info(fmt::format("{}: " BOLD GREEN "OK" NONE, file));
                 }
 
             } catch (const SyntaxError& e) {
-                fmt::println("{}: {}", file, e.what());
+                error(fmt::format("{}: {}", file, e.what()));
                 ret |= SYNTAX_ERROR;
             } catch (const SemanticError& e) {
-                fmt::println("{}: {}", file, e.what());
+                error(fmt::format("{}: {}", file, e.what()));
                 ret |= SEMANTIC_ERROR;
             }
         }
