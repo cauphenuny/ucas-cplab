@@ -1,12 +1,9 @@
 #pragma once
 
-#include "abi.hpp"
 #include "backend/ir/ir.h"
 #include "backend/ir/lowering/abi.hpp"
 #include "backend/ir/type.hpp"
 #include "inst.hpp"
-#include "module.hpp"
-#include "utils/diagnosis.hpp"
 #include "utils/match.hpp"
 
 #include <cstddef>

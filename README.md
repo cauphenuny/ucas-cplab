@@ -157,7 +157,8 @@ src/
 │       ├── emit.hpp
 │       ├── inst.hpp
 │       ├── isel.hpp
-│       └── module.hpp
+│       ├── op.hpp
+│       └── vm/
 ├── compiler.cpp
 ├── frontend/
 │   ├── ast/
@@ -206,7 +207,7 @@ src/
     ├── traits.hpp
     └── tui.h
 
-19 directories, 91 files
+20 directories, 91 files
 ```
 <!--/source_tree-->
 
