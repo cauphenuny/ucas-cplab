@@ -1,7 +1,7 @@
 #pragma once
 
 #include "backend/ir/lowering/abi.hpp"
-#include "inst.hpp"
+#include "op.hpp"
 
 namespace rv64 {
 

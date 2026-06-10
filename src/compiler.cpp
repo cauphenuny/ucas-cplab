@@ -429,7 +429,7 @@ int main(int argc, const char* argv[]) {
                     }
                 }
 
-                {
+                if (lowering) {
 
                     using namespace ir::lowering;
                     using namespace ir::transform;
@@ -438,6 +438,8 @@ int main(int argc, const char* argv[]) {
 
                     DestructSSA().apply(program, ctx);
                     echo(program, "Destruct SSA");
+
+                    ColorMap regs;
 
                     if (lowering_reg) {
                         RegToMem(rv64::ABI).apply(program, ctx);
@@ -449,6 +451,9 @@ int main(int argc, const char* argv[]) {
                             .apply(program, ctx);
 
                         echo(program, "Register Allocation");
+
+                        for (auto& [key, alloc] : regalloc.precolored)
+                            regs[alloc->value()] = key.second;
                     }
 
                     if (lowering_prune) {
@@ -472,22 +477,22 @@ int main(int argc, const char* argv[]) {
                         }
                         while (apply(program, ctx, passes));
                     }
+
+                    if (!silent) fmt::println("\n---\n");
+
+                    if (print_asm) {
+                        auto module = rv64::isel::lower(program, regs, rv64::ABI);
+                        auto asm_code = fmt::format("{}", module);
+                        if (!silent)
+                            fmt::println("Generated RV64 Assembly:\n\n```asm\n{}\n```\n", asm_code);
+                        if (output_file) {
+                            fmt::print(output_file, "{}", asm_code);
+                        }
+                    }
                 }
 
                 if (output_file && print_ir && !print_asm) {
                     fmt::println(output_file, "{}", program);
-                }
-
-                if (!silent) fmt::println("\n---\n");
-
-                if (print_asm) {
-                    auto module = rv64::isel::lower(program, rv64::ABI);
-                    auto asm_code = fmt::format("{}", module);
-                    if (!silent)
-                        fmt::println("Generated RV64 Assembly:\n\n```asm\n{}\n```\n", asm_code);
-                    if (output_file) {
-                        fmt::print(output_file, "{}", asm_code);
-                    }
                 }
 
                 if (execute) {
@@ -508,6 +513,7 @@ int main(int argc, const char* argv[]) {
                 if (!silent) {
                     fmt::println("{}: " BOLD GREEN "OK" NONE, file);
                 }
+
             } catch (const SyntaxError& e) {
                 fmt::println("{}: {}", file, e.what());
                 ret |= SYNTAX_ERROR;
