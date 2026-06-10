@@ -9,8 +9,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -66,6 +66,37 @@ inline bool is_32bit_op(const ir::Type& t) {
                                  std::holds_alternative<Float32>(t.as<Primitive>()));
 }
 
+inline bool is_commutative_int(ir::InstOp op) {
+    switch (op) {
+        case ir::InstOp::ADD:
+        case ir::InstOp::MUL:
+        case ir::InstOp::AND:
+        case ir::InstOp::OR:
+        case ir::InstOp::EQ:
+        case ir::InstOp::NEQ: return true;
+        default: return false;
+    }
+}
+
+inline int64_t fold_binary_int(ir::InstOp op, int64_t a, int64_t b) {
+    switch (op) {
+        case ir::InstOp::ADD: return a + b;
+        case ir::InstOp::SUB: return a - b;
+        case ir::InstOp::MUL: return a * b;
+        case ir::InstOp::DIV: return b == 0 ? 0 : a / b;
+        case ir::InstOp::MOD: return b == 0 ? 0 : a % b;
+        case ir::InstOp::AND: return a & b;
+        case ir::InstOp::OR: return a | b;
+        case ir::InstOp::LT: return a < b;
+        case ir::InstOp::GT: return a > b;
+        case ir::InstOp::LEQ: return a <= b;
+        case ir::InstOp::GEQ: return a >= b;
+        case ir::InstOp::EQ: return a == b;
+        case ir::InstOp::NEQ: return a != b;
+        default: throw COMPILER_ERROR("cannot fold int");
+    }
+}
+
 inline bool is_fp_op(const ir::Type& t) {
     using namespace ir::type;
     return t.is<Primitive>() && (std::holds_alternative<Float32>(t.as<Primitive>()) ||
@@ -112,10 +143,7 @@ inline FrameLayout compute_frame(const ir::Func& func, const ir::lowering::Targe
 }
 
 inline std::string block_label(const std::string& func_name, const std::string& blk_label) {
-    // sanitize block label for asm: 'entry → _entry, 'while_cond_1 → _while_cond_1
-    std::string sanitized = blk_label;
-    if (!sanitized.empty() && sanitized[0] == '\'') sanitized = sanitized.substr(1);
-    return ".L_" + func_name + "_" + sanitized;
+    return ".L" + func_name + "_" + blk_label;
 }
 
 // Forward declares
@@ -155,11 +183,18 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                     }
                 }
             } else if (auto* alloc = resolve_alloc(inst.operand)) {
-                // comptime Alloc: load init value into GPR
                 if (!fp && alloc->comptime && alloc->init) {
+                    // comptime Alloc: load init value into GPR
                     if (auto imm = extract_imm(*alloc->init)) {
                         blk.insts.emplace_back(PseudoLI{gpr(*rd), *imm});
                     }
+                } else if (frame.has_spill(alloc)) {
+                    // stack local reference: rd = sp + offset
+                    blk.insts.emplace_back(
+                        InstI{OpI::ADDI, gpr(*rd), GeneralReg{2}, (int32_t)frame.offset_of(alloc)});
+                } else {
+                    // global alloc: rd = address of symbol
+                    blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(*rd), alloc->name});
                 }
             }
             break;
@@ -211,32 +246,44 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                 blk.insts.emplace_back(
                     InstI{is_32bit_op(ir::type_of(*inst.result)) ? OpI::LW : OpI::LD, gpr(*rd),
                           GeneralReg{2}, (int32_t)off});
-            } else if (ref_alloc) {
-                auto sz = abi.mem.size(ref_alloc->type);
-                PseudoL pi{sz == 8 ? PseudoL::LGD : PseudoL::LGW, gpr(*rd), ref_alloc->name};
-                blk.insts.emplace_back(pi);
             } else if (auto base = lookup_reg(regs, inst.operand)) {
-                // register dereference (value in a register)
+                // register dereference — operand has a register, use it as a pointer
                 blk.insts.emplace_back(
                     InstI{is_32bit_op(ir::type_of(*inst.result)) ? OpI::LW : OpI::LD, gpr(*rd),
                           gpr(*base), 0});
+            } else if (ref_alloc) {
+                // symbol without register: load from the symbol address
+                auto sz = abi.mem.size(ref_alloc->type);
+                PseudoL pi{sz == 8 ? PseudoL::LGD : PseudoL::LGW, gpr(*rd), ref_alloc->name};
+                blk.insts.emplace_back(pi);
             }
             break;
         }
         case ir::UnaryInstOp::BORROW:
         case ir::UnaryInstOp::BORROW_MUT:
             throw COMPILER_ERROR("BORROW should be lowered by AddressLowering");
-        case ir::UnaryInstOp::CONVERT:
+        case ir::UnaryInstOp::CONVERT: {
+            // int-to-int conversion — also handles reference→int (taking address of a stack/global
+            // alloc that doesn't have a register)
             if (auto src = lookup_reg(regs, inst.operand)) {
-                // int-to-int conversion (e.g. i32 -> int sign extension)
                 if (is_32bit_op(ir::type_of(inst.operand)) &&
                     !is_32bit_op(ir::type_of(*inst.result))) {
                     blk.insts.emplace_back(InstI{OpI::ADDIW, gpr(*rd), gpr(*src), 0});
                 } else {
                     blk.insts.emplace_back(PseudoR{PseudoR::MV, gpr(*rd), gpr(*src)});
                 }
+            } else if (auto* alloc = resolve_alloc(inst.operand)) {
+                if (frame.has_spill(alloc)) {
+                    // reference alloc on stack: rd = sp + offset
+                    blk.insts.emplace_back(
+                        InstI{OpI::ADDI, gpr(*rd), GeneralReg{2}, (int32_t)frame.offset_of(alloc)});
+                } else {
+                    // global alloc: rd = address of symbol
+                    blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(*rd), alloc->name});
+                }
             }
             break;
+        }
     }
 }
 
@@ -257,16 +304,38 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
         if (inst.op != ir::InstOp::STORE) return;
         auto* ref_alloc = resolve_alloc(inst.lhs);
         auto val = lookup_reg(regs, inst.rhs);
-        if (ref_alloc && frame.has_spill(ref_alloc) && val) {
-            // spill slot store: offset(sp)
+
+        // Materialize constexpr RHS into t1 (t0 = x5 is reserved for isel, used by PseudoL)
+        if (!val) {
+            if (auto* cv = std::get_if<ir::ConstexprValue>(&inst.rhs)) {
+                if (auto imm = extract_imm(*cv)) {
+                    blk.insts.emplace_back(PseudoLI{gpr(5), *imm});  // t0
+                    val = 5;
+                }
+            }
+        }
+        if (!val) return;
+
+        // 1) Stack slot (reference with known offset)
+        if (ref_alloc && frame.has_spill(ref_alloc)) {
             size_t off = frame.offset_of(ref_alloc);
             blk.insts.emplace_back(InstI{is_32bit_op(ir::type_of(inst.rhs)) ? OpI::SW : OpI::SD,
                                          gpr(*val), GeneralReg{2}, (int32_t)off});
-        } else if (ref_alloc && val) {
-            // global store (register proxies are covered by register-to-register MOVs)
+        } else if (auto base = lookup_reg(regs, inst.lhs)) {
+            // 2) Register-dereference store: *base = val
+            blk.insts.emplace_back(InstI{is_32bit_op(ir::type_of(inst.rhs)) ? OpI::SW : OpI::SD,
+                                         gpr(*val), gpr(*base), 0});
+        } else if (ref_alloc) {
+            // 3) Global symbol store
             auto sz = abi.mem.size(ref_alloc->type);
-            PseudoL pi{sz == 8 ? PseudoL::SGD : PseudoL::SGW, gpr(*val), ref_alloc->name};
-            blk.insts.emplace_back(pi);
+            if (sz == 8) {
+                // la t0, symbol; sd val, 0(t0)
+                blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(5), ref_alloc->name});
+                blk.insts.emplace_back(InstI{OpI::SD, gpr(*val), gpr(5), 0});
+            } else {
+                blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(5), ref_alloc->name});
+                blk.insts.emplace_back(InstI{OpI::SW, gpr(*val), gpr(5), 0});
+            }
         }
         return;
     }
@@ -468,6 +537,112 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
         }
         return;
     }
+
+    // register RHS + constexpr LHS
+    auto lhs_cv = std::get_if<ir::ConstexprValue>(&inst.lhs);
+    if (lhs_cv && rhs) {
+        auto imm_opt = extract_imm(*lhs_cv);
+        if (!imm_opt) return;
+        int64_t cv = *imm_opt;
+        switch (inst.op) {
+            // commutative — treat like register+const on RHS
+            case ir::InstOp::ADD:
+                blk.insts.emplace_back(
+                    InstI{w ? OpI::ADDIW : OpI::ADDI, gpr(*rd), gpr(*rhs), (int32_t)cv});
+                break;
+            case ir::InstOp::MUL:
+                blk.insts.emplace_back(PseudoLI{gpr(*rd), cv});
+                if (w)
+                    blk.insts.emplace_back(InstI{OpI::MULW, gpr(*rd), gpr(*rhs), (int32_t)(*rd)});
+                else
+                    blk.insts.emplace_back(InstR{OpR::MUL, gpr(*rd), gpr(*rhs), gpr(*rd)});
+                break;
+            case ir::InstOp::AND:
+                blk.insts.emplace_back(PseudoLI{gpr(*rd), cv});
+                blk.insts.emplace_back(InstR{OpR::AND, gpr(*rd), gpr(*rhs), gpr(*rd)});
+                break;
+            case ir::InstOp::OR:
+                blk.insts.emplace_back(PseudoLI{gpr(*rd), cv});
+                blk.insts.emplace_back(InstR{OpR::OR, gpr(*rd), gpr(*rhs), gpr(*rd)});
+                break;
+            case ir::InstOp::EQ: {
+                blk.insts.emplace_back(PseudoLI{gpr(*rd), cv});
+                blk.insts.emplace_back(InstR{OpR::SUB, gpr(*rd), gpr(*rhs), gpr(*rd)});
+                blk.insts.emplace_back(PseudoR{PseudoR::SEQZ, gpr(*rd), gpr(*rd)});
+                break;
+            }
+            case ir::InstOp::NEQ: {
+                blk.insts.emplace_back(PseudoLI{gpr(*rd), cv});
+                blk.insts.emplace_back(InstR{OpR::SUB, gpr(*rd), gpr(*rhs), gpr(*rd)});
+                blk.insts.emplace_back(PseudoR{PseudoR::SNEZ, gpr(*rd), gpr(*rd)});
+                break;
+            }
+            // non-commutative: load const, then R-type
+            case ir::InstOp::SUB:
+                blk.insts.emplace_back(PseudoLI{gpr(*rd), cv});
+                if (w)
+                    blk.insts.emplace_back(InstI{OpI::SUBW, gpr(*rd), gpr(*rd), (int32_t)(*rhs)});
+                else
+                    blk.insts.emplace_back(InstR{OpR::SUB, gpr(*rd), gpr(*rd), gpr(*rhs)});
+                break;
+            case ir::InstOp::DIV:
+                blk.insts.emplace_back(PseudoLI{gpr(*rd), cv});
+                if (w)
+                    blk.insts.emplace_back(InstI{OpI::DIVW, gpr(*rd), gpr(*rd), (int32_t)(*rhs)});
+                else
+                    blk.insts.emplace_back(InstR{OpR::DIV, gpr(*rd), gpr(*rd), gpr(*rhs)});
+                break;
+            case ir::InstOp::MOD:
+                blk.insts.emplace_back(PseudoLI{gpr(*rd), cv});
+                if (w)
+                    blk.insts.emplace_back(InstI{OpI::REMW, gpr(*rd), gpr(*rd), (int32_t)(*rhs)});
+                else
+                    blk.insts.emplace_back(InstR{OpR::REM, gpr(*rd), gpr(*rd), gpr(*rhs)});
+                break;
+            case ir::InstOp::GT: {
+                // c > x ≡ x < c → SLTI if c fits, else PseudoLI + SLT
+                if ((int32_t)cv == cv && cv < 2047) {
+                    blk.insts.emplace_back(InstI{OpI::SLTI, gpr(*rd), gpr(*rhs), (int32_t)cv + 1});
+                    blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
+                } else {
+                    auto t0 = GeneralReg::fromString("t0");
+                    blk.insts.emplace_back(PseudoLI{t0, cv});
+                    blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), t0, gpr(*rhs)});
+                }
+                break;
+            }
+            case ir::InstOp::LEQ: {
+                // c <= x ≡ x >= c ≡ !(x < c) → SLTI + XORI if c fits, else PseudoLI + SLT + XORI
+                if ((int32_t)cv == cv && cv < 2047) {
+                    blk.insts.emplace_back(InstI{OpI::SLTI, gpr(*rd), gpr(*rhs), (int32_t)cv + 1});
+                    blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
+                } else {
+                    auto t0 = GeneralReg::fromString("t0");
+                    blk.insts.emplace_back(PseudoLI{t0, cv});
+                    blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), t0, gpr(*rhs)});
+                    blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
+                }
+                break;
+            }
+            case ir::InstOp::LT: {
+                // c < x → PseudoLI(t0, c) + SLT(rd, t0, x)
+                auto t0 = GeneralReg::fromString("t0");
+                blk.insts.emplace_back(PseudoLI{t0, cv});
+                blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), t0, gpr(*rhs)});
+                break;
+            }
+            case ir::InstOp::GEQ: {
+                // c >= x ≡ !(c < x) → PseudoLI(t0, c) + SLT(rd, t0, x) + XORI(rd, rd, 1)
+                auto t0 = GeneralReg::fromString("t0");
+                blk.insts.emplace_back(PseudoLI{t0, cv});
+                blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), t0, gpr(*rhs)});
+                blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
+                break;
+            }
+            default: break;
+        }
+        return;
+    }
 }
 
 inline void translate_call(const ir::CallInst& inst, AsmBlock& blk) {
@@ -489,7 +664,7 @@ inline void translate_exit(const ir::Exit& exit, AsmBlock& blk, const std::strin
                            const ir::lowering::ColorMap& regs) {
     Match{exit}(
         [&](const ir::ReturnExit&) {
-            blk.insts.emplace_back(PseudoJ{PseudoJ::J, ".L_" + func_name + "_epilogue"});
+            blk.insts.emplace_back(PseudoJ{PseudoJ::J, ".L" + func_name + "_epilogue"});
         },
         [&](const ir::JumpExit& j) {
             blk.insts.emplace_back(PseudoJ{PseudoJ::J, block_label(func_name, j.target->label)});
@@ -509,8 +684,8 @@ inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::TargetAB
     AsmFunc af;
     af.name = func.name;
     af.frame = compute_frame(func, abi);
-    auto entry_lbl = ".L_" + func.name + "_entry";
-    auto epi_lbl = ".L_" + func.name + "_epilogue";
+    auto entry_lbl = ".L" + func.name + "_entry";
+    auto epi_lbl = ".L" + func.name + "_epilogue";
 
     // entry block: function label + prologue
     {
@@ -520,6 +695,61 @@ inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::TargetAB
             entry.insts.emplace_back(
                 InstI{OpI::ADDI, GeneralReg{2}, GeneralReg{2}, -(int32_t)af.frame.total_size});
         }
+
+        // Emit Alloc initializer stores (after stack frame is allocated, before entry)
+        for (auto& local : func.locals()) {
+            if (!local->init || !af.frame.has_spill(local.get())) continue;
+            size_t off = af.frame.offset_of(local.get());
+
+            // byte-buffer case (array of init data)
+            if (auto* buf = std::get_if<std::unique_ptr<std::byte[]>>(&local->init->val)) {
+                size_t sz = abi.mem.size(local->type);
+                for (size_t i = 0; i < sz; i += 8) {
+                    int64_t v = 0;
+                    size_t chunk = (sz - i < 8) ? (sz - i) : 8;
+                    // For sub-8-byte tail, use SW/SB instead of SD
+                    if (chunk == 8) {
+                        std::memcpy(&v, buf->get() + i, 8);
+                        entry.insts.emplace_back(PseudoLI{gpr(5), v});
+                        entry.insts.emplace_back(
+                            InstI{OpI::SD, gpr(5), GeneralReg{2}, (int32_t)(off + i)});
+                    } else if (chunk == 4) {
+                        int32_t v32 = 0;
+                        std::memcpy(&v32, buf->get() + i, 4);
+                        entry.insts.emplace_back(PseudoLI{gpr(5), (int64_t)v32});
+                        entry.insts.emplace_back(
+                            InstI{OpI::SW, gpr(5), GeneralReg{2}, (int32_t)(off + i)});
+                    } else if (chunk == 1) {
+                        entry.insts.emplace_back(PseudoLI{gpr(5), (int64_t)buf->get()[i]});
+                        entry.insts.emplace_back(
+                            InstI{OpI::SB, gpr(5), GeneralReg{2}, (int32_t)(off + i)});
+                    }
+                }
+                continue;
+            }
+
+            // scalar case
+            if (std::holds_alternative<std::monostate>(local->init->val)) continue;
+            int64_t val = 0;
+            size_t sz = abi.mem.size(local->type);
+            if (auto* v = std::get_if<int>(&local->init->val))
+                val = *v;
+            else if (auto* v = std::get_if<int64_t>(&local->init->val))
+                val = *v;
+            else if (auto* v = std::get_if<float>(&local->init->val))
+                std::memcpy(&val, v, 4);
+            else if (auto* v = std::get_if<double>(&local->init->val))
+                std::memcpy(&val, v, 8);
+            else if (auto* v = std::get_if<bool>(&local->init->val))
+                val = *v ? 1 : 0;
+            else
+                continue;
+
+            OpI op = (sz == 4) ? OpI::SW : (sz == 1) ? OpI::SB : OpI::SD;
+            entry.insts.emplace_back(PseudoLI{gpr(5), val});
+            entry.insts.emplace_back(InstI{op, gpr(5), GeneralReg{2}, (int32_t)off});
+        }
+
         entry.insts.emplace_back(PseudoJ{PseudoJ::J, entry_lbl});
         af.blocks.emplace_back(std::move(entry));
     }
