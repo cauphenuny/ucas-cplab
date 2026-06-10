@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <string>
 #include <variant>
 
 namespace rv64::vm {
@@ -42,8 +43,14 @@ void builtin_get_int(VirtualMachine& vm) {
 }
 
 void builtin_get_float(VirtualMachine& vm) {
+    std::string str;
+    vm.input >> str;
     float val;
-    vm.input >> val;
+    if (str.back() == 'f' || str.back() == 'F') {
+        val = std::stof(str.substr(0, str.size() - 1));
+    } else {
+        val = std::stof(str);
+    }
     vm.set_f(10, val);
 }
 
