@@ -23,8 +23,7 @@ inline std::string name_of(const ir::NameDef& def) {
     return Match{def}([&](const auto* p) -> std::string { return p->name; });
 }
 
-// Look up a LeftValue in the register ColorMap (returns register ID, or nullopt if unnamed
-// ref/comptime)
+// Look up a LeftValue in the register ColorMap (returns register ID, or nullopt if ref/const)
 inline std::optional<size_t> lookup_reg(const ir::lowering::ColorMap& regs,
                                         const ir::LeftValue& lv) {
     auto it = regs.find(lv);
@@ -226,7 +225,7 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
         }
         case ir::UnaryInstOp::BORROW:
         case ir::UnaryInstOp::BORROW_MUT:
-            throw std::runtime_error("BORROW should be lowered by AddressLowering");
+            throw COMPILER_ERROR("BORROW should be lowered by AddressLowering");
         case ir::UnaryInstOp::CONVERT:
             if (auto src = lookup_reg(regs, inst.operand)) {
                 // int-to-int conversion (e.g. i32 -> int sign extension)
@@ -482,7 +481,7 @@ inline void translate_inst(const ir::Inst& inst, AsmBlock& blk, const FrameLayou
                 [&](const ir::BinaryInst& b) { translate_binary(b, blk, frame, abi, regs); },
                 [&](const ir::CallInst& c) { translate_call(c, blk); },
                 [&](const ir::PhiInst&) {
-                    throw std::runtime_error("PhiInst should be eliminated before isel");
+                    throw COMPILER_ERROR("PhiInst should be eliminated before isel");
                 });
 }
 
@@ -497,7 +496,7 @@ inline void translate_exit(const ir::Exit& exit, AsmBlock& blk, const std::strin
         },
         [&](const ir::BranchExit& b) {
             auto cond = lookup_reg(regs, b.cond);
-            if (!cond) throw std::runtime_error("Branch condition must be GPR");
+            if (!cond) throw COMPILER_ERROR("Branch condition must be GPR");
             blk.insts.emplace_back(PseudoB{PseudoB::BNEZ, GeneralReg{static_cast<uint8_t>(*cond)},
                                            block_label(func_name, b.true_target->label)});
             blk.insts.emplace_back(

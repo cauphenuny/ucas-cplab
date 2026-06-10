@@ -45,13 +45,14 @@ compiler [args]... files ...
     --lowering-optim        Apply optimizations after lowering transformations
     --lowering              Apply above lowering transformations
 
-    --exec                  Execute the generated IR
+    --exec                  Execute the generated IR or assembly
     --silent                Suppress all compiler output except the return value when executing
 
     --exec-debug            Enable debug mode in execution (add breakpoints, execute step by step, etc.)
     --exec-trace            Trace execution with detailed instruction and block information
 
-    -S, --asm               Output RV64 assembly code (implies --lowering)
+    -S, --asm               Generate and output RV64 assembly code (implies --lowering)
+    --asm-exec              Execute the generated assembly code (implies --asm)
 
 interpreter [--help] [--silent] [--print] IR_file
     --help      Show this help message
@@ -159,6 +160,8 @@ src/
 │       ├── isel.hpp
 │       ├── op.hpp
 │       └── vm/
+│           ├── exec.cpp
+│           └── vm.hpp
 ├── compiler.cpp
 ├── frontend/
 │   ├── ast/
@@ -207,7 +210,7 @@ src/
     ├── traits.hpp
     └── tui.h
 
-20 directories, 91 files
+20 directories, 93 files
 ```
 <!--/source_tree-->
 

@@ -21,6 +21,7 @@
 #include "backend/ir/vm/vm.h"
 #include "backend/rv64/abi.hpp"
 #include "backend/rv64/isel.hpp"
+#include "backend/rv64/vm/vm.hpp"
 #include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"
 #include "frontend/syntax/visit.hpp"
@@ -84,13 +85,14 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --lowering-optim        Apply optimizations after lowering transformations
     --lowering              Apply above lowering transformations
 
-    --exec                  Execute the generated IR
+    --exec                  Execute the generated IR or assembly
     --silent                Suppress all compiler output except the return value when executing
 
     --exec-debug            Enable debug mode in execution (add breakpoints, execute step by step, etc.)
     --exec-trace            Trace execution with detailed instruction and block information
 
-    -S, --asm               Output RV64 assembly code (implies --lowering)
+    -S, --asm               Generate and output RV64 assembly code (implies --lowering)
+    --asm-exec              Execute the generated assembly code (implies --asm)
 )",
         prog_name);
     exit(ret);
@@ -174,6 +176,8 @@ int main(int argc, const char* argv[]) {
     bool execute_debug = false;
     bool silent = false;
 
+    bool assembly_exec = false;
+
     std::vector<std::pair<std::string, std::reference_wrapper<bool>>> optimizations = {
         {"alloc", optimize_alloc}, {"def", optimize_def},     {"exp", optimize_exp},
         {"copy", optimize_copy},   {"const", optimize_const}, {"block", optimize_block},
@@ -211,6 +215,11 @@ int main(int argc, const char* argv[]) {
             execute_debug = true;
         } else if (arg == "--exec-trace") {
             execute_trace = true;
+        } else if (arg == "--asm-exec") {
+            assembly_exec = true;
+            // --asm-exec implies --asm
+            print_asm = true;
+            for (auto& [name, flag] : lowerings) flag.get() = true;
         } else if (arg == "-S" || arg == "--asm") {
             print_asm = true;
             // -S/--asm implies --lowering
@@ -488,11 +497,18 @@ int main(int argc, const char* argv[]) {
                         if (output_file) {
                             fmt::print(output_file, "{}", asm_code);
                         }
-                    }
-                }
 
-                if (output_file && print_ir && !print_asm) {
-                    fmt::println(output_file, "{}", program);
+                        if (assembly_exec) {
+                            rv64::vm::VirtualMachine vm{std::cin, std::cout};
+                            uint8_t ret = vm.execute(module);
+                            if (!silent) {
+                                fmt::println("Program returned {} after executing {} instructions",
+                                             ret, vm.num_insts);
+                            } else {
+                                fmt::println("{}", ret);
+                            }
+                        }
+                    }
                 }
 
                 if (execute) {
@@ -508,6 +524,10 @@ int main(int argc, const char* argv[]) {
                     } else {
                         fmt::println("{}", ret);
                     }
+                }
+
+                if (output_file && print_ir && !print_asm) {
+                    fmt::println(output_file, "{}", program);
                 }
 
                 if (!silent) {
