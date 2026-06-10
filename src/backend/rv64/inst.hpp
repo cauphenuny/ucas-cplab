@@ -51,18 +51,56 @@ struct InstU {
     int64_t imm;
 };
 
-struct PseudoInst {
-    Pseudo op;
-    GeneralReg rd;
-    GeneralReg rs1;
-    int64_t imm;
-    std::string target;
-    std::string symbol;
-    FloatReg frd, frs1;
-    size_t elem_size{4};
+struct PseudoR {
+    enum Op : uint8_t {
+        MV,
+        NOT,
+        NEG,
+        NEGW,
+        SEQZ,
+        SNEZ,
+    } op;
+    GeneralReg rd, rs1;
 };
 
-using Inst = std::variant<InstR, InstFR, InstI, InstFI, InstJ, InstU, PseudoInst>;
+struct PseudoLI {
+    GeneralReg rd;
+    int64_t imm;
+};
+
+struct PseudoB {
+    enum Op : uint8_t {
+        BEQZ,
+        BNEZ,
+    } op;
+    GeneralReg rs1;
+    std::string target;
+};
+
+struct PseudoJ {
+    enum Op : uint8_t {
+        J,
+        CALL,
+    } op;
+    std::string target;
+};
+
+struct PseudoL {
+    enum Op : uint8_t {
+        LA,   // load address
+        LGD,  // load global, double
+        LGW,  // load global, word
+        SGD,  // store global, double
+        SGW,  // store global, word
+    } op;
+    GeneralReg rd;
+    std::string symbol;
+};
+
+struct PseudoRet {};
+
+using Inst = std::variant<InstR, InstFR, InstI, InstFI, InstJ, InstU, PseudoR, PseudoLI, PseudoL,
+                          PseudoB, PseudoJ, PseudoRet>;
 
 struct Global {
     std::string name;

@@ -193,7 +193,7 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
             if (auto* cv = std::get_if<ir::ConstexprValue>(&inst.operand)) {
                 if (auto imm = extract_imm(*cv)) {
                     if (dst_gpr) {
-                        blk.insts.push_back(PseudoInst{Pseudo::LI, *dst_gpr, GeneralReg{0}, *imm});
+                        blk.insts.push_back(PseudoLI{*dst_gpr, *imm});
                     } else if (dst_fpr) {
                         // float immediate: needs literal pool, handled later
                         throw std::runtime_error("float immediate MOV not yet supported");
@@ -201,7 +201,7 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                 }
             } else if (auto src_gpr = resolve_gpr(inst.operand)) {
                 if (dst_gpr && src_gpr->id != dst_gpr->id) {
-                    blk.insts.push_back(PseudoInst{Pseudo::MV, *dst_gpr, *src_gpr});
+                    blk.insts.push_back(PseudoR{PseudoR::MV, *dst_gpr, *src_gpr});
                 }
             } else if (auto src_fpr = resolve_fpr(inst.operand)) {
                 if (dst_fpr && src_fpr->id != dst_fpr->id) {
@@ -214,7 +214,7 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                 // comptime Alloc: load init value
                 if (dst_gpr && alloc->comptime && alloc->init) {
                     if (auto imm = extract_imm(*alloc->init)) {
-                        blk.insts.push_back(PseudoInst{Pseudo::LI, *dst_gpr, GeneralReg{0}, *imm});
+                        blk.insts.push_back(PseudoLI{*dst_gpr, *imm});
                     }
                 }
             }
@@ -225,13 +225,13 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                 auto src = resolve_gpr(inst.operand);
                 if (src) {
                     if (is_32bit_op(ir::type_of(*inst.result))) {
-                        blk.insts.push_back(PseudoInst{Pseudo::NEGW, *dst_gpr, *src});
+                        blk.insts.push_back(PseudoR{PseudoR::NEGW, *dst_gpr, *src});
                     } else {
-                        blk.insts.push_back(PseudoInst{Pseudo::NEG, *dst_gpr, *src});
+                        blk.insts.push_back(PseudoR{PseudoR::NEG, *dst_gpr, *src});
                     }
                 } else if (auto* cv = std::get_if<ir::ConstexprValue>(&inst.operand)) {
                     if (auto imm = extract_imm(*cv)) {
-                        blk.insts.push_back(PseudoInst{Pseudo::LI, *dst_gpr, GeneralReg{0}, -*imm});
+                        blk.insts.push_back(PseudoLI{*dst_gpr, -*imm});
                     }
                 }
             } else if (dst_fpr) {
@@ -252,12 +252,11 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                 if (t.is<Primitive>() && std::holds_alternative<Int1>(t.as<Primitive>())) {
                     blk.insts.push_back(InstI{OpI::XORI, *dst_gpr, *src, 1});
                 } else {
-                    blk.insts.push_back(PseudoInst{Pseudo::SEQZ, *dst_gpr, *src});
+                    blk.insts.push_back(PseudoR{PseudoR::SEQZ, *dst_gpr, *src});
                 }
             } else if (auto* cv = std::get_if<ir::ConstexprValue>(&inst.operand)) {
                 if (auto imm = extract_imm(*cv)) {
-                    blk.insts.push_back(
-                        PseudoInst{Pseudo::LI, *dst_gpr, GeneralReg{0}, *imm ? 0 : 1});
+                    blk.insts.push_back(PseudoLI{*dst_gpr, *imm ? 0 : 1});
                 }
             }
             break;
@@ -270,9 +269,8 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                     InstI{is_32bit_op(ir::type_of(*inst.result)) ? OpI::LW : OpI::LD, *dst_gpr,
                           GeneralReg{2}, (int32_t)off});
             } else if (ref_alloc && !is_reg_proxy(*ref_alloc) && dst_gpr) {
-                PseudoInst pi{Pseudo::LOAD_GLOBAL, *dst_gpr, GeneralReg{0}};
-                pi.symbol = ref_alloc->name;
-                pi.elem_size = abi.mem.size(ref_alloc->type);
+                auto sz = abi.mem.size(ref_alloc->type);
+                PseudoL pi{sz == 8 ? PseudoL::LGD : PseudoL::LGW, *dst_gpr, ref_alloc->name};
                 blk.insts.push_back(pi);
             } else if (ref_alloc && is_reg_proxy(*ref_alloc) && dst_gpr) {
                 auto base = resolve_gpr(inst.operand);
@@ -297,7 +295,7 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                         !is_32bit_op(ir::type_of(*inst.result))) {
                         blk.insts.push_back(InstI{OpI::ADDIW, *dst_gpr, *src, 0});
                     } else {
-                        blk.insts.push_back(PseudoInst{Pseudo::MV, *dst_gpr, *src});
+                        blk.insts.push_back(PseudoR{PseudoR::MV, *dst_gpr, *src});
                     }
                 }
             }
@@ -320,9 +318,8 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                                       *val_gpr, GeneralReg{2}, (int32_t)off});  // x2 = sp
         } else if (ref_alloc && !is_reg_proxy(*ref_alloc) && val_gpr) {
             // global store
-            PseudoInst pi{Pseudo::STORE_GLOBAL, GeneralReg{0}, *val_gpr};
-            pi.symbol = ref_alloc->name;
-            pi.elem_size = abi.mem.size(ref_alloc->type);
+            auto sz = abi.mem.size(ref_alloc->type);
+            PseudoL pi{sz == 8 ? PseudoL::SGD : PseudoL::SGW, *val_gpr, ref_alloc->name};
             blk.insts.push_back(pi);
         }
         return;
@@ -430,12 +427,12 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
             }
             case ir::InstOp::EQ: {
                 blk.insts.push_back(InstR{OpR::SUB, *dst_gpr, *lhs_gpr, *rhs_gpr});
-                blk.insts.push_back(PseudoInst{Pseudo::SEQZ, *dst_gpr, *dst_gpr});
+                blk.insts.push_back(PseudoR{PseudoR::SEQZ, *dst_gpr, *dst_gpr});
                 break;
             }
             case ir::InstOp::NEQ: {
                 blk.insts.push_back(InstR{OpR::SUB, *dst_gpr, *lhs_gpr, *rhs_gpr});
-                blk.insts.push_back(PseudoInst{Pseudo::SNEZ, *dst_gpr, *dst_gpr});
+                blk.insts.push_back(PseudoR{PseudoR::SNEZ, *dst_gpr, *dst_gpr});
                 break;
             }
             default: break;
@@ -466,7 +463,7 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                     blk.insts.push_back(InstI{OpI::XORI, *dst_gpr, *dst_gpr, 1});
                 } else {
                     // fallback: use register comparison
-                    PseudoInst pi{Pseudo::LI, *dst_gpr, GeneralReg{0}, imm};
+                    PseudoLI pi{*dst_gpr, imm};
                     // need to expand LI here or use a register - simplified for now
                 }
                 break;
@@ -485,7 +482,7 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
             case ir::InstOp::AND:
             case ir::InstOp::OR: {
                 // LI imm into dst, then R-type with dst as rhs
-                blk.insts.push_back(PseudoInst{Pseudo::LI, *dst_gpr, GeneralReg{0}, imm});
+                blk.insts.push_back(PseudoLI{*dst_gpr, imm});
                 OpR op_r;
                 OpI op_w;
                 switch (inst.op) {
@@ -522,8 +519,7 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
 }
 
 inline void translate_call(const ir::CallInst& inst, AsmBlock& blk) {
-    PseudoInst pi{Pseudo::CALL, GeneralReg{0}, GeneralReg{0}};
-    pi.target = name_of(inst.func.def);
+    PseudoJ pi{PseudoJ::CALL, name_of(inst.func.def)};
     blk.insts.push_back(pi);
 }
 
@@ -540,20 +536,17 @@ inline void translate_inst(const ir::Inst& inst, AsmBlock& blk, const FrameLayou
 inline void translate_exit(const ir::Exit& exit, AsmBlock& blk, const std::string& func_name) {
     Match{exit}(
         [&](const ir::ReturnExit&) {
-            blk.insts.push_back(PseudoInst{Pseudo::J, GeneralReg{0}, GeneralReg{0}, 0,
-                                           ".L_" + func_name + "_epilogue"});
+            blk.insts.push_back(PseudoJ{PseudoJ::J, ".L_" + func_name + "_epilogue"});
         },
         [&](const ir::JumpExit& j) {
-            blk.insts.push_back(PseudoInst{Pseudo::J, GeneralReg{0}, GeneralReg{0}, 0,
-                                           block_label(func_name, j.target->label)});
+            blk.insts.push_back(PseudoJ{PseudoJ::J, block_label(func_name, j.target->label)});
         },
         [&](const ir::BranchExit& b) {
             auto cond = resolve_gpr(b.cond);
             if (!cond) throw std::runtime_error("Branch condition must be GPR");
-            blk.insts.push_back(PseudoInst{Pseudo::BNEZ, *cond, GeneralReg{0}, 0,
-                                           block_label(func_name, b.true_target->label)});
-            blk.insts.push_back(PseudoInst{Pseudo::J, GeneralReg{0}, GeneralReg{0}, 0,
-                                           block_label(func_name, b.false_target->label)});
+            blk.insts.push_back(
+                PseudoB{PseudoB::BNEZ, *cond, block_label(func_name, b.true_target->label)});
+            blk.insts.push_back(PseudoJ{PseudoJ::J, block_label(func_name, b.false_target->label)});
         });
 }
 
@@ -572,7 +565,7 @@ inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::TargetAB
             entry.insts.push_back(
                 InstI{OpI::ADDI, GeneralReg{2}, GeneralReg{2}, -(int32_t)af.frame.total_size});
         }
-        entry.insts.push_back(PseudoInst{Pseudo::J, GeneralReg{0}, GeneralReg{0}, 0, entry_lbl});
+        entry.insts.push_back(PseudoJ{PseudoJ::J, entry_lbl});
         af.blocks.push_back(std::move(entry));
     }
 
@@ -591,12 +584,11 @@ inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::TargetAB
     {
         AsmBlock epi;
         epi.label = epi_lbl;
-        epi.insts.push_back(PseudoInst{Pseudo::RET, GeneralReg{0}, GeneralReg{0}});
         if (af.frame.total_size > 0) {
-            // frame dealloc happens before ret, so insert before RET
-            epi.insts.insert(epi.insts.begin(), InstI{OpI::ADDI, GeneralReg{2}, GeneralReg{2},
-                                                      (int32_t)af.frame.total_size});
+            epi.insts.push_back(
+                InstI{OpI::ADDI, GeneralReg{2}, GeneralReg{2}, (int32_t)af.frame.total_size});
         }
+        epi.insts.push_back(PseudoRet{});
         af.blocks.push_back(std::move(epi));
     }
 

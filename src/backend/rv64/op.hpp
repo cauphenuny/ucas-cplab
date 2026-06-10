@@ -157,24 +157,6 @@ enum class OpU : uint8_t {
     AUIPC,
 };
 
-enum class Pseudo : uint8_t {
-    LI,
-    MV,
-    NOT,
-    NEG,
-    NEGW,
-    SEQZ,
-    SNEZ,
-    BEQZ,
-    BNEZ,
-    J,
-    CALL,
-    RET,
-    LA,
-    LOAD_GLOBAL,
-    STORE_GLOBAL,
-};
-
 // opcode name strings
 inline std::string toString(OpR op) {
     switch (op) {

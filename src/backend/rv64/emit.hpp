@@ -13,10 +13,10 @@
 namespace rv64::emit {
 
 // LI immediate decomposition: 32-bit signed
-inline void emit_li(GeneralReg rd, int64_t imm64, std::vector<std::string>& out) {
-    int32_t imm = (int32_t)imm64;
+inline void emit_pseudo(const PseudoLI& pi, std::vector<std::string>& out) {
+    int32_t imm = (int32_t)pi.imm;
     if (imm >= -2048 && imm < 2048) {
-        out.push_back(fmt::format("    addi {}, zero, {}", rd, imm));
+        out.push_back(fmt::format("    addi {}, zero, {}", pi.rd, imm));
         return;
     }
     // standard RV64 li decomposition
@@ -26,49 +26,70 @@ inline void emit_li(GeneralReg rd, int64_t imm64, std::vector<std::string>& out)
         hi20 += 1;
         lo12 -= 0x1000;
     }
-    out.push_back(fmt::format("    lui {}, {}", rd, (uint32_t)hi20 & 0xFFFFF));
+    out.push_back(fmt::format("    lui {}, {}", pi.rd, (uint32_t)hi20 & 0xFFFFF));
     if (lo12 != 0) {
-        out.push_back(fmt::format("    addi {}, {}, {}", rd, rd, lo12));
+        out.push_back(fmt::format("    addi {}, {}, {}", pi.rd, pi.rd, lo12));
     }
 }
 
-// Expand a single PseudoInst into real instruction strings
-inline void expand_pseudo(const PseudoInst& pi, std::vector<std::string>& out) {
+// Expand pseudo instructions into real instruction strings
+inline void emit_pseudo(const PseudoR& pi, std::vector<std::string>& out) {
     switch (pi.op) {
-        case Pseudo::LI: emit_li(pi.rd, pi.imm, out); break;
-        case Pseudo::MV: out.push_back(fmt::format("    addi {}, {}, 0", pi.rd, pi.rs1)); break;
-        case Pseudo::NOT: out.push_back(fmt::format("    xori {}, {}, -1", pi.rd, pi.rs1)); break;
-        case Pseudo::NEG: out.push_back(fmt::format("    sub {}, zero, {}", pi.rd, pi.rs1)); break;
-        case Pseudo::NEGW:
+        case PseudoR::MV: out.push_back(fmt::format("    addi {}, {}, 0", pi.rd, pi.rs1)); break;
+        case PseudoR::NOT: out.push_back(fmt::format("    xori {}, {}, -1", pi.rd, pi.rs1)); break;
+        case PseudoR::NEG: out.push_back(fmt::format("    sub {}, zero, {}", pi.rd, pi.rs1)); break;
+        case PseudoR::NEGW:
             out.push_back(fmt::format("    subw {}, zero, {}", pi.rd, pi.rs1));
             break;
-        case Pseudo::SEQZ: out.push_back(fmt::format("    sltiu {}, {}, 1", pi.rd, pi.rs1)); break;
-        case Pseudo::SNEZ:
+        case PseudoR::SEQZ: out.push_back(fmt::format("    sltiu {}, {}, 1", pi.rd, pi.rs1)); break;
+        case PseudoR::SNEZ:
             out.push_back(fmt::format("    sltu {}, zero, {}", pi.rd, pi.rs1));
             break;
-        case Pseudo::BEQZ:
-            out.push_back(fmt::format("    beq {}, zero, {}", pi.rd, pi.target));
-            break;
-        case Pseudo::BNEZ:
-            out.push_back(fmt::format("    bne {}, zero, {}", pi.rd, pi.target));
-            break;
-        case Pseudo::J: out.push_back(fmt::format("    j {}", pi.target)); break;
-        case Pseudo::CALL: out.push_back(fmt::format("    call {}", pi.target)); break;
-        case Pseudo::RET: out.push_back("    ret"); break;
-        case Pseudo::LA: out.push_back(fmt::format("    la {}, {}", pi.rd, pi.symbol)); break;
-        case Pseudo::LOAD_GLOBAL: {
-            out.push_back(fmt::format("    la t0, {}", pi.symbol));
-            std::string load_op = (pi.elem_size == 8) ? "ld" : "lw";
-            out.push_back(fmt::format("    {} {}, 0(t0)", load_op, pi.rd));
-            break;
-        }
-        case Pseudo::STORE_GLOBAL: {
-            out.push_back(fmt::format("    la t0, {}", pi.symbol));
-            std::string store_op = (pi.elem_size == 8) ? "sd" : "sw";
-            out.push_back(fmt::format("    {} {}, 0(t0)", store_op, pi.rs1));
-            break;
-        }
     }
+}
+
+inline void emit_pseudo(const PseudoB& pi, std::vector<std::string>& out) {
+    switch (pi.op) {
+        case PseudoB::BEQZ:
+            out.push_back(fmt::format("    beq {}, zero, {}", pi.rs1, pi.target));
+            break;
+        case PseudoB::BNEZ:
+            out.push_back(fmt::format("    bne {}, zero, {}", pi.rs1, pi.target));
+            break;
+    }
+}
+
+inline void emit_pseudo(const PseudoJ& pi, std::vector<std::string>& out) {
+    switch (pi.op) {
+        case PseudoJ::J: out.push_back(fmt::format("    j {}", pi.target)); break;
+        case PseudoJ::CALL: out.push_back(fmt::format("    call {}", pi.target)); break;
+    }
+}
+
+inline void emit_pseudo(const PseudoL& pi, std::vector<std::string>& out) {
+    switch (pi.op) {
+        case PseudoL::LA: out.push_back(fmt::format("    la {}, {}", pi.rd, pi.symbol)); break;
+        case PseudoL::LGD:
+            out.push_back(fmt::format("    la t0, {}", pi.symbol));
+            out.push_back(fmt::format("    ld {}, 0(t0)", pi.rd));
+            break;
+        case PseudoL::LGW:
+            out.push_back(fmt::format("    la t0, {}", pi.symbol));
+            out.push_back(fmt::format("    lw {}, 0(t0)", pi.rd));
+            break;
+        case PseudoL::SGD:
+            out.push_back(fmt::format("    la t0, {}", pi.symbol));
+            out.push_back(fmt::format("    sd {}, 0(t0)", pi.rd));
+            break;
+        case PseudoL::SGW:
+            out.push_back(fmt::format("    la t0, {}", pi.symbol));
+            out.push_back(fmt::format("    sw {}, 0(t0)", pi.rd));
+            break;
+    }
+}
+
+inline void emit_pseudo(const PseudoRet&, std::vector<std::string>& out) {
+    out.push_back("    ret");
 }
 
 // Emit a single instruction as a string
@@ -90,15 +111,15 @@ inline std::string emit_inst_str(const Inst& inst) {
         [](const InstFI& i) { return fmt::format("    {} {}, {}({})", i.op, i.rd, i.imm, i.rs1); },
         [](const InstJ& i) { return fmt::format("    {} {}, {}", i.op, i.rd, i.target); },
         [](const InstU& i) { return fmt::format("    {} {}, {}", i.op, i.rd, i.imm); },
-        [](const PseudoInst& pi) -> std::string {
+        [](const auto& pi) -> std::string {
             std::vector<std::string> lines;
-            expand_pseudo(pi, lines);
-            std::string result;
-            for (size_t i = 0; i < lines.size(); i++) {
-                if (i > 0) result += "\n";
-                result += lines[i];
+            emit_pseudo(pi, lines);
+            std::string r;
+            for (auto& l : lines) {
+                if (!r.empty()) r += "\n";
+                r += l;
             }
-            return result;
+            return r;
         });
 }
 

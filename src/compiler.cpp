@@ -219,7 +219,8 @@ int main(int argc, const char* argv[]) {
         } else if (arg == "--lowering") {
             for (auto& [name, flag] : lowerings) flag.get() = true;
         } else if (arg == "-O0") {
-            // default: no optimization
+            for (auto& [name, flag] : optimizations) flag.get() = false;
+            optimize_inline = 0;
         } else if (arg == "--optimize" || arg == "-O1" || arg == "-O2") {
             for (auto& [name, flag] : optimizations) flag.get() = true;
             optimize_inline = default_inline_threshold;
