@@ -148,13 +148,14 @@ inline std::string block_label(const std::string& func_name, const std::string& 
 
 // Forward declares
 inline void translate_inst(const ir::Inst& inst, AsmBlock& blk, const FrameLayout& frame,
-                           const ir::lowering::TargetABI& abi, const ir::lowering::ColorMap& regs);
+                           const ir::lowering::TargetABI& abi, const ir::lowering::ColorMap& regs,
+                           std::vector<FloatLiteral>& float_literals);
 inline void translate_exit(const ir::Exit& exit, AsmBlock& blk, const std::string& func_name,
                            const ir::lowering::ColorMap& regs);
 
 inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const FrameLayout& frame,
-                            const ir::lowering::TargetABI& abi,
-                            const ir::lowering::ColorMap& regs) {
+                            const ir::lowering::TargetABI& abi, const ir::lowering::ColorMap& regs,
+                            std::vector<FloatLiteral>& float_literals) {
     using namespace ir::type;
 
     if (!inst.result) return;  // no destination, skip (shouldn't happen for non-STORE)
@@ -171,6 +172,15 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
             if (auto* cv = std::get_if<ir::ConstexprValue>(&inst.operand)) {
                 if (auto imm = extract_imm(*cv)) {
                     blk.insts.emplace_back(PseudoLI{gpr(*rd), *imm});
+                } else if (fp) {
+                    // Float/double constant: load from .rodata literal pool
+                    float_literals.push_back(
+                        {".L_fc_" + std::to_string(float_literals.size()), *cv});
+                    bool is_double = !is_32bit_op(ir::type_of(inst.operand));
+                    auto label = float_literals.back().label;
+                    blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(5), label});
+                    blk.insts.emplace_back(
+                        InstFI{is_double ? OpFI::FLD : OpFI::FLW, fpr(*rd), gpr(5), 0});
                 }
             } else if (auto src = lookup_reg(regs, inst.operand)) {
                 if (*rd != *src) {
@@ -243,9 +253,7 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
             auto* ref_alloc = resolve_alloc(inst.operand);
             // Derive load width from the operand's reference element type,
             // not from the result type (which may be widened after regalloc).
-            auto load_elem = type_of(inst.operand)
-                    .as<ir::type::Reference>()
-                    .elem;
+            auto load_elem = type_of(inst.operand).as<ir::type::Reference>().elem;
             if (ref_alloc && frame.has_spill(ref_alloc)) {
                 size_t off = frame.offset_of(ref_alloc);
                 blk.insts.emplace_back(InstI{is_32bit_op(load_elem) ? OpI::LW : OpI::LD, gpr(*rd),
@@ -298,8 +306,8 @@ inline auto fpr(size_t id) {
 }
 
 inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const FrameLayout& frame,
-                             const ir::lowering::TargetABI& abi,
-                             const ir::lowering::ColorMap& regs) {
+                             const ir::lowering::TargetABI& abi, const ir::lowering::ColorMap& regs,
+                             std::vector<FloatLiteral>& float_literals) {
     using namespace ir::type;
 
     if (!inst.result) {
@@ -709,13 +717,17 @@ inline void translate_call(const ir::CallInst& inst, AsmBlock& blk) {
 }
 
 inline void translate_inst(const ir::Inst& inst, AsmBlock& blk, const FrameLayout& frame,
-                           const ir::lowering::TargetABI& abi, const ir::lowering::ColorMap& regs) {
-    Match{inst}([&](const ir::UnaryInst& u) { translate_unary(u, blk, frame, abi, regs); },
-                [&](const ir::BinaryInst& b) { translate_binary(b, blk, frame, abi, regs); },
-                [&](const ir::CallInst& c) { translate_call(c, blk); },
-                [&](const ir::PhiInst&) {
-                    throw COMPILER_ERROR("PhiInst should be eliminated before isel");
-                });
+                           const ir::lowering::TargetABI& abi, const ir::lowering::ColorMap& regs,
+                           std::vector<FloatLiteral>& float_literals) {
+    Match{inst}(
+        [&](const ir::UnaryInst& u) { translate_unary(u, blk, frame, abi, regs, float_literals); },
+        [&](const ir::BinaryInst& b) {
+            translate_binary(b, blk, frame, abi, regs, float_literals);
+        },
+        [&](const ir::CallInst& c) { translate_call(c, blk); },
+        [&](const ir::PhiInst&) {
+            throw COMPILER_ERROR("PhiInst should be eliminated before isel");
+        });
 }
 
 inline void translate_exit(const ir::Exit& exit, AsmBlock& blk, const std::string& func_name,
@@ -738,7 +750,8 @@ inline void translate_exit(const ir::Exit& exit, AsmBlock& blk, const std::strin
 }
 
 inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::TargetABI& abi,
-                              const ir::lowering::ColorMap& regs) {
+                              const ir::lowering::ColorMap& regs,
+                              std::vector<FloatLiteral>& float_literals) {
     AsmFunc af;
     af.name = func.name;
     af.frame = compute_frame(func, abi);
@@ -817,7 +830,7 @@ inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::TargetAB
         AsmBlock ab;
         ab.label = block_label(func.name, blk->label);
         for (auto& inst : blk->insts()) {
-            translate_inst(inst, ab, af.frame, abi, regs);
+            translate_inst(inst, ab, af.frame, abi, regs, float_literals);
         }
         translate_exit(blk->exit(), ab, func.name, regs);
         af.blocks.emplace_back(std::move(ab));
@@ -851,7 +864,7 @@ inline Module lower(const ir::Program& prog, const ir::lowering::ColorMap& regs,
 
     // translate functions
     for (auto& f : prog.funcs()) {
-        mod.funcs.emplace_back(translate_func(*f, abi, regs));
+        mod.funcs.emplace_back(translate_func(*f, abi, regs, mod.float_literals));
     }
 
     return mod;

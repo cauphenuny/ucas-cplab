@@ -38,7 +38,8 @@ struct InstI {
 
 struct InstFI {
     OpFI op;
-    FloatReg rd, rs1;
+    FloatReg rd;
+    GeneralReg rs1;
     int32_t imm;
     [[nodiscard]] std::string toString() const;
 };

@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
-#include <stdexcept>
 #include <variant>
 
 namespace rv64::vm {
@@ -104,6 +103,22 @@ void VirtualMachine::place_globals(const Module& mod) {
                                });
         }
         offset += sz;
+    }
+
+    // place float/double literal pool entries
+    for (auto& lit : mod.float_literals) {
+        offset = (offset + 7) & ~(uint64_t)7;  // .balign 8
+        symbol_map[lit.label] = offset;
+        Match{lit.value.val}(
+            [&](float v) {
+                store<float>(offset, v);
+                offset += 4;
+            },
+            [&](double v) {
+                store<double>(offset, v);
+                offset += 8;
+            },
+            [&](auto&&) { offset += 8; });
     }
 }
 
