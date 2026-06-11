@@ -210,6 +210,9 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                     // comptime Alloc: load init value into GPR
                     if (auto imm = extract_imm(*alloc->init)) {
                         blk.insts.emplace_back(PseudoLI{gpr(*rd), *imm});
+                    } else {
+                        // non-scalar init (e.g. array): load address of symbol
+                        blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(*rd), alloc->name});
                     }
                 } else if (frame.has_spill(alloc)) {
                     // stack local reference: rd = sp + offset

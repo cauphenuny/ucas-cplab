@@ -6,9 +6,11 @@
 #include "backend/ir/gen/irgen.h"
 #include "backend/ir/ir.h"
 #include "backend/ir/lowering/addr.hpp"
+#include "backend/ir/lowering/array.hpp"
 #include "backend/ir/lowering/global.hpp"
 #include "backend/ir/lowering/reg2mem.hpp"
 #include "backend/ir/lowering/regalloc/main.hpp"
+#include "backend/ir/lowering/stdlib.hpp"
 #include "backend/ir/transform/framework.hpp"
 #include "backend/ir/transform/optim/common_expr.hpp"
 #include "backend/ir/transform/optim/constant_fold.hpp"
@@ -85,6 +87,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --lowering-prune        Apply redundant move elimination after register allocation
     --lowering-optim        Apply optimizations after lowering transformations
     --lowering-global       Apply global variable access proxy lowering (implies --lowering-addr)
+    --lowering-array        Apply array initialization lowering (lower array store to memcpy)
     --lowering              Apply above lowering transformations
 
     --exec                  Execute the generated IR or assembly
@@ -173,6 +176,7 @@ int main(int argc, const char* argv[]) {
     bool lowering_reg = false;
     bool lowering_prune = false;
     bool lowering_optim = false;
+    bool lowering_array = false;
 
     bool execute = false;
     bool execute_trace = false;
@@ -187,11 +191,8 @@ int main(int argc, const char* argv[]) {
         {"temp", optimize_temp}};
 
     std::vector<std::pair<std::string, std::reference_wrapper<bool>>> lowerings = {
-        {"addr", lowering_addr},
-        {"global", lowering_global},
-        {"reg", lowering_reg},
-        {"prune", lowering_prune},
-        {"optim", lowering_optim}};
+        {"addr", lowering_addr},   {"global", lowering_global}, {"reg", lowering_reg},
+        {"prune", lowering_prune}, {"optim", lowering_optim},   {"array", lowering_array}};
 
     size_t optimize_inline = 0;
     constexpr size_t default_inline_threshold = 8;
@@ -382,9 +383,13 @@ int main(int argc, const char* argv[]) {
 
                 {
                     using namespace ir::transform;
+                    using namespace ir::lowering;
                     ConstructSSA().apply(program);
                     echo(program, "Construct SSA");
                     SSAPassContext ctx(program);
+                    if (lowering) {
+                        AddStandardLib<SSAPassContext>().apply(program, ctx);
+                    }
                     if (optimize || lowering) {
                         using namespace ir::transform;
                         std::vector<std::pair<std::unique_ptr<SSAPass>, std::string>> passes;
@@ -434,9 +439,8 @@ int main(int argc, const char* argv[]) {
                                                 "Function Call Inlining");
                         }
                         if (lowering_addr) {
-                            passes.emplace_back(
-                                std::make_unique<ir::lowering::AddressLowering>(rv64::ABI),
-                                "Address Lowering");
+                            passes.emplace_back(std::make_unique<AddressLowering>(rv64::ABI),
+                                                "Address Lowering");
                         }
                         while (apply(program, ctx, passes));
                     }
@@ -457,6 +461,11 @@ int main(int argc, const char* argv[]) {
                     if (lowering_global) {
                         bool changed = GlobalProxyLowering<Context>().apply(program, ctx);
                         if (changed) echo(program, "Global Variable Access Proxy Lowering");
+                    }
+
+                    if (lowering_array) {
+                        bool changed = ArrayInitLowering<Context>(rv64::ABI).apply(program, ctx);
+                        if (changed) echo(program, "Array Initialization Lowering");
                     }
 
                     if (lowering_reg) {

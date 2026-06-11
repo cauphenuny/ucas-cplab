@@ -41,8 +41,9 @@ auto Alloc::clone(const std::string& prefix) const -> std::unique_ptr<Alloc> {
     return std::make_unique<Alloc>(prefix + name, type, comptime, immutable, reference, init);
 }
 
-auto Alloc::constant(std::string name, Type type, ConstexprValue init) -> std::unique_ptr<Alloc> {
-    return std::make_unique<Alloc>(std::move(name), std::move(type), true, true, false,
+auto Alloc::constant(std::string name, Type type, ConstexprValue init, bool reference)
+    -> std::unique_ptr<Alloc> {
+    return std::make_unique<Alloc>(std::move(name), std::move(type), true, true, reference,
                                    std::move(init));
 }
 

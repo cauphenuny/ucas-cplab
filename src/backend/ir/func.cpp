@@ -17,6 +17,15 @@ namespace ir {
 Func::Func(Type ret_type, std::string name, std::vector<std::unique_ptr<Alloc>> params)
     : ret_type(std::move(ret_type)), name(std::move(name)), params(std::move(params)) {}
 
+auto Func::value() const -> NamedValue {
+    auto param_type = type::Product();
+    for (const auto& param : params) {
+        param_type.append(param->type);
+    }
+    return NamedValue{.type = type::Func(std::move(param_type).toBoxed(), ret_type).toBoxed(),
+                      .def = this};
+}
+
 auto Func::toString() const -> std::string {
     std::string params_str = "";
     for (const auto& param : this->params) {

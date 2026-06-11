@@ -128,6 +128,15 @@ const Func& Program::findFunc(const std::string& name) const {
     throw COMPILER_ERROR(fmt::format("function '{}' not found", name));
 }
 
+const BuiltinFunc& Program::findBuiltin(const std::string& name) const {
+    for (const auto& func : builtin_funcs_) {
+        if (func->name == name) {
+            return *func;
+        }
+    }
+    throw COMPILER_ERROR(fmt::format("builtin-function '{}' not found", name));
+}
+
 auto Program::findAlloc(const std::string& name) const -> const Alloc* {
     for (const auto& global : globals_) {
         if (global->name == name) return global.get();

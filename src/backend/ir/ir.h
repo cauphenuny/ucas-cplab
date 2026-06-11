@@ -253,7 +253,7 @@ struct Alloc {
     Alloc(Alloc&&) = delete;
     [[nodiscard]] std::unique_ptr<Alloc> clone(const std::string& prefix) const;
 
-    static auto constant(std::string name, Type type, ConstexprValue init)
+    static auto constant(std::string name, Type type, ConstexprValue init, bool reference = false)
         -> std::unique_ptr<Alloc>;
     static auto variable(std::string name, Type type,
                          std::optional<ConstexprValue> init = std::nullopt, bool immutable = false)
@@ -284,6 +284,8 @@ struct Func {
 
     Func(Type ret_type, std::string name, std::vector<std::unique_ptr<Alloc>> params = {});
     Func(Func&&) = delete;
+
+    [[nodiscard]] auto value() const -> NamedValue;
 
     [[nodiscard]] auto toString() const -> std::string;
 
@@ -342,6 +344,9 @@ struct BuiltinFunc {
     Type type;
     BuiltinFunc(BuiltinFunc&&) = delete;
     BuiltinFunc(std::string name, Type type) : name(std::move(name)), type(std::move(type)) {}
+    [[nodiscard]] auto value() const {
+        return NamedValue{type, this};
+    }
 };
 
 struct Callback {
@@ -376,8 +381,8 @@ struct Program {
 
     void removeFunc(std::vector<std::unique_ptr<Func>>::iterator iter);
 
-    [[nodiscard]] const Func& findFunc(const std::string& name) const;
-
+    [[nodiscard]] auto findFunc(const std::string& name) const -> const Func&;
+    [[nodiscard]] auto findBuiltin(const std::string& name) const -> const BuiltinFunc&;
     [[nodiscard]] auto findAlloc(const std::string& name) const -> const Alloc*;
 
     friend struct vm::VirtualMachine;
