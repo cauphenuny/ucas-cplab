@@ -64,8 +64,11 @@ void VirtualMachine::assign(ir::type::Float64, std::byte* dest, ir::type::Float,
 
 void VirtualMachine::assign(const ir::type::Primitive& dest_type, std::byte* dest,
                             const ir::type::Primitive& src_type, const std::byte* src) const {
+    // info(fmt::format("Assigning {} (at {}) to {} (at {})", src_type, fmt::ptr(src), dest_type,
+    //                  fmt::ptr(dest)));
     Match(dest_type, src_type)([&](auto dest_prim, auto src_prim) {
         if constexpr (std::is_same_v<decltype(dest_prim), decltype(src_prim)>) {
+            // info(fmt::format("memcpy {} bytes", ir::type::size_of(dest_type)));
             memcpy(dest, src, ir::type::size_of(dest_type));
         } else {
             assign(dest_prim, dest, src_prim, src);

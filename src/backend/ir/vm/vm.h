@@ -155,7 +155,9 @@ private:
                     // use runtime dynamic type
                     // (NamedValue can be assigned multiple times with different types
                     // (for simulating polymorphism of registers in ir::lowering))
-                    view.type = var.type;
+                    if (var.type.is<type::Reference>()) {
+                        view.type = var.type;
+                    }
                     return view;
                 },
                 [&](const TempValue& temp) -> std::optional<View> {

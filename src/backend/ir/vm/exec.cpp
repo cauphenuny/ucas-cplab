@@ -1,3 +1,4 @@
+#include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.h"
 #include "backend/ir/type.hpp"
 #include "backend/ir/vm/view.hpp"
@@ -100,8 +101,20 @@ auto VirtualMachine::execute(Block& block, Block* prev, StackFrame& frame, View&
             debug_state.current_block = &block;
             debug_state.current_inst = &inst;
             debug_trigger(&inst);
-            if (trace_stream)
-                (*trace_stream) << fmt::format("({})  {}\n", perf_counter.num_insts, inst);
+            if (trace_stream) {
+                auto prefix = fmt::format("({})  ", perf_counter.num_insts);
+                (*trace_stream) << fmt::format("{}{}\n", prefix, inst);
+                auto vars = analysis::utils::used_vars(const_cast<Inst&>(inst));
+                if (vars.size()) {
+                    auto indent = std::string(prefix.size(), ' ');
+                    (*trace_stream) << fmt::format("{}where:\n", indent);
+                    for (auto var : vars) {
+                        (*trace_stream)
+                            << fmt::format("{}    {}: view as {}, used as {}\n", indent, *var,
+                                           view_of(*var, frame).type, type_of(*var));
+                    }
+                }
+            }
             try {
                 match(
                     inst,
