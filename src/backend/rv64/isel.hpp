@@ -512,7 +512,14 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
 
     auto rd = lookup_reg(regs, *inst.result);
     if (!rd) return;
-    auto t = ir::type_of(*inst.result);
+    auto lt = ir::type_of(inst.lhs);
+    auto rt = ir::type_of(inst.rhs);
+    bool fp = is_fp_op(lt) || is_fp_op(rt);
+    if (fp && !(lt == rt)) {
+        throw COMPILER_ERROR(
+            fmt::format("Type mismatch for FP binary op: {} vs {} (in {})", lt, rt, inst));
+    }
+    auto t = ABI.mem.size(lt) < ABI.mem.size(rt) ? rt : lt;
 
     auto lhs = lookup_reg(regs, inst.lhs);
     auto rhs = lookup_reg(regs, inst.rhs);
@@ -520,7 +527,6 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
     auto lhs_cv = std::get_if<ir::ConstexprValue>(&inst.lhs);
 
     bool w = is_32bit_op(t);
-    bool fp = is_fp_op(t);
     bool is_double = fp && !w;  // Float or Float64 → double precision
 
     if (fp) {
