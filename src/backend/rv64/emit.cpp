@@ -60,40 +60,26 @@ std::string InstU::toString() const {
 // ============ Pseudo instruction toString() implementations ============
 
 std::string PseudoR::toString() const {
+    std::string op_str;
     switch (op) {
-        case MV: return fmt::format("    addi {}, {}, 0", rd, rs1);
-        case NOT: return fmt::format("    xori {}, {}, -1", rd, rs1);
-        case NEG: return fmt::format("    sub {}, zero, {}", rd, rs1);
-        case NEGW: return fmt::format("    subw {}, zero, {}", rd, rs1);
-        case SEQZ: return fmt::format("    sltiu {}, {}, 1", rd, rs1);
-        case SNEZ: return fmt::format("    sltu {}, zero, {}", rd, rs1);
+        case MV: op_str = "mv"; break;
+        case NOT: op_str = "not"; break;
+        case NEG: op_str = "neg"; break;
+        case NEGW: op_str = "negw"; break;
+        case SEQZ: op_str = "seqz"; break;
+        case SNEZ: op_str = "snez"; break;
     }
-    return "";
+    return fmt::format("    {} {}, {}", op_str, rd, rs1);
 }
 
 std::string PseudoLI::toString() const {
-    int32_t imm32 = (int32_t)imm;
-    if (imm32 >= -2048 && imm32 < 2048) {
-        return fmt::format("    addi {}, zero, {}", rd, imm32);
-    }
-    int32_t hi20 = imm32 >> 12;
-    int32_t lo12 = imm32 & 0xFFF;
-    if (lo12 & 0x800) {
-        hi20 += 1;
-        lo12 -= 0x1000;
-    }
-    std::string r = fmt::format("    lui {}, {}", rd, (uint32_t)hi20 & 0xFFFFF);
-    if (lo12 != 0) {
-        r += "\n";
-        r += fmt::format("    addi {}, {}, {}", rd, rd, lo12);
-    }
-    return r;
+    return fmt::format("    li {}, {}", rd, imm);
 }
 
 std::string PseudoB::toString() const {
     switch (op) {
-        case BEQZ: return fmt::format("    beq {}, zero, {}", rs1, target);
-        case BNEZ: return fmt::format("    bne {}, zero, {}", rs1, target);
+        case BEQZ: return fmt::format("    beqz {}, {}", rs1, target);
+        case BNEZ: return fmt::format("    bnez {}, {}", rs1, target);
     }
     return "";
 }

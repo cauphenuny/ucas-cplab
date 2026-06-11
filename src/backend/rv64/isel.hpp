@@ -71,37 +71,6 @@ inline bool is_32bit_op(const ir::Type& t) {
                                  std::holds_alternative<Float32>(t.as<Primitive>()));
 }
 
-inline bool is_commutative_int(ir::InstOp op) {
-    switch (op) {
-        case ir::InstOp::ADD:
-        case ir::InstOp::MUL:
-        case ir::InstOp::AND:
-        case ir::InstOp::OR:
-        case ir::InstOp::EQ:
-        case ir::InstOp::NEQ: return true;
-        default: return false;
-    }
-}
-
-inline int64_t fold_binary_int(ir::InstOp op, int64_t a, int64_t b) {
-    switch (op) {
-        case ir::InstOp::ADD: return a + b;
-        case ir::InstOp::SUB: return a - b;
-        case ir::InstOp::MUL: return a * b;
-        case ir::InstOp::DIV: return b == 0 ? 0 : a / b;
-        case ir::InstOp::MOD: return b == 0 ? 0 : a % b;
-        case ir::InstOp::AND: return a & b;
-        case ir::InstOp::OR: return a | b;
-        case ir::InstOp::LT: return a < b;
-        case ir::InstOp::GT: return a > b;
-        case ir::InstOp::LEQ: return a <= b;
-        case ir::InstOp::GEQ: return a >= b;
-        case ir::InstOp::EQ: return a == b;
-        case ir::InstOp::NEQ: return a != b;
-        default: throw COMPILER_ERROR("cannot fold int");
-    }
-}
-
 inline bool is_fp_op(const ir::Type& t) {
     using namespace ir::type;
     return t.is<Primitive>() && (std::holds_alternative<Float32>(t.as<Primitive>()) ||
@@ -151,6 +120,16 @@ inline std::string block_label(const std::string& func_name, const std::string& 
     return ".L" + func_name + "_" + blk_label;
 }
 
+inline auto gpr(size_t id) {
+    return GeneralReg{static_cast<uint8_t>(id)};
+}
+inline auto fpr(size_t id) {
+    return FloatReg{static_cast<uint8_t>(id)};
+}
+
+inline const auto reg_t0 = gpr(5);
+inline const auto reg_sp = gpr(2);
+
 // Forward declares
 inline void translate_inst(const ir::Inst& inst, AsmBlock& blk, const FrameLayout& frame,
                            const ir::lowering::TargetABI& abi, const ir::lowering::ColorMap& regs,
@@ -169,9 +148,6 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
     if (!rd) return;
     bool fp = is_fp_op(ir::type_of(*inst.result));
 
-    auto gpr = [](size_t id) { return GeneralReg{static_cast<uint8_t>(id)}; };
-    auto fpr = [](size_t id) { return FloatReg{static_cast<uint8_t>(id)}; };
-
     switch (inst.op) {
         case ir::UnaryInstOp::MOV: {
             if (auto* cv = std::get_if<ir::ConstexprValue>(&inst.operand)) {
@@ -183,9 +159,9 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                         {".L_fc_" + std::to_string(float_literals.size()), *cv});
                     bool is_double = !is_32bit_op(ir::type_of(inst.operand));
                     auto label = float_literals.back().label;
-                    blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(5), label});
+                    blk.insts.emplace_back(PseudoL{PseudoL::LA, reg_t0, label});
                     blk.insts.emplace_back(
-                        InstFI{is_double ? OpFI::FLD : OpFI::FLW, fpr(*rd), gpr(5), 0});
+                        InstFI{is_double ? OpFI::FLD : OpFI::FLW, fpr(*rd), reg_t0, 0});
                 }
             } else if (auto src = lookup_reg(regs, inst.operand)) {
                 if (*rd != *src) {
@@ -206,7 +182,7 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                 } else if (frame.has_spill(alloc)) {
                     // stack local reference: rd = sp + offset
                     blk.insts.emplace_back(
-                        InstI{OpI::ADDI, gpr(*rd), GeneralReg{2}, (int32_t)frame.offset_of(alloc)});
+                        InstI{OpI::ADDI, gpr(*rd), reg_sp, (int32_t)frame.offset_of(alloc)});
                 } else {
                     // global alloc: rd = address of symbol
                     blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(*rd), alloc->name});
@@ -271,11 +247,11 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                 size_t off = frame.offset_of(ref_alloc);
                 if (load_fp) {
                     bool is_double = !is_32bit_op(load_elem);
-                    blk.insts.emplace_back(InstFI{is_double ? OpFI::FLD : OpFI::FLW, fpr(*rd),
-                                                  GeneralReg{2}, (int32_t)off});
+                    blk.insts.emplace_back(
+                        InstFI{is_double ? OpFI::FLD : OpFI::FLW, fpr(*rd), reg_sp, (int32_t)off});
                 } else {
                     blk.insts.emplace_back(
-                        InstI{int_load_op(load_elem), gpr(*rd), GeneralReg{2}, (int32_t)off});
+                        InstI{int_load_op(load_elem), gpr(*rd), reg_sp, (int32_t)off});
                 }
             } else if (auto base = lookup_reg(regs, inst.operand)) {
                 // register dereference — operand has a register, use it as a pointer
@@ -291,13 +267,13 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                 auto sz = abi.mem.size(ref_alloc->type);
                 if (load_fp) {
                     bool is_double = !is_32bit_op(load_elem);
-                    blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(5), ref_alloc->name});
+                    blk.insts.emplace_back(PseudoL{PseudoL::LA, reg_t0, ref_alloc->name});
                     blk.insts.emplace_back(
-                        InstFI{is_double ? OpFI::FLD : OpFI::FLW, fpr(*rd), gpr(5), 0});
+                        InstFI{is_double ? OpFI::FLD : OpFI::FLW, fpr(*rd), reg_t0, 0});
                 } else {
                     if (sz == 1) {
-                        blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(5), ref_alloc->name});
-                        blk.insts.emplace_back(InstI{OpI::LBU, gpr(*rd), gpr(5), 0});
+                        blk.insts.emplace_back(PseudoL{PseudoL::LA, reg_t0, ref_alloc->name});
+                        blk.insts.emplace_back(InstI{OpI::LBU, gpr(*rd), reg_t0, 0});
                     } else {
                         PseudoL pi{sz == 8 ? PseudoL::LGD : PseudoL::LGW, gpr(*rd),
                                    ref_alloc->name};
@@ -349,7 +325,7 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                 if (frame.has_spill(alloc)) {
                     // reference alloc on stack: rd = sp + offset
                     blk.insts.emplace_back(
-                        InstI{OpI::ADDI, gpr(*rd), GeneralReg{2}, (int32_t)frame.offset_of(alloc)});
+                        InstI{OpI::ADDI, gpr(*rd), reg_sp, (int32_t)frame.offset_of(alloc)});
                 } else {
                     // global alloc: rd = address of symbol
                     blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(*rd), alloc->name});
@@ -360,19 +336,12 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
     }
 }
 
-inline auto gpr(size_t id) {
-    return GeneralReg{static_cast<uint8_t>(id)};
-}
-inline auto fpr(size_t id) {
-    return FloatReg{static_cast<uint8_t>(id)};
-}
-
 inline void emit_add_sp(AsmBlock& blk, int64_t delta) {
     if (fits_i12(delta)) {
-        blk.insts.emplace_back(InstI{OpI::ADDI, GeneralReg{2}, GeneralReg{2}, (int32_t)delta});
+        blk.insts.emplace_back(InstI{OpI::ADDI, reg_sp, reg_sp, (int32_t)delta});
     } else {
-        blk.insts.emplace_back(PseudoLI{gpr(5), delta});
-        blk.insts.emplace_back(InstR{OpR::ADD, GeneralReg{2}, GeneralReg{2}, gpr(5)});
+        blk.insts.emplace_back(PseudoLI{reg_t0, delta});
+        blk.insts.emplace_back(InstR{OpR::ADD, reg_sp, reg_sp, reg_t0});
     }
 }
 
@@ -383,19 +352,19 @@ inline void emit_store_bytes(AsmBlock& blk, const std::byte* data, size_t sz, Ge
         if (sz - i >= 4) {
             uint32_t v = 0;
             std::memcpy(&v, data + i, 4);
-            blk.insts.emplace_back(PseudoLI{gpr(5), (int64_t)(int32_t)v});
-            blk.insts.emplace_back(InstI{OpI::SW, gpr(5), base, (int32_t)(off + i)});
+            blk.insts.emplace_back(PseudoLI{reg_t0, (int64_t)(int32_t)v});
+            blk.insts.emplace_back(InstI{OpI::SW, reg_t0, base, (int32_t)(off + i)});
             i += 4;
         } else if (sz - i >= 2) {
             uint16_t v = 0;
             std::memcpy(&v, data + i, 2);
-            blk.insts.emplace_back(PseudoLI{gpr(5), (int64_t)v});
-            blk.insts.emplace_back(InstI{OpI::SH, gpr(5), base, (int32_t)(off + i)});
+            blk.insts.emplace_back(PseudoLI{reg_t0, (int64_t)v});
+            blk.insts.emplace_back(InstI{OpI::SH, reg_t0, base, (int32_t)(off + i)});
             i += 2;
         } else {
             uint8_t v = static_cast<uint8_t>(data[i]);
-            blk.insts.emplace_back(PseudoLI{gpr(5), (int64_t)v});
-            blk.insts.emplace_back(InstI{OpI::SB, gpr(5), base, (int32_t)(off + i)});
+            blk.insts.emplace_back(PseudoLI{reg_t0, (int64_t)v});
+            blk.insts.emplace_back(InstI{OpI::SB, reg_t0, base, (int32_t)(off + i)});
             i += 1;
         }
     }
@@ -406,8 +375,8 @@ inline void emit_load_float_const(AsmBlock& blk, const ir::ConstexprValue& cv, c
     float_literals.push_back({".L_fc_" + std::to_string(float_literals.size()), cv});
     auto label = float_literals.back().label;
     bool is_double = !is_32bit_op(t);
-    blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(5), label});
-    blk.insts.emplace_back(InstFI{is_double ? OpFI::FLD : OpFI::FLW, dst, gpr(5), 0});
+    blk.insts.emplace_back(PseudoL{PseudoL::LA, reg_t0, label});
+    blk.insts.emplace_back(InstFI{is_double ? OpFI::FLD : OpFI::FLW, dst, reg_t0, 0});
 }
 
 inline void emit_int_reg_op(AsmBlock& blk, OpR op64, OpR op32, bool w, GeneralReg rd,
@@ -420,8 +389,8 @@ inline void emit_add_reg_imm(AsmBlock& blk, GeneralReg rd, GeneralReg rs, int64_
         blk.insts.emplace_back(InstI{w ? OpI::ADDIW : OpI::ADDI, rd, rs, (int32_t)imm});
         return;
     }
-    blk.insts.emplace_back(PseudoLI{gpr(5), imm});
-    emit_int_reg_op(blk, OpR::ADD, OpR::ADDW, w, rd, rs, gpr(5));
+    blk.insts.emplace_back(PseudoLI{reg_t0, imm});
+    emit_int_reg_op(blk, OpR::ADD, OpR::ADDW, w, rd, rs, reg_t0);
 }
 
 inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const FrameLayout& frame,
@@ -439,7 +408,7 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
         if (!val) {
             if (auto* cv = std::get_if<ir::ConstexprValue>(&inst.rhs)) {
                 if (auto imm = extract_imm(*cv)) {
-                    blk.insts.emplace_back(PseudoLI{gpr(5), *imm});  // t0
+                    blk.insts.emplace_back(PseudoLI{reg_t0, *imm});  // t0
                     val = 5;
                 } else if (is_fp_op(ir::type_of(inst.rhs))) {
                     emit_load_float_const(blk, *cv, ir::type_of(inst.rhs), fpr(5), float_literals);
@@ -455,7 +424,7 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                     if (ref_alloc && frame.has_spill(ref_alloc)) {
                         size_t off = frame.offset_of(ref_alloc);
                         size_t sz = abi.mem.size(cv->type);
-                        emit_store_bytes(blk, buf->get(), sz, GeneralReg{2}, off);
+                        emit_store_bytes(blk, buf->get(), sz, reg_sp, off);
                         return;
                     }
                 }
@@ -477,11 +446,11 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
             size_t off = frame.offset_of(ref_alloc);
             if (is_fp_op(ir::type_of(inst.rhs))) {
                 bool is_double = !is_32bit_op(ir::type_of(inst.rhs));
-                blk.insts.emplace_back(InstFI{is_double ? OpFI::FSD : OpFI::FSW, fpr(*val),
-                                              GeneralReg{2}, (int32_t)off});
+                blk.insts.emplace_back(
+                    InstFI{is_double ? OpFI::FSD : OpFI::FSW, fpr(*val), reg_sp, (int32_t)off});
             } else {
-                blk.insts.emplace_back(InstI{int_store_op(ir::type_of(inst.rhs)), gpr(*val),
-                                             GeneralReg{2}, (int32_t)off});
+                blk.insts.emplace_back(
+                    InstI{int_store_op(ir::type_of(inst.rhs)), gpr(*val), reg_sp, (int32_t)off});
             }
         } else if (auto base = lookup_reg(regs, inst.lhs)) {
             // 2) Register-dereference store: *base = val
@@ -497,13 +466,13 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
             // 3) Global symbol store
             if (is_fp_op(ir::type_of(inst.rhs))) {
                 bool is_double = !is_32bit_op(ir::type_of(inst.rhs));
-                blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(5), ref_alloc->name});
+                blk.insts.emplace_back(PseudoL{PseudoL::LA, reg_t0, ref_alloc->name});
                 blk.insts.emplace_back(
-                    InstFI{is_double ? OpFI::FSD : OpFI::FSW, fpr(*val), gpr(5), 0});
+                    InstFI{is_double ? OpFI::FSD : OpFI::FSW, fpr(*val), reg_t0, 0});
             } else {
-                blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(5), ref_alloc->name});
+                blk.insts.emplace_back(PseudoL{PseudoL::LA, reg_t0, ref_alloc->name});
                 blk.insts.emplace_back(
-                    InstI{int_store_op(ir::type_of(inst.rhs)), gpr(*val), gpr(5), 0});
+                    InstI{int_store_op(ir::type_of(inst.rhs)), gpr(*val), reg_t0, 0});
             }
         }
         return;
@@ -641,16 +610,16 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                 if (fits_i12(imm)) {
                     blk.insts.emplace_back(InstI{OpI::SLTI, gpr(*rd), gpr(*lhs), imm});
                 } else {
-                    blk.insts.emplace_back(PseudoLI{gpr(5), *imm_opt});
-                    blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), gpr(*lhs), gpr(5)});
+                    blk.insts.emplace_back(PseudoLI{reg_t0, *imm_opt});
+                    blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), gpr(*lhs), reg_t0});
                 }
                 break;
             case ir::InstOp::GEQ:
                 if (fits_i12(imm)) {
                     blk.insts.emplace_back(InstI{OpI::SLTI, gpr(*rd), gpr(*lhs), imm});
                 } else {
-                    blk.insts.emplace_back(PseudoLI{gpr(5), *imm_opt});
-                    blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), gpr(*lhs), gpr(5)});
+                    blk.insts.emplace_back(PseudoLI{reg_t0, *imm_opt});
+                    blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), gpr(*lhs), reg_t0});
                 }
                 blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
                 break;
@@ -661,9 +630,8 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                     blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
                 } else {
                     // x > N ≡ N < x
-                    auto t0 = GeneralReg::fromString("t0");
-                    blk.insts.emplace_back(PseudoLI{t0, imm});
-                    blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), t0, gpr(*lhs)});
+                    blk.insts.emplace_back(PseudoLI{reg_t0, imm});
+                    blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), reg_t0, gpr(*lhs)});
                 }
                 break;
             case ir::InstOp::LEQ:
@@ -672,22 +640,21 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                     blk.insts.emplace_back(InstI{OpI::SLTI, gpr(*rd), gpr(*lhs), imm + 1});
                 } else {
                     // x <= N ≡ not (N < x)
-                    auto t0 = GeneralReg::fromString("t0");
-                    blk.insts.emplace_back(PseudoLI{t0, imm});
-                    blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), t0, gpr(*lhs)});
+                    blk.insts.emplace_back(PseudoLI{reg_t0, imm});
+                    blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), reg_t0, gpr(*lhs)});
                     blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
                 }
                 break;
             case ir::InstOp::EQ:
                 // x == c → t0 = c; rd = x - t0; rd = (rd == 0)
-                blk.insts.emplace_back(PseudoLI{gpr(5), imm});
-                blk.insts.emplace_back(InstR{OpR::SUB, gpr(*rd), gpr(*lhs), gpr(5)});
+                blk.insts.emplace_back(PseudoLI{reg_t0, imm});
+                blk.insts.emplace_back(InstR{OpR::SUB, gpr(*rd), gpr(*lhs), reg_t0});
                 blk.insts.emplace_back(PseudoR{PseudoR::SEQZ, gpr(*rd), gpr(*rd)});
                 break;
             case ir::InstOp::NEQ:
                 // x != c → t0 = c; rd = x - t0; rd = (rd != 0)
-                blk.insts.emplace_back(PseudoLI{gpr(5), imm});
-                blk.insts.emplace_back(InstR{OpR::SUB, gpr(*rd), gpr(*lhs), gpr(5)});
+                blk.insts.emplace_back(PseudoLI{reg_t0, imm});
+                blk.insts.emplace_back(InstR{OpR::SUB, gpr(*rd), gpr(*lhs), reg_t0});
                 blk.insts.emplace_back(PseudoR{PseudoR::SNEZ, gpr(*rd), gpr(*rd)});
                 break;
             case ir::InstOp::SUB: emit_add_reg_imm(blk, gpr(*rd), gpr(*lhs), -*imm_opt, w); break;
@@ -698,7 +665,7 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
             case ir::InstOp::OR: {
                 // LI imm into temp register (t0 if rd == lhs to avoid clobbering lhs)
                 bool clobber = (*rd == *lhs);
-                auto tmp = clobber ? gpr(5) : gpr(*rd);
+                auto tmp = clobber ? reg_t0 : gpr(*rd);
                 blk.insts.emplace_back(PseudoLI{tmp, imm});
                 OpR op_d;
                 OpR op_w;
@@ -745,7 +712,7 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
             case ir::InstOp::EQ:
             case ir::InstOp::NEQ: {
                 // Use t0 to avoid clobbering rhs when rd == rhs
-                auto tmp = (*rd == *rhs) ? gpr(5) : gpr(*rd);
+                auto tmp = (*rd == *rhs) ? reg_t0 : gpr(*rd);
                 blk.insts.emplace_back(PseudoLI{tmp, cv});
                 switch (inst.op) {
                     case ir::InstOp::MUL:
@@ -774,7 +741,7 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
             case ir::InstOp::DIV:
             case ir::InstOp::MOD: {
                 // Use t0 to avoid clobbering rhs when rd == rhs
-                auto tmp = (*rd == *rhs) ? gpr(5) : gpr(*rd);
+                auto tmp = (*rd == *rhs) ? reg_t0 : gpr(*rd);
                 blk.insts.emplace_back(PseudoLI{tmp, cv});
                 switch (inst.op) {
                     case ir::InstOp::SUB:
@@ -795,9 +762,8 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                 if (fits_i12(cv)) {
                     blk.insts.emplace_back(InstI{OpI::SLTI, gpr(*rd), gpr(*rhs), (int32_t)cv});
                 } else {
-                    auto t0 = GeneralReg::fromString("t0");
-                    blk.insts.emplace_back(PseudoLI{t0, cv});
-                    blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), t0, gpr(*rhs)});
+                    blk.insts.emplace_back(PseudoLI{reg_t0, cv});
+                    blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), reg_t0, gpr(*rhs)});
                 }
                 break;
             }
@@ -807,25 +773,22 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                     blk.insts.emplace_back(InstI{OpI::SLTI, gpr(*rd), gpr(*rhs), (int32_t)cv});
                     blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
                 } else {
-                    auto t0 = GeneralReg::fromString("t0");
-                    blk.insts.emplace_back(PseudoLI{t0, cv});
-                    blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), t0, gpr(*rhs)});
+                    blk.insts.emplace_back(PseudoLI{reg_t0, cv});
+                    blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), reg_t0, gpr(*rhs)});
                     blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
                 }
                 break;
             }
             case ir::InstOp::LT: {
                 // c < x → PseudoLI(t0, c) + SLT(rd, t0, x)
-                auto t0 = GeneralReg::fromString("t0");
-                blk.insts.emplace_back(PseudoLI{t0, cv});
-                blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), t0, gpr(*rhs)});
+                blk.insts.emplace_back(PseudoLI{reg_t0, cv});
+                blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), reg_t0, gpr(*rhs)});
                 break;
             }
             case ir::InstOp::GEQ: {
                 // c >= x ≡ !(c < x) → PseudoLI(t0, c) + SLT(rd, t0, x) + XORI(rd, rd, 1)
-                auto t0 = GeneralReg::fromString("t0");
-                blk.insts.emplace_back(PseudoLI{t0, cv});
-                blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), t0, gpr(*rhs)});
+                blk.insts.emplace_back(PseudoLI{reg_t0, cv});
+                blk.insts.emplace_back(InstR{OpR::SLT, gpr(*rd), reg_t0, gpr(*rhs)});
                 blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
                 break;
             }
@@ -898,7 +861,7 @@ inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::TargetAB
             // byte-buffer case (array of init data)
             if (auto* buf = std::get_if<std::unique_ptr<std::byte[]>>(&local->init->val)) {
                 size_t sz = abi.mem.size(local->type);
-                emit_store_bytes(entry, buf->get(), sz, GeneralReg{2}, off);
+                emit_store_bytes(entry, buf->get(), sz, reg_sp, off);
                 continue;
             }
 
@@ -920,8 +883,8 @@ inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::TargetAB
                 continue;
 
             OpI op = (sz == 8) ? OpI::SD : (sz == 4) ? OpI::SW : (sz == 2) ? OpI::SH : OpI::SB;
-            entry.insts.emplace_back(PseudoLI{gpr(5), val});
-            entry.insts.emplace_back(InstI{op, gpr(5), GeneralReg{2}, (int32_t)off});
+            entry.insts.emplace_back(PseudoLI{reg_t0, val});
+            entry.insts.emplace_back(InstI{op, reg_t0, reg_sp, (int32_t)off});
         }
 
         entry.insts.emplace_back(PseudoJ{PseudoJ::J, entry_lbl});

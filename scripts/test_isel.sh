@@ -14,26 +14,30 @@ for cact in "$DIR"/*.cact; do
         if diff <("$CC" "$cact" --silent --lowering --exec "$@" < "$base.in") \
               <("$CC" "$cact" --silent --asm-exec "$@" < "$base.in") > /dev/null 2>&1; then
             echo "PASS: $name (with input)"
-            ((pass++))
+            pass=$((pass+1))
         else
             echo "FAIL: $name (with input)"
             diff <("$CC" "$cact" --silent --lowering --exec "$@" < "$base.in") \
                   <("$CC" "$cact" --silent --asm-exec "$@" < "$base.in")
-            ((fail++))
+            fail=$((fail+1))
         fi
     else
         if diff <("$CC" "$cact" --silent --lowering --exec "$@") \
               <("$CC" "$cact" --silent --asm-exec "$@") > /dev/null 2>&1; then
             echo "PASS: $name"
-            ((pass++))
+            pass=$((pass+1))
         else
             echo "FAIL: $name"
             diff <("$CC" "$cact" --silent --lowering --exec "$@") \
                   <("$CC" "$cact" --silent --asm-exec "$@")
-            ((fail++))
+            fail=$((fail+1))
         fi
     fi
 done
 
 echo "=============================="
 echo "Total: $((pass + fail)), Passed: $pass, Failed: $fail"
+
+if [ "$fail" -ne 0 ]; then
+    exit 1
+fi
