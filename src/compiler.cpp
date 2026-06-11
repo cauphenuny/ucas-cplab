@@ -509,7 +509,7 @@ int main(int argc, const char* argv[]) {
                     if (!silent) fmt::println("\n---\n");
 
                     if (print_asm) {
-                        auto module = rv64::isel::lower(program, regs, rv64::ABI);
+                        auto module = rv64::isel::lower(program, regs);
                         auto asm_code = fmt::format("{}", module);
                         if (!silent)
                             fmt::println("Generated RV64 Assembly:\n\n```asm\n{}\n```\n", asm_code);

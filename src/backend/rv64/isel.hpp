@@ -1,5 +1,6 @@
 #pragma once
 
+#include "abi.hpp"
 #include "backend/ir/ir.h"
 #include "backend/ir/lowering/abi.hpp"
 #include "backend/ir/lowering/regalloc/precolorize.hpp"
@@ -97,22 +98,53 @@ inline const ir::Alloc* resolve_alloc(const ir::Value& val) {
     return nullptr;
 }
 
-inline FrameLayout compute_frame(const ir::Func& func, const ir::lowering::TargetABI& abi) {
+// Compute the byte size of the outgoing argument area needed for calls in this function.
+inline size_t outgoing_arg_area(const ir::Func& func) {
+    size_t max_bytes = 0;
+    for (auto& blk : func.blocks()) {
+        for (auto& inst : blk->insts()) {
+            auto* call = std::get_if<ir::CallInst>(&inst);
+            if (!call) continue;
+            auto regs = ir::lowering::assign_arg_regs(call->args, ABI);
+            size_t stack_count = 0;
+            for (auto& r : regs)
+                if (!r) stack_count++;
+            size_t area = stack_count * 8;
+            if (area > max_bytes) max_bytes = area;
+        }
+    }
+    return max_bytes;
+}
+
+inline FrameLayout compute_frame(const ir::Func& func) {
     FrameLayout layout;
-    size_t offset = 0;
+    size_t outgoing = outgoing_arg_area(func);
+    size_t offset = outgoing;
     for (auto& local : func.locals()) {
         if (!local->reference) continue;
         // Register-proxy allocs are global, never appear in func.locals()
-        size_t sz = abi.mem.size(local->type);
-        size_t align = abi.mem.align(local->type);
+        size_t sz = ABI.mem.size(local->type);
+        size_t align = ABI.mem.align(local->type);
         if (align > 1) offset = (offset + align - 1) & ~(align - 1);
         layout.spill_offsets[local.get()] = offset;
         offset += sz;
     }
     // align to abi stack alignment
-    size_t align = abi.mem.stack_alignment;
+    size_t align = ABI.mem.stack_alignment;
     if (align > 1) offset = (offset + align - 1) & ~(align - 1);
     layout.total_size = offset;
+
+    // Incoming stack parameters — params with reference=true that lack a register.
+    // The caller placed them in its outgoing-arg area using 8-byte (xlen) slots,
+    // starting at sp+total_size. Match that layout exactly.
+    constexpr size_t xlen = 8;
+    offset = layout.total_size;
+    for (auto& param : func.params) {
+        if (!param->reference) continue;
+        offset = (offset + xlen - 1) & ~(xlen - 1);
+        layout.spill_offsets[param.get()] = offset;
+        offset += xlen;
+    }
     return layout;
 }
 
@@ -798,9 +830,47 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
     }
 }
 
-inline void translate_call(const ir::CallInst& inst, AsmBlock& blk) {
-    PseudoJ pi{PseudoJ::CALL, name_of(inst.func.def)};
-    blk.insts.emplace_back(pi);
+inline void translate_call(const ir::CallInst& inst, AsmBlock& blk,
+                           const ir::lowering::TargetABI& abi, const ir::lowering::ColorMap& regs,
+                           std::vector<FloatLiteral>& float_literals) {
+    // Emit stores for stack args (those without a register assignment).
+    auto arg_regs = ir::lowering::assign_arg_regs(inst.args, abi);
+    size_t stack_off = 0;
+    auto scratch_fpr = fpr(5);
+    for (size_t i = 0; i < inst.args.size(); i++) {
+        if (arg_regs[i].has_value()) continue;
+        auto& arg = inst.args[i];
+        bool fp = is_fp_op(ir::type_of(arg));
+        int32_t off = (int32_t)stack_off;
+        stack_off += 8;
+        auto val = lookup_reg(regs, arg);
+        if (val) {
+            if (fp) {
+                bool is_double = !is_32bit_op(ir::type_of(arg));
+                blk.insts.emplace_back(
+                    InstFI{is_double ? OpFI::FSD : OpFI::FSW, fpr(*val), reg_sp, off});
+            } else {
+                auto store_op = [](const ir::Type& t) -> OpI {
+                    if (t.is<ir::type::Primitive>() &&
+                        std::holds_alternative<ir::type::Int1>(t.as<ir::type::Primitive>()))
+                        return OpI::SB;
+                    return is_32bit_op(t) ? OpI::SW : OpI::SD;
+                };
+                blk.insts.emplace_back(InstI{store_op(ir::type_of(arg)), gpr(*val), reg_sp, off});
+            }
+        } else if (auto* cv = std::get_if<ir::ConstexprValue>(&arg)) {
+            if (auto imm = extract_imm(*cv)) {
+                blk.insts.emplace_back(PseudoLI{reg_t0, *imm});
+                blk.insts.emplace_back(InstI{OpI::SD, reg_t0, reg_sp, off});
+            } else if (fp) {
+                emit_load_float_const(blk, *cv, ir::type_of(arg), scratch_fpr, float_literals);
+                bool is_double = !is_32bit_op(ir::type_of(arg));
+                blk.insts.emplace_back(
+                    InstFI{is_double ? OpFI::FSD : OpFI::FSW, scratch_fpr, reg_sp, off});
+            }
+        }
+    }
+    blk.insts.emplace_back(PseudoJ{PseudoJ::CALL, name_of(inst.func.def)});
 }
 
 inline void translate_inst(const ir::Inst& inst, AsmBlock& blk, const FrameLayout& frame,
@@ -811,7 +881,7 @@ inline void translate_inst(const ir::Inst& inst, AsmBlock& blk, const FrameLayou
         [&](const ir::BinaryInst& b) {
             translate_binary(b, blk, frame, abi, regs, float_literals);
         },
-        [&](const ir::CallInst& c) { translate_call(c, blk); },
+        [&](const ir::CallInst& c) { translate_call(c, blk, abi, regs, float_literals); },
         [&](const ir::PhiInst&) {
             throw COMPILER_ERROR("PhiInst should be eliminated before isel");
         });
@@ -836,12 +906,11 @@ inline void translate_exit(const ir::Exit& exit, AsmBlock& blk, const std::strin
         });
 }
 
-inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::TargetABI& abi,
-                              const ir::lowering::ColorMap& regs,
+inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::ColorMap& regs,
                               std::vector<FloatLiteral>& float_literals) {
     AsmFunc af;
     af.name = func.name;
-    af.frame = compute_frame(func, abi);
+    af.frame = compute_frame(func);
     auto entry_lbl = ".L" + func.name + "_entry";
     auto epi_lbl = ".L" + func.name + "_epilogue";
 
@@ -860,7 +929,7 @@ inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::TargetAB
 
             // byte-buffer case (array of init data)
             if (auto* buf = std::get_if<std::unique_ptr<std::byte[]>>(&local->init->val)) {
-                size_t sz = abi.mem.size(local->type);
+                size_t sz = ABI.mem.size(local->type);
                 emit_store_bytes(entry, buf->get(), sz, reg_sp, off);
                 continue;
             }
@@ -868,7 +937,7 @@ inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::TargetAB
             // scalar case
             if (std::holds_alternative<std::monostate>(local->init->val)) continue;
             int64_t val = 0;
-            size_t sz = abi.mem.size(local->type);
+            size_t sz = ABI.mem.size(local->type);
             if (auto* v = std::get_if<int>(&local->init->val))
                 val = *v;
             else if (auto* v = std::get_if<int64_t>(&local->init->val))
@@ -896,7 +965,7 @@ inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::TargetAB
         AsmBlock ab;
         ab.label = block_label(func.name, blk->label);
         for (auto& inst : blk->insts()) {
-            translate_inst(inst, ab, af.frame, abi, regs, float_literals);
+            translate_inst(inst, ab, af.frame, ABI, regs, float_literals);
         }
         translate_exit(blk->exit(), ab, func.name, regs);
         af.blocks.emplace_back(std::move(ab));
@@ -916,8 +985,7 @@ inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::TargetAB
     return af;
 }
 
-inline Module lower(const ir::Program& prog, const ir::lowering::ColorMap& regs,
-                    const ir::lowering::TargetABI& abi) {
+inline Module lower(const ir::Program& prog, const ir::lowering::ColorMap& regs) {
     Module mod;
 
     // collect user globals (exclude register proxies)
@@ -929,7 +997,7 @@ inline Module lower(const ir::Program& prog, const ir::lowering::ColorMap& regs,
 
     // translate functions
     for (auto& f : prog.funcs()) {
-        mod.funcs.emplace_back(translate_func(*f, abi, regs, mod.float_literals));
+        mod.funcs.emplace_back(translate_func(*f, regs, mod.float_literals));
     }
 
     return mod;

@@ -53,7 +53,7 @@ struct TargetABI {
 };
 
 inline std::vector<std::optional<size_t>> assign_call_regs(const std::vector<Type>& types,
-                                                           TargetABI& abi) {
+                                                           const TargetABI& abi) {
     using namespace type;
     size_t num_general = 0, num_float = 0;
     std::vector<std::optional<size_t>> param_regs;
@@ -82,7 +82,7 @@ inline std::vector<std::optional<size_t>> assign_call_regs(const std::vector<Typ
 }
 
 inline std::vector<std::optional<size_t>>
-assign_param_regs(const std::vector<std::unique_ptr<Alloc>>& params, TargetABI& abi) {
+assign_param_regs(const std::vector<std::unique_ptr<Alloc>>& params, const TargetABI& abi) {
     std::vector<Type> types;
     types.reserve(params.size());
     for (const auto& param : params) types.push_back(param->type);
@@ -90,7 +90,7 @@ assign_param_regs(const std::vector<std::unique_ptr<Alloc>>& params, TargetABI& 
 }
 
 inline std::vector<std::optional<size_t>> assign_arg_regs(const std::vector<Value>& args,
-                                                          TargetABI& abi) {
+                                                          const TargetABI& abi) {
     std::vector<Type> types;
     types.reserve(args.size());
     for (const auto& arg : args) types.push_back(type_of(arg));

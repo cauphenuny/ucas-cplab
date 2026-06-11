@@ -1,0 +1,143 @@
+int func(int a0, int a1, int a2, bool a3, int a4, bool a5, int a6, int a7, int a8, bool flag,
+         int a9) {
+    if (a9 == 0) {
+        if (flag) {
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+    int sum;
+    sum = func(a0, a1, a2, a3, a4, a5, a6, a7, a8, flag, a9 - 1);
+    return a0 + a1 + a2 + a4 + a6 + a7 + a8 + a9 + sum;
+}
+
+int mix_result_i;
+float mix_result_f;
+double mix_result_d;
+
+// Reg alloc: GPR a0(1) a1(2) a2(5) a3(7) a4(8) a5(10,bool) a6(11) a7(12) | stack: spill_0 spill_1 spill_4 spill_6 spill_7
+//            FPR fa0(3) fa1(4) fa2(6) fa3(9) fa4(13) fa5(14) fa6(17) fa7(18) | stack: spill_3 spill_5
+bool mix(int a0, int a1, float fa0, double fa1, int a2, float fa2, int a3, int a4,
+         float fa3, bool a5, int a6, int a7, double fa4, float fa5, int spill_0,
+         bool spill_1, float fa6, double fa7, float spill_3, int spill_4,
+         double spill_5, int spill_6, bool spill_7) {
+    // ——— nested conditionals exercising stack bool params ———
+    if (spill_1) {
+        if (spill_7) {
+            mix_result_i = 0;
+        } else {
+            mix_result_i = 1;
+        }
+    } else {
+        if (a5) {
+            mix_result_i = spill_4 + spill_6;
+        } else {
+            mix_result_i = spill_0 + a6;
+        }
+    }
+
+    // ——— int chain ———
+    int int_sum;
+    int_sum = a0 + a1;
+    int_sum = int_sum + a2;
+    int_sum = int_sum + a3;
+    int_sum = int_sum + a4;
+    int_sum = int_sum + a6;
+    int_sum = int_sum + a7;
+    int_sum = int_sum + spill_0;
+    int_sum = int_sum + spill_4;
+    int_sum = int_sum + spill_6;
+    mix_result_i = mix_result_i + int_sum;
+
+    // ——— float chain ———
+    mix_result_f = fa0 + fa2;
+    mix_result_f = mix_result_f + fa3;
+    mix_result_f = mix_result_f + fa5;
+    mix_result_f = mix_result_f + fa6;
+    mix_result_f = mix_result_f + spill_3;
+
+    // ——— double chain ———
+    mix_result_d = fa1 + fa4;
+    mix_result_d = mix_result_d + fa7;
+    mix_result_d = mix_result_d + spill_5;
+
+    // ——— while loop with break / continue, driven by stack ints ———
+    int i;
+    int acc;
+    i = spill_0;
+    acc = 0;
+    while (i > 0) {
+        if (i == spill_4) {
+            i = i - 1;
+            continue;
+        }
+        if (i == spill_6) {
+            break;
+        }
+        acc = acc + i;
+        i = i - 1;
+    }
+    mix_result_i = mix_result_i + acc;
+
+    // ——— if / else gated by stacked bool, double-vs-double compare ———
+    double dtemp;
+    dtemp = mix_result_d + spill_5;
+    if (dtemp > fa7) {
+        if (spill_7) {
+            mix_result_d = dtemp + spill_5;
+        } else {
+            mix_result_d = dtemp - spill_5;
+        }
+    } else {
+        mix_result_f = mix_result_f + fa6;
+        mix_result_f = mix_result_f + spill_3;
+    }
+
+    // return bool expression mixing register and stack bools
+    if (a5) {
+        return spill_7;
+    }
+    if (spill_1) {
+        return spill_7;
+    }
+    return false;
+}
+
+int main() {
+    print_int(func(1, 2, 3, true, 5, true, 7, 8, 9, true, 10));
+
+    // call mix with 23 arguments — 7 of them go through stack
+    bool r;
+    r = mix(
+        /* int a0      */ 10,
+        /* int a1      */ 20,
+        /* float fa0   */ 1.5f,
+        /* double fa1  */ 2.5,
+        /* int a2      */ 30,
+        /* float fa2   */ 3.5f,
+        /* int a3      */ 40,
+        /* int a4      */ 50,
+        /* float fa3   */ 4.5f,
+        /* bool a5     */ true,
+        /* int a6      */ 60,
+        /* int a7      */ 70,
+        /* double fa4  */ 5.5,
+        /* float fa5   */ 6.5f,
+        /* int spill_0 */ 5,
+        /* bool spill_1*/ false,
+        /* float fa6   */ 7.5f,
+        /* double fa7  */ 8.5,
+        /* float spill_3*/9.5f,
+        /* int spill_4 */ 3,
+        /* double spill_5*/10.5,
+        /* int spill_6 */ 2,
+        /* bool spill_7*/ true
+    );
+
+    print_bool(r);
+    print_int(mix_result_i);
+    print_float(mix_result_f);
+    print_double(mix_result_d);
+    return 0;
+}
