@@ -50,8 +50,8 @@ private:
 
     template <template <typename> class Op> void eval_unary(View& dest, const View& operand) const {
         using namespace ir::type;
-        auto dtype = operand.type.is<Reference>() ? Primitive{Int()} : operand.type.as<Primitive>();
-        auto otype = dest.type.is<Reference>() ? Primitive{Int()} : dest.type.as<Primitive>();
+        auto otype = operand.type.is<Reference>() ? Primitive{Int()} : operand.type.as<Primitive>();
+        auto dtype = dest.type.is<Reference>() ? Primitive{Int()} : dest.type.as<Primitive>();
         Match{dtype, otype}([&](auto d, auto o) {
             using dtype = typename decltype(d)::type;
             using otype = typename decltype(o)::type;
