@@ -162,6 +162,7 @@ inline auto fpr(size_t id) {
 inline const auto reg_t0 = gpr(5);
 inline const auto reg_t1 = gpr(6);
 inline const auto reg_sp = gpr(2);
+inline const auto reg_ft0 = fpr(5);
 
 // Forward declares
 inline void translate_inst(const ir::Inst& inst, AsmBlock& blk, const FrameLayout& frame,
@@ -530,13 +531,16 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
     bool is_double = fp && !w;  // Float or Float64 → double precision
 
     if (fp) {
+        if (!lhs && !rhs) {
+            throw COMPILER_ERROR("At least one operand of an FP binary op must be a register");
+        }
         if (!lhs && lhs_cv && !extract_imm(*lhs_cv)) {
-            emit_load_float_const(blk, *lhs_cv, ir::type_of(inst.lhs), fpr(5), float_literals);
+            emit_load_float_const(blk, *lhs_cv, ir::type_of(inst.lhs), reg_ft0, float_literals);
             lhs = 5;
         }
         if (!rhs && rhs_cv && !extract_imm(*rhs_cv)) {
-            emit_load_float_const(blk, *rhs_cv, ir::type_of(inst.rhs), fpr(6), float_literals);
-            rhs = 6;
+            emit_load_float_const(blk, *rhs_cv, ir::type_of(inst.rhs), reg_ft0, float_literals);
+            rhs = 5;
         }
     }
 
@@ -854,7 +858,7 @@ inline void translate_call(const ir::CallInst& inst, AsmBlock& blk,
     // Emit stores for stack args (those without a register assignment).
     auto arg_regs = ir::lowering::assign_arg_regs(inst.args, abi);
     size_t stack_off = 0;
-    auto scratch_fpr = fpr(5);
+    auto scratch_fpr = reg_ft0;
     for (size_t i = 0; i < inst.args.size(); i++) {
         if (arg_regs[i].has_value()) continue;
         auto& arg = inst.args[i];
