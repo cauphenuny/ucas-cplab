@@ -222,9 +222,9 @@ src/
 │   ├── test_reg2mem.cpp
 │   ├── test_regalloc.cpp
 │   ├── test_regalloc_interfere.cpp
-│   ├── test_regalloc_inversion.cpp:	Reproduce the "inverted" register allocation pattern.
-│   ├── test_regalloc_inversion_example.cpp:	Minimal example of inverted register allocation.
-│   ├── test_regalloc_inversion_simplify.cpp:	Find minimal ABI + function for inverted register allocation.
+│   ├── test_regalloc_inversion.cpp
+│   ├── test_regalloc_inversion_example.cpp
+│   ├── test_regalloc_inversion_simplify.cpp
 │   ├── test_regalloc_precolorize.cpp
 │   ├── test_regalloc_ra.cpp
 │   ├── test_sem.cpp

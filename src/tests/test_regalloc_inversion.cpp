@@ -1,4 +1,4 @@
-/// @brief Reproduce the "inverted" register allocation pattern.
+/// Reproduce the "inverted" register allocation pattern.
 ///
 /// Inversion: callee-saved register backups get caller-saved (t) register
 /// colors while program variables get callee-saved (s) register colors.

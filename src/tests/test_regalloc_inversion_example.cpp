@@ -1,4 +1,4 @@
-/// @brief Minimal example of inverted register allocation.
+/// Minimal example of inverted register allocation.
 ///
 /// Pseudo-spill: callee-saved (s) register used as program variable, its
 /// backup forced into a caller-saved (t) register — no stack spill.

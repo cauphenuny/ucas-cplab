@@ -1,4 +1,4 @@
-/// @brief Find minimal ABI + function for inverted register allocation.
+/// Find minimal ABI + function for inverted register allocation.
 ///
 /// Inversion: callee-saved backup temps get caller-saved colors while program
 /// variables get callee-saved colors. Occurs when simultaneously live values

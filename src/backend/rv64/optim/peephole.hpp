@@ -19,7 +19,7 @@ namespace rv64::optim {
 template <typename F> bool peephole_apply(std::vector<Inst>& insts, int window, F&& match_fn) {
     bool changed = false;
     for (int i = (int)insts.size() - window; i >= 0; i--) {
-        if (i + window > insts.size()) continue;
+        if (i + window > (int)insts.size()) continue;
         auto repl = match_fn(insts, i);
         if (!repl) continue;
         insts.erase(insts.begin() + i, insts.begin() + i + window);
