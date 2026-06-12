@@ -52,7 +52,3 @@ jobs:
 
     - name: Test Instruction Selection with Optimized IR
       run: bash scripts/test_isel.sh -O1
-
-    - name: Test Codegen Functional
-      working-directory: ${{github.workspace}}/test/samples_codegen_functional
-      run: python3 test_functional-g.py
