@@ -187,9 +187,12 @@ struct BriggsAllocator {
         graph[dest].move.insert(graph[src].move.begin(), graph[src].move.end());
         graph[dest].move.erase(dest);
         graph[dest].move.erase(src);
-        for (const auto& neighbor : adjacent(src)) {
+        for (const auto& neighbor : graph[src].interfere) {
             graph.interfere(dest, neighbor);
-            decrement_degree(neighbor);
+            auto loc = node_locations.at(neighbor).first;
+            if (loc != &nodes.select_stack && loc != &nodes.coalesced) {
+                decrement_degree(neighbor);
+            }
         }
         if (graph[dest].degree >= graph.max_color && node_locations[dest].first == &nodes.freeze) {
             relocate(dest, nodes.to_spill, node_locations);
