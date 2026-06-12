@@ -532,6 +532,7 @@ int main(int argc, const char* argv[]) {
                             bool changed = false;
                             changed |= rv64::optim::RedundantJumpElimination().apply(module);
                             changed |= rv64::optim::DeadLabelElimination().apply(module);
+                            changed |= rv64::optim::BranchCondSimplification().apply(module);
                             if (!silent && changed) {
                                 fmt::println("After Optimizations:\n\n```asm\n{}\n```\n", module);
                             }

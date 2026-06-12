@@ -119,8 +119,8 @@ struct PseudoRet {
     [[nodiscard]] std::string toString() const;
 };
 
-using Inst = std::variant<InstR, InstFR, InstI, InstFI, InstJ, InstU, PseudoR, PseudoLI, PseudoL,
-                          PseudoB, PseudoJ, PseudoRet>;
+using Inst = std::variant<InstR, InstFR, InstI, InstB, InstFI, InstJ, InstU, PseudoR, PseudoLI,
+                          PseudoL, PseudoB, PseudoJ, PseudoRet>;
 
 struct Global {
     std::string name;

@@ -2,9 +2,44 @@
 
 #include "backend/rv64/inst.hpp"
 #include "framework.hpp"
+#include "utils/match.hpp"
+
+#include <optional>
+#include <vector>
 
 namespace rv64::optim {
 
+// ---------------------------------------------------------------------------
+// peephole framework
+// ---------------------------------------------------------------------------
+
+// Apply a match_fn over every window of `window` instructions in `ii`.
+// match_fn returns std::nullopt on no match, or a replacement vector.
+// Rules run in the order declared, each until saturation (single pass back-to-front).
+template <typename F> bool peephole_apply(std::vector<Inst>& insts, int window, F&& match_fn) {
+    bool changed = false;
+    for (int i = (int)insts.size() - window; i >= 0; i--) {
+        if (i + window > insts.size()) continue;
+        auto repl = match_fn(insts, i);
+        if (!repl) continue;
+        insts.erase(insts.begin() + i, insts.begin() + i + window);
+        insts.insert(insts.begin() + i, repl->begin(), repl->end());
+        changed = true;
+    }
+    return changed;
+}
+
+// ---------------------------------------------------------------------------
+// RedundantJumpElimination
+// ---------------------------------------------------------------------------
+
+/*
+from:
+    j label
+    label:
+to:
+    label:
+*/
 struct RedundantJumpElimination : Pass {
     bool apply(Module& mod) override {
         bool changed = false;
@@ -23,8 +58,119 @@ struct RedundantJumpElimination : Pass {
     }
 };
 
+// ---------------------------------------------------------------------------
+// BranchCondSimplification — three sub-rules, applied in order
+// ---------------------------------------------------------------------------
+
+/*
+#1
+from:
+    cmp x, ...        (slt/sltu/slti/sltiu/seqz/snez)
+    xori x, x, 1
+    bnez/beqz x, label
+to:
+    cmp x, ...
+    beqz/bnez x, label
+
+#2
+from:
+    slt/sltu x, y, z
+    bnez/beqz x, label
+to:
+    blt/bge/bltu/bgeu y, z, label
+
+#3
+from:
+    seqz/snez x, y
+    bnez/beqz x, label
+to:
+    beqz/bnez y, label
+*/
 struct BranchCondSimplification : Pass {
-    // TODO: convert xxx + bnez to bxx
+    bool apply(Module& mod) override {
+        bool changed = false;
+        for (auto& func : mod.funcs) {
+            for (auto& block : func.blocks) {
+                auto& ii = block.insts;
+                changed |= peephole_apply(ii, 3, rule1);
+                changed |= peephole_apply(ii, 2, rule2);
+                changed |= peephole_apply(ii, 2, rule3);
+            }
+        }
+        return changed;
+    }
+
+private:
+    using Opt = std::optional<std::vector<Inst>>;
+
+    // #1: cmp + xori x, x, 1 + bnez/beqz x, L  →  cmp + beqz/bnez x, L
+    static Opt rule1(const std::vector<Inst>& ii, int i) {
+        return Match{ii[i], ii[i + 1], ii[i + 2]}(
+            [](const auto& cmp, const InstI& xori, const PseudoB& br) -> Opt {
+                if (xori.op != OpI::XORI || xori.imm != 1 || xori.rd.id != xori.rs1.id) return {};
+                auto r = cmp_rd(cmp);
+                if (!r || *r != xori.rd.id || *r != br.rs1.id) return {};
+                if (br.op != PseudoB::BNEZ && br.op != PseudoB::BEQZ) return {};
+                auto new_op = (br.op == PseudoB::BNEZ) ? PseudoB::BEQZ : PseudoB::BNEZ;
+                return {{cmp, PseudoB{new_op, br.rs1, br.target}}};
+            },
+            [](const auto&, const auto&, const auto&) -> Opt { return {}; });
+    }
+
+    // #2: slt/sltu x, y, z + bnez/beqz x, L  →  blt/bge/bltu/bgeu y, z, L
+    static Opt rule2(const std::vector<Inst>& ii, int i) {
+        return Match{ii[i], ii[i + 1]}(
+            [](const InstR& slt, const PseudoB& br) -> Opt {
+                if (slt.op != OpR::SLT && slt.op != OpR::SLTU) return {};
+                if (slt.rd.id != br.rs1.id) return {};
+                OpB bop;
+                if (slt.op == OpR::SLT && br.op == PseudoB::BNEZ)
+                    bop = OpB::BLT;
+                else if (slt.op == OpR::SLT && br.op == PseudoB::BEQZ)
+                    bop = OpB::BGE;
+                else if (slt.op == OpR::SLTU && br.op == PseudoB::BNEZ)
+                    bop = OpB::BLTU;
+                else if (slt.op == OpR::SLTU && br.op == PseudoB::BEQZ)
+                    bop = OpB::BGEU;
+                else
+                    return {};
+                return {{InstB{bop, slt.rs1, slt.rs2, br.target}}};
+            },
+            [](const auto&, const auto&) -> Opt { return {}; });
+    }
+
+    // #3: seqz/snez x, y + bnez/beqz x, L  →  beqz/bnez y, L
+    static Opt rule3(const std::vector<Inst>& ii, int i) {
+        return Match{ii[i], ii[i + 1]}(
+            [](const PseudoR& pr, const PseudoB& br) -> Opt {
+                if (pr.op != PseudoR::SEQZ && pr.op != PseudoR::SNEZ) return {};
+                if (pr.rd.id != br.rs1.id) return {};
+                if (br.op != PseudoB::BNEZ && br.op != PseudoB::BEQZ) return {};
+                bool is_seqz = pr.op == PseudoR::SEQZ;
+                bool is_bnez = br.op == PseudoB::BNEZ;
+                auto new_op = (is_seqz == is_bnez) ? PseudoB::BEQZ : PseudoB::BNEZ;
+                return {{PseudoB{new_op, pr.rs1, br.target}}};
+            },
+            [](const auto&, const auto&) -> Opt { return {}; });
+    }
+
+    static std::optional<uint8_t> cmp_rd(const Inst& inst) {
+        using T = std::optional<uint8_t>;
+        return Match{inst}(
+            [](const InstR& r) -> T {
+                if (r.op == OpR::SLT || r.op == OpR::SLTU) return r.rd.id;
+                return {};
+            },
+            [](const InstI& i) -> T {
+                if (i.op == OpI::SLTI || i.op == OpI::SLTIU) return i.rd.id;
+                return {};
+            },
+            [](const PseudoR& p) -> T {
+                if (p.op == PseudoR::SEQZ || p.op == PseudoR::SNEZ) return p.rd.id;
+                return {};
+            },
+            [](const auto&) -> T { return {}; });
+    }
 };
 
 }  // namespace rv64::optim
