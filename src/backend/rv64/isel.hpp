@@ -390,6 +390,7 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
             }
             break;
         }
+        default: throw COMPILER_ERROR(fmt::format("Unhandled unary op in isel: {}", inst.op));
     }
 }
 
@@ -581,7 +582,8 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                 blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
                 break;
             }
-            default: break;
+            default:
+                throw COMPILER_ERROR(fmt::format("Unhandled FP binary op in isel: {}", inst.op));
         }
         return;
     }
@@ -629,7 +631,8 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                 blk.insts.emplace_back(PseudoR{PseudoR::SNEZ, gpr(*rd), gpr(*rd)});
                 break;
             }
-            default: break;
+            default:
+                throw COMPILER_ERROR(fmt::format("Unhandled int binary op in isel: {}", inst.op));
         }
         return;
     }
@@ -723,12 +726,16 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                     case ir::InstOp::OR:
                         blk.insts.emplace_back(InstR{OpR::OR, gpr(*rd), gpr(*lhs), tmp});
                         return;
-                    default: return;
+                    default:
+                        throw COMPILER_ERROR(
+                            fmt::format("Unhandled int-imm inner binary op in isel: {}", inst.op));
                 }
                 emit_int_reg_op(blk, op_d, op_w, w, gpr(*rd), gpr(*lhs), tmp);
                 break;
             }
-            default: break;
+            default:
+                throw COMPILER_ERROR(
+                    fmt::format("Unhandled int-imm binary op in isel: {}", inst.op));
         }
         return;
     }
@@ -767,7 +774,9 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                         blk.insts.emplace_back(InstR{OpR::SUB, gpr(*rd), gpr(*rhs), tmp});
                         blk.insts.emplace_back(PseudoR{PseudoR::SNEZ, gpr(*rd), gpr(*rd)});
                         break;
-                    default: break;
+                    default:
+                        throw COMPILER_ERROR(fmt::format(
+                            "Unhandled const-lhs commutative binary op in isel: {}", inst.op));
                 }
                 break;
             }
@@ -788,7 +797,9 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                     case ir::InstOp::MOD:
                         emit_int_reg_op(blk, OpR::REM, OpR::REMW, w, gpr(*rd), tmp, gpr(*rhs));
                         break;
-                    default: break;
+                    default:
+                        throw COMPILER_ERROR(fmt::format(
+                            "Unhandled const-lhs non-commutative binary op in isel: {}", inst.op));
                 }
                 break;
             }
@@ -827,7 +838,9 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                 blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
                 break;
             }
-            default: break;
+            default:
+                throw COMPILER_ERROR(
+                    fmt::format("Unhandled const-lhs binary op in isel: {}", inst.op));
         }
         return;
     }
