@@ -101,6 +101,9 @@ struct ConstexprValue {
     static ConstexprValue zeros_like(const Type& type);
 
     friend bool operator==(const ConstexprValue& lhs, const ConstexprValue& rhs);
+    friend bool operator<(const ConstexprValue& lhs, const ConstexprValue& rhs) {
+        return lhs.val < rhs.val;
+    }
 };
 
 struct SSAValue {

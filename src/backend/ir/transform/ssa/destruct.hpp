@@ -13,10 +13,10 @@
 #include "backend/ir/transform/ssa/construct.hpp"
 #include "utils/diagnosis.hpp"
 
+#include <map>
 #include <memory>
+#include <set>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -84,7 +84,7 @@ struct ReplacePhi : NonSSAPass {
 
 private:
     void legalize(Program& prog, NonSSAPassContext& ctx) {
-        std::unordered_set<LeftValue> illegals;
+        std::set<LeftValue> illegals;
         for (auto& [var, sites] : ctx.ud.all_defs()) {
             if (sites.size() > 1 && !std::holds_alternative<NamedValue>(var)) {
                 illegals.insert(var);
@@ -95,7 +95,7 @@ private:
             std::string name;
             Func* scope;
         };
-        std::unordered_map<const Alloc*, Func*> where;
+        std::map<const Alloc*, Func*> where;
         for (auto& func : prog.funcs()) {
             for (auto& local : func->locals()) {
                 where[local.get()] = func.get();
@@ -140,10 +140,10 @@ private:
 
     auto schedule_copy(Block& block, Func& func, ControlFlowGraph& cfg) {
         /// pass 1: initialize the data structures
-        auto copy_set = std::unordered_set<std::pair<Value, Value>>();  // {from, to}
-        auto worklist = std::vector<std::pair<Value, Value>>();         // {from, to}
-        auto map = std::unordered_map<Value, Value>();
-        auto used = std::unordered_map<Value, bool>();
+        auto copy_set = std::set<std::pair<Value, Value>, std::less<>>();  // {from, to}
+        auto worklist = std::vector<std::pair<Value, Value>>();            // {from, to}
+        auto map = std::map<Value, Value>();
+        auto used = std::map<Value, bool>();
 
         for (auto succ : cfg.succ[&block]) {
             for (auto& inst : succ->insts()) {
