@@ -24,6 +24,7 @@
 #include "backend/ir/vm/vm.h"
 #include "backend/rv64/abi.hpp"
 #include "backend/rv64/isel.hpp"
+#include "backend/rv64/optim/peephole.hpp"
 #include "backend/rv64/vm/vm.hpp"
 #include "fmt/base.h"
 #include "frontend/ast/analysis/semantic_ast.h"
@@ -80,6 +81,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --optimize-block        Apply Dead/Trivial Block Elimination optimization
     --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts)
     --optimize-exp          Apply Common Subexpression Elimination optimization
+    --optimize-asm          Apply optimizations after assembly code generation
     -O1, -O2, --optimize    Apply above optimizations, --no-optimize-[...] to disable specific optimizations
 
     --lowering-addr         Apply array-index lowering
@@ -170,6 +172,7 @@ int main(int argc, const char* argv[]) {
     bool optimize_const = false;
     bool optimize_block = false;
     bool optimize_temp = false;
+    bool optimize_asm = false;
 
     bool lowering_addr = false;
     bool lowering_proxy = false;
@@ -188,7 +191,7 @@ int main(int argc, const char* argv[]) {
     std::vector<std::pair<std::string, std::reference_wrapper<bool>>> optimizations = {
         {"alloc", optimize_alloc}, {"def", optimize_def},     {"exp", optimize_exp},
         {"copy", optimize_copy},   {"const", optimize_const}, {"block", optimize_block},
-        {"temp", optimize_temp}};
+        {"temp", optimize_temp},   {"asm", optimize_asm}};
 
     std::vector<std::pair<std::string, std::reference_wrapper<bool>>> lowerings = {
         {"addr", lowering_addr},   {"proxy", lowering_proxy}, {"reg", lowering_reg},
@@ -520,11 +523,19 @@ int main(int argc, const char* argv[]) {
 
                     if (print_asm) {
                         auto module = rv64::isel::lower(program, regs);
-                        auto asm_code = fmt::format("{}", module);
+
                         if (!silent)
-                            fmt::println("Generated RV64 Assembly:\n\n```asm\n{}\n```\n", asm_code);
+                            fmt::println("Generated RV64 Assembly:\n\n```asm\n{}\n```\n", module);
+
+                        if (optimize_asm) {
+                            bool changed = rv64::optim::RedundantJumpElimination().apply(module);
+                            if (!silent && changed) {
+                                fmt::println("After Optimizations:\n\n```asm\n{}\n```\n", module);
+                            }
+                        }
+
                         if (output_file) {
-                            fmt::print(output_file, "{}", asm_code);
+                            fmt::print(output_file, "{}", module);
                         }
 
                         if (assembly_exec) {

@@ -37,6 +37,7 @@ compiler [args]... files ...
     --optimize-block        Apply Dead/Trivial Block Elimination optimization
     --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts)
     --optimize-exp          Apply Common Subexpression Elimination optimization
+    --optimize-asm          Apply optimizations after assembly code generation
     -O1, -O2, --optimize    Apply above optimizations, --no-optimize-[...] to disable specific optimizations
 
     --lowering-addr         Apply array-index lowering
@@ -183,6 +184,9 @@ src/
 │       ├── inst.hpp
 │       ├── isel.hpp
 │       ├── op.hpp
+│       ├── optim/
+│       │   ├── framework.hpp
+│       │   └── peephole.hpp
 │       └── vm/
 │           ├── exec.cpp
 │           └── vm.hpp
@@ -234,7 +238,7 @@ src/
     ├── traits.hpp
     └── tui.h
 
-20 directories, 96 files
+21 directories, 98 files
 ```
 <!--/source_tree-->
 
