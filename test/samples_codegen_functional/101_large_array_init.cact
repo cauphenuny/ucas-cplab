@@ -1,5 +1,6 @@
 int main() {
     int a[100] = {1, 2, 3, 0};
+    int x[4] = {0, 1, 2, 3};
     int b[100] = {0};
-    return b[99] + a[2];
+    return b[99] + a[2] + x[3];
 }

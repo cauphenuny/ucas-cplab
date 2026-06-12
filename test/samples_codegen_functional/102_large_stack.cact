@@ -1,0 +1,8 @@
+// create a large stack frame which can not be put in 12-bit imm
+int main() {
+    int x = 1;
+    int y[2] = {2, 3};
+    int a[1000] = {0};
+    a[999] = 41;
+    return a[999] + x + y[0] + y[1];
+}
