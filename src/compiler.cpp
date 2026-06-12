@@ -45,6 +45,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -64,7 +65,8 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
 
     --help                  Show this help message
 
-    -o, --output <file>     Write the generated IR or assembly to the specified file
+    -o, --output <file>     Write the generated IR or assembly to the specified file (implies --silent)
+    --silent                Suppress all compiler output except the return value when executing
 
     --ast                   Print the AST of the input files
     --ast-info              Print the semantic analysis result of the AST
@@ -82,25 +84,26 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --optimize-block        Apply Dead/Trivial Block Elimination optimization
     --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts)
     --optimize-exp          Apply Common Subexpression Elimination optimization
+    -O1                     Apply all above optimizations
+    --optimize-lowering     Apply optimizations after lowering transformations
     --optimize-asm          Apply optimizations after assembly code generation
-    -O1, -O2, --optimize    Apply above optimizations, --no-optimize-[...] to disable specific optimizations
+    -O2, --optimize         Apply all above optimizations
+
+    --no-optimize-[name]    Disable specific optimization when -O1/-O2/--optimize is enabled
 
     --lowering-addr         Apply array-index lowering
     --lowering-proxy        Apply access proxy insertion (create temp value proxy which is reg-allocatable)
     --lowering-array        Apply array initialization lowering (lower array store to memset/memcpy)
     --lowering-reg          Apply register allocation
     --lowering-prune        Apply redundant move elimination after register allocation
-    --lowering-optim        Apply optimizations after lowering transformations
-    --lowering              Apply above lowering transformations
+    -L, --lowering          Apply above lowering transformations
 
     --exec                  Execute the generated IR
-    --silent                Suppress all compiler output except the return value when executing
-
     --exec-debug            Enable debug mode in execution (add breakpoints, execute step by step, etc.)
     --exec-trace            Trace execution with detailed instruction and block information
 
-    -S, --asm               Generate and output RV64 assembly code (implies --lowering)
-    --asm-exec              Execute the generated assembly code (implies --asm)
+    -S, --asm               Print the generated RV64 assembly code (implies --lowering)
+    --asm-exec              Execute the generated assembly code (implies --lowering)
 )",
         prog_name);
     exit(ret);
@@ -173,13 +176,13 @@ int main(int argc, const char* argv[]) {
     bool optimize_const = false;
     bool optimize_block = false;
     bool optimize_temp = false;
+    bool optimize_lower = false;
     bool optimize_asm = false;
 
     bool lowering_addr = false;
     bool lowering_proxy = false;
     bool lowering_reg = false;
     bool lowering_prune = false;
-    bool lowering_optim = false;
     bool lowering_array = false;
 
     bool execute = false;
@@ -189,14 +192,17 @@ int main(int argc, const char* argv[]) {
 
     bool assembly_exec = false;
 
-    std::vector<std::pair<std::string, std::reference_wrapper<bool>>> optimizations = {
-        {"alloc", optimize_alloc}, {"def", optimize_def},     {"exp", optimize_exp},
-        {"copy", optimize_copy},   {"const", optimize_const}, {"block", optimize_block},
-        {"temp", optimize_temp},   {"asm", optimize_asm}};
+    std::vector<std::tuple<std::string, std::reference_wrapper<bool>, size_t>> optimizations = {
+        {"alloc", optimize_alloc, 1}, {"def", optimize_def, 1},     {"exp", optimize_exp, 1},
+        {"copy", optimize_copy, 1},   {"const", optimize_const, 1}, {"block", optimize_block, 1},
+        {"temp", optimize_temp, 1},   {"asm", optimize_asm, 2},     {"lower", optimize_lower, 2}};
 
     std::vector<std::pair<std::string, std::reference_wrapper<bool>>> lowerings = {
-        {"addr", lowering_addr},   {"proxy", lowering_proxy}, {"reg", lowering_reg},
-        {"prune", lowering_prune}, {"optim", lowering_optim}, {"array", lowering_array}};
+        {"addr", lowering_addr},
+        {"proxy", lowering_proxy},
+        {"reg", lowering_reg},
+        {"prune", lowering_prune},
+        {"array", lowering_array}};
 
     size_t optimize_inline = 0;
     constexpr size_t default_inline_threshold = 8;
@@ -226,20 +232,21 @@ int main(int argc, const char* argv[]) {
             execute_trace = true;
         } else if (arg == "--asm-exec") {
             assembly_exec = true;
-            // --asm-exec implies --asm
-            print_asm = true;
             for (auto& [name, flag] : lowerings) flag.get() = true;
         } else if (arg == "-S" || arg == "--asm") {
             print_asm = true;
-            // -S/--asm implies --lowering
             for (auto& [name, flag] : lowerings) flag.get() = true;
-        } else if (arg == "--lowering") {
+        } else if (arg == "-L" || arg == "--lowering") {
             for (auto& [name, flag] : lowerings) flag.get() = true;
         } else if (arg == "-O0") {
-            for (auto& [name, flag] : optimizations) flag.get() = false;
+            for (auto& [name, flag, level] : optimizations) flag.get() = false;
             optimize_inline = 0;
-        } else if (arg == "--optimize" || arg == "-O1" || arg == "-O2") {
-            for (auto& [name, flag] : optimizations) flag.get() = true;
+        } else if (arg == "-O1") {
+            for (auto& [name, flag, level] : optimizations)
+                if (level <= 1) flag.get() = true;
+            optimize_inline = default_inline_threshold;
+        } else if (arg == "-O2" || arg == "--optimize") {
+            for (auto& [name, flag, level] : optimizations) flag.get() = true;
             optimize_inline = default_inline_threshold;
         } else if (arg == "--optimize-inline" || arg == "--no-optimize-inline") {
             if (arg == "--no-optimize-inline") {
@@ -260,7 +267,7 @@ int main(int argc, const char* argv[]) {
             usage(argv[0]);
         } else if (arg.length() > 1 && arg[0] == '-' && arg[1] == '-') {
             bool recognized = false;
-            for (auto& [name, flag] : optimizations) {
+            for (auto& [name, flag, level] : optimizations) {
                 if (arg == "--optimize-" + name) {
                     flag.get() = true, recognized = true;
                     break;
@@ -284,29 +291,35 @@ int main(int argc, const char* argv[]) {
         }
     }
 
-    if (output_file && files.size() > 1) {
-        warning("multiple input files, but only one output file specified. Output will be "
-                "overwritten.");
-    }
-
-    if (output_file && (!print_ir && !print_asm)) {
-        warning("output file specified, but neither --ir nor --asm is enabled. No output will "
-                "be written.");
-    }
-
     if (output_file) {
+        if (files.size() > 1) {
+            warning("multiple input files, but only one output file specified. Output will be "
+                    "overwritten.");
+        }
+
+        if (!print_ir && !print_asm) {
+            warning("output file specified, but neither --ir nor --asm is enabled. No output will "
+                    "be written.");
+        }
+
+        if (print_ir && print_asm) {
+            warning("-o enabled with both --ir and --asm enabled. Output file will be mixed by IR "
+                    "and ASM.");
+        }
+
         silent = true;
     }
 
     bool optimize = optimize_def || optimize_exp || optimize_copy || optimize_alloc ||
-                    optimize_const || optimize_inline || optimize_temp;
-    bool lowering = lowering_addr || lowering_reg || lowering_prune || lowering_optim ||
-                    lowering_proxy || lowering_array;
+                    optimize_const || optimize_inline || optimize_temp || optimize_block ||
+                    optimize_lower || optimize_asm;
+    bool lowering =
+        lowering_addr || lowering_reg || lowering_prune || lowering_proxy || lowering_array;
 
     if (optimize && !silent) {
         std::stringstream ss;
         ss << "enabled optimizations: ";
-        for (auto& [name, flag] : optimizations) {
+        for (auto& [name, flag, level] : optimizations) {
             ss << fmt::format("{}{} ", flag.get() ? "+" : "-", name);
         }
         ss << fmt::format("{}{} ", optimize_inline > 0 ? "+" : "-", "inline");
@@ -495,7 +508,7 @@ int main(int argc, const char* argv[]) {
 
                     {
                         std::vector<std::pair<std::unique_ptr<NonSSAPass>, std::string>> passes;
-                        if (lowering_optim) {
+                        if (optimize_lower) {
                             if (optimize_alloc)
                                 passes.emplace_back(
                                     std::make_unique<DeadAllocElimination<Context>>(),
@@ -520,29 +533,59 @@ int main(int argc, const char* argv[]) {
                         while (apply(program, ctx, passes));
                     }
 
-                    if (!silent) fmt::println("\n---\n");
+                    if (!silent) fmt::println("\n---\n\nAssembly transformations:\n");
 
-                    if (print_asm) {
+                    {
                         auto module = rv64::isel::lower(program, regs);
+                        size_t pass_id = 0;
+                        auto echo = [&](const rv64::Module& module, const std::string& name) {
+                            if (!silent)
+                                fmt::print("{}. {}{}", ++pass_id, name,
+                                           (print_asm)
+                                               ? fmt::format(":\n\n```asm\n{}```\n\n", module)
+                                               : "\n");
+                        };
 
-                        if (!silent)
-                            fmt::println("Generated RV64 Assembly:\n\n```asm\n{}\n```\n", module);
+                        echo(module, "Generated RV64 Assembly");
 
                         if (optimize_asm) {
-                            bool changed = false;
-                            changed |= rv64::optim::RedundantJumpElimination().apply(module);
-                            changed |= rv64::optim::DeadLabelElimination().apply(module);
-                            changed |= rv64::optim::BranchCondSimplification().apply(module);
-                            if (!silent && changed) {
-                                fmt::println("After Optimizations:\n\n```asm\n{}\n```\n", module);
-                            }
+                            auto apply = [&](const auto& passes) {
+                                bool any_changed = false;
+                                for (auto& [pass, name] : passes) {
+                                    try {
+                                        bool pass_changed = pass->apply(module);
+                                        if (pass_changed) {
+                                            echo(module, name);
+                                        }
+                                        any_changed |= pass_changed;
+                                    } catch (const CompilerError& e) {
+                                        fmt::println("Error during pass '{}': {}", name, e.what());
+                                        exit(RUNTIME_ERROR);
+                                    }
+                                }
+                                return any_changed;
+                            };
+                            auto rje = rv64::optim::RedundantJumpElimination();
+                            auto dle = rv64::optim::DeadLabelElimination();
+                            auto bcs = rv64::optim::BranchCondSimplification();
+                            std::vector<std::pair<rv64::optim::Pass*, std::string>> passes = {
+                                {&rje, "Redundant Jump Elimination"},
+                                {&dle, "Dead Label Elimination"},
+                                {&bcs, "Branch Condition Simplification"},
+                            };
+                            while (apply(passes));
                         }
 
-                        if (output_file) {
+                        if (!silent) fmt::println("\n---\n");
+
+                        if (output_file && print_asm) {
                             fmt::print(output_file, "{}", module);
                         }
 
                         if (assembly_exec) {
+                            if (!silent) {
+                                fmt::println("Executing RV64 Assembly program...");
+                            }
                             rv64::vm::VirtualMachine vm{std::cin, std::cout};
                             uint8_t ret = vm.execute(module);
                             if (!silent) {
@@ -553,11 +596,13 @@ int main(int argc, const char* argv[]) {
                             }
                         }
                     }
+                } else {
+                    fmt::print("\n");
                 }
 
                 if (execute) {
                     if (!silent) {
-                        fmt::println("Executing program...");
+                        fmt::println("Executing IR program...");
                     }
                     ir::vm::VirtualMachine env(std::cin, std::cout);
                     uint8_t ret =
@@ -570,7 +615,7 @@ int main(int argc, const char* argv[]) {
                     }
                 }
 
-                if (output_file && print_ir && !print_asm) {
+                if (output_file && print_ir) {
                     fmt::println(output_file, "{}", program);
                 }
 

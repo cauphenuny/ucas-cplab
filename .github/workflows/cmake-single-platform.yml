@@ -53,11 +53,11 @@ jobs:
     - name: Test Lowering
       run: bash scripts/test_lowering.sh
 
-    - name: Test Lowering with Optimized IR
-      run: bash scripts/test_lowering.sh -O1
+    - name: Test Lowering with Optimizations
+      run: bash scripts/test_lowering.sh --optimize
 
     - name: Test Instruction Selection
       run: bash scripts/test_isel.sh
 
-    - name: Test Instruction Selection with Optimized IR
-      run: bash scripts/test_isel.sh -O1
+    - name: Test Instruction Selection with Optimizations
+      run: bash scripts/test_isel.sh --optimize

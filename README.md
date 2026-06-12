@@ -19,7 +19,8 @@ compiler [args]... files ...
 
     --help                  Show this help message
 
-    -o, --output <file>     Write the generated IR or assembly to the specified file
+    -o, --output <file>     Write the generated IR or assembly to the specified file (implies --silent)
+    --silent                Suppress all compiler output except the return value when executing
 
     --ast                   Print the AST of the input files
     --ast-info              Print the semantic analysis result of the AST
@@ -37,30 +38,31 @@ compiler [args]... files ...
     --optimize-block        Apply Dead/Trivial Block Elimination optimization
     --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts)
     --optimize-exp          Apply Common Subexpression Elimination optimization
+    -O1                     Apply all above optimizations
+    --optimize-lowering     Apply optimizations after lowering transformations
     --optimize-asm          Apply optimizations after assembly code generation
-    -O1, -O2, --optimize    Apply above optimizations, --no-optimize-[...] to disable specific optimizations
+    -O2, --optimize         Apply all above optimizations
+
+    --no-optimize-[name]    Disable specific optimization when -O1/-O2/--optimize is enabled
 
     --lowering-addr         Apply array-index lowering
     --lowering-proxy        Apply access proxy insertion (create temp value proxy which is reg-allocatable)
     --lowering-array        Apply array initialization lowering (lower array store to memset/memcpy)
     --lowering-reg          Apply register allocation
     --lowering-prune        Apply redundant move elimination after register allocation
-    --lowering-optim        Apply optimizations after lowering transformations
-    --lowering              Apply above lowering transformations
+    -L, --lowering          Apply above lowering transformations
 
     --exec                  Execute the generated IR
-    --silent                Suppress all compiler output except the return value when executing
-
     --exec-debug            Enable debug mode in execution (add breakpoints, execute step by step, etc.)
     --exec-trace            Trace execution with detailed instruction and block information
 
-    -S, --asm               Generate and output RV64 assembly code (implies --lowering)
-    --asm-exec              Execute the generated assembly code (implies --asm)
+    -S, --asm               Print the generated RV64 assembly code (implies --lowering)
+    --asm-exec              Execute the generated assembly code (implies --lowering)
 
 interpreter [--help] [--silent] [--print] IR-file
     --help      Show this help message
     --print     Show reconstructed IR, without executing
-    --silent    Suppress all compiler output except the return value when executing
+    --silent    Suppress all interpreter output except the return value when executing
 ```
 <!--/usage-->
 
@@ -73,6 +75,7 @@ Examples:
     - output IR to file: `compiler --ir source.cact -o ir_code.riir`
     - print Assembly: `compiler -S source.cact`
     - output Assembly code to file: `compiler -S source.cact -o asm_code.s`
+    - optimize: `-O0/-O1/-O2`
 
 > [!NOTE]
 > When applied transformations on IR, the intermediate IR would be put into stdout (can be suppressed by --silent), only final IR would be output into file.

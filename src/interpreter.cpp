@@ -24,7 +24,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
         R"({} [--help] [--silent] [--print] IR-file
     --help      Show this help message
     --print     Show reconstructed IR, without executing
-    --silent    Suppress all compiler output except the return value when executing
+    --silent    Suppress all interpreter output except the return value when executing
 )",
         prog_name);
     exit(ret);
