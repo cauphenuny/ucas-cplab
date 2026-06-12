@@ -11,7 +11,7 @@
 
 namespace ir::lowering {
 
-std::vector<std::pair<std::string, Type>> stdlibs = {
+inline const std::vector<std::pair<std::string, Type>> stdlibs = {
     {
         "memcpy",
         type::construct<void(int64_t, int64_t, int64_t)>(),
