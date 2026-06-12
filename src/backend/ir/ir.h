@@ -99,6 +99,7 @@ struct ConstexprValue {
     ConstexprValue& operator=(ConstexprValue&&) noexcept = default;
 
     static ConstexprValue zeros_like(const Type& type);
+    [[nodiscard]] ConstexprValue prune() const;
 
     friend bool operator==(const ConstexprValue& lhs, const ConstexprValue& rhs);
     friend bool operator<(const ConstexprValue& lhs, const ConstexprValue& rhs) {

@@ -103,6 +103,27 @@ ConstexprValue ConstexprValue::zeros_like(const Type& type) {
     }
 }
 
+ConstexprValue ConstexprValue::prune() const {
+    if (type.is<type::Array>()) {
+        auto elem_type = type.as<type::Array>().elem.as<type::Primitive>();
+        return Match{elem_type}([&](auto v) {
+            using T = typename decltype(v)::type;
+            auto array = (T*)std::get<std::unique_ptr<std::byte[]>>(val).get();
+            size_t size = type.as<type::Array>().size;
+            while (size > 0 && array[size - 1] == T{}) {
+                --size;
+            }
+            auto buffer = std::make_unique<std::byte[]>(size * type::size_of(elem_type));
+            memcpy(buffer.get(), array, size * type::size_of(elem_type));
+            auto new_type = type.as<type::Array>();
+            new_type.size = size;
+            return ConstexprValue(std::move(new_type).toBoxed(), std::move(buffer));
+        });
+    } else {
+        return *this;
+    }
+}
+
 bool operator==(const ConstexprValue& lhs, const ConstexprValue& rhs) {
     if (!(lhs.type == rhs.type)) return false;
     if (lhs.type.is<ir::type::Array>()) {

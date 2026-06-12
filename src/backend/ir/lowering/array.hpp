@@ -34,7 +34,8 @@ private:
     bool apply_block(Program& prog, Func& func, Block& block, T& ctx) {
         bool changed = false;
         size_t cnt = 0;
-        for (auto& inst : block.insts()) {
+        for (auto it = block.insts().begin(); it != block.insts().end(); ++it) {
+            auto& inst = *it;
             if (auto binary = std::get_if<BinaryInst>(&inst)) {
                 if (binary->op != InstOp::STORE) continue;
                 if (!type_of(binary->rhs).is<type::Array>()) continue;
@@ -42,22 +43,27 @@ private:
                 auto size = (int64_t)abi.mem.size(type);
                 changed = true;
                 auto init = std::get<ConstexprValue>(binary->rhs);
+                CallInst memset = {.result = std::nullopt,
+                                   .func = prog.findBuiltin("memset").value(),
+                                   .args =
+                                       std::vector<Value>{binary->lhs, ConstexprValue((int64_t)0),
+                                                          ConstexprValue(size)}};
                 if (init == ConstexprValue::zeros_like(init.type)) {
-                    auto memset = prog.findBuiltin("memset").value();
-                    std::vector<Value> args = {binary->lhs, ConstexprValue((int64_t)0),
-                                               ConstexprValue(size)};
-                    block.replace(
-                        &inst,
-                        CallInst{.result = std::nullopt, .func = memset, .args = std::move(args)});
+                    block.replace(&inst, memset);
                     continue;
                 } else {
+                    auto pruned = init.prune();
+                    auto prune_size = (int64_t)abi.mem.size(pruned.type);
+                    if (prune_size != size) {
+                        block.insert(it, memset);
+                    }
                     auto proxy = Alloc::constant(fmt::format("__init_{}_{}", func.name, cnt++),
-                                                 type, std::get<ConstexprValue>(binary->rhs), true);
-                    auto memcpy = prog.findBuiltin("memcpy").value();
-                    std::vector<Value> args = {binary->lhs, LeftValue{proxy->value()}, size};
-                    block.replace(
-                        &inst,
-                        CallInst{.result = std::nullopt, .func = memcpy, .args = std::move(args)});
+                                                 pruned.type, pruned, true);
+                    CallInst memcpy = {.result = std::nullopt,
+                                       .func = prog.findBuiltin("memcpy").value(),
+                                       .args = std::vector<Value>{
+                                           binary->lhs, LeftValue{proxy->value()}, prune_size}};
+                    block.replace(&inst, memcpy);
                     prog.addGlobal(std::move(proxy));
                 }
             }
