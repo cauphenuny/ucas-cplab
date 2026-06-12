@@ -84,15 +84,18 @@ private:
         // and store-inst can not directly take a num operand
         bool changed = false;
         for (auto it = block.insts().begin(); it != block.insts().end(); ++it) {
-            auto inst = *it;
+            auto& inst = *it;
             if (auto binary = std::get_if<BinaryInst>(&inst);
                 binary && binary->op == InstOp::STORE) {
                 if (auto* cv = std::get_if<ConstexprValue>(&binary->rhs)) {
                     if (cv->type.is<type::Primitive>()) {
-                        auto proxy = func.newTemp(cv->type, &block);
+                        LeftValue proxy = func.newTemp(cv->type, &block);
                         block.insert(
                             it, UnaryInst{.op = UnaryInstOp::MOV, .result = proxy, .operand = *cv});
-                        binary->rhs = LeftValue{proxy};
+                        block.replace(&inst, BinaryInst{.op = InstOp::STORE,
+                                                        .result = binary->result,
+                                                        .lhs = binary->lhs,
+                                                        .rhs = proxy});
                         changed = true;
                     }
                 }
