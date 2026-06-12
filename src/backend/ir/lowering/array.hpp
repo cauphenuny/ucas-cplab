@@ -40,7 +40,6 @@ private:
                 if (!type_of(binary->rhs).is<type::Array>()) continue;
                 auto type = type_of(binary->rhs);
                 auto size = (int64_t)abi.mem.size(type);
-                if (size < 32) continue;
                 changed = true;
                 auto init = std::get<ConstexprValue>(binary->rhs);
                 if (init == ConstexprValue::zeros_like(init.type)) {
