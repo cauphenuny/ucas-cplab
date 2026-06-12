@@ -1,0 +1,54 @@
+let mut __reg_ra: int;
+let mut __reg_s0: int;
+let mut __reg_a0: int;
+let mut __reg_t6: int;
+
+fn factorial(n_0: i32) -> i32 {
+    let ref mut __spill_15: int;
+    let ref mut __spill_16: int;
+    'entry: {
+        @__spill_16 <- @__reg_ra;
+        @__spill_15 <- @__reg_s0;
+        @__reg_s0: int = @__reg_a0;
+        @__reg_t6: int = @__reg_s0 == 1;
+        => if @__reg_t6 { 'if_true_5_4 } else { 'if_false_5_4 };
+    }
+    'if_true_5_4: {
+        @__reg_a0: int = @__reg_s0;
+        @__reg_s0: int = * (&mut int)@__spill_15;
+        @__reg_ra: int = * (&mut int)@__spill_16;
+        return @__reg_a0;
+    }
+    'if_false_5_4: {
+        @__reg_a0: int = @__reg_s0 - 1;
+        @__reg_a0: int = @factorial(@__reg_a0);
+        @__reg_a0: int = @__reg_s0 * @__reg_a0;
+        @__reg_s0: int = * (&mut int)@__spill_15;
+        @__reg_ra: int = * (&mut int)@__spill_16;
+        return @__reg_a0;
+    }
+}
+
+fn main() -> i32 {
+    let ref mut __spill_15: int;
+    'entry: {
+        @__spill_15 <- @__reg_ra;
+        @__reg_a0: int = @get_int();
+        @__reg_t6: int = @__reg_a0 > 1;
+        => if @__reg_t6 { 'if_true_15_4 } else { 'L0 };
+    }
+    'if_true_15_4: {
+        @__reg_a0: int = @factorial(@__reg_a0);
+        => 'if_exit_15_4;
+    }
+    'if_exit_15_4: {
+        @print_int(@__reg_a0);
+        @__reg_a0: int = 0;
+        @__reg_ra: int = * (&mut int)@__spill_15;
+        return @__reg_a0;
+    }
+    'L0: {
+        @__reg_a0: int = 1;
+        => 'if_exit_15_4;
+    }
+}

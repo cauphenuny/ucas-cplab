@@ -1,0 +1,246 @@
+let ref mut dp_0: [[[[[[i32; 7]; 18]; 18]; 18]; 18]; 18] = {0};
+let ref mut list_0: [i32; 200] = {0};
+let ref mut cns_0: [i32; 20] = {0};
+
+fn dfs(a_1: i32, b_1: i32, c_0: i32, d_0: i32, e_0: i32, last_0: i32) -> i32 {
+    'entry: {
+        %0: &mut[[[[[i32; 7]; 18]; 18]; 18]] = &mut @dp_0[@a_1];
+        %1: &mut[[[[i32; 7]; 18]; 18]] = &mut %0[@b_1];
+        %2: &mut[[[i32; 7]; 18]] = &mut %1[@c_0];
+        %3: &mut[[i32; 7]] = &mut %2[@d_0];
+        %4: &mut[i32] = &mut %3[@e_0];
+        %5: &i32 = & %4[@last_0];
+        %6: i32 = * (&i32)%5;
+        %7: bool = %6 != -1;
+        => if %7 { 'if_true_13_4 } else { 'if_exit_13_4 };
+    }
+    'if_true_13_4: {
+        %8: i32 = * (&i32)%5;
+        return %8;
+    }
+    'if_exit_13_4: {
+        %9: i32 = @a_1 + @b_1;
+        %10: i32 = %9 + @c_0;
+        %11: i32 = %10 + @d_0;
+        %12: i32 = %11 + @e_0;
+        %13: bool = %12 == 0;
+        => if %13 { 'if_true_15_4 } else { 'if_exit_15_4 };
+    }
+    'if_true_15_4: {
+        return 1;
+    }
+    'if_exit_15_4: {
+        %14: bool = @a_1 != 0;
+        => if %14 { 'inline_equal_0_entry } else { 'if_exit_18_4 };
+    }
+    'if_exit_18_4: {
+        %58: i32 = phi('inline_equal_0_return: %20, 'if_exit_15_4: 0);
+        %21: bool = @b_1 != 0;
+        => if %21 { 'inline_equal_1_entry } else { 'if_exit_19_4 };
+    }
+    'if_exit_19_4: {
+        %59: i32 = phi('inline_equal_1_return: %29, 'if_exit_18_4: %58);
+        %30: bool = @c_0 != 0;
+        => if %30 { 'inline_equal_2_entry } else { 'if_exit_20_4 };
+    }
+    'if_exit_20_4: {
+        %60: i32 = phi('inline_equal_2_return: %38, 'if_exit_19_4: %59);
+        %39: bool = @d_0 != 0;
+        => if %39 { 'inline_equal_3_entry } else { 'if_exit_21_4 };
+    }
+    'if_exit_21_4: {
+        %61: i32 = phi('inline_equal_3_return: %47, 'if_exit_20_4: %60);
+        %48: bool = @e_0 != 0;
+        => if %48 { 'if_true_22_4 } else { 'if_exit_22_4 };
+    }
+    'if_true_22_4: {
+        %49: i32 = @d_0 + 1;
+        %50: i32 = @e_0 - 1;
+        %51: i32 = @dfs(@a_1, @b_1, @c_0, %49, %50, 5);
+        %52: i32 = @e_0 * %51;
+        %53: i32 = %61 + %52;
+        %54: i32 = %53 % 1000000007;
+        => 'if_exit_22_4;
+    }
+    'if_exit_22_4: {
+        %62: i32 = phi('if_true_22_4: %54, 'if_exit_21_4: %61);
+        %55: i32 = %62 % 1000000007;
+        %56: &mut i32 = &mut %4[@last_0];
+        %56 <- %55;
+        %57: i32 = * (&i32)%5;
+        return %57;
+    }
+    'inline_equal_0_return: {
+        %15: i32 = phi('inline_equal_0_if_exit_7_4: 0, 'inline_equal_0_entry: 1);
+        %16: i32 = @a_1 - %15;
+        %17: i32 = @a_1 - 1;
+        %18: i32 = @dfs(%17, @b_1, @c_0, @d_0, @e_0, 1);
+        %19: i32 = %16 * %18;
+        %20: i32 = %19 % 1000000007;
+        => 'if_exit_18_4;
+    }
+    'inline_equal_0_entry: {
+        %63: bool = @last_0 == 2;
+        => if %63 { 'inline_equal_0_return } else { 'inline_equal_0_if_exit_7_4 };
+    }
+    'inline_equal_0_if_exit_7_4: {
+        => 'inline_equal_0_return;
+    }
+    'inline_equal_1_return: {
+        %22: i32 = phi('inline_equal_1_if_exit_7_4: 0, 'inline_equal_1_entry: 1);
+        %23: i32 = @b_1 - %22;
+        %24: i32 = @a_1 + 1;
+        %25: i32 = @b_1 - 1;
+        %26: i32 = @dfs(%24, %25, @c_0, @d_0, @e_0, 2);
+        %27: i32 = %23 * %26;
+        %28: i32 = %58 + %27;
+        %29: i32 = %28 % 1000000007;
+        => 'if_exit_19_4;
+    }
+    'inline_equal_1_entry: {
+        %64: bool = @last_0 == 3;
+        => if %64 { 'inline_equal_1_return } else { 'inline_equal_1_if_exit_7_4 };
+    }
+    'inline_equal_1_if_exit_7_4: {
+        => 'inline_equal_1_return;
+    }
+    'inline_equal_2_return: {
+        %31: i32 = phi('inline_equal_2_if_exit_7_4: 0, 'inline_equal_2_entry: 1);
+        %32: i32 = @c_0 - %31;
+        %33: i32 = @b_1 + 1;
+        %34: i32 = @c_0 - 1;
+        %35: i32 = @dfs(@a_1, %33, %34, @d_0, @e_0, 3);
+        %36: i32 = %32 * %35;
+        %37: i32 = %59 + %36;
+        %38: i32 = %37 % 1000000007;
+        => 'if_exit_20_4;
+    }
+    'inline_equal_2_entry: {
+        %65: bool = @last_0 == 4;
+        => if %65 { 'inline_equal_2_return } else { 'inline_equal_2_if_exit_7_4 };
+    }
+    'inline_equal_2_if_exit_7_4: {
+        => 'inline_equal_2_return;
+    }
+    'inline_equal_3_return: {
+        %40: i32 = phi('inline_equal_3_if_exit_7_4: 0, 'inline_equal_3_entry: 1);
+        %41: i32 = @d_0 - %40;
+        %42: i32 = @c_0 + 1;
+        %43: i32 = @d_0 - 1;
+        %44: i32 = @dfs(@a_1, @b_1, %42, %43, @e_0, 4);
+        %45: i32 = %41 * %44;
+        %46: i32 = %60 + %45;
+        %47: i32 = %46 % 1000000007;
+        => 'if_exit_21_4;
+    }
+    'inline_equal_3_entry: {
+        %66: bool = @last_0 == 5;
+        => if %66 { 'inline_equal_3_return } else { 'inline_equal_3_if_exit_7_4 };
+    }
+    'inline_equal_3_if_exit_7_4: {
+        => 'inline_equal_3_return;
+    }
+}
+
+fn main() -> i32 {
+    'entry: {
+        %0: i32 = @get_int();
+        => 'while_cond_34_4;
+    }
+    'while_cond_34_4: {
+        %41: i32 = phi('while_exit_36_8: %18, 'entry: 0);
+        %1: bool = %41 < 18;
+        => if %1 { 'while_cond_36_8 } else { 'while_cond_60_4 };
+    }
+    'while_cond_36_8: {
+        %42: i32 = phi('while_exit_38_12: %17, 'while_cond_34_4: 0);
+        %2: bool = %42 < 18;
+        => if %2 { 'while_cond_38_12 } else { 'while_exit_36_8 };
+    }
+    'while_exit_36_8: {
+        %18: i32 = %41 + 1;
+        => 'while_cond_34_4;
+    }
+    'while_cond_38_12: {
+        %43: i32 = phi('while_exit_40_16: %16, 'while_cond_36_8: 0);
+        %3: bool = %43 < 18;
+        => if %3 { 'while_cond_40_16 } else { 'while_exit_38_12 };
+    }
+    'while_exit_38_12: {
+        %17: i32 = %42 + 1;
+        => 'while_cond_36_8;
+    }
+    'while_cond_40_16: {
+        %44: i32 = phi('while_exit_42_20: %15, 'while_cond_38_12: 0);
+        %4: bool = %44 < 18;
+        => if %4 { 'while_cond_42_20 } else { 'while_exit_40_16 };
+    }
+    'while_exit_40_16: {
+        %16: i32 = %43 + 1;
+        => 'while_cond_38_12;
+    }
+    'while_cond_42_20: {
+        %45: i32 = phi('while_exit_44_24: %14, 'while_cond_40_16: 0);
+        %5: bool = %45 < 18;
+        => if %5 { 'while_cond_44_24 } else { 'while_exit_42_20 };
+    }
+    'while_exit_42_20: {
+        %15: i32 = %44 + 1;
+        => 'while_cond_40_16;
+    }
+    'while_cond_44_24: {
+        %46: i32 = phi('while_body_44_24: %13, 'while_cond_42_20: 0);
+        %6: bool = %46 < 7;
+        => if %6 { 'while_body_44_24 } else { 'while_exit_44_24 };
+    }
+    'while_body_44_24: {
+        %7: &mut[[[[[i32; 7]; 18]; 18]; 18]] = &mut @dp_0[%41];
+        %8: &mut[[[[i32; 7]; 18]; 18]] = &mut %7[%42];
+        %9: &mut[[[i32; 7]; 18]] = &mut %8[%43];
+        %10: &mut[[i32; 7]] = &mut %9[%44];
+        %11: &mut[i32] = &mut %10[%45];
+        %12: &mut i32 = &mut %11[%46];
+        %12 <- -1;
+        %13: i32 = %46 + 1;
+        => 'while_cond_44_24;
+    }
+    'while_exit_44_24: {
+        %14: i32 = %45 + 1;
+        => 'while_cond_42_20;
+    }
+    'while_cond_60_4: {
+        %47: i32 = phi('while_body_60_4: %29, 'while_cond_34_4: 0);
+        %19: bool = %47 < %0;
+        => if %19 { 'while_body_60_4 } else { 'while_exit_60_4 };
+    }
+    'while_body_60_4: {
+        %20: i32 = @get_int();
+        %21: &mut i32 = &mut @list_0[%47];
+        %21 <- %20;
+        %22: &i32 = & @list_0[%47];
+        %23: i32 = * (&i32)%22;
+        %24: i32 = * (&i32)%22;
+        %25: &i32 = & @cns_0[%24];
+        %26: i32 = * (&i32)%25;
+        %27: i32 = %26 + 1;
+        %28: &mut i32 = &mut @cns_0[%23];
+        %28 <- %27;
+        %29: i32 = %47 + 1;
+        => 'while_cond_60_4;
+    }
+    'while_exit_60_4: {
+        %30: &i32 = & @cns_0[1];
+        %31: i32 = * (&i32)%30;
+        %32: &i32 = & @cns_0[2];
+        %33: i32 = * (&i32)%32;
+        %34: &i32 = & @cns_0[3];
+        %35: i32 = * (&i32)%34;
+        %36: &i32 = & @cns_0[4];
+        %37: i32 = * (&i32)%36;
+        %38: &i32 = & @cns_0[5];
+        %39: i32 = * (&i32)%38;
+        %40: i32 = @dfs(%31, %33, %35, %37, %39, 0);
+        @print_int(%40);
+        return %40;
+    }
+}

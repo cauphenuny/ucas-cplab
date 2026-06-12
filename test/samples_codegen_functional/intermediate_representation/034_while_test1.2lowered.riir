@@ -1,0 +1,45 @@
+let mut __reg_ra: int;
+let mut __reg_a0: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn doubleWhile() -> i32 {
+    'entry: {
+        @__reg_a0: int = 7;
+        @__reg_t6: int = 5;
+        => 'while_cond_6_2;
+    }
+    'while_cond_6_2: {
+        @__reg_t5: int = @__reg_t6 < 100;
+        => if @__reg_t5 { 'while_body_6_2 } else { 'while_exit_6_2 };
+    }
+    'while_body_6_2: {
+        @__reg_t6: int = @__reg_t6 + 30;
+        => 'while_cond_8_4;
+    }
+    'while_exit_6_2: {
+        return @__reg_a0;
+    }
+    'while_cond_8_4: {
+        @__reg_t5: int = @__reg_a0 < 100;
+        => if @__reg_t5 { 'while_body_8_4 } else { 'while_exit_8_4 };
+    }
+    'while_body_8_4: {
+        @__reg_a0: int = @__reg_a0 + 6;
+        => 'while_cond_8_4;
+    }
+    'while_exit_8_4: {
+        @__reg_a0: int = @__reg_a0 - 100;
+        => 'while_cond_6_2;
+    }
+}
+
+fn main() -> i32 {
+    let ref mut __spill_13: int;
+    'entry: {
+        @__spill_13 <- @__reg_ra;
+        @__reg_a0: int = @doubleWhile();
+        @__reg_ra: int = * (&mut int)@__spill_13;
+        return @__reg_a0;
+    }
+}

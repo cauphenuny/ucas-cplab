@@ -1,0 +1,47 @@
+fn doubleWhile() -> i32 {
+    let i_0: i32;
+    let j_0: i32;
+    'entry: {
+        %i_0.0: i32 = 0;
+        %i_0.1: i32 = 5;
+        %j_0.0: i32 = 0;
+        %j_0.1: i32 = 7;
+        => 'while_cond_6_2;
+    }
+    'while_cond_6_2: {
+        %i_0.2: i32 = phi('while_exit_8_4: %i_0.3, 'entry: %i_0.1);
+        %j_0.2: i32 = phi('while_exit_8_4: %j_0.4, 'entry: %j_0.1);
+        %0: bool = %i_0.2 < 100;
+        => if %0 { 'while_body_6_2 } else { 'while_exit_6_2 };
+    }
+    'while_body_6_2: {
+        %1: i32 = %i_0.2 + 30;
+        %i_0.3: i32 = %1;
+        => 'while_cond_8_4;
+    }
+    'while_exit_6_2: {
+        return %j_0.2;
+    }
+    'while_cond_8_4: {
+        %j_0.3: i32 = phi('while_body_8_4: %j_0.5, 'while_body_6_2: %j_0.2);
+        %2: bool = %j_0.3 < 100;
+        => if %2 { 'while_body_8_4 } else { 'while_exit_8_4 };
+    }
+    'while_body_8_4: {
+        %3: i32 = %j_0.3 + 6;
+        %j_0.5: i32 = %3;
+        => 'while_cond_8_4;
+    }
+    'while_exit_8_4: {
+        %4: i32 = %j_0.3 - 100;
+        %j_0.4: i32 = %4;
+        => 'while_cond_6_2;
+    }
+}
+
+fn main() -> i32 {
+    'entry: {
+        %0: i32 = @doubleWhile();
+        return %0;
+    }
+}

@@ -1,0 +1,108 @@
+let ref mut a_0: [i32; 6] = {10, 1, 50, 50, 20, 5};
+let ref mut dp_0: [[i32; 10]; 10] = {0};
+let mut __reg_ra: int;
+let mut __reg_a0: int;
+let mut __reg_a1: int;
+let mut __reg_a2: int;
+let mut __reg_a3: int;
+let mut __reg_a4: int;
+let mut __reg_a5: int;
+let mut __reg_a6: int;
+let mut __reg_a7: int;
+let mut __reg_t3: int;
+let mut __reg_t4: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn main() -> i32 {
+    let ref mut __spill_66: int;
+    'entry: {
+        @__spill_66 <- @__reg_ra;
+        @__reg_a6: int = 3;
+        => 'while_cond_10_1;
+    }
+    'while_cond_10_1: {
+        @__reg_t6: int = @__reg_a6 <= 6;
+        => if @__reg_t6 { 'L2 } else { 'while_exit_10_1 };
+    }
+    'while_exit_10_1: {
+        @__reg_t6: int = @dp_0 as int;
+        @__reg_t6: int = @__reg_t6 + 20;
+        @__reg_a0: int = * (&i32)@__reg_t6;
+        @print_int(@__reg_a0);
+        @__reg_a0: int = 0;
+        @__reg_ra: int = * (&mut int)@__spill_66;
+        return @__reg_a0;
+    }
+    'while_cond_13_2: {
+        @__reg_t6: int = 6 - @__reg_a6;
+        @__reg_t6: int = @__reg_t6 + 1;
+        @__reg_t6: int = @__reg_a7 < @__reg_t6;
+        => if @__reg_t6 { 'while_body_13_2 } else { 'while_exit_13_2 };
+    }
+    'while_body_13_2: {
+        @__reg_t6: int = @__reg_a7 + @__reg_a6;
+        @__reg_t4: int = @__reg_t6 - 1;
+        @__reg_t5: int = @__reg_a7 + 1;
+        @__reg_t3: int = @__reg_t5;
+        => 'while_cond_17_3;
+    }
+    'while_exit_13_2: {
+        @__reg_a6: int = @__reg_a6 + 1;
+        => 'while_cond_10_1;
+    }
+    'while_cond_17_3: {
+        @__reg_t6: int = @__reg_t3 < @__reg_t4;
+        => if @__reg_t6 { 'while_body_17_3 } else { 'L1 };
+    }
+    'while_body_17_3: {
+        @__reg_t6: int = @__reg_a7 * 40;
+        @__reg_a5: int = @dp_0 as int;
+        @__reg_a4: int = @__reg_a5 + @__reg_t6;
+        @__reg_a3: int = @__reg_t3 * 4;
+        @__reg_t6: int = @__reg_a4 + @__reg_a3;
+        @__reg_a2: int = * (&i32)@__reg_t6;
+        @__reg_t6: int = @__reg_t3 * 40;
+        @__reg_t6: int = @__reg_a5 + @__reg_t6;
+        @__reg_a5: int = @__reg_t4 * 4;
+        @__reg_t6: int = @__reg_t6 + @__reg_a5;
+        @__reg_t6: int = * (&i32)@__reg_t6;
+        @__reg_a2: int = @__reg_a2 + @__reg_t6;
+        @__reg_t6: int = @__reg_a7 * 4;
+        @__reg_a1: int = @a_0 as int;
+        @__reg_t6: int = @__reg_a1 + @__reg_t6;
+        @__reg_a0: int = * (&i32)@__reg_t6;
+        @__reg_t6: int = @__reg_a1 + @__reg_a3;
+        @__reg_t6: int = * (&i32)@__reg_t6;
+        @__reg_a3: int = @__reg_a0 * @__reg_t6;
+        @__reg_t6: int = @__reg_a1 + @__reg_a5;
+        @__reg_t6: int = * (&i32)@__reg_t6;
+        @__reg_t6: int = @__reg_a3 * @__reg_t6;
+        @__reg_a3: int = @__reg_a2 + @__reg_t6;
+        @__reg_t6: int = @__reg_a4 + @__reg_a5;
+        @__reg_a5: int = * (&i32)@__reg_t6;
+        @__reg_a5: int = @__reg_a5 == 0;
+        => if @__reg_a5 { 'if_true_20_4 } else { 'L0 };
+    }
+    'if_true_20_4: {
+        @__reg_t6 <- @__reg_a3;
+        => 'if_exit_20_4;
+    }
+    'if_exit_20_4: {
+        @__reg_t3: int = @__reg_t3 + 1;
+        => 'while_cond_17_3;
+    }
+    'L0: {
+        @__reg_a5: int = * (&i32)@__reg_t6;
+        @__reg_a5: int = @__reg_a3 < @__reg_a5;
+        => if @__reg_a5 { 'if_true_20_4 } else { 'if_exit_20_4 };
+    }
+    'L1: {
+        @__reg_a7: int = @__reg_t5;
+        => 'while_cond_13_2;
+    }
+    'L2: {
+        @__reg_a7: int = 0;
+        => 'while_cond_13_2;
+    }
+}

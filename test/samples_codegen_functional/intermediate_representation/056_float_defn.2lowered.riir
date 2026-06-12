@@ -1,0 +1,17 @@
+let mut __reg_ra: int;
+let mut __reg_a0: int;
+let mut __reg_fa0: float;
+
+fn main() -> i32 {
+    let ref mut __spill_12: int;
+    'entry: {
+        @__spill_12 <- @__reg_ra;
+        @__reg_fa0: float = 13.0000f;
+        @print_float(@__reg_fa0);
+        @__reg_fa0: float = 2.00000e-05f;
+        @print_float(@__reg_fa0);
+        @__reg_a0: int = 0;
+        @__reg_ra: int = * (&mut int)@__spill_12;
+        return @__reg_a0;
+    }
+}

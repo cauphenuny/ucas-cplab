@@ -1,0 +1,65 @@
+let ref mut a_0: i32 = 7;
+let mut __reg_ra: int;
+let mut __reg_a0: int;
+let mut __reg_t4: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn main() -> i32 {
+    let ref mut __spill_20: int;
+    'entry: {
+        @__spill_20 <- @__reg_ra;
+        @__reg_t5: int = 0;
+        @__reg_t6: int = @__reg_t5;
+        => 'while_cond_20_1;
+    }
+    'while_cond_20_1: {
+        @__reg_t4: int = @__reg_t5 < 100;
+        => if @__reg_t4 { 'inline_func_0_entry } else { 'while_exit_20_1 };
+    }
+    'while_exit_20_1: {
+        @__reg_t6: int = @__reg_t6 < 100;
+        => if @__reg_t6 { 'if_true_25_1 } else { 'if_false_25_1 };
+    }
+    'if_true_21_2: {
+        @__reg_t6: int = @__reg_t6 + 1;
+        => 'if_exit_21_2;
+    }
+    'if_exit_21_2: {
+        @__reg_t5: int = @__reg_t5 + 1;
+        => 'while_cond_20_1;
+    }
+    'if_true_25_1: {
+        @__reg_a0: int = 1;
+        @print_int(@__reg_a0);
+        => 'if_exit_25_1;
+    }
+    'if_exit_25_1: {
+        @__reg_a0: int = 0;
+        @__reg_ra: int = * (&mut int)@__spill_20;
+        return @__reg_a0;
+    }
+    'if_false_25_1: {
+        @__reg_a0: int = 0;
+        @print_int(@__reg_a0);
+        => 'if_exit_25_1;
+    }
+    'inline_func_0_return: {
+        @__reg_t4: int = @__reg_t4 == 1;
+        => if @__reg_t4 { 'if_true_21_2 } else { 'if_exit_21_2 };
+    }
+    'inline_func_0_entry: {
+        @__reg_t4: int = @a_0;
+        @__reg_t4: int = * (&mut i32)@__reg_t4;
+        @__reg_t4: int = 1 == @__reg_t4;
+        => if @__reg_t4 { 'L1 } else { 'inline_func_0_if_false_8_2 };
+    }
+    'inline_func_0_if_false_8_2: {
+        @__reg_t4: int = 0;
+        => 'inline_func_0_return;
+    }
+    'L1: {
+        @__reg_t4: int = 1;
+        => 'inline_func_0_return;
+    }
+}

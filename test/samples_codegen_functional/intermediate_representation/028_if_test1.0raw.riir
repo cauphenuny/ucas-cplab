@@ -1,0 +1,29 @@
+fn ifElse() -> i32 {
+    let a_0: i32;
+    'entry: {
+        %a_0.0: i32 = 0;
+        %a_0.1: i32 = 5;
+        %0: bool = %a_0.1 == 5;
+        => if %0 { 'if_true_5_2 } else { 'if_false_5_2 };
+    }
+    'if_true_5_2: {
+        %a_0.4: i32 = 25;
+        => 'if_exit_5_2;
+    }
+    'if_exit_5_2: {
+        %a_0.3: i32 = phi('if_false_5_2: %a_0.2, 'if_true_5_2: %a_0.4);
+        return %a_0.3;
+    }
+    'if_false_5_2: {
+        %1: i32 = %a_0.1 * 2;
+        %a_0.2: i32 = %1;
+        => 'if_exit_5_2;
+    }
+}
+
+fn main() -> i32 {
+    'entry: {
+        %0: i32 = @ifElse();
+        return %0;
+    }
+}

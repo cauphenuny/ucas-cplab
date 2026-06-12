@@ -1,0 +1,60 @@
+let ref mut gx_0: i32 = 6;
+let mut __reg_ra: int;
+let mut __reg_a0: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn main() -> i32 {
+    let ref mut __spill_32: int;
+    'entry: {
+        @__spill_32 <- @__reg_ra;
+        @__reg_t6: int = @gx_0;
+        @__reg_t6: int = * (&mut i32)@__reg_t6;
+        @__reg_t6: int = @__reg_t6 > 2;
+        => if @__reg_t6 { 'if_true_13_1 } else { 'inline_sfx_0_return };
+    }
+    'if_true_13_1: {
+        @__reg_t6: int = @gx_0;
+        @__reg_a0: int = * (&mut i32)@__reg_t6;
+        => 'if_exit_13_1;
+    }
+    'if_exit_13_1: {
+        @__reg_t6: int = @gx_0;
+        @__reg_t6: int = * (&mut i32)@__reg_t6;
+        @__reg_t6: int = @__reg_t6 < 9;
+        => if @__reg_t6 { 'inline_sfx_1_return } else { 'if_exit_17_1 };
+    }
+    'if_true_15_1: {
+        @__reg_t6: int = @gx_0;
+        @__reg_a0: int = * (&mut i32)@__reg_t6;
+        => 'if_exit_17_1;
+    }
+    'if_exit_17_1: {
+        @print_int(@__reg_a0);
+        @__reg_a0: int = 0;
+        @__reg_ra: int = * (&mut int)@__spill_32;
+        return @__reg_a0;
+    }
+    'inline_sfx_0_return: {
+        @__reg_t6: int = @gx_0;
+        @__reg_t5: int = * (&mut i32)@__reg_t6;
+        @__reg_t5: int = @__reg_t5 + 2;
+        @__reg_t6 <- @__reg_t5;
+        @__reg_t6: int = * (&mut i32)@__reg_t6;
+        @__reg_t6: int = @__reg_t6 > 0;
+        => if @__reg_t6 { 'if_true_13_1 } else { 'L3 };
+    }
+    'inline_sfx_1_return: {
+        @__reg_t6: int = @gx_0;
+        @__reg_t5: int = * (&mut i32)@__reg_t6;
+        @__reg_t5: int = @__reg_t5 + 3;
+        @__reg_t6 <- @__reg_t5;
+        @__reg_t6: int = * (&mut i32)@__reg_t6;
+        @__reg_t6: int = @__reg_t6 > 0;
+        => if @__reg_t6 { 'if_true_15_1 } else { 'if_exit_17_1 };
+    }
+    'L3: {
+        @__reg_a0: int = 0;
+        => 'if_exit_13_1;
+    }
+}

@@ -1,0 +1,8 @@
+let mut __reg_a0: int;
+
+fn main() -> i32 {
+    'entry: {
+        @__reg_a0: int = 4;
+        return @__reg_a0;
+    }
+}

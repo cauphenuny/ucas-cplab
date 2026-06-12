@@ -1,0 +1,334 @@
+let ref mut mix_result_i_0: i32 = 0;
+let ref mut mix_result_f_0: f32 = 0.00000f;
+let ref mut mix_result_d_0: f64 = 0.00000;
+let mut __reg_ra: int;
+let mut __reg_s0: int;
+let mut __reg_s1: int;
+let mut __reg_a0: int;
+let mut __reg_a1: int;
+let mut __reg_a2: int;
+let mut __reg_a3: int;
+let mut __reg_a4: int;
+let mut __reg_a5: int;
+let mut __reg_a6: int;
+let mut __reg_a7: int;
+let mut __reg_s2: int;
+let mut __reg_s3: int;
+let mut __reg_s4: int;
+let mut __reg_s5: int;
+let mut __reg_t4: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+let mut __reg_fa0: float;
+let mut __reg_fa1: float;
+let mut __reg_fa2: float;
+let mut __reg_fa3: float;
+let mut __reg_fa4: float;
+let mut __reg_fa5: float;
+let mut __reg_fa6: float;
+let mut __reg_fa7: float;
+let mut __reg_ft10: float;
+let mut __reg_ft11: float;
+
+fn func(a0_0: i32, a1_0: i32, a2_0: i32, a3_0: bool, a4_0: i32, a5_0: bool, a6_0: i32, a7_0: i32, ref a8_0: i32, ref flag_0: bool, ref a9_0: i32) -> i32 {
+    let ref mut __spill_24: int;
+    let ref mut __spill_25: int;
+    let ref mut __spill_26: int;
+    let ref mut __spill_27: int;
+    let ref mut __spill_28: int;
+    let ref mut __spill_29: int;
+    let ref mut __spill_30: int;
+    'entry: {
+        @__spill_30 <- @__reg_ra;
+        @__spill_29 <- @__reg_s0;
+        @__spill_28 <- @__reg_s1;
+        @__spill_27 <- @__reg_s2;
+        @__spill_26 <- @__reg_s3;
+        @__spill_25 <- @__reg_s4;
+        @__spill_24 <- @__reg_s5;
+        @__reg_s5: int = @__reg_a7;
+        @__reg_s4: int = @__reg_a6;
+        @__reg_s3: int = @__reg_a4;
+        @__reg_s2: int = @__reg_a2;
+        @__reg_s1: int = @__reg_a1;
+        @__reg_s0: int = @__reg_a0;
+        @__reg_t6: int = * (&i32)@a9_0;
+        @__reg_t6: int = @__reg_t6 == 0;
+        => if @__reg_t6 { 'if_true_3_4 } else { 'if_exit_3_4 };
+    }
+    'if_true_3_4: {
+        @__reg_t6: int = * (&bool)@flag_0;
+        => if @__reg_t6 { 'if_true_4_8 } else { 'if_false_4_8 };
+    }
+    'if_exit_3_4: {
+        @__reg_t6: int = * (&i32)@a9_0;
+        @__reg_t4: int = @__reg_t6 - 1;
+        @__reg_t5: int = * (&i32)@a8_0;
+        @__reg_t6: int = * (&bool)@flag_0;
+        @__reg_a0: int = @__reg_s0;
+        @__reg_a1: int = @__reg_s1;
+        @__reg_a2: int = @__reg_s2;
+        @__reg_a4: int = @__reg_s3;
+        @__reg_a6: int = @__reg_s4;
+        @__reg_a7: int = @__reg_s5;
+        @__reg_a0: int = @func(@__reg_a0, @__reg_a1, @__reg_a2, @__reg_a3, @__reg_a4, @__reg_a5, @__reg_a6, @__reg_a7, @__reg_t5, @__reg_t6, @__reg_t4);
+        @__reg_t6: int = @__reg_s0 + @__reg_s1;
+        @__reg_t6: int = @__reg_t6 + @__reg_s2;
+        @__reg_t6: int = @__reg_t6 + @__reg_s3;
+        @__reg_t6: int = @__reg_t6 + @__reg_s4;
+        @__reg_t5: int = @__reg_t6 + @__reg_s5;
+        @__reg_t6: int = * (&i32)@a8_0;
+        @__reg_t5: int = @__reg_t5 + @__reg_t6;
+        @__reg_t6: int = * (&i32)@a9_0;
+        @__reg_t6: int = @__reg_t5 + @__reg_t6;
+        @__reg_a0: int = @__reg_t6 + @__reg_a0;
+        @__reg_s5: int = * (&mut int)@__spill_24;
+        @__reg_s4: int = * (&mut int)@__spill_25;
+        @__reg_s3: int = * (&mut int)@__spill_26;
+        @__reg_s2: int = * (&mut int)@__spill_27;
+        @__reg_s1: int = * (&mut int)@__spill_28;
+        @__reg_s0: int = * (&mut int)@__spill_29;
+        @__reg_ra: int = * (&mut int)@__spill_30;
+        return @__reg_a0;
+    }
+    'if_true_4_8: {
+        @__reg_a0: int = 0;
+        @__reg_s5: int = * (&mut int)@__spill_24;
+        @__reg_s4: int = * (&mut int)@__spill_25;
+        @__reg_s3: int = * (&mut int)@__spill_26;
+        @__reg_s2: int = * (&mut int)@__spill_27;
+        @__reg_s1: int = * (&mut int)@__spill_28;
+        @__reg_s0: int = * (&mut int)@__spill_29;
+        @__reg_ra: int = * (&mut int)@__spill_30;
+        return @__reg_a0;
+    }
+    'if_false_4_8: {
+        @__reg_a0: int = 1;
+        @__reg_s5: int = * (&mut int)@__spill_24;
+        @__reg_s4: int = * (&mut int)@__spill_25;
+        @__reg_s3: int = * (&mut int)@__spill_26;
+        @__reg_s2: int = * (&mut int)@__spill_27;
+        @__reg_s1: int = * (&mut int)@__spill_28;
+        @__reg_s0: int = * (&mut int)@__spill_29;
+        @__reg_ra: int = * (&mut int)@__spill_30;
+        return @__reg_a0;
+    }
+}
+
+fn mix(a0_1: i32, a1_1: i32, fa0_0: f32, fa1_0: f64, a2_1: i32, fa2_0: f32, a3_1: i32, a4_1: i32, fa3_0: f32, a5_1: bool, a6_1: i32, a7_1: i32, fa4_0: f64, fa5_0: f32, ref spill_0_0: i32, ref spill_1_0: bool, fa6_0: f32, fa7_0: f64, ref spill_3_0: f32, ref spill_4_0: i32, ref spill_5_0: f64, ref spill_6_0: i32, ref spill_7_0: bool) -> bool {
+    'entry: {
+        @__reg_t6: int = * (&bool)@spill_1_0;
+        => if @__reg_t6 { 'if_true_26_4 } else { 'if_false_26_4 };
+    }
+    'if_true_26_4: {
+        @__reg_t6: int = * (&bool)@spill_7_0;
+        => if @__reg_t6 { 'if_true_27_8 } else { 'if_false_27_8 };
+    }
+    'if_exit_26_4: {
+        @__reg_t6: int = @__reg_a0 + @__reg_a1;
+        @__reg_t6: int = @__reg_t6 + @__reg_a2;
+        @__reg_t6: int = @__reg_t6 + @__reg_a3;
+        @__reg_t6: int = @__reg_t6 + @__reg_a4;
+        @__reg_t6: int = @__reg_t6 + @__reg_a6;
+        @__reg_t5: int = @__reg_t6 + @__reg_a7;
+        @__reg_t6: int = * (&i32)@spill_0_0;
+        @__reg_t5: int = @__reg_t5 + @__reg_t6;
+        @__reg_t6: int = * (&i32)@spill_4_0;
+        @__reg_t5: int = @__reg_t5 + @__reg_t6;
+        @__reg_t6: int = * (&i32)@spill_6_0;
+        @__reg_t4: int = @__reg_t5 + @__reg_t6;
+        @__reg_t6: int = @mix_result_i_0;
+        @__reg_t5: int = * (&mut i32)@__reg_t6;
+        @__reg_t5: int = @__reg_t5 + @__reg_t4;
+        @__reg_t6 <- @__reg_t5;
+        @__reg_ft11: float = @__reg_fa0 + @__reg_fa2;
+        @__reg_t6: int = @mix_result_f_0;
+        @__reg_t6 <- @__reg_ft11;
+        @__reg_ft11: float = * (&mut f32)@__reg_t6;
+        @__reg_ft11: float = @__reg_ft11 + @__reg_fa3;
+        @__reg_t6 <- @__reg_ft11;
+        @__reg_ft11: float = * (&mut f32)@__reg_t6;
+        @__reg_ft11: float = @__reg_ft11 + @__reg_fa5;
+        @__reg_t6 <- @__reg_ft11;
+        @__reg_ft11: float = * (&mut f32)@__reg_t6;
+        @__reg_ft11: float = @__reg_ft11 + @__reg_fa6;
+        @__reg_t6 <- @__reg_ft11;
+        @__reg_ft10: float = * (&mut f32)@__reg_t6;
+        @__reg_ft11: float = * (&f32)@spill_3_0;
+        @__reg_ft11: float = @__reg_ft10 + @__reg_ft11;
+        @__reg_t6 <- @__reg_ft11;
+        @__reg_ft11: float = @__reg_fa1 + @__reg_fa4;
+        @__reg_t6: int = @mix_result_d_0;
+        @__reg_t6 <- @__reg_ft11;
+        @__reg_ft11: float = * (&mut f64)@__reg_t6;
+        @__reg_ft11: float = @__reg_ft11 + @__reg_fa7;
+        @__reg_t6 <- @__reg_ft11;
+        @__reg_ft10: float = * (&mut f64)@__reg_t6;
+        @__reg_ft11: float = * (&f64)@spill_5_0;
+        @__reg_ft11: float = @__reg_ft10 + @__reg_ft11;
+        @__reg_t6 <- @__reg_ft11;
+        @__reg_t5: int = * (&i32)@spill_0_0;
+        @__reg_t6: int = 0;
+        => 'while_cond_70_4;
+    }
+    'if_false_26_4: {
+        => if @__reg_a5 { 'if_true_33_8 } else { 'if_false_33_8 };
+    }
+    'if_true_27_8: {
+        @__reg_t5: int = @mix_result_i_0;
+        @__reg_t6: int = 0;
+        @__reg_t5 <- @__reg_t6;
+        => 'if_exit_26_4;
+    }
+    'if_false_27_8: {
+        @__reg_t5: int = @mix_result_i_0;
+        @__reg_t6: int = 1;
+        @__reg_t5 <- @__reg_t6;
+        => 'if_exit_26_4;
+    }
+    'if_true_33_8: {
+        @__reg_t5: int = * (&i32)@spill_4_0;
+        @__reg_t6: int = * (&i32)@spill_6_0;
+        @__reg_t5: int = @__reg_t5 + @__reg_t6;
+        @__reg_t6: int = @mix_result_i_0;
+        @__reg_t6 <- @__reg_t5;
+        => 'if_exit_26_4;
+    }
+    'if_false_33_8: {
+        @__reg_t6: int = * (&i32)@spill_0_0;
+        @__reg_t5: int = @__reg_t6 + @__reg_a6;
+        @__reg_t6: int = @mix_result_i_0;
+        @__reg_t6 <- @__reg_t5;
+        => 'if_exit_26_4;
+    }
+    'while_cond_70_4: {
+        @__reg_t4: int = @__reg_t5 > 0;
+        => if @__reg_t4 { 'while_body_70_4 } else { 'while_exit_70_4 };
+    }
+    'while_body_70_4: {
+        @__reg_t4: int = * (&i32)@spill_4_0;
+        @__reg_t4: int = @__reg_t5 == @__reg_t4;
+        => if @__reg_t4 { 'if_true_71_8 } else { 'if_exit_71_8 };
+    }
+    'while_exit_70_4: {
+        @__reg_t5: int = @mix_result_i_0;
+        @__reg_t4: int = * (&mut i32)@__reg_t5;
+        @__reg_t6: int = @__reg_t4 + @__reg_t6;
+        @__reg_t5 <- @__reg_t6;
+        @__reg_t6: int = @mix_result_d_0;
+        @__reg_ft10: float = * (&mut f64)@__reg_t6;
+        @__reg_ft11: float = * (&f64)@spill_5_0;
+        @__reg_ft10: float = @__reg_ft10 + @__reg_ft11;
+        @__reg_t6: int = @__reg_ft10 > @__reg_fa7;
+        => if @__reg_t6 { 'if_true_86_4 } else { 'if_false_86_4 };
+    }
+    'if_true_71_8: {
+        @__reg_t5: int = @__reg_t5 - 1;
+        => 'while_cond_70_4;
+    }
+    'if_exit_71_8: {
+        @__reg_t4: int = * (&i32)@spill_6_0;
+        @__reg_t4: int = @__reg_t5 == @__reg_t4;
+        => if @__reg_t4 { 'while_exit_70_4 } else { 'if_exit_75_8 };
+    }
+    'if_exit_75_8: {
+        @__reg_t6: int = @__reg_t6 + @__reg_t5;
+        @__reg_t5: int = @__reg_t5 - 1;
+        => 'while_cond_70_4;
+    }
+    'if_true_86_4: {
+        @__reg_t6: int = * (&bool)@spill_7_0;
+        => if @__reg_t6 { 'if_true_87_8 } else { 'if_false_87_8 };
+    }
+    'if_exit_86_4: {
+        => if @__reg_a5 { 'if_true_98_4 } else { 'if_exit_98_4 };
+    }
+    'if_false_86_4: {
+        @__reg_t6: int = @mix_result_f_0;
+        @__reg_ft11: float = * (&mut f32)@__reg_t6;
+        @__reg_ft11: float = @__reg_ft11 + @__reg_fa6;
+        @__reg_t6 <- @__reg_ft11;
+        @__reg_ft10: float = * (&mut f32)@__reg_t6;
+        @__reg_ft11: float = * (&f32)@spill_3_0;
+        @__reg_ft11: float = @__reg_ft10 + @__reg_ft11;
+        @__reg_t6 <- @__reg_ft11;
+        => 'if_exit_86_4;
+    }
+    'if_true_87_8: {
+        @__reg_ft11: float = * (&f64)@spill_5_0;
+        @__reg_ft11: float = @__reg_ft10 + @__reg_ft11;
+        @__reg_t6: int = @mix_result_d_0;
+        @__reg_t6 <- @__reg_ft11;
+        => 'if_exit_86_4;
+    }
+    'if_false_87_8: {
+        @__reg_ft11: float = * (&f64)@spill_5_0;
+        @__reg_ft11: float = @__reg_ft10 - @__reg_ft11;
+        @__reg_t6: int = @mix_result_d_0;
+        @__reg_t6 <- @__reg_ft11;
+        => 'if_exit_86_4;
+    }
+    'if_true_98_4: {
+        @__reg_a0: int = * (&bool)@spill_7_0;
+        return @__reg_a0;
+    }
+    'if_exit_98_4: {
+        @__reg_t6: int = * (&bool)@spill_1_0;
+        => if @__reg_t6 { 'if_true_101_4 } else { 'if_exit_101_4 };
+    }
+    'if_true_101_4: {
+        @__reg_a0: int = * (&bool)@spill_7_0;
+        return @__reg_a0;
+    }
+    'if_exit_101_4: {
+        @__reg_a0: int = false;
+        return @__reg_a0;
+    }
+}
+
+fn main() -> i32 {
+    let ref mut __spill_20: int;
+    'entry: {
+        @__spill_20 <- @__reg_ra;
+        @__reg_a0: int = 1;
+        @__reg_a1: int = 2;
+        @__reg_a2: int = 3;
+        @__reg_a3: int = true;
+        @__reg_a4: int = 5;
+        @__reg_a5: int = true;
+        @__reg_a6: int = 7;
+        @__reg_a7: int = 8;
+        @__reg_a0: int = @func(@__reg_a0, @__reg_a1, @__reg_a2, @__reg_a3, @__reg_a4, @__reg_a5, @__reg_a6, @__reg_a7, 9, true, 10);
+        @print_int(@__reg_a0);
+        @__reg_a0: int = 10;
+        @__reg_a1: int = 20;
+        @__reg_fa0: float = 1.50000f;
+        @__reg_fa1: float = 2.50000;
+        @__reg_a2: int = 30;
+        @__reg_fa2: float = 3.50000f;
+        @__reg_a3: int = 40;
+        @__reg_a4: int = 50;
+        @__reg_fa3: float = 4.50000f;
+        @__reg_a5: int = true;
+        @__reg_a6: int = 60;
+        @__reg_a7: int = 70;
+        @__reg_fa4: float = 5.50000;
+        @__reg_fa5: float = 6.50000f;
+        @__reg_fa6: float = 7.50000f;
+        @__reg_fa7: float = 8.50000;
+        @__reg_a0: int = @mix(@__reg_a0, @__reg_a1, @__reg_fa0, @__reg_fa1, @__reg_a2, @__reg_fa2, @__reg_a3, @__reg_a4, @__reg_fa3, @__reg_a5, @__reg_a6, @__reg_a7, @__reg_fa4, @__reg_fa5, 5, false, @__reg_fa6, @__reg_fa7, 9.50000f, 3, 10.5000, 2, true);
+        @print_bool(@__reg_a0);
+        @__reg_t6: int = @mix_result_i_0;
+        @__reg_a0: int = * (&mut i32)@__reg_t6;
+        @print_int(@__reg_a0);
+        @__reg_t6: int = @mix_result_f_0;
+        @__reg_fa0: float = * (&mut f32)@__reg_t6;
+        @print_float(@__reg_fa0);
+        @__reg_t6: int = @mix_result_d_0;
+        @__reg_fa0: float = * (&mut f64)@__reg_t6;
+        @print_double(@__reg_fa0);
+        @__reg_a0: int = 0;
+        @__reg_ra: int = * (&mut int)@__spill_20;
+        return @__reg_a0;
+    }
+}

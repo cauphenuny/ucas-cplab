@@ -73,16 +73,16 @@ Examples:
     - print Assembly: `compiler -S source.cact`
     - output Assembly code to file: `compiler -S source.cact -o asm_code.s`
 
-    > [!NOTE]
-    > When applied transformations on IR, the intermediate IR would be put into stdout (can be suppressed by --silent), only final IR would be output into file.
+> [!NOTE]
+> When applied transformations on IR, the intermediate IR would be put into stdout (can be suppressed by --silent), only final IR would be output into file.
 
 2. interpret source program (by compiler)
     - at IR stage: `compiler --exec source.cact`
     - at IR stage, sliently (without any output except program IO and return code): `compiler --exec --silent source.cact`
     - at Assembly stage: `compiler --asm-exec source.cact` (also optional `--silent`)
 
-    > [!NOTE]
-    > The optimizations and lowering transformations would be applied before IR/Assembly executing.
+> [!NOTE]
+> The optimizations and lowering transformations would be applied before IR/Assembly executing.
 
 3. interpret IR program (by interpreter)
     - `interpreter ir_code.riir` (also optional `--silent`)

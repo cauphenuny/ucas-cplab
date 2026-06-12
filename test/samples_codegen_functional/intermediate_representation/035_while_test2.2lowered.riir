@@ -1,0 +1,77 @@
+let mut __reg_ra: int;
+let mut __reg_a0: int;
+let mut __reg_a7: int;
+let mut __reg_t3: int;
+let mut __reg_t4: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn FourWhile() -> i32 {
+    'entry: {
+        @__reg_t6: int = 10;
+        @__reg_t5: int = 7;
+        @__reg_t4: int = 6;
+        @__reg_t3: int = 5;
+        => 'while_cond_10_2;
+    }
+    'while_cond_10_2: {
+        @__reg_a7: int = @__reg_t3 < 20;
+        => if @__reg_a7 { 'while_body_10_2 } else { 'while_exit_10_2 };
+    }
+    'while_body_10_2: {
+        @__reg_t3: int = @__reg_t3 + 3;
+        => 'while_cond_12_4;
+    }
+    'while_exit_10_2: {
+        @__reg_t6: int = @__reg_t4 + @__reg_t6;
+        @__reg_t6: int = @__reg_t3 + @__reg_t6;
+        @__reg_a0: int = @__reg_t6 + @__reg_t5;
+        return @__reg_a0;
+    }
+    'while_cond_12_4: {
+        @__reg_a7: int = @__reg_t4 < 10;
+        => if @__reg_a7 { 'while_body_12_4 } else { 'while_exit_12_4 };
+    }
+    'while_body_12_4: {
+        @__reg_t4: int = @__reg_t4 + 1;
+        => 'while_cond_14_6;
+    }
+    'while_exit_12_4: {
+        @__reg_t4: int = @__reg_t4 - 2;
+        => 'while_cond_10_2;
+    }
+    'while_cond_14_6: {
+        @__reg_a7: int = @__reg_t5 == 7;
+        => if @__reg_a7 { 'while_body_14_6 } else { 'while_exit_14_6 };
+    }
+    'while_body_14_6: {
+        @__reg_t5: int = @__reg_t5 - 1;
+        => 'while_cond_16_8;
+    }
+    'while_exit_14_6: {
+        @__reg_t5: int = @__reg_t5 + 1;
+        => 'while_cond_12_4;
+    }
+    'while_cond_16_8: {
+        @__reg_a7: int = @__reg_t6 < 20;
+        => if @__reg_a7 { 'while_body_16_8 } else { 'while_exit_16_8 };
+    }
+    'while_body_16_8: {
+        @__reg_t6: int = @__reg_t6 + 3;
+        => 'while_cond_16_8;
+    }
+    'while_exit_16_8: {
+        @__reg_t6: int = @__reg_t6 - 1;
+        => 'while_cond_14_6;
+    }
+}
+
+fn main() -> i32 {
+    let ref mut __spill_13: int;
+    'entry: {
+        @__spill_13 <- @__reg_ra;
+        @__reg_a0: int = @FourWhile();
+        @__reg_ra: int = * (&mut int)@__spill_13;
+        return @__reg_a0;
+    }
+}

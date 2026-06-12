@@ -1,0 +1,191 @@
+let ref mut V_0: [[i32; 200]; 200] = {0};
+const ref __init_main_0: [i32; 6] = {0, 2, 2, 6, 5, 4};
+const ref __init_main_1: [i32; 6] = {0, 6, 3, 5, 4, 6};
+let mut __reg_ra: int;
+let mut __reg_t1: int;
+let mut __reg_t2: int;
+let mut __reg_a0: int;
+let mut __reg_a1: int;
+let mut __reg_a2: int;
+let mut __reg_a3: int;
+let mut __reg_a4: int;
+let mut __reg_a5: int;
+let mut __reg_a6: int;
+let mut __reg_a7: int;
+let mut __reg_t3: int;
+let mut __reg_t4: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn KnapSack(n_0: i32, w_0: &mut[i32], v_0: &mut[i32], x_0: &mut[i32], C_0: i32) -> i32 {
+    'entry: {
+        @__reg_t4: int = 1;
+        => 'while_cond_6_4;
+    }
+    'while_cond_6_4: {
+        @__reg_t6: int = @__reg_t4 <= @__reg_a0;
+        => if @__reg_t6 { 'L0 } else { 'L1 };
+    }
+    'while_cond_9_5: {
+        @__reg_t6: int = @__reg_a4 + 1;
+        @__reg_t6: int = @__reg_t5 < @__reg_t6;
+        => if @__reg_t6 { 'while_body_9_5 } else { 'while_exit_9_5 };
+    }
+    'while_body_9_5: {
+        @__reg_t2: int = @__reg_t4 * 4;
+        @__reg_t6: int = @__reg_a1 as int;
+        @__reg_t1: int = @__reg_t6 + @__reg_t2;
+        @__reg_t6: int = * (&i32)@__reg_t1;
+        @__reg_t6: int = @__reg_t5 < @__reg_t6;
+        => if @__reg_t6 { 'if_true_11_6 } else { 'if_false_11_6 };
+    }
+    'while_exit_9_5: {
+        @__reg_t4: int = @__reg_t4 + 1;
+        => 'while_cond_6_4;
+    }
+    'if_true_11_6: {
+        @__reg_t6: int = @__reg_t4 * 800;
+        @__reg_a7: int = @V_0 as int;
+        @__reg_t3: int = @__reg_a7 + @__reg_t6;
+        @__reg_t6: int = @__reg_t4 - 1;
+        @__reg_t6: int = @__reg_t6 * 800;
+        @__reg_t6: int = @__reg_a7 + @__reg_t6;
+        @__reg_a7: int = @__reg_t5 * 4;
+        @__reg_t6: int = @__reg_t6 + @__reg_a7;
+        @__reg_a6: int = * (&i32)@__reg_t6;
+        @__reg_t6: int = @__reg_t3 + @__reg_a7;
+        @__reg_t6 <- @__reg_a6;
+        => 'if_exit_11_6;
+    }
+    'if_exit_11_6: {
+        @__reg_t5: int = @__reg_t5 + 1;
+        => 'while_cond_9_5;
+    }
+    'if_false_11_6: {
+        @__reg_t6: int = @__reg_t4 - 1;
+        @__reg_t6: int = @__reg_t6 * 800;
+        @__reg_a5: int = @V_0 as int;
+        @__reg_a7: int = @__reg_a5 + @__reg_t6;
+        @__reg_t3: int = @__reg_t5 * 4;
+        @__reg_t6: int = @__reg_a7 + @__reg_t3;
+        @__reg_a6: int = * (&i32)@__reg_t6;
+        @__reg_t6: int = * (&i32)@__reg_t1;
+        @__reg_t6: int = @__reg_t5 - @__reg_t6;
+        @__reg_t6: int = @__reg_t6 * 4;
+        @__reg_t6: int = @__reg_a7 + @__reg_t6;
+        @__reg_a7: int = * (&i32)@__reg_t6;
+        @__reg_t6: int = @__reg_a2 as int;
+        @__reg_t6: int = @__reg_t6 + @__reg_t2;
+        @__reg_t6: int = * (&i32)@__reg_t6;
+        @__reg_a7: int = @__reg_a7 + @__reg_t6;
+        @__reg_t6: int = @__reg_a6 > @__reg_a7;
+        => if @__reg_t6 { 'if_true_19_13 } else { 'if_false_19_13 };
+    }
+    'if_true_19_13: {
+        @__reg_t6: int = @__reg_t4 * 800;
+        @__reg_t6: int = @__reg_a5 + @__reg_t6;
+        @__reg_t6: int = @__reg_t6 + @__reg_t3;
+        @__reg_t6 <- @__reg_a6;
+        => 'if_exit_11_6;
+    }
+    'if_false_19_13: {
+        @__reg_t6: int = @__reg_t4 * 800;
+        @__reg_t6: int = @__reg_a5 + @__reg_t6;
+        @__reg_t6: int = @__reg_t6 + @__reg_t3;
+        @__reg_t6 <- @__reg_a7;
+        => 'if_exit_11_6;
+    }
+    'while_cond_36_4: {
+        @__reg_t5: int = @__reg_t3 >= 1;
+        => if @__reg_t5 { 'while_body_36_4 } else { 'while_exit_36_4 };
+    }
+    'while_body_36_4: {
+        @__reg_t5: int = @__reg_t3 * 800;
+        @__reg_a5: int = @V_0 as int;
+        @__reg_t5: int = @__reg_a5 + @__reg_t5;
+        @__reg_a7: int = @__reg_t6 * 4;
+        @__reg_t5: int = @__reg_t5 + @__reg_a7;
+        @__reg_a6: int = * (&i32)@__reg_t5;
+        @__reg_t4: int = @__reg_t3 - 1;
+        @__reg_t5: int = @__reg_t4 * 800;
+        @__reg_t5: int = @__reg_a5 + @__reg_t5;
+        @__reg_t5: int = @__reg_t5 + @__reg_a7;
+        @__reg_t5: int = * (&i32)@__reg_t5;
+        @__reg_t5: int = @__reg_a6 > @__reg_t5;
+        => if @__reg_t5 { 'if_true_38_5 } else { 'if_false_38_5 };
+    }
+    'while_exit_36_4: {
+        @__reg_t5: int = @__reg_a0 * 800;
+        @__reg_t6: int = @V_0 as int;
+        @__reg_t6: int = @__reg_t6 + @__reg_t5;
+        @__reg_t5: int = @__reg_a4 * 4;
+        @__reg_t6: int = @__reg_t6 + @__reg_t5;
+        @__reg_a0: int = * (&i32)@__reg_t6;
+        return @__reg_a0;
+    }
+    'if_true_38_5: {
+        @__reg_a7: int = @__reg_t3 * 4;
+        @__reg_t5: int = @__reg_a3 as int;
+        @__reg_t5: int = @__reg_t5 + @__reg_a7;
+        @__reg_t3: int = 1;
+        @__reg_t5 <- @__reg_t3;
+        @__reg_t5: int = @__reg_a1 as int;
+        @__reg_t5: int = @__reg_t5 + @__reg_a7;
+        @__reg_t5: int = * (&i32)@__reg_t5;
+        @__reg_t6: int = @__reg_t6 - @__reg_t5;
+        => 'if_exit_38_5;
+    }
+    'if_exit_38_5: {
+        @__reg_t3: int = @__reg_t4;
+        => 'while_cond_36_4;
+    }
+    'if_false_38_5: {
+        @__reg_t3: int = @__reg_t3 * 4;
+        @__reg_t5: int = @__reg_a3 as int;
+        @__reg_t5: int = @__reg_t5 + @__reg_t3;
+        @__reg_t3: int = 0;
+        @__reg_t5 <- @__reg_t3;
+        => 'if_exit_38_5;
+    }
+    'L0: {
+        @__reg_t5: int = 0;
+        => 'while_cond_9_5;
+    }
+    'L1: {
+        @__reg_t6: int = @__reg_a4;
+        @__reg_t3: int = @__reg_a0;
+        => 'while_cond_36_4;
+    }
+}
+
+fn main() -> i32 {
+    let ref w_1: [i32; 6];
+    let ref v_1: [i32; 6];
+    let ref x_1: [i32; 6];
+    let ref mut __spill_13: int;
+    'entry: {
+        @__spill_13 <- @__reg_ra;
+        @__reg_a0: int = @w_1;
+        @__reg_a1: int = @__init_main_0;
+        @__reg_a2: int = 24;
+        @memcpy(@__reg_a0, @__reg_a1, @__reg_a2);
+        @__reg_a0: int = @v_1;
+        @__reg_a1: int = @__init_main_1;
+        @__reg_a2: int = 24;
+        @memcpy(@__reg_a0, @__reg_a1, @__reg_a2);
+        @__reg_a0: int = @x_1;
+        @__reg_a1: int = 0;
+        @__reg_a2: int = 24;
+        @memset(@__reg_a0, @__reg_a1, @__reg_a2);
+        @__reg_a0: int = 5;
+        @__reg_a1: int = @w_1;
+        @__reg_a2: int = @v_1;
+        @__reg_a3: int = @x_1;
+        @__reg_a4: int = 10;
+        @__reg_a0: int = @KnapSack(@__reg_a0, @__reg_a1, @__reg_a2, @__reg_a3, @__reg_a4);
+        @print_int(@__reg_a0);
+        @__reg_a0: int = 0;
+        @__reg_ra: int = * (&mut int)@__spill_13;
+        return @__reg_a0;
+    }
+}

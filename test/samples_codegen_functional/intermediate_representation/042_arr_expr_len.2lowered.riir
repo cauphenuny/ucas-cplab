@@ -1,0 +1,29 @@
+let ref mut arr_0: [i32; 6] = {1, 2, 33, 4, 5, 6};
+let mut __reg_a0: int;
+let mut __reg_t4: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn main() -> i32 {
+    'entry: {
+        @__reg_a0: int = 0;
+        @__reg_t5: int = @__reg_a0;
+        => 'while_cond_6_2;
+    }
+    'while_cond_6_2: {
+        @__reg_t6: int = @__reg_t5 < 6;
+        => if @__reg_t6 { 'while_body_6_2 } else { 'while_exit_6_2 };
+    }
+    'while_body_6_2: {
+        @__reg_t4: int = @__reg_t5 * 4;
+        @__reg_t6: int = @arr_0 as int;
+        @__reg_t6: int = @__reg_t6 + @__reg_t4;
+        @__reg_t6: int = * (&i32)@__reg_t6;
+        @__reg_a0: int = @__reg_a0 + @__reg_t6;
+        @__reg_t5: int = @__reg_t5 + 1;
+        => 'while_cond_6_2;
+    }
+    'while_exit_6_2: {
+        return @__reg_a0;
+    }
+}

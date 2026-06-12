@@ -1,0 +1,7 @@
+fn main() -> i32 {
+    'entry: {
+        @print_double(-13.0000);
+        @print_double(2.00000e-05);
+        return 0;
+    }
+}

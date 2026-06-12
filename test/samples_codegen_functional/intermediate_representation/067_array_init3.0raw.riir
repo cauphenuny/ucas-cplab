@@ -1,0 +1,43 @@
+let ref mut A_0: [[bool; 2]; 4] = {true, true, true, false, true, true};
+
+fn main() -> i32 {
+    let i_0: i32;
+    let j_0: i32;
+    'entry: {
+        %i_0.0: i32 = 0;
+        %j_0.0: i32 = 0;
+        %i_0.1: i32 = 0;
+        => 'while_cond_10_4;
+    }
+    'while_cond_10_4: {
+        %i_0.2: i32 = phi('while_exit_12_8: %i_0.3, 'entry: %i_0.1);
+        %0: bool = %i_0.2 < 4;
+        => if %0 { 'while_body_10_4 } else { 'while_exit_10_4 };
+    }
+    'while_body_10_4: {
+        %j_0.1: i32 = 0;
+        => 'while_cond_12_8;
+    }
+    'while_exit_10_4: {
+        return 0;
+    }
+    'while_cond_12_8: {
+        %j_0.2: i32 = phi('while_body_12_8: %j_0.3, 'while_body_10_4: %j_0.1);
+        %1: bool = %j_0.2 < 2;
+        => if %1 { 'while_body_12_8 } else { 'while_exit_12_8 };
+    }
+    'while_body_12_8: {
+        %2: &mut[bool] = &mut @A_0[%i_0.2];
+        %3: &bool = & %2[%j_0.2];
+        %4: bool = * (&bool)%3;
+        @print_bool(%4);
+        %5: i32 = %j_0.2 + 1;
+        %j_0.3: i32 = %5;
+        => 'while_cond_12_8;
+    }
+    'while_exit_12_8: {
+        %6: i32 = %i_0.2 + 1;
+        %i_0.3: i32 = %6;
+        => 'while_cond_10_4;
+    }
+}

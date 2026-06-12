@@ -1,0 +1,45 @@
+let mut __reg_ra: int;
+let mut __reg_a0: int;
+let mut __reg_a1: int;
+let mut __reg_t6: int;
+
+fn deepWhileBr(a_1: i32, b_0: i32) -> i32 {
+    'entry: {
+        @__reg_a0: int = @__reg_a0 + @__reg_a1;
+        => 'while_cond_8_2;
+    }
+    'while_cond_8_2: {
+        @__reg_t6: int = @__reg_a0 < 75;
+        => if @__reg_t6 { 'while_body_8_2 } else { 'while_exit_8_2 };
+    }
+    'while_body_8_2: {
+        @__reg_t6: int = @__reg_a0 < 100;
+        => if @__reg_t6 { 'if_true_11_4 } else { 'while_cond_8_2 };
+    }
+    'while_exit_8_2: {
+        return @__reg_a0;
+    }
+    'if_true_11_4: {
+        @__reg_a0: int = @__reg_a0 + 42;
+        @__reg_t6: int = @__reg_a0 > 99;
+        => if @__reg_t6 { 'if_exit_16_8 } else { 'while_cond_8_2 };
+    }
+    'if_exit_16_8: {
+        @__reg_a0: int = 168;
+        => 'while_cond_8_2;
+    }
+}
+
+fn main() -> i32 {
+    let ref mut __spill_13: int;
+    'entry: {
+        @__spill_13 <- @__reg_ra;
+        @__reg_a0: int = 2;
+        @__reg_a1: int = 2;
+        @__reg_a0: int = @deepWhileBr(@__reg_a0, @__reg_a1);
+        @print_int(@__reg_a0);
+        @__reg_a0: int = 0;
+        @__reg_ra: int = * (&mut int)@__spill_13;
+        return @__reg_a0;
+    }
+}

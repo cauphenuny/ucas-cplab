@@ -1,0 +1,53 @@
+let ref mut A_0: [[bool; 2]; 4] = {true, true, true, false, true, true};
+let mut __reg_ra: int;
+let mut __reg_s0: int;
+let mut __reg_s1: int;
+let mut __reg_a0: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn main() -> i32 {
+    let ref mut __spill_22: int;
+    let ref mut __spill_23: int;
+    let ref mut __spill_24: int;
+    'entry: {
+        @__spill_24 <- @__reg_ra;
+        @__spill_23 <- @__reg_s0;
+        @__spill_22 <- @__reg_s1;
+        @__reg_s0: int = 0;
+        => 'while_cond_10_4;
+    }
+    'while_cond_10_4: {
+        @__reg_t6: int = @__reg_s0 < 4;
+        => if @__reg_t6 { 'L0 } else { 'while_exit_10_4 };
+    }
+    'while_exit_10_4: {
+        @__reg_a0: int = 0;
+        @__reg_s1: int = * (&mut int)@__spill_22;
+        @__reg_s0: int = * (&mut int)@__spill_23;
+        @__reg_ra: int = * (&mut int)@__spill_24;
+        return @__reg_a0;
+    }
+    'while_cond_12_8: {
+        @__reg_t6: int = @__reg_s1 < 2;
+        => if @__reg_t6 { 'while_body_12_8 } else { 'while_exit_12_8 };
+    }
+    'while_body_12_8: {
+        @__reg_t5: int = @__reg_s0 * 2;
+        @__reg_t6: int = @A_0 as int;
+        @__reg_t6: int = @__reg_t6 + @__reg_t5;
+        @__reg_t6: int = @__reg_t6 + @__reg_s1;
+        @__reg_a0: int = * (&bool)@__reg_t6;
+        @print_bool(@__reg_a0);
+        @__reg_s1: int = @__reg_s1 + 1;
+        => 'while_cond_12_8;
+    }
+    'while_exit_12_8: {
+        @__reg_s0: int = @__reg_s0 + 1;
+        => 'while_cond_10_4;
+    }
+    'L0: {
+        @__reg_s1: int = 0;
+        => 'while_cond_12_8;
+    }
+}

@@ -1,0 +1,45 @@
+let ref mut a_0: i32 = 0;
+let ref mut b_0: i32 = 0;
+let mut __reg_ra: int;
+let mut __reg_s0: int;
+let mut __reg_a0: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn main() -> i32 {
+    let ref mut __spill_21: int;
+    let ref mut __spill_22: int;
+    'entry: {
+        @__spill_22 <- @__reg_ra;
+        @__spill_21 <- @__reg_s0;
+        @__reg_a0: int = @get_int();
+        @__reg_s0: int = @a_0;
+        @__reg_s0 <- @__reg_a0;
+        @__reg_a0: int = @get_int();
+        @__reg_t6: int = @b_0;
+        @__reg_t6 <- @__reg_a0;
+        @__reg_t5: int = * (&mut i32)@__reg_s0;
+        @__reg_t6: int = * (&mut i32)@__reg_t6;
+        @__reg_t6: int = @__reg_t5 == @__reg_t6;
+        => if @__reg_t6 { 'L0 } else { 'if_false_8_1 };
+    }
+    'if_exit_8_1: {
+        @__reg_s0: int = * (&mut int)@__spill_21;
+        @__reg_ra: int = * (&mut int)@__spill_22;
+        return @__reg_a0;
+    }
+    'if_false_8_1: {
+        @__reg_a0: int = 0;
+        => 'if_exit_8_1;
+    }
+    'L0: {
+        @__reg_t6: int = @a_0;
+        @__reg_t6: int = * (&mut i32)@__reg_t6;
+        @__reg_t6: int = @__reg_t6 != 3;
+        => if @__reg_t6 { 'L1 } else { 'if_false_8_1 };
+    }
+    'L1: {
+        @__reg_a0: int = 1;
+        => 'if_exit_8_1;
+    }
+}

@@ -1,0 +1,15 @@
+let mut __reg_ra: int;
+let mut __reg_a0: int;
+let mut __reg_fa0: float;
+
+fn main() -> i32 {
+    let ref mut __spill_13: int;
+    'entry: {
+        @__spill_13 <- @__reg_ra;
+        @__reg_fa0: float = @get_float();
+        @print_float(@__reg_fa0);
+        @__reg_a0: int = 0;
+        @__reg_ra: int = * (&mut int)@__spill_13;
+        return @__reg_a0;
+    }
+}

@@ -1,0 +1,46 @@
+fn deepWhileBr(a_1: i32, b_0: i32) -> i32 {
+    'entry: {
+        %0: i32 = @a_1 + @b_0;
+        => 'while_cond_8_2;
+    }
+    'while_cond_8_2: {
+        %5: i32 = phi('if_exit_11_4: %6, 'entry: %0);
+        %1: bool = %5 < 75;
+        => if %1 { 'while_body_8_2 } else { 'while_exit_8_2 };
+    }
+    'while_body_8_2: {
+        %2: bool = %5 < 100;
+        => if %2 { 'if_true_11_4 } else { 'if_exit_11_4 };
+    }
+    'while_exit_8_2: {
+        return %5;
+    }
+    'if_true_11_4: {
+        %3: i32 = %5 + 42;
+        %4: bool = %3 > 99;
+        => if %4 { 'if_true_16_8 } else { 'if_exit_13_6 };
+    }
+    'if_exit_11_4: {
+        %6: i32 = phi('if_exit_13_6: %7, 'while_body_8_2: %5);
+        => 'while_cond_8_2;
+    }
+    'if_exit_13_6: {
+        %7: i32 = phi('if_exit_16_8: %8, 'if_true_11_4: %3);
+        => 'if_exit_11_4;
+    }
+    'if_true_16_8: {
+        => 'if_exit_16_8;
+    }
+    'if_exit_16_8: {
+        %8: i32 = phi('if_true_16_8: 168, 'if_true_11_4: %3);
+        => 'if_exit_13_6;
+    }
+}
+
+fn main() -> i32 {
+    'entry: {
+        %0: i32 = @deepWhileBr(2, 2);
+        @print_int(%0);
+        return 0;
+    }
+}

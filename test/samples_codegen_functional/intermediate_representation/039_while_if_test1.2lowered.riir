@@ -1,0 +1,53 @@
+let mut __reg_ra: int;
+let mut __reg_a0: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn whileIf() -> i32 {
+    'entry: {
+        @__reg_a0: int = 0;
+        @__reg_t6: int = @__reg_a0;
+        => 'while_cond_7_2;
+    }
+    'while_cond_7_2: {
+        @__reg_t5: int = @__reg_t6 < 100;
+        => if @__reg_t5 { 'while_body_7_2 } else { 'while_exit_7_2 };
+    }
+    'while_body_7_2: {
+        @__reg_t5: int = @__reg_t6 == 5;
+        => if @__reg_t5 { 'L0 } else { 'if_false_8_4 };
+    }
+    'while_exit_7_2: {
+        return @__reg_a0;
+    }
+    'if_exit_8_4: {
+        @__reg_t6: int = @__reg_t6 + 1;
+        => 'while_cond_7_2;
+    }
+    'if_false_8_4: {
+        @__reg_t5: int = @__reg_t6 == 10;
+        => if @__reg_t5 { 'L1 } else { 'if_false_11_9 };
+    }
+    'if_false_11_9: {
+        @__reg_a0: int = @__reg_t6 * 2;
+        => 'if_exit_8_4;
+    }
+    'L0: {
+        @__reg_a0: int = 25;
+        => 'if_exit_8_4;
+    }
+    'L1: {
+        @__reg_a0: int = 42;
+        => 'if_exit_8_4;
+    }
+}
+
+fn main() -> i32 {
+    let ref mut __spill_13: int;
+    'entry: {
+        @__spill_13 <- @__reg_ra;
+        @__reg_a0: int = @whileIf();
+        @__reg_ra: int = * (&mut int)@__spill_13;
+        return @__reg_a0;
+    }
+}

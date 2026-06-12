@@ -1,0 +1,91 @@
+let ref mut A_0: [[[[f32; 2]; 2]; 2]; 4] = {1.00000f, 2.00000f, 3.00000f, 4.00000f, 5.00000f, 6.00000f, 7.00000f, 8.00000f, 9.00000f, 10.0000f, 11.0000f, 12.0000f, 13.0000f, 14.0000f, 15.0000f, 16.0000f, 17.0000f, 18.0000f, 19.0000f, 20.0000f, 21.0000f, 22.0000f, 23.0000f, 24.0000f, 25.0000f, 26.0000f, 27.0000f, 28.0000f, 29.0000f, 30.0000f, 31.0000f, 32.0000f};
+let mut __reg_ra: int;
+let mut __reg_s0: int;
+let mut __reg_s1: int;
+let mut __reg_a0: int;
+let mut __reg_s2: int;
+let mut __reg_s3: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+let mut __reg_fa0: float;
+
+fn main() -> i32 {
+    let ref mut __spill_33: int;
+    let ref mut __spill_34: int;
+    let ref mut __spill_35: int;
+    let ref mut __spill_36: int;
+    let ref mut __spill_37: int;
+    'entry: {
+        @__spill_37 <- @__reg_ra;
+        @__spill_36 <- @__reg_s0;
+        @__spill_35 <- @__reg_s1;
+        @__spill_34 <- @__reg_s2;
+        @__spill_33 <- @__reg_s3;
+        @__reg_s0: int = 0;
+        => 'while_cond_10_4;
+    }
+    'while_cond_10_4: {
+        @__reg_t6: int = @__reg_s0 < 4;
+        => if @__reg_t6 { 'L0 } else { 'while_exit_10_4 };
+    }
+    'while_exit_10_4: {
+        @__reg_a0: int = 0;
+        @__reg_s3: int = * (&mut int)@__spill_33;
+        @__reg_s2: int = * (&mut int)@__spill_34;
+        @__reg_s1: int = * (&mut int)@__spill_35;
+        @__reg_s0: int = * (&mut int)@__spill_36;
+        @__reg_ra: int = * (&mut int)@__spill_37;
+        return @__reg_a0;
+    }
+    'while_cond_12_8: {
+        @__reg_t6: int = @__reg_s1 < 2;
+        => if @__reg_t6 { 'L1 } else { 'while_exit_12_8 };
+    }
+    'while_exit_12_8: {
+        @__reg_s0: int = @__reg_s0 + 1;
+        => 'while_cond_10_4;
+    }
+    'while_cond_14_12: {
+        @__reg_t6: int = @__reg_s2 < 2;
+        => if @__reg_t6 { 'L2 } else { 'while_exit_14_12 };
+    }
+    'while_exit_14_12: {
+        @__reg_s1: int = @__reg_s1 + 1;
+        => 'while_cond_12_8;
+    }
+    'while_cond_16_16: {
+        @__reg_t6: int = @__reg_s3 < 2;
+        => if @__reg_t6 { 'while_body_16_16 } else { 'while_exit_16_16 };
+    }
+    'while_body_16_16: {
+        @__reg_t5: int = @__reg_s0 * 32;
+        @__reg_t6: int = @A_0 as int;
+        @__reg_t6: int = @__reg_t6 + @__reg_t5;
+        @__reg_t5: int = @__reg_s1 * 16;
+        @__reg_t6: int = @__reg_t6 + @__reg_t5;
+        @__reg_t5: int = @__reg_s2 * 8;
+        @__reg_t6: int = @__reg_t6 + @__reg_t5;
+        @__reg_t5: int = @__reg_s3 * 4;
+        @__reg_t6: int = @__reg_t6 + @__reg_t5;
+        @__reg_fa0: float = * (&f32)@__reg_t6;
+        @print_float(@__reg_fa0);
+        @__reg_s3: int = @__reg_s3 + 1;
+        => 'while_cond_16_16;
+    }
+    'while_exit_16_16: {
+        @__reg_s2: int = @__reg_s2 + 1;
+        => 'while_cond_14_12;
+    }
+    'L0: {
+        @__reg_s1: int = 0;
+        => 'while_cond_12_8;
+    }
+    'L1: {
+        @__reg_s2: int = 0;
+        => 'while_cond_14_12;
+    }
+    'L2: {
+        @__reg_s3: int = 0;
+        => 'while_cond_16_16;
+    }
+}

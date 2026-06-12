@@ -1,0 +1,31 @@
+let mut __reg_a0: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn main() -> i32 {
+    'entry: {
+        @__reg_a0: int = 0;
+        @__reg_t6: int = @__reg_a0;
+        => 'while_cond_7_4;
+    }
+    'while_cond_7_4: {
+        @__reg_t5: int = @__reg_t6 < 100;
+        => if @__reg_t5 { 'while_body_7_4 } else { 'while_exit_7_4 };
+    }
+    'while_body_7_4: {
+        @__reg_t5: int = @__reg_t6 == 50;
+        => if @__reg_t5 { 'if_true_8_8 } else { 'if_exit_8_8 };
+    }
+    'while_exit_7_4: {
+        return @__reg_a0;
+    }
+    'if_true_8_8: {
+        @__reg_t6: int = @__reg_t6 + 1;
+        => 'while_cond_7_4;
+    }
+    'if_exit_8_8: {
+        @__reg_a0: int = @__reg_a0 + @__reg_t6;
+        @__reg_t6: int = @__reg_t6 + 1;
+        => 'while_cond_7_4;
+    }
+}

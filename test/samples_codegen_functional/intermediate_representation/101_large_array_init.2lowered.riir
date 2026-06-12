@@ -1,0 +1,47 @@
+const ref __init_main_0: [i32; 3] = {1, 2, 3};
+const ref __init_main_1: [i32; 4] = {0, 1, 2, 3};
+let mut __reg_ra: int;
+let mut __reg_a0: int;
+let mut __reg_a1: int;
+let mut __reg_a2: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn main() -> i32 {
+    let ref a_0: [i32; 100];
+    let ref x_0: [i32; 4];
+    let ref b_0: [i32; 100];
+    let ref mut __spill_26: int;
+    'entry: {
+        @__spill_26 <- @__reg_ra;
+        @__reg_a0: int = @a_0;
+        @__reg_a1: int = 0;
+        @__reg_a2: int = 400;
+        @memset(@__reg_a0, @__reg_a1, @__reg_a2);
+        @__reg_a0: int = @a_0;
+        @__reg_a1: int = @__init_main_0;
+        @__reg_a2: int = 12;
+        @memcpy(@__reg_a0, @__reg_a1, @__reg_a2);
+        @__reg_a0: int = @x_0;
+        @__reg_a1: int = @__init_main_1;
+        @__reg_a2: int = 16;
+        @memcpy(@__reg_a0, @__reg_a1, @__reg_a2);
+        @__reg_a0: int = @b_0;
+        @__reg_a1: int = 0;
+        @__reg_a2: int = 400;
+        @memset(@__reg_a0, @__reg_a1, @__reg_a2);
+        @__reg_t6: int = @b_0 as int;
+        @__reg_t6: int = @__reg_t6 + 396;
+        @__reg_t5: int = * (&i32)@__reg_t6;
+        @__reg_t6: int = @a_0 as int;
+        @__reg_t6: int = @__reg_t6 + 8;
+        @__reg_t6: int = * (&i32)@__reg_t6;
+        @__reg_t5: int = @__reg_t5 + @__reg_t6;
+        @__reg_t6: int = @x_0 as int;
+        @__reg_t6: int = @__reg_t6 + 12;
+        @__reg_t6: int = * (&i32)@__reg_t6;
+        @__reg_a0: int = @__reg_t5 + @__reg_t6;
+        @__reg_ra: int = * (&mut int)@__spill_26;
+        return @__reg_a0;
+    }
+}

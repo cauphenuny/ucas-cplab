@@ -1,8 +1,0 @@
-fn main() -> i32 {
-    const y_0: f64 = 2.00000e-05;
-    'entry: {
-        @print_double(-13.0000);
-        @print_double(@y_0);
-        return 0;
-    }
-}

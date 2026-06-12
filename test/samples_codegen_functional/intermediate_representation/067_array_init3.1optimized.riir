@@ -1,0 +1,32 @@
+let ref mut A_0: [[bool; 2]; 4] = {true, true, true, false, true, true};
+
+fn main() -> i32 {
+    'entry: {
+        => 'while_cond_10_4;
+    }
+    'while_cond_10_4: {
+        %7: i32 = phi('while_exit_12_8: %6, 'entry: 0);
+        %0: bool = %7 < 4;
+        => if %0 { 'while_cond_12_8 } else { 'while_exit_10_4 };
+    }
+    'while_exit_10_4: {
+        return 0;
+    }
+    'while_cond_12_8: {
+        %8: i32 = phi('while_body_12_8: %5, 'while_cond_10_4: 0);
+        %1: bool = %8 < 2;
+        => if %1 { 'while_body_12_8 } else { 'while_exit_12_8 };
+    }
+    'while_body_12_8: {
+        %2: &mut[bool] = &mut @A_0[%7];
+        %3: &bool = & %2[%8];
+        %4: bool = * (&bool)%3;
+        @print_bool(%4);
+        %5: i32 = %8 + 1;
+        => 'while_cond_12_8;
+    }
+    'while_exit_12_8: {
+        %6: i32 = %7 + 1;
+        => 'while_cond_10_4;
+    }
+}

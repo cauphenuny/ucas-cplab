@@ -1,0 +1,50 @@
+const ref __init_main_0: [i32; 25] = {1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5};
+let mut __reg_ra: int;
+let mut __reg_a0: int;
+let mut __reg_a1: int;
+let mut __reg_a2: int;
+let mut __reg_a6: int;
+let mut __reg_a7: int;
+let mut __reg_t3: int;
+let mut __reg_t4: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn main() -> i32 {
+    let ref a_0: [[i32; 5]; 5];
+    let ref mut __spill_34: int;
+    'entry: {
+        @__spill_34 <- @__reg_ra;
+        @__reg_a0: int = @a_0;
+        @__reg_a1: int = @__init_main_0;
+        @__reg_a2: int = 100;
+        @memcpy(@__reg_a0, @__reg_a1, @__reg_a2);
+        @__reg_t4: int = 0;
+        => 'while_cond_7_4;
+    }
+    'while_cond_7_4: {
+        @__reg_t6: int = @__reg_t4 < 5;
+        => if @__reg_t6 { 'while_body_7_4 } else { 'while_exit_7_4 };
+    }
+    'while_body_7_4: {
+        @__reg_a7: int = @a_0 as int;
+        @__reg_t6: int = @__reg_a7 + 20;
+        @__reg_t3: int = @__reg_t4 * 4;
+        @__reg_t5: int = @__reg_t6 + @__reg_t3;
+        @__reg_a6: int = * (&i32)@__reg_t5;
+        @__reg_t6: int = @__reg_a7 + 40;
+        @__reg_t6: int = @__reg_t6 + @__reg_t3;
+        @__reg_t3: int = * (&i32)@__reg_t6;
+        @__reg_t5 <- @__reg_t3;
+        @__reg_t6 <- @__reg_a6;
+        @__reg_t4: int = @__reg_t4 + 1;
+        => 'while_cond_7_4;
+    }
+    'while_exit_7_4: {
+        @__reg_t6: int = @a_0 as int;
+        @__reg_t6: int = @__reg_t6 + 40;
+        @__reg_a0: int = * (&i32)@__reg_t6;
+        @__reg_ra: int = * (&mut int)@__spill_34;
+        return @__reg_a0;
+    }
+}

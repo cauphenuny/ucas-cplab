@@ -1,0 +1,92 @@
+let mut __reg_ra: int;
+let mut __reg_a0: int;
+let mut __reg_a1: int;
+let mut __reg_a2: int;
+let mut __reg_t3: int;
+let mut __reg_t4: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn removeElement(nums_0: &mut[i32], n_0: i32, val_0: i32) -> i32 {
+    'entry: {
+        @__reg_t6: int = 0;
+        => 'while_cond_4_4;
+    }
+    'while_cond_4_4: {
+        @__reg_t5: int = @__reg_t6 < @__reg_a1;
+        => if @__reg_t5 { 'while_body_4_4 } else { 'while_exit_4_4 };
+    }
+    'while_body_4_4: {
+        @__reg_t4: int = @__reg_t6 * 4;
+        @__reg_t5: int = @__reg_a0 as int;
+        @__reg_t4: int = @__reg_t5 + @__reg_t4;
+        @__reg_t3: int = * (&i32)@__reg_t4;
+        @__reg_t3: int = @__reg_t3 == @__reg_a2;
+        => if @__reg_t3 { 'if_true_5_8 } else { 'if_false_5_8 };
+    }
+    'while_exit_4_4: {
+        @__reg_a0: int = @__reg_a1;
+        return @__reg_a0;
+    }
+    'if_true_5_8: {
+        @__reg_a1: int = @__reg_a1 - 1;
+        @__reg_t3: int = @__reg_a1 * 4;
+        @__reg_t5: int = @__reg_t5 + @__reg_t3;
+        @__reg_t5: int = * (&i32)@__reg_t5;
+        @__reg_t4 <- @__reg_t5;
+        => 'while_cond_4_4;
+    }
+    'if_false_5_8: {
+        @__reg_t6: int = @__reg_t6 + 1;
+        => 'while_cond_4_4;
+    }
+}
+
+fn main() -> i32 {
+    let ref a_0: [i32; 10];
+    let ref mut __spill_43: int;
+    'entry: {
+        @__spill_43 <- @__reg_ra;
+        @__reg_a0: int = @a_0;
+        @__reg_a1: int = 0;
+        @__reg_a2: int = 40;
+        @memset(@__reg_a0, @__reg_a1, @__reg_a2);
+        @__reg_t5: int = @a_0 as int;
+        @__reg_t6: int = @__reg_t5 as int;
+        @__reg_t4: int = 3;
+        @__reg_t6 <- @__reg_t4;
+        @__reg_t6: int = @__reg_t5 + 4;
+        @__reg_t4: int = 3;
+        @__reg_t6 <- @__reg_t4;
+        @__reg_t6: int = @__reg_t5 + 8;
+        @__reg_t4: int = 9;
+        @__reg_t6 <- @__reg_t4;
+        @__reg_t6: int = @__reg_t5 + 12;
+        @__reg_t4: int = 0;
+        @__reg_t6 <- @__reg_t4;
+        @__reg_t6: int = @__reg_t5 + 16;
+        @__reg_t4: int = 0;
+        @__reg_t6 <- @__reg_t4;
+        @__reg_t6: int = @__reg_t5 + 20;
+        @__reg_t4: int = 1;
+        @__reg_t6 <- @__reg_t4;
+        @__reg_t6: int = @__reg_t5 + 24;
+        @__reg_t4: int = 1;
+        @__reg_t6 <- @__reg_t4;
+        @__reg_t6: int = @__reg_t5 + 28;
+        @__reg_t4: int = 5;
+        @__reg_t6 <- @__reg_t4;
+        @__reg_t6: int = @__reg_t5 + 32;
+        @__reg_t4: int = 7;
+        @__reg_t6 <- @__reg_t4;
+        @__reg_t6: int = @__reg_t5 + 36;
+        @__reg_t5: int = 8;
+        @__reg_t6 <- @__reg_t5;
+        @__reg_a0: int = @a_0;
+        @__reg_a1: int = 10;
+        @__reg_a2: int = 3;
+        @__reg_a0: int = @removeElement(@__reg_a0, @__reg_a1, @__reg_a2);
+        @__reg_ra: int = * (&mut int)@__spill_43;
+        return @__reg_a0;
+    }
+}

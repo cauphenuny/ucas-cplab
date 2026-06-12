@@ -1,0 +1,7 @@
+fn main() -> i32 {
+    'entry: {
+        @print_float(13.0000f);
+        @print_float(2.00000e-05f);
+        return 0;
+    }
+}

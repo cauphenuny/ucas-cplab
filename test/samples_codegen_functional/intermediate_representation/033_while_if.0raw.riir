@@ -1,0 +1,74 @@
+fn get_one(a_0: i32) -> i32 {
+    'entry: {
+        return 1;
+    }
+}
+
+fn deepWhileBr(a_1: i32, b_0: i32) -> i32 {
+    let c_0: i32;
+    let d_0: i32;
+    let e_0: i32;
+    'entry: {
+        %c_0.0: i32 = 0;
+        %0: i32 = @a_1 + @b_0;
+        %c_0.1: i32 = %0;
+        => 'while_cond_8_2;
+    }
+    'while_cond_8_2: {
+        %c_0.2: i32 = phi('if_exit_11_4: %c_0.7, 'entry: %c_0.1);
+        %1: bool = %c_0.2 < 75;
+        => if %1 { 'while_body_8_2 } else { 'while_exit_8_2 };
+    }
+    'while_body_8_2: {
+        %d_0.0: i32 = 0;
+        %d_0.1: i32 = 42;
+        %2: bool = %c_0.2 < 100;
+        => if %2 { 'if_true_11_4 } else { 'if_exit_11_4 };
+    }
+    'while_exit_8_2: {
+        return %c_0.2;
+    }
+    'if_true_11_4: {
+        %3: i32 = %c_0.2 + %d_0.1;
+        %c_0.3: i32 = %3;
+        %4: bool = %c_0.3 > 99;
+        => if %4 { 'if_true_13_6 } else { 'if_exit_13_6 };
+    }
+    'if_exit_11_4: {
+        %c_0.7: i32 = phi('if_exit_13_6: %c_0.4, 'while_body_8_2: %c_0.2);
+        => 'while_cond_8_2;
+    }
+    'if_true_13_6: {
+        %e_0.0: i32 = 0;
+        %5: i32 = %d_0.1 * 2;
+        %e_0.1: i32 = %5;
+        %6: i32 = @get_one(0);
+        %7: bool = %6 == 1;
+        => if %7 { 'if_true_16_8 } else { 'if_exit_16_8 };
+    }
+    'if_exit_13_6: {
+        %c_0.4: i32 = phi('if_exit_16_8: %c_0.6, 'if_true_11_4: %c_0.3);
+        => 'if_exit_11_4;
+    }
+    'if_true_16_8: {
+        %8: i32 = %e_0.1 * 2;
+        %c_0.5: i32 = %8;
+        => 'if_exit_16_8;
+    }
+    'if_exit_16_8: {
+        %c_0.6: i32 = phi('if_true_16_8: %c_0.5, 'if_true_13_6: %c_0.3);
+        => 'if_exit_13_6;
+    }
+}
+
+fn main() -> i32 {
+    let p_0: i32;
+    'entry: {
+        %p_0.0: i32 = 0;
+        %p_0.1: i32 = 2;
+        %0: i32 = @deepWhileBr(%p_0.1, %p_0.1);
+        %p_0.2: i32 = %0;
+        @print_int(%p_0.2);
+        return 0;
+    }
+}

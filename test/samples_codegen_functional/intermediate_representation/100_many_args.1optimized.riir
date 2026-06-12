@@ -1,0 +1,184 @@
+let ref mut mix_result_i_0: i32 = 0;
+let ref mut mix_result_f_0: f32 = 0.00000f;
+let ref mut mix_result_d_0: f64 = 0.00000;
+
+fn func(a0_0: i32, a1_0: i32, a2_0: i32, a3_0: bool, a4_0: i32, a5_0: bool, a6_0: i32, a7_0: i32, a8_0: i32, flag_0: bool, a9_0: i32) -> i32 {
+    'entry: {
+        %0: bool = @a9_0 == 0;
+        => if %0 { 'if_true_3_4 } else { 'if_exit_3_4 };
+    }
+    'if_true_3_4: {
+        => if @flag_0 { 'if_true_4_8 } else { 'if_false_4_8 };
+    }
+    'if_exit_3_4: {
+        %1: i32 = @a9_0 - 1;
+        %2: i32 = @func(@a0_0, @a1_0, @a2_0, @a3_0, @a4_0, @a5_0, @a6_0, @a7_0, @a8_0, @flag_0, %1);
+        %3: i32 = @a0_0 + @a1_0;
+        %4: i32 = %3 + @a2_0;
+        %5: i32 = %4 + @a4_0;
+        %6: i32 = %5 + @a6_0;
+        %7: i32 = %6 + @a7_0;
+        %8: i32 = %7 + @a8_0;
+        %9: i32 = %8 + @a9_0;
+        %10: i32 = %9 + %2;
+        return %10;
+    }
+    'if_true_4_8: {
+        return 0;
+    }
+    'if_false_4_8: {
+        return 1;
+    }
+}
+
+fn mix(a0_1: i32, a1_1: i32, fa0_0: f32, fa1_0: f64, a2_1: i32, fa2_0: f32, a3_1: i32, a4_1: i32, fa3_0: f32, a5_1: bool, a6_1: i32, a7_1: i32, fa4_0: f64, fa5_0: f32, spill_0_0: i32, spill_1_0: bool, fa6_0: f32, fa7_0: f64, spill_3_0: f32, spill_4_0: i32, spill_5_0: f64, spill_6_0: i32, spill_7_0: bool) -> bool {
+    'entry: {
+        => if @spill_1_0 { 'if_true_26_4 } else { 'if_false_26_4 };
+    }
+    'if_true_26_4: {
+        => if @spill_7_0 { 'if_true_27_8 } else { 'if_false_27_8 };
+    }
+    'if_exit_26_4: {
+        %2: i32 = @a0_1 + @a1_1;
+        %3: i32 = %2 + @a2_1;
+        %4: i32 = %3 + @a3_1;
+        %5: i32 = %4 + @a4_1;
+        %6: i32 = %5 + @a6_1;
+        %7: i32 = %6 + @a7_1;
+        %8: i32 = %7 + @spill_0_0;
+        %9: i32 = %8 + @spill_4_0;
+        %10: i32 = %9 + @spill_6_0;
+        %11: i32 = * (&mut i32)@mix_result_i_0;
+        %12: i32 = %11 + %10;
+        @mix_result_i_0 <- %12;
+        %13: f32 = @fa0_0 + @fa2_0;
+        @mix_result_f_0 <- %13;
+        %14: f32 = * (&mut f32)@mix_result_f_0;
+        %15: f32 = %14 + @fa3_0;
+        @mix_result_f_0 <- %15;
+        %16: f32 = * (&mut f32)@mix_result_f_0;
+        %17: f32 = %16 + @fa5_0;
+        @mix_result_f_0 <- %17;
+        %18: f32 = * (&mut f32)@mix_result_f_0;
+        %19: f32 = %18 + @fa6_0;
+        @mix_result_f_0 <- %19;
+        %20: f32 = * (&mut f32)@mix_result_f_0;
+        %21: f32 = %20 + @spill_3_0;
+        @mix_result_f_0 <- %21;
+        %22: f64 = @fa1_0 + @fa4_0;
+        @mix_result_d_0 <- %22;
+        %23: f64 = * (&mut f64)@mix_result_d_0;
+        %24: f64 = %23 + @fa7_0;
+        @mix_result_d_0 <- %24;
+        %25: f64 = * (&mut f64)@mix_result_d_0;
+        %26: f64 = %25 + @spill_5_0;
+        @mix_result_d_0 <- %26;
+        => 'while_cond_70_4;
+    }
+    'if_false_26_4: {
+        => if @a5_1 { 'if_true_33_8 } else { 'if_false_33_8 };
+    }
+    'if_true_27_8: {
+        @mix_result_i_0 <- 0;
+        => 'if_exit_26_4;
+    }
+    'if_false_27_8: {
+        @mix_result_i_0 <- 1;
+        => 'if_exit_26_4;
+    }
+    'if_true_33_8: {
+        %0: i32 = @spill_4_0 + @spill_6_0;
+        @mix_result_i_0 <- %0;
+        => 'if_exit_26_4;
+    }
+    'if_false_33_8: {
+        %1: i32 = @spill_0_0 + @a6_1;
+        @mix_result_i_0 <- %1;
+        => 'if_exit_26_4;
+    }
+    'while_cond_70_4: {
+        %44: i32 = phi('if_exit_75_8: %32, 'if_true_71_8: %29, 'if_exit_26_4: @spill_0_0);
+        %45: i32 = phi('if_exit_75_8: %31, 'if_true_71_8: %45, 'if_exit_26_4: 0);
+        %27: bool = %44 > 0;
+        => if %27 { 'while_body_70_4 } else { 'while_exit_70_4 };
+    }
+    'while_body_70_4: {
+        %28: bool = %44 == @spill_4_0;
+        => if %28 { 'if_true_71_8 } else { 'if_exit_71_8 };
+    }
+    'while_exit_70_4: {
+        %33: i32 = * (&mut i32)@mix_result_i_0;
+        %34: i32 = %33 + %45;
+        @mix_result_i_0 <- %34;
+        %35: f64 = * (&mut f64)@mix_result_d_0;
+        %36: f64 = %35 + @spill_5_0;
+        %37: bool = %36 > @fa7_0;
+        => if %37 { 'if_true_86_4 } else { 'if_false_86_4 };
+    }
+    'if_true_71_8: {
+        %29: i32 = %44 - 1;
+        => 'while_cond_70_4;
+    }
+    'if_exit_71_8: {
+        %30: bool = %44 == @spill_6_0;
+        => if %30 { 'while_exit_70_4 } else { 'if_exit_75_8 };
+    }
+    'if_exit_75_8: {
+        %31: i32 = %45 + %44;
+        %32: i32 = %44 - 1;
+        => 'while_cond_70_4;
+    }
+    'if_true_86_4: {
+        => if @spill_7_0 { 'if_true_87_8 } else { 'if_false_87_8 };
+    }
+    'if_exit_86_4: {
+        => if @a5_1 { 'if_true_98_4 } else { 'if_exit_98_4 };
+    }
+    'if_false_86_4: {
+        %40: f32 = * (&mut f32)@mix_result_f_0;
+        %41: f32 = %40 + @fa6_0;
+        @mix_result_f_0 <- %41;
+        %42: f32 = * (&mut f32)@mix_result_f_0;
+        %43: f32 = %42 + @spill_3_0;
+        @mix_result_f_0 <- %43;
+        => 'if_exit_86_4;
+    }
+    'if_true_87_8: {
+        %38: f64 = %36 + @spill_5_0;
+        @mix_result_d_0 <- %38;
+        => 'if_exit_86_4;
+    }
+    'if_false_87_8: {
+        %39: f64 = %36 - @spill_5_0;
+        @mix_result_d_0 <- %39;
+        => 'if_exit_86_4;
+    }
+    'if_true_98_4: {
+        return @spill_7_0;
+    }
+    'if_exit_98_4: {
+        => if @spill_1_0 { 'if_true_101_4 } else { 'if_exit_101_4 };
+    }
+    'if_true_101_4: {
+        return @spill_7_0;
+    }
+    'if_exit_101_4: {
+        return false;
+    }
+}
+
+fn main() -> i32 {
+    'entry: {
+        %0: i32 = @func(1, 2, 3, true, 5, true, 7, 8, 9, true, 10);
+        @print_int(%0);
+        %1: bool = @mix(10, 20, 1.50000f, 2.50000, 30, 3.50000f, 40, 50, 4.50000f, true, 60, 70, 5.50000, 6.50000f, 5, false, 7.50000f, 8.50000, 9.50000f, 3, 10.5000, 2, true);
+        @print_bool(%1);
+        %2: i32 = * (&mut i32)@mix_result_i_0;
+        @print_int(%2);
+        %3: f32 = * (&mut f32)@mix_result_f_0;
+        @print_float(%3);
+        %4: f64 = * (&mut f64)@mix_result_d_0;
+        @print_double(%4);
+        return 0;
+    }
+}

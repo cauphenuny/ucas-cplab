@@ -1,0 +1,37 @@
+let mut __reg_ra: int;
+let mut __reg_s0: int;
+let mut __reg_a0: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn main() -> i32 {
+    let ref mut __spill_15: int;
+    let ref mut __spill_16: int;
+    'entry: {
+        @__spill_16 <- @__reg_ra;
+        @__spill_15 <- @__reg_s0;
+        @__reg_a0: int = @get_int();
+        @__reg_s0: int = @__reg_a0;
+        @__reg_a0: int = @get_int();
+        @__reg_t6: int = @__reg_a0;
+        @__reg_a0: int = @__reg_s0;
+        => 'inline_fun_0_while_cond_3_1;
+    }
+    'inline_fun_0_return: {
+        @print_int(@__reg_a0);
+        @__reg_a0: int = 0;
+        @__reg_s0: int = * (&mut int)@__spill_15;
+        @__reg_ra: int = * (&mut int)@__spill_16;
+        return @__reg_a0;
+    }
+    'inline_fun_0_while_cond_3_1: {
+        @__reg_t5: int = @__reg_t6 > 0;
+        => if @__reg_t5 { 'inline_fun_0_while_body_3_1 } else { 'inline_fun_0_return };
+    }
+    'inline_fun_0_while_body_3_1: {
+        @__reg_t5: int = @__reg_a0 % @__reg_t6;
+        @__reg_a0: int = @__reg_t6;
+        @__reg_t6: int = @__reg_t5;
+        => 'inline_fun_0_while_cond_3_1;
+    }
+}

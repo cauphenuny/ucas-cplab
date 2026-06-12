@@ -1,0 +1,84 @@
+let mut __reg_ra: int;
+let mut __reg_a0: int;
+let mut __reg_a1: int;
+let mut __reg_a2: int;
+let mut __reg_t3: int;
+let mut __reg_t4: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn climbStairs(ref n_0: i32) -> i32 {
+    let ref dp_0: [i32; 10];
+    let ref mut __spill_43: int;
+    'entry: {
+        @__spill_43 <- @__reg_ra;
+        @n_0 <- @__reg_a0;
+        @__reg_t6: int = * (&i32)@n_0;
+        @__reg_t6: int = @__reg_t6 < 4;
+        => if @__reg_t6 { 'if_true_2_4 } else { 'if_exit_2_4 };
+    }
+    'if_true_2_4: {
+        @__reg_a0: int = * (&i32)@n_0;
+        @__reg_ra: int = * (&mut int)@__spill_43;
+        return @__reg_a0;
+    }
+    'if_exit_2_4: {
+        @__reg_a0: int = @dp_0;
+        @__reg_a1: int = 0;
+        @__reg_a2: int = 40;
+        @memset(@__reg_a0, @__reg_a1, @__reg_a2);
+        @__reg_t5: int = @dp_0 as int;
+        @__reg_t6: int = @__reg_t5 as int;
+        @__reg_t4: int = 0;
+        @__reg_t6 <- @__reg_t4;
+        @__reg_t6: int = @__reg_t5 + 4;
+        @__reg_t4: int = 1;
+        @__reg_t6 <- @__reg_t4;
+        @__reg_t6: int = @__reg_t5 + 8;
+        @__reg_t4: int = 2;
+        @__reg_t6 <- @__reg_t4;
+        @__reg_t4: int = 3;
+        => 'while_cond_10_4;
+    }
+    'while_cond_10_4: {
+        @__reg_t6: int = * (&i32)@n_0;
+        @__reg_t6: int = @__reg_t6 + 1;
+        @__reg_t6: int = @__reg_t4 < @__reg_t6;
+        => if @__reg_t6 { 'while_body_10_4 } else { 'while_exit_10_4 };
+    }
+    'while_body_10_4: {
+        @__reg_t6: int = @__reg_t4 - 1;
+        @__reg_t6: int = @__reg_t6 * 4;
+        @__reg_t6: int = @__reg_t5 + @__reg_t6;
+        @__reg_t3: int = * (&i32)@__reg_t6;
+        @__reg_t6: int = @__reg_t4 - 2;
+        @__reg_t6: int = @__reg_t6 * 4;
+        @__reg_t6: int = @__reg_t5 + @__reg_t6;
+        @__reg_t6: int = * (&i32)@__reg_t6;
+        @__reg_t3: int = @__reg_t3 + @__reg_t6;
+        @__reg_t6: int = @__reg_t4 * 4;
+        @__reg_t6: int = @__reg_t5 + @__reg_t6;
+        @__reg_t6 <- @__reg_t3;
+        @__reg_t4: int = @__reg_t4 + 1;
+        => 'while_cond_10_4;
+    }
+    'while_exit_10_4: {
+        @__reg_t6: int = * (&i32)@n_0;
+        @__reg_t6: int = @__reg_t6 * 4;
+        @__reg_t6: int = @__reg_t5 + @__reg_t6;
+        @__reg_a0: int = * (&i32)@__reg_t6;
+        @__reg_ra: int = * (&mut int)@__spill_43;
+        return @__reg_a0;
+    }
+}
+
+fn main() -> i32 {
+    let ref mut __spill_13: int;
+    'entry: {
+        @__spill_13 <- @__reg_ra;
+        @__reg_a0: int = 5;
+        @__reg_a0: int = @climbStairs(@__reg_a0);
+        @__reg_ra: int = * (&mut int)@__spill_13;
+        return @__reg_a0;
+    }
+}

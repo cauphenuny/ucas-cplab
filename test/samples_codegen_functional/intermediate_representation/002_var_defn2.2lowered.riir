@@ -1,0 +1,12 @@
+let ref mut b_0: i32 = 5;
+let mut __reg_a0: int;
+let mut __reg_t6: int;
+
+fn main() -> i32 {
+    'entry: {
+        @__reg_t6: int = @b_0;
+        @__reg_t6: int = * (&mut i32)@__reg_t6;
+        @__reg_a0: int = 5 + @__reg_t6;
+        return @__reg_a0;
+    }
+}

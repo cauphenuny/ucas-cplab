@@ -1,0 +1,414 @@
+let ref mut dp_0: [[[[[[i32; 7]; 18]; 18]; 18]; 18]; 18] = {0};
+let ref mut list_0: [i32; 200] = {0};
+let ref mut cns_0: [i32; 20] = {0};
+let mut __reg_ra: int;
+let mut __reg_s0: int;
+let mut __reg_s1: int;
+let mut __reg_a0: int;
+let mut __reg_a1: int;
+let mut __reg_a2: int;
+let mut __reg_a3: int;
+let mut __reg_a4: int;
+let mut __reg_a5: int;
+let mut __reg_a6: int;
+let mut __reg_a7: int;
+let mut __reg_s2: int;
+let mut __reg_s3: int;
+let mut __reg_s4: int;
+let mut __reg_s5: int;
+let mut __reg_s6: int;
+let mut __reg_s7: int;
+let mut __reg_s8: int;
+let mut __reg_s10: int;
+let mut __reg_s11: int;
+let mut __reg_t3: int;
+let mut __reg_t4: int;
+let mut __reg_t5: int;
+let mut __reg_t6: int;
+
+fn dfs(a_1: i32, b_1: i32, c_0: i32, d_0: i32, e_0: i32, last_0: i32) -> i32 {
+    let ref mut __spill_78: int;
+    let ref mut __spill_79: int;
+    let ref mut __spill_80: int;
+    let ref mut __spill_81: int;
+    let ref mut __spill_82: int;
+    let ref mut __spill_83: int;
+    let ref mut __spill_84: int;
+    let ref mut __spill_85: int;
+    let ref mut __spill_86: int;
+    let ref mut __spill_87: int;
+    'entry: {
+        @__spill_87 <- @__reg_ra;
+        @__spill_86 <- @__reg_s0;
+        @__spill_85 <- @__reg_s1;
+        @__spill_84 <- @__reg_s2;
+        @__spill_83 <- @__reg_s3;
+        @__spill_82 <- @__reg_s4;
+        @__spill_81 <- @__reg_s5;
+        @__spill_80 <- @__reg_s6;
+        @__spill_79 <- @__reg_s7;
+        @__spill_78 <- @__reg_s8;
+        @__reg_s6: int = @__reg_a5;
+        @__reg_s5: int = @__reg_a4;
+        @__reg_s4: int = @__reg_a3;
+        @__reg_s3: int = @__reg_a2;
+        @__reg_s2: int = @__reg_a1;
+        @__reg_s1: int = @__reg_a0;
+        @__reg_t5: int = @__reg_s1 * 2939328;
+        @__reg_t6: int = @dp_0 as int;
+        @__reg_t6: int = @__reg_t6 + @__reg_t5;
+        @__reg_t5: int = @__reg_s2 * 163296;
+        @__reg_t6: int = @__reg_t6 + @__reg_t5;
+        @__reg_t5: int = @__reg_s3 * 9072;
+        @__reg_t6: int = @__reg_t6 + @__reg_t5;
+        @__reg_t5: int = @__reg_s4 * 504;
+        @__reg_t6: int = @__reg_t6 + @__reg_t5;
+        @__reg_t5: int = @__reg_s5 * 28;
+        @__reg_t6: int = @__reg_t6 + @__reg_t5;
+        @__reg_t5: int = @__reg_s6 * 4;
+        @__reg_s7: int = @__reg_t6 + @__reg_t5;
+        @__reg_t6: int = * (&i32)@__reg_s7;
+        @__reg_t6: int = @__reg_t6 != -1;
+        => if @__reg_t6 { 'if_true_13_4 } else { 'if_exit_13_4 };
+    }
+    'if_true_13_4: {
+        @__reg_a0: int = * (&i32)@__reg_s7;
+        @__reg_s8: int = * (&mut int)@__spill_78;
+        @__reg_s7: int = * (&mut int)@__spill_79;
+        @__reg_s6: int = * (&mut int)@__spill_80;
+        @__reg_s5: int = * (&mut int)@__spill_81;
+        @__reg_s4: int = * (&mut int)@__spill_82;
+        @__reg_s3: int = * (&mut int)@__spill_83;
+        @__reg_s2: int = * (&mut int)@__spill_84;
+        @__reg_s1: int = * (&mut int)@__spill_85;
+        @__reg_s0: int = * (&mut int)@__spill_86;
+        @__reg_ra: int = * (&mut int)@__spill_87;
+        return @__reg_a0;
+    }
+    'if_exit_13_4: {
+        @__reg_t6: int = @__reg_s1 + @__reg_s2;
+        @__reg_t6: int = @__reg_t6 + @__reg_s3;
+        @__reg_t6: int = @__reg_t6 + @__reg_s4;
+        @__reg_t6: int = @__reg_t6 + @__reg_s5;
+        @__reg_t6: int = @__reg_t6 == 0;
+        => if @__reg_t6 { 'if_true_15_4 } else { 'if_exit_15_4 };
+    }
+    'if_true_15_4: {
+        @__reg_a0: int = 1;
+        @__reg_s8: int = * (&mut int)@__spill_78;
+        @__reg_s7: int = * (&mut int)@__spill_79;
+        @__reg_s6: int = * (&mut int)@__spill_80;
+        @__reg_s5: int = * (&mut int)@__spill_81;
+        @__reg_s4: int = * (&mut int)@__spill_82;
+        @__reg_s3: int = * (&mut int)@__spill_83;
+        @__reg_s2: int = * (&mut int)@__spill_84;
+        @__reg_s1: int = * (&mut int)@__spill_85;
+        @__reg_s0: int = * (&mut int)@__spill_86;
+        @__reg_ra: int = * (&mut int)@__spill_87;
+        return @__reg_a0;
+    }
+    'if_exit_15_4: {
+        @__reg_t6: int = @__reg_s1 != 0;
+        => if @__reg_t6 { 'inline_equal_0_entry } else { 'L0 };
+    }
+    'if_exit_18_4: {
+        @__reg_t6: int = @__reg_s2 != 0;
+        => if @__reg_t6 { 'inline_equal_1_entry } else { 'if_exit_19_4 };
+    }
+    'if_exit_19_4: {
+        @__reg_t6: int = @__reg_s3 != 0;
+        => if @__reg_t6 { 'inline_equal_2_entry } else { 'if_exit_20_4 };
+    }
+    'if_exit_20_4: {
+        @__reg_t6: int = @__reg_s4 != 0;
+        => if @__reg_t6 { 'inline_equal_3_entry } else { 'if_exit_21_4 };
+    }
+    'if_exit_21_4: {
+        @__reg_t6: int = @__reg_s5 != 0;
+        => if @__reg_t6 { 'if_true_22_4 } else { 'if_exit_22_4 };
+    }
+    'if_true_22_4: {
+        @__reg_a3: int = @__reg_s4 + 1;
+        @__reg_a4: int = @__reg_s5 - 1;
+        @__reg_a0: int = @__reg_s1;
+        @__reg_a1: int = @__reg_s2;
+        @__reg_a2: int = @__reg_s3;
+        @__reg_a5: int = 5;
+        @__reg_a0: int = @dfs(@__reg_a0, @__reg_a1, @__reg_a2, @__reg_a3, @__reg_a4, @__reg_a5);
+        @__reg_t6: int = @__reg_s5 * @__reg_a0;
+        @__reg_t6: int = @__reg_s8 + @__reg_t6;
+        @__reg_s8: int = @__reg_t6 % 1000000007;
+        => 'if_exit_22_4;
+    }
+    'if_exit_22_4: {
+        @__reg_t6: int = @__reg_s8 % 1000000007;
+        @__reg_s7 <- @__reg_t6;
+        @__reg_a0: int = * (&i32)@__reg_s7;
+        @__reg_s8: int = * (&mut int)@__spill_78;
+        @__reg_s7: int = * (&mut int)@__spill_79;
+        @__reg_s6: int = * (&mut int)@__spill_80;
+        @__reg_s5: int = * (&mut int)@__spill_81;
+        @__reg_s4: int = * (&mut int)@__spill_82;
+        @__reg_s3: int = * (&mut int)@__spill_83;
+        @__reg_s2: int = * (&mut int)@__spill_84;
+        @__reg_s1: int = * (&mut int)@__spill_85;
+        @__reg_s0: int = * (&mut int)@__spill_86;
+        @__reg_ra: int = * (&mut int)@__spill_87;
+        return @__reg_a0;
+    }
+    'inline_equal_0_return: {
+        @__reg_s8: int = @__reg_s1 - @__reg_t6;
+        @__reg_a0: int = @__reg_s1 - 1;
+        @__reg_a1: int = @__reg_s2;
+        @__reg_a2: int = @__reg_s3;
+        @__reg_a3: int = @__reg_s4;
+        @__reg_a4: int = @__reg_s5;
+        @__reg_a5: int = 1;
+        @__reg_a0: int = @dfs(@__reg_a0, @__reg_a1, @__reg_a2, @__reg_a3, @__reg_a4, @__reg_a5);
+        @__reg_t6: int = @__reg_s8 * @__reg_a0;
+        @__reg_s8: int = @__reg_t6 % 1000000007;
+        => 'if_exit_18_4;
+    }
+    'inline_equal_0_entry: {
+        @__reg_t6: int = @__reg_s6 == 2;
+        => if @__reg_t6 { 'L5 } else { 'inline_equal_0_if_exit_7_4 };
+    }
+    'inline_equal_0_if_exit_7_4: {
+        @__reg_t6: int = 0;
+        => 'inline_equal_0_return;
+    }
+    'inline_equal_1_return: {
+        @__reg_s0: int = @__reg_s2 - @__reg_t6;
+        @__reg_a0: int = @__reg_s1 + 1;
+        @__reg_a1: int = @__reg_s2 - 1;
+        @__reg_a2: int = @__reg_s3;
+        @__reg_a3: int = @__reg_s4;
+        @__reg_a4: int = @__reg_s5;
+        @__reg_a5: int = 2;
+        @__reg_a0: int = @dfs(@__reg_a0, @__reg_a1, @__reg_a2, @__reg_a3, @__reg_a4, @__reg_a5);
+        @__reg_t6: int = @__reg_s0 * @__reg_a0;
+        @__reg_t6: int = @__reg_s8 + @__reg_t6;
+        @__reg_s8: int = @__reg_t6 % 1000000007;
+        => 'if_exit_19_4;
+    }
+    'inline_equal_1_entry: {
+        @__reg_t6: int = @__reg_s6 == 3;
+        => if @__reg_t6 { 'L6 } else { 'inline_equal_1_if_exit_7_4 };
+    }
+    'inline_equal_1_if_exit_7_4: {
+        @__reg_t6: int = 0;
+        => 'inline_equal_1_return;
+    }
+    'inline_equal_2_return: {
+        @__reg_s0: int = @__reg_s3 - @__reg_t6;
+        @__reg_a1: int = @__reg_s2 + 1;
+        @__reg_a2: int = @__reg_s3 - 1;
+        @__reg_a0: int = @__reg_s1;
+        @__reg_a3: int = @__reg_s4;
+        @__reg_a4: int = @__reg_s5;
+        @__reg_a5: int = 3;
+        @__reg_a0: int = @dfs(@__reg_a0, @__reg_a1, @__reg_a2, @__reg_a3, @__reg_a4, @__reg_a5);
+        @__reg_t6: int = @__reg_s0 * @__reg_a0;
+        @__reg_t6: int = @__reg_s8 + @__reg_t6;
+        @__reg_s8: int = @__reg_t6 % 1000000007;
+        => 'if_exit_20_4;
+    }
+    'inline_equal_2_entry: {
+        @__reg_t6: int = @__reg_s6 == 4;
+        => if @__reg_t6 { 'L7 } else { 'inline_equal_2_if_exit_7_4 };
+    }
+    'inline_equal_2_if_exit_7_4: {
+        @__reg_t6: int = 0;
+        => 'inline_equal_2_return;
+    }
+    'inline_equal_3_return: {
+        @__reg_s6: int = @__reg_s4 - @__reg_t6;
+        @__reg_a2: int = @__reg_s3 + 1;
+        @__reg_a3: int = @__reg_s4 - 1;
+        @__reg_a0: int = @__reg_s1;
+        @__reg_a1: int = @__reg_s2;
+        @__reg_a4: int = @__reg_s5;
+        @__reg_a5: int = 4;
+        @__reg_a0: int = @dfs(@__reg_a0, @__reg_a1, @__reg_a2, @__reg_a3, @__reg_a4, @__reg_a5);
+        @__reg_t6: int = @__reg_s6 * @__reg_a0;
+        @__reg_t6: int = @__reg_s8 + @__reg_t6;
+        @__reg_s8: int = @__reg_t6 % 1000000007;
+        => 'if_exit_21_4;
+    }
+    'inline_equal_3_entry: {
+        @__reg_t6: int = @__reg_s6 == 5;
+        => if @__reg_t6 { 'L8 } else { 'inline_equal_3_if_exit_7_4 };
+    }
+    'inline_equal_3_if_exit_7_4: {
+        @__reg_t6: int = 0;
+        => 'inline_equal_3_return;
+    }
+    'L0: {
+        @__reg_s8: int = 0;
+        => 'if_exit_18_4;
+    }
+    'L5: {
+        @__reg_t6: int = 1;
+        => 'inline_equal_0_return;
+    }
+    'L6: {
+        @__reg_t6: int = 1;
+        => 'inline_equal_1_return;
+    }
+    'L7: {
+        @__reg_t6: int = 1;
+        => 'inline_equal_2_return;
+    }
+    'L8: {
+        @__reg_t6: int = 1;
+        => 'inline_equal_3_return;
+    }
+}
+
+fn main() -> i32 {
+    let ref mut __spill_85: int;
+    let ref mut __spill_74: int;
+    let ref mut __spill_73: int;
+    'entry: {
+        @__spill_85 <- @__reg_ra;
+        @__spill_74 <- @__reg_s10;
+        @__spill_73 <- @__reg_s11;
+        @__reg_a0: int = @get_int();
+        @__reg_s11: int = @__reg_a0;
+        @__reg_a5: int = 0;
+        => 'while_cond_34_4;
+    }
+    'while_cond_34_4: {
+        @__reg_t6: int = @__reg_a5 < 18;
+        => if @__reg_t6 { 'L0 } else { 'L5 };
+    }
+    'while_cond_36_8: {
+        @__reg_t6: int = @__reg_a6 < 18;
+        => if @__reg_t6 { 'L1 } else { 'while_exit_36_8 };
+    }
+    'while_exit_36_8: {
+        @__reg_a5: int = @__reg_a5 + 1;
+        => 'while_cond_34_4;
+    }
+    'while_cond_38_12: {
+        @__reg_t6: int = @__reg_a7 < 18;
+        => if @__reg_t6 { 'L2 } else { 'while_exit_38_12 };
+    }
+    'while_exit_38_12: {
+        @__reg_a6: int = @__reg_a6 + 1;
+        => 'while_cond_36_8;
+    }
+    'while_cond_40_16: {
+        @__reg_t6: int = @__reg_t3 < 18;
+        => if @__reg_t6 { 'L3 } else { 'while_exit_40_16 };
+    }
+    'while_exit_40_16: {
+        @__reg_a7: int = @__reg_a7 + 1;
+        => 'while_cond_38_12;
+    }
+    'while_cond_42_20: {
+        @__reg_t6: int = @__reg_t4 < 18;
+        => if @__reg_t6 { 'L4 } else { 'while_exit_42_20 };
+    }
+    'while_exit_42_20: {
+        @__reg_t3: int = @__reg_t3 + 1;
+        => 'while_cond_40_16;
+    }
+    'while_cond_44_24: {
+        @__reg_t6: int = @__reg_t5 < 7;
+        => if @__reg_t6 { 'while_body_44_24 } else { 'while_exit_44_24 };
+    }
+    'while_body_44_24: {
+        @__reg_a4: int = @__reg_a5 * 2939328;
+        @__reg_t6: int = @dp_0 as int;
+        @__reg_t6: int = @__reg_t6 + @__reg_a4;
+        @__reg_a4: int = @__reg_a6 * 163296;
+        @__reg_t6: int = @__reg_t6 + @__reg_a4;
+        @__reg_a4: int = @__reg_a7 * 9072;
+        @__reg_t6: int = @__reg_t6 + @__reg_a4;
+        @__reg_a4: int = @__reg_t3 * 504;
+        @__reg_t6: int = @__reg_t6 + @__reg_a4;
+        @__reg_a4: int = @__reg_t4 * 28;
+        @__reg_t6: int = @__reg_t6 + @__reg_a4;
+        @__reg_a4: int = @__reg_t5 * 4;
+        @__reg_t6: int = @__reg_t6 + @__reg_a4;
+        @__reg_a4: int = -1;
+        @__reg_t6 <- @__reg_a4;
+        @__reg_t5: int = @__reg_t5 + 1;
+        => 'while_cond_44_24;
+    }
+    'while_exit_44_24: {
+        @__reg_t4: int = @__reg_t4 + 1;
+        => 'while_cond_42_20;
+    }
+    'while_cond_60_4: {
+        @__reg_t6: int = @__reg_s10 < @__reg_s11;
+        => if @__reg_t6 { 'while_body_60_4 } else { 'while_exit_60_4 };
+    }
+    'while_body_60_4: {
+        @__reg_a0: int = @get_int();
+        @__reg_t5: int = @__reg_s10 * 4;
+        @__reg_t6: int = @list_0 as int;
+        @__reg_t6: int = @__reg_t6 + @__reg_t5;
+        @__reg_t6 <- @__reg_a0;
+        @__reg_t3: int = * (&mut i32)@__reg_t6;
+        @__reg_t6: int = * (&mut i32)@__reg_t6;
+        @__reg_t6: int = @__reg_t6 * 4;
+        @__reg_t5: int = @cns_0 as int;
+        @__reg_t6: int = @__reg_t5 + @__reg_t6;
+        @__reg_t6: int = * (&i32)@__reg_t6;
+        @__reg_t4: int = @__reg_t6 + 1;
+        @__reg_t6: int = @__reg_t3 * 4;
+        @__reg_t6: int = @__reg_t5 + @__reg_t6;
+        @__reg_t6 <- @__reg_t4;
+        @__reg_s10: int = @__reg_s10 + 1;
+        => 'while_cond_60_4;
+    }
+    'while_exit_60_4: {
+        @__reg_t5: int = @cns_0 as int;
+        @__reg_t6: int = @__reg_t5 + 4;
+        @__reg_a0: int = * (&i32)@__reg_t6;
+        @__reg_t6: int = @__reg_t5 + 8;
+        @__reg_a1: int = * (&i32)@__reg_t6;
+        @__reg_t6: int = @__reg_t5 + 12;
+        @__reg_a2: int = * (&i32)@__reg_t6;
+        @__reg_t6: int = @__reg_t5 + 16;
+        @__reg_a3: int = * (&i32)@__reg_t6;
+        @__reg_t6: int = @__reg_t5 + 20;
+        @__reg_a4: int = * (&i32)@__reg_t6;
+        @__reg_a5: int = 0;
+        @__reg_a0: int = @dfs(@__reg_a0, @__reg_a1, @__reg_a2, @__reg_a3, @__reg_a4, @__reg_a5);
+        @__reg_s11: int = @__reg_a0;
+        @__reg_a0: int = @__reg_s11;
+        @print_int(@__reg_a0);
+        @__reg_a0: int = @__reg_s11;
+        @__reg_s11: int = * (&mut int)@__spill_73;
+        @__reg_s10: int = * (&mut int)@__spill_74;
+        @__reg_ra: int = * (&mut int)@__spill_85;
+        return @__reg_a0;
+    }
+    'L0: {
+        @__reg_a6: int = 0;
+        => 'while_cond_36_8;
+    }
+    'L1: {
+        @__reg_a7: int = 0;
+        => 'while_cond_38_12;
+    }
+    'L2: {
+        @__reg_t3: int = 0;
+        => 'while_cond_40_16;
+    }
+    'L3: {
+        @__reg_t4: int = 0;
+        => 'while_cond_42_20;
+    }
+    'L4: {
+        @__reg_t5: int = 0;
+        => 'while_cond_44_24;
+    }
+    'L5: {
+        @__reg_s10: int = 0;
+        => 'while_cond_60_4;
+    }
+}

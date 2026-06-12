@@ -1,0 +1,91 @@
+fn FourWhile() -> i32 {
+    let a_0: i32;
+    let b_0: i32;
+    let c_0: i32;
+    let d_0: i32;
+    'entry: {
+        %a_0.0: i32 = 0;
+        %a_0.1: i32 = 5;
+        %b_0.0: i32 = 0;
+        %c_0.0: i32 = 0;
+        %b_0.1: i32 = 6;
+        %c_0.1: i32 = 7;
+        %d_0.0: i32 = 0;
+        %d_0.1: i32 = 10;
+        => 'while_cond_10_2;
+    }
+    'while_cond_10_2: {
+        %a_0.2: i32 = phi('while_exit_12_4: %a_0.3, 'entry: %a_0.1);
+        %b_0.2: i32 = phi('while_exit_12_4: %b_0.4, 'entry: %b_0.1);
+        %c_0.2: i32 = phi('while_exit_12_4: %c_0.3, 'entry: %c_0.1);
+        %d_0.2: i32 = phi('while_exit_12_4: %d_0.3, 'entry: %d_0.1);
+        %0: bool = %a_0.2 < 20;
+        => if %0 { 'while_body_10_2 } else { 'while_exit_10_2 };
+    }
+    'while_body_10_2: {
+        %1: i32 = %a_0.2 + 3;
+        %a_0.3: i32 = %1;
+        => 'while_cond_12_4;
+    }
+    'while_exit_10_2: {
+        %11: i32 = %b_0.2 + %d_0.2;
+        %12: i32 = %a_0.2 + %11;
+        %13: i32 = %12 + %c_0.2;
+        return %13;
+    }
+    'while_cond_12_4: {
+        %b_0.3: i32 = phi('while_exit_14_6: %b_0.5, 'while_body_10_2: %b_0.2);
+        %c_0.3: i32 = phi('while_exit_14_6: %c_0.5, 'while_body_10_2: %c_0.2);
+        %d_0.3: i32 = phi('while_exit_14_6: %d_0.4, 'while_body_10_2: %d_0.2);
+        %2: bool = %b_0.3 < 10;
+        => if %2 { 'while_body_12_4 } else { 'while_exit_12_4 };
+    }
+    'while_body_12_4: {
+        %3: i32 = %b_0.3 + 1;
+        %b_0.5: i32 = %3;
+        => 'while_cond_14_6;
+    }
+    'while_exit_12_4: {
+        %10: i32 = %b_0.3 - 2;
+        %b_0.4: i32 = %10;
+        => 'while_cond_10_2;
+    }
+    'while_cond_14_6: {
+        %c_0.4: i32 = phi('while_exit_16_8: %c_0.6, 'while_body_12_4: %c_0.3);
+        %d_0.4: i32 = phi('while_exit_16_8: %d_0.6, 'while_body_12_4: %d_0.3);
+        %4: bool = %c_0.4 == 7;
+        => if %4 { 'while_body_14_6 } else { 'while_exit_14_6 };
+    }
+    'while_body_14_6: {
+        %5: i32 = %c_0.4 - 1;
+        %c_0.6: i32 = %5;
+        => 'while_cond_16_8;
+    }
+    'while_exit_14_6: {
+        %9: i32 = %c_0.4 + 1;
+        %c_0.5: i32 = %9;
+        => 'while_cond_12_4;
+    }
+    'while_cond_16_8: {
+        %d_0.5: i32 = phi('while_body_16_8: %d_0.7, 'while_body_14_6: %d_0.4);
+        %6: bool = %d_0.5 < 20;
+        => if %6 { 'while_body_16_8 } else { 'while_exit_16_8 };
+    }
+    'while_body_16_8: {
+        %7: i32 = %d_0.5 + 3;
+        %d_0.7: i32 = %7;
+        => 'while_cond_16_8;
+    }
+    'while_exit_16_8: {
+        %8: i32 = %d_0.5 - 1;
+        %d_0.6: i32 = %8;
+        => 'while_cond_14_6;
+    }
+}
+
+fn main() -> i32 {
+    'entry: {
+        %0: i32 = @FourWhile();
+        return %0;
+    }
+}

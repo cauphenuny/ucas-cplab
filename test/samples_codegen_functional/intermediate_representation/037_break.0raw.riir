@@ -1,0 +1,34 @@
+fn main() -> i32 {
+    let i_0: i32;
+    let sum_0: i32;
+    'entry: {
+        %i_0.0: i32 = 0;
+        %i_0.1: i32 = 0;
+        %sum_0.0: i32 = 0;
+        %sum_0.1: i32 = 0;
+        => 'while_cond_7_4;
+    }
+    'while_cond_7_4: {
+        %i_0.2: i32 = phi('if_exit_8_8: %i_0.3, 'entry: %i_0.1);
+        %sum_0.2: i32 = phi('if_exit_8_8: %sum_0.3, 'entry: %sum_0.1);
+        %0: bool = %i_0.2 < 100;
+        => if %0 { 'while_body_7_4 } else { 'while_exit_7_4 };
+    }
+    'while_body_7_4: {
+        %1: bool = %i_0.2 == 50;
+        => if %1 { 'if_true_8_8 } else { 'if_exit_8_8 };
+    }
+    'while_exit_7_4: {
+        return %sum_0.2;
+    }
+    'if_true_8_8: {
+        => 'while_exit_7_4;
+    }
+    'if_exit_8_8: {
+        %2: i32 = %sum_0.2 + %i_0.2;
+        %sum_0.3: i32 = %2;
+        %3: i32 = %i_0.2 + 1;
+        %i_0.3: i32 = %3;
+        => 'while_cond_7_4;
+    }
+}
