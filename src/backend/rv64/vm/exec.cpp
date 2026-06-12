@@ -60,6 +60,26 @@ void builtin_get_double(VirtualMachine& vm) {
     vm.set_d(10, val);
 }
 
+void builtin_memcpy(VirtualMachine& vm) {
+    uint64_t dest = vm.regs[10];
+    uint64_t src = vm.regs[11];
+    uint64_t n = vm.regs[12];
+    if (dest + n > vm.memory.size() || src + n > vm.memory.size()) {
+        throw COMPILER_ERROR("RV64 VM: memcpy out of bounds");
+    }
+    std::memmove(&vm.memory[dest], &vm.memory[src], n);
+}
+
+void builtin_memset(VirtualMachine& vm) {
+    uint64_t dest = vm.regs[10];
+    auto value = (uint8_t)vm.regs[11];
+    uint64_t n = vm.regs[12];
+    if (dest + n > vm.memory.size()) {
+        throw COMPILER_ERROR("RV64 VM: memset out of bounds");
+    }
+    std::memset(&vm.memory[dest], value, n);
+}
+
 }  // namespace
 
 // ---------------------------------------------------------------------------
@@ -74,6 +94,8 @@ void VirtualMachine::init_builtins() {
     builtins["get_int"] = builtin_get_int;
     builtins["get_float"] = builtin_get_float;
     builtins["get_double"] = builtin_get_double;
+    builtins["memcpy"] = builtin_memcpy;
+    builtins["memset"] = builtin_memset;
 }
 
 void VirtualMachine::build_flat_insts(const Module& mod) {
@@ -134,7 +156,10 @@ void VirtualMachine::resolve_branches() {
         Match{fi.inst}(
             [&](const PseudoB& i) {
                 auto it = label_map.find(i.target);
-                if (it != label_map.end()) fi.branch_target = it->second;
+                if (it != label_map.end())
+                    fi.branch_target = it->second;
+                else
+                    throw COMPILER_ERROR(fmt::format("RV64 VM: undefined label '{}'", i.target));
             },
             [&](const PseudoJ& i) {
                 if (i.op == PseudoJ::CALL) {
@@ -145,11 +170,17 @@ void VirtualMachine::resolve_branches() {
                     }
                 }
                 auto it = label_map.find(i.target);
-                if (it != label_map.end()) fi.branch_target = it->second;
+                if (it != label_map.end())
+                    fi.branch_target = it->second;
+                else
+                    throw COMPILER_ERROR(fmt::format("RV64 VM: undefined label '{}'", i.target));
             },
             [&](const InstJ& i) {
                 auto it = label_map.find(i.target);
-                if (it != label_map.end()) fi.branch_target = it->second;
+                if (it != label_map.end())
+                    fi.branch_target = it->second;
+                else
+                    throw COMPILER_ERROR(fmt::format("RV64 VM: undefined label '{}'", i.target));
             },
             [&](const auto&) { /* no branch target */ });
     }

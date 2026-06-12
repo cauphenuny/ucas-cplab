@@ -44,6 +44,7 @@ compiler [args]... files ...
     --lowering-prune        Apply redundant move elimination after register allocation
     --lowering-optim        Apply optimizations after lowering transformations
     --lowering-global       Apply global variable access proxy lowering (implies --lowering-addr)
+    --lowering-array        Apply array initialization lowering (lower array store to memcpy)
     --lowering              Apply above lowering transformations
 
     --exec                  Execute the generated IR or assembly

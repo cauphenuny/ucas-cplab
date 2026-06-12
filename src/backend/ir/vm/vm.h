@@ -422,6 +422,35 @@ struct BuiltinFunc {
 };
 
 inline const std::unordered_map<std::string, BuiltinFunc> BUILTIN_FUNCS = {
+    {
+        "memset",
+        BuiltinFunc([](View& ret, const std::vector<View>& args, std::istream& input,
+                       std::ostream& output) {
+            void* dest = *(void**)args[0].data;
+            uint8_t value = Match{args[1].type.as<ir::type::Primitive>()}([&](auto type) {
+                using T = typename decltype(type)::type;
+                return (uint8_t)(*(T*)args[1].data);
+            });
+            size_t n = Match{args[2].type.as<ir::type::Primitive>()}([&](auto type) {
+                using T = typename decltype(type)::type;
+                return (size_t)(*(T*)args[2].data);
+            });
+            std::memset(dest, value, n);
+        }),
+    },
+    {
+        "memcpy",
+        BuiltinFunc([](View& ret, const std::vector<View>& args, std::istream& input,
+                       std::ostream& output) {
+            void* dest = *(void**)args[0].data;
+            const void* src = *(const void**)args[1].data;
+            size_t n = Match{args[2].type.as<ir::type::Primitive>()}([&](auto type) {
+                using T = typename decltype(type)::type;
+                return (size_t)(*(T*)args[2].data);
+            });
+            std::memcpy(dest, src, n);
+        }),
+    },
     {"get_int", BuiltinFunc{[](View& ret, const std::vector<View>& args, std::istream& input,
                                std::ostream& output) {
          int value;
