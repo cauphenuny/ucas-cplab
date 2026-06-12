@@ -3,8 +3,8 @@ set -euo pipefail
 
 script_dir="$(dirname "$(realpath "$0")")"
 
-export common="--silent"
-export refer="--lowering --exec"
-export test="--asm-exec"
+export common="--silent --exec"
+export refer=""
+export test="--optimize"
 
 "$script_dir/autotest.sh" "$@"
