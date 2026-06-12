@@ -124,7 +124,7 @@ src/
 │   │   │   ├── abi.hpp
 │   │   │   ├── addr.hpp
 │   │   │   ├── array.hpp
-│   │   │   ├── global.hpp
+│   │   │   ├── proxy.hpp
 │   │   │   ├── reg2mem.hpp
 │   │   │   ├── regalloc/
 │   │   │   │   ├── colorize.hpp:	Chaitin-Briggs Graph Coloring Register Allocator

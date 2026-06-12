@@ -7,7 +7,7 @@
 #include "backend/ir/ir.h"
 #include "backend/ir/lowering/addr.hpp"
 #include "backend/ir/lowering/array.hpp"
-#include "backend/ir/lowering/global.hpp"
+#include "backend/ir/lowering/proxy.hpp"
 #include "backend/ir/lowering/reg2mem.hpp"
 #include "backend/ir/lowering/regalloc/main.hpp"
 #include "backend/ir/lowering/stdlib.hpp"
@@ -86,7 +86,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --lowering-reg          Apply register allocation transformation
     --lowering-prune        Apply redundant move elimination after register allocation
     --lowering-optim        Apply optimizations after lowering transformations
-    --lowering-global       Apply global variable access proxy lowering (implies --lowering-addr)
+    --lowering-proxy        Apply variable access proxy lowering
     --lowering-array        Apply array initialization lowering (lower array store to memcpy)
     --lowering              Apply above lowering transformations
 
@@ -172,7 +172,7 @@ int main(int argc, const char* argv[]) {
     bool optimize_temp = false;
 
     bool lowering_addr = false;
-    bool lowering_global = false;
+    bool lowering_proxy = false;
     bool lowering_reg = false;
     bool lowering_prune = false;
     bool lowering_optim = false;
@@ -191,8 +191,8 @@ int main(int argc, const char* argv[]) {
         {"temp", optimize_temp}};
 
     std::vector<std::pair<std::string, std::reference_wrapper<bool>>> lowerings = {
-        {"addr", lowering_addr},   {"global", lowering_global}, {"reg", lowering_reg},
-        {"prune", lowering_prune}, {"optim", lowering_optim},   {"array", lowering_array}};
+        {"addr", lowering_addr},   {"proxy", lowering_proxy}, {"reg", lowering_reg},
+        {"prune", lowering_prune}, {"optim", lowering_optim}, {"array", lowering_array}};
 
     size_t optimize_inline = 0;
     constexpr size_t default_inline_threshold = 8;
@@ -296,7 +296,8 @@ int main(int argc, const char* argv[]) {
 
     bool optimize = optimize_def || optimize_exp || optimize_copy || optimize_alloc ||
                     optimize_const || optimize_inline || optimize_temp;
-    bool lowering = lowering_addr || lowering_reg || lowering_prune || lowering_optim;
+    bool lowering = lowering_addr || lowering_reg || lowering_prune || lowering_optim ||
+                    lowering_proxy || lowering_array;
 
     if (optimize && !silent) {
         std::stringstream ss;
@@ -458,9 +459,9 @@ int main(int argc, const char* argv[]) {
 
                     ColorMap regs;
 
-                    if (lowering_global) {
-                        bool changed = GlobalProxyLowering<Context>().apply(program, ctx);
-                        if (changed) echo(program, "Global Variable Access Proxy Lowering");
+                    if (lowering_proxy) {
+                        bool changed = AccessProxyLowering<Context>().apply(program, ctx);
+                        if (changed) echo(program, "Access Proxy Lowering");
                     }
 
                     if (lowering_array) {

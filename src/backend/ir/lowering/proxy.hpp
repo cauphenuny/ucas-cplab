@@ -1,5 +1,5 @@
-/// @note Lower directly access to global variable to a proxy temp-var in ordered to assign it a
-/// register
+/// @note Add a proxy for access to global variable / constexpr in ordered to assign it a register
+/// because isel can only assign at most one temp register in i-sel stage.
 
 #pragma once
 #include "backend/ir/analysis/utils.hpp"
@@ -13,7 +13,7 @@
 
 namespace ir::lowering {
 
-template <typename T> struct GlobalProxyLowering : transform::Pass<T> {
+template <typename T> struct AccessProxyLowering : transform::Pass<T> {
     bool apply(Program& prog, T& ctx) override {
         bool changed = false;
         auto globals = std::unordered_set<const Alloc*>{};
@@ -27,12 +27,15 @@ template <typename T> struct GlobalProxyLowering : transform::Pass<T> {
 private:
     bool apply_func(Func& func, const std::unordered_set<const Alloc*>& globals, T& ctx) {
         bool changed = false;
-        for (auto& block : func.blocks()) changed |= apply_block(func, *block, globals, ctx);
+        for (auto& block : func.blocks()) {
+            changed |= convert_global(func, *block, globals, ctx);
+            changed |= convert_constexpr(func, *block);
+        }
         return changed;
     }
 
-    bool apply_block(Func& func, Block& block, const std::unordered_set<const Alloc*>& globals,
-                     T& ctx) {
+    bool convert_global(Func& func, Block& block, const std::unordered_set<const Alloc*>& globals,
+                        T& ctx) {
         using namespace analysis;
         bool changed = false;
         std::unordered_map<const Alloc*, std::vector<std::pair<Type, LeftValue>>> proxy_map;
@@ -71,6 +74,28 @@ private:
             if (inst_changed) {
                 changed = true;
                 block.replace(&(*it), inst);
+            }
+        }
+        return changed;
+    }
+
+    bool convert_constexpr(Func& func, Block& block) {
+        // only convert constexpr in STORE inst, because t0 might be used as addr,
+        // and store-inst can not directly take a num operand
+        bool changed = false;
+        for (auto it = block.insts().begin(); it != block.insts().end(); ++it) {
+            auto inst = *it;
+            if (auto binary = std::get_if<BinaryInst>(&inst);
+                binary && binary->op == InstOp::STORE) {
+                if (auto* cv = std::get_if<ConstexprValue>(&binary->rhs)) {
+                    if (cv->type.is<type::Primitive>()) {
+                        auto proxy = func.newTemp(cv->type, &block);
+                        block.insert(
+                            it, UnaryInst{.op = UnaryInstOp::MOV, .result = proxy, .operand = *cv});
+                        binary->rhs = LeftValue{proxy};
+                        changed = true;
+                    }
+                }
             }
         }
         return changed;
