@@ -141,15 +141,35 @@ void append_global_val(std::string& r, const Global& g, size_t elem_size,
     auto& buffer = std::get<std::unique_ptr<std::byte[]>>(g.init->val);
     std::byte* ptr = buffer.get();
     size_t elem_count = g.type.flatten().as<ir::type::Array>().size;
+    size_t zero_run = 0;
+    auto flush_zeros = [&] {
+        if (zero_run) {
+            r += fmt::format("    .zero {}\n", zero_run * elem_size);
+            zero_run = 0;
+        }
+    };
+    auto zeros = [](std::byte* addr, size_t n) {
+        for (size_t i = 0; i < n; i++) {
+            if (((std::byte*)addr)[i] != std::byte{0}) return false;
+        }
+        return true;
+    };
     for (size_t i = 0; i < elem_count; i++) {
-        Match{prim}([&](ir::type::Int1) { r += fmt::format("    .byte {}\n", (int)*(bool*)ptr); },
-                    [&](ir::type::Int32) { r += fmt::format("    .word {}\n", *(int32_t*)ptr); },
-                    [&](ir::type::Int) { r += fmt::format("    .dword {}\n", *(int64_t*)ptr); },
-                    [&](ir::type::Float32) { r += fmt::format("    .word {}\n", *(int32_t*)ptr); },
-                    [&](ir::type::Float64) { r += fmt::format("    .dword {}\n", *(int64_t*)ptr); },
-                    [&](auto) { r += fmt::format("    .zero {}\n", elem_size); });
+        if (zeros(ptr, elem_size)) {
+            zero_run++;
+        } else {
+            flush_zeros();
+            Match{prim}(
+                [&](ir::type::Int1) { r += fmt::format("    .byte {}\n", (int)*(bool*)ptr); },
+                [&](ir::type::Int32) { r += fmt::format("    .word {}\n", *(int32_t*)ptr); },
+                [&](ir::type::Int) { r += fmt::format("    .dword {}\n", *(int64_t*)ptr); },
+                [&](ir::type::Float32) { r += fmt::format("    .word {}\n", *(int32_t*)ptr); },
+                [&](ir::type::Float64) { r += fmt::format("    .dword {}\n", *(int64_t*)ptr); },
+                [&](auto) { r += fmt::format("    .zero {}\n", elem_size); });
+        }
         ptr += elem_size;
     }
+    flush_zeros();
 }
 
 }  // namespace
