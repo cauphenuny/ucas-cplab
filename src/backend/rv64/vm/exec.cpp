@@ -161,6 +161,13 @@ void VirtualMachine::resolve_branches() {
                 else
                     throw COMPILER_ERROR(fmt::format("RV64 VM: undefined label '{}'", i.target));
             },
+            [&](const InstB& i) {
+                auto it = label_map.find(i.target);
+                if (it != label_map.end())
+                    fi.branch_target = it->second;
+                else
+                    throw COMPILER_ERROR(fmt::format("RV64 VM: undefined label '{}'", i.target));
+            },
             [&](const PseudoJ& i) {
                 if (i.op == PseudoJ::CALL) {
                     auto bit = builtins.find(i.target);
@@ -241,9 +248,10 @@ uint8_t VirtualMachine::execute(const Module& mod) {
 void VirtualMachine::exec(const Inst& inst, const FlatInst& fi) {
     match(
         inst, [&](const InstR& i) { exec_r(i); }, [&](const InstFR& i) { exec_fr(i); },
-        [&](const InstI& i) { exec_i(i, fi); }, [&](const InstFI& i) { exec_fi(i); },
-        [&](const InstJ& i) { exec_j(i, fi); }, [&](const InstU& i) { exec_u(i); },
-        [&](const PseudoR& i) { exec_pseudo_r(i); }, [&](const PseudoLI& i) { exec_pseudo_li(i); },
+        [&](const InstI& i) { exec_i(i, fi); }, [&](const InstB& i) { exec_b(i, fi); },
+        [&](const InstFI& i) { exec_fi(i); }, [&](const InstJ& i) { exec_j(i, fi); },
+        [&](const InstU& i) { exec_u(i); }, [&](const PseudoR& i) { exec_pseudo_r(i); },
+        [&](const PseudoLI& i) { exec_pseudo_li(i); },
         [&](const PseudoB& i) { exec_pseudo_b(i, fi); },
         [&](const PseudoJ& i) { exec_pseudo_j(i, fi); },
         [&](const PseudoL& i) { exec_pseudo_l(i); }, [&](const PseudoRet&) { exec_pseudo_ret(); });
@@ -518,15 +526,20 @@ void VirtualMachine::exec_i(const InstI& i, const FlatInst& fi) {
             if (i.rd.id != 0) regs[i.rd.id] = tmp;
             break;
         }
-
-        // Branch instructions — should not appear in InstI form after isel
-        case I::BEQ:
-        case I::BNE:
-        case I::BLT:
-        case I::BGE:
-        case I::BLTU:
-        case I::BGEU: break;
     }
+}
+
+void VirtualMachine::exec_b(const InstB& i, const FlatInst& fi) {
+    bool taken = false;
+    switch (i.op) {
+        case OpB::BEQ: taken = (int64_t)regs[i.rs1.id] == (int64_t)regs[i.rs2.id]; break;
+        case OpB::BNE: taken = (int64_t)regs[i.rs1.id] != (int64_t)regs[i.rs2.id]; break;
+        case OpB::BLT: taken = (int64_t)regs[i.rs1.id] < (int64_t)regs[i.rs2.id]; break;
+        case OpB::BGE: taken = (int64_t)regs[i.rs1.id] >= (int64_t)regs[i.rs2.id]; break;
+        case OpB::BLTU: taken = regs[i.rs1.id] < regs[i.rs2.id]; break;
+        case OpB::BGEU: taken = regs[i.rs1.id] >= regs[i.rs2.id]; break;
+    }
+    if (taken) pc = fi.branch_target;
 }
 
 void VirtualMachine::exec_fi(const InstFI& i) {

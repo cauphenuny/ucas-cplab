@@ -166,19 +166,19 @@ inline const auto reg_sp = gpr(2);
 inline const auto reg_ft0 = fpr(5);
 
 // Forward declares
-inline void translate_inst(const ir::Inst& inst, AsmBlock& blk, const FrameLayout& frame,
+inline void translate_inst(const ir::Inst& inst, Block& blk, const FrameLayout& frame,
                            const ir::lowering::TargetABI& abi, const ir::lowering::ColorMap& regs,
                            std::vector<FloatLiteral>& float_literals);
-inline void translate_exit(const ir::Exit& exit, AsmBlock& blk, const std::string& func_name,
+inline void translate_exit(const ir::Exit& exit, Block& blk, const std::string& func_name,
                            const ir::lowering::ColorMap& regs);
 
 // RV64 instruction emission helpers
-inline void emit_int_reg_op(AsmBlock& blk, OpR op64, OpR op32, bool w, GeneralReg rd,
-                            GeneralReg lhs, GeneralReg rhs) {
+inline void emit_int_reg_op(Block& blk, OpR op64, OpR op32, bool w, GeneralReg rd, GeneralReg lhs,
+                            GeneralReg rhs) {
     blk.insts.emplace_back(InstR{w ? op32 : op64, rd, lhs, rhs});
 }
 
-inline void emit_add_reg_imm(AsmBlock& blk, GeneralReg rd, GeneralReg rs, int64_t imm, bool w) {
+inline void emit_add_reg_imm(Block& blk, GeneralReg rd, GeneralReg rs, int64_t imm, bool w) {
     if (fits_i12(imm)) {
         blk.insts.emplace_back(InstI{w ? OpI::ADDIW : OpI::ADDI, rd, rs, (int32_t)imm});
         return;
@@ -189,13 +189,13 @@ inline void emit_add_reg_imm(AsmBlock& blk, GeneralReg rd, GeneralReg rs, int64_
 
 // Resolve base+offset into a (reg, imm) pair where imm always fits i12.
 // Uses reg_t0 to materialize when offset is out of range.
-inline std::pair<GeneralReg, int32_t> resolve_addr(AsmBlock& blk, GeneralReg base, int64_t offset) {
+inline std::pair<GeneralReg, int32_t> resolve_addr(Block& blk, GeneralReg base, int64_t offset) {
     if (fits_i12(offset)) return {base, (int32_t)offset};
     emit_add_reg_imm(blk, reg_t0, base, offset, false);
     return {reg_t0, 0};
 }
 
-inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const FrameLayout& frame,
+inline void translate_unary(const ir::UnaryInst& inst, Block& blk, const FrameLayout& frame,
                             const ir::lowering::TargetABI& abi, const ir::lowering::ColorMap& regs,
                             std::vector<FloatLiteral>& float_literals) {
     using namespace ir::type;
@@ -398,7 +398,7 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
     }
 }
 
-inline void emit_add_sp(AsmBlock& blk, int64_t delta) {
+inline void emit_add_sp(Block& blk, int64_t delta) {
     if (fits_i12(delta)) {
         blk.insts.emplace_back(InstI{OpI::ADDI, reg_sp, reg_sp, (int32_t)delta});
     } else {
@@ -407,7 +407,7 @@ inline void emit_add_sp(AsmBlock& blk, int64_t delta) {
     }
 }
 
-inline void emit_store_bytes(AsmBlock& blk, const std::byte* data, size_t sz, GeneralReg base,
+inline void emit_store_bytes(Block& blk, const std::byte* data, size_t sz, GeneralReg base,
                              size_t off) {
     // Pre-compute base+off into t1 if the offset range doesn't fit i12.
     // t0 is used for values; t1 is safe because this is only called from
@@ -445,7 +445,7 @@ inline void emit_store_bytes(AsmBlock& blk, const std::byte* data, size_t sz, Ge
     }
 }
 
-inline void emit_load_float_const(AsmBlock& blk, const ir::ConstexprValue& cv, const ir::Type& t,
+inline void emit_load_float_const(Block& blk, const ir::ConstexprValue& cv, const ir::Type& t,
                                   FloatReg dst, std::vector<FloatLiteral>& float_literals) {
     float_literals.push_back({".L_fc_" + std::to_string(float_literals.size()), cv});
     auto label = float_literals.back().label;
@@ -454,7 +454,7 @@ inline void emit_load_float_const(AsmBlock& blk, const ir::ConstexprValue& cv, c
     blk.insts.emplace_back(InstFI{is_double ? OpFI::FLD : OpFI::FLW, dst, reg_t0, 0});
 }
 
-inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const FrameLayout& frame,
+inline void translate_binary(const ir::BinaryInst& inst, Block& blk, const FrameLayout& frame,
                              const ir::lowering::TargetABI& abi, const ir::lowering::ColorMap& regs,
                              std::vector<FloatLiteral>& float_literals) {
     using namespace ir::type;
@@ -853,8 +853,8 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
     }
 }
 
-inline void translate_call(const ir::CallInst& inst, AsmBlock& blk,
-                           const ir::lowering::TargetABI& abi, const ir::lowering::ColorMap& regs,
+inline void translate_call(const ir::CallInst& inst, Block& blk, const ir::lowering::TargetABI& abi,
+                           const ir::lowering::ColorMap& regs,
                            std::vector<FloatLiteral>& float_literals) {
     // Emit stores for stack args (those without a register assignment).
     auto arg_regs = ir::lowering::assign_arg_regs(inst.args, abi);
@@ -897,7 +897,7 @@ inline void translate_call(const ir::CallInst& inst, AsmBlock& blk,
     blk.insts.emplace_back(PseudoJ{PseudoJ::CALL, name_of(inst.func.def)});
 }
 
-inline void translate_inst(const ir::Inst& inst, AsmBlock& blk, const FrameLayout& frame,
+inline void translate_inst(const ir::Inst& inst, Block& blk, const FrameLayout& frame,
                            const ir::lowering::TargetABI& abi, const ir::lowering::ColorMap& regs,
                            std::vector<FloatLiteral>& float_literals) {
     Match{inst}(
@@ -911,7 +911,7 @@ inline void translate_inst(const ir::Inst& inst, AsmBlock& blk, const FrameLayou
         });
 }
 
-inline void translate_exit(const ir::Exit& exit, AsmBlock& blk, const std::string& func_name,
+inline void translate_exit(const ir::Exit& exit, Block& blk, const std::string& func_name,
                            const ir::lowering::ColorMap& regs) {
     Match{exit}(
         [&](const ir::ReturnExit&) {
@@ -930,9 +930,9 @@ inline void translate_exit(const ir::Exit& exit, AsmBlock& blk, const std::strin
         });
 }
 
-inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::ColorMap& regs,
-                              std::vector<FloatLiteral>& float_literals) {
-    AsmFunc af;
+inline Func translate_func(const ir::Func& func, const ir::lowering::ColorMap& regs,
+                           std::vector<FloatLiteral>& float_literals) {
+    Func af;
     af.name = func.name;
     af.frame = compute_frame(func);
     auto entry_lbl = ".L" + func.name + "_entry";
@@ -940,7 +940,7 @@ inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::ColorMap
 
     // entry block: function label + prologue
     {
-        AsmBlock entry;
+        Block entry;
         entry.label = func.name;  // function entry label
         if (af.frame.total_size > 0) {
             emit_add_sp(entry, -(int64_t)af.frame.total_size);
@@ -992,7 +992,7 @@ inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::ColorMap
 
     // translate IR blocks
     for (auto blk : ir::analysis::utils::reverse_post_order(func)) {
-        AsmBlock ab;
+        Block ab;
         ab.label = block_label(func.name, blk->label);
         for (auto& inst : blk->insts()) {
             translate_inst(inst, ab, af.frame, ABI, regs, float_literals);
@@ -1003,7 +1003,7 @@ inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::ColorMap
 
     // epilogue block
     {
-        AsmBlock epi;
+        Block epi;
         epi.label = epi_lbl;
         if (af.frame.total_size > 0) {
             emit_add_sp(epi, (int64_t)af.frame.total_size);

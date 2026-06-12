@@ -2,10 +2,8 @@
 
 #include "backend/ir/ir.h"
 #include "op.hpp"
-#include "utils/match.hpp"
 
 #include <cstddef>
-#include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -34,6 +32,13 @@ struct InstI {
     OpI op;
     GeneralReg rd, rs1;
     int32_t imm;
+    [[nodiscard]] std::string toString() const;
+};
+
+struct InstB {
+    OpB op;
+    GeneralReg rs1, rs2;
+    std::string target;
     [[nodiscard]] std::string toString() const;
 };
 
@@ -144,16 +149,16 @@ struct FrameLayout {
     }
 };
 
-struct AsmBlock {
+struct Block {
     std::string label;
     std::vector<Inst> insts;
     [[nodiscard]] std::string toString() const;
 };
 
-struct AsmFunc {
+struct Func {
     std::string name;
     FrameLayout frame;
-    std::vector<AsmBlock> blocks;
+    std::vector<Block> blocks;
     [[nodiscard]] std::string toString() const;
 };
 
@@ -165,7 +170,7 @@ struct FloatLiteral {
 
 struct Module {
     std::vector<Global> globals;
-    std::vector<AsmFunc> funcs;
+    std::vector<Func> funcs;
     std::vector<FloatLiteral> float_literals;
     [[nodiscard]] std::string toString() const;
 };

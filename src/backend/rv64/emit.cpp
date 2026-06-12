@@ -35,6 +35,10 @@ std::string InstI::toString() const {
     return fmt::format("    {} {}, {}, {}", op, rd, rs1, imm);
 }
 
+std::string InstB::toString() const {
+    return fmt::format("    {} {}, {}, {}", op, rs1, rs2, target);
+}
+
 std::string InstFI::toString() const {
     return fmt::format("    {} {}, {}({})", op, rd, imm, rs1);
 }
@@ -97,9 +101,9 @@ std::string PseudoRet::toString() const {
     return "    ret";
 }
 
-// ============ AsmBlock, AsmFunc, FloatLiteral toString() ============
+// ============ Block, Func, FloatLiteral toString() ============
 
-std::string AsmBlock::toString() const {
+std::string Block::toString() const {
     std::string r;
     if (!label.empty()) {
         r += fmt::format("{}:\n", label);
@@ -110,7 +114,7 @@ std::string AsmBlock::toString() const {
     return r;
 }
 
-std::string AsmFunc::toString() const {
+std::string Func::toString() const {
     std::string r;
     r += fmt::format(".globl {}\n", name);
     r += fmt::format(".type {}, @function\n", name);

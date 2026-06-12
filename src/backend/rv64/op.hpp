@@ -128,17 +128,19 @@ enum class OpI : uint8_t {
     SB,
     SH,
 
+    ADDIW,
+    SLLIW,
+    SRLIW,
+    SRAIW,
+};
+
+enum class OpB : uint8_t {
     BEQ,
     BNE,
     BLT,
     BGE,
     BLTU,
     BGEU,
-
-    ADDIW,
-    SLLIW,
-    SRLIW,
-    SRAIW,
 };
 
 enum class OpFI : uint8_t {
@@ -246,16 +248,22 @@ inline std::string toString(OpI op) {
         case OpI::SW: return "sw";
         case OpI::SB: return "sb";
         case OpI::SH: return "sh";
-        case OpI::BEQ: return "beq";
-        case OpI::BNE: return "bne";
-        case OpI::BLT: return "blt";
-        case OpI::BGE: return "bge";
-        case OpI::BLTU: return "bltu";
-        case OpI::BGEU: return "bgeu";
         case OpI::ADDIW: return "addiw";
         case OpI::SLLIW: return "slliw";
         case OpI::SRLIW: return "srliw";
         case OpI::SRAIW: return "sraiw";
+    }
+    return "?";
+}
+
+inline std::string toString(OpB op) {
+    switch (op) {
+        case OpB::BEQ: return "beq";
+        case OpB::BNE: return "bne";
+        case OpB::BLT: return "blt";
+        case OpB::BGE: return "bge";
+        case OpB::BLTU: return "bltu";
+        case OpB::BGEU: return "bgeu";
     }
     return "?";
 }

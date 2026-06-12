@@ -86,6 +86,7 @@ private:
     void exec_r(const InstR& i);
     void exec_fr(const InstFR& i);
     void exec_i(const InstI& i, const FlatInst& fi);
+    void exec_b(const InstB& i, const FlatInst& fi);
     void exec_fi(const InstFI& i);
     void exec_j(const InstJ& i, const FlatInst& fi);
     void exec_u(const InstU& i);
