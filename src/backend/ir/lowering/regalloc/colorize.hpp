@@ -9,8 +9,8 @@
 #include <functional>
 #include <list>
 #include <optional>
+#include <set>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -264,7 +264,7 @@ struct BriggsAllocator {
     void assign_colors() {
         while (!nodes.select_stack.empty()) {
             auto n = nodes.select_stack.back();
-            std::unordered_set<size_t> ok_colors;
+            std::set<size_t> ok_colors;
             for (size_t c = 0; c < graph.max_color; c++) ok_colors.insert(c);
             for (const auto& neighbor : graph[n].interfere) {
                 auto alias = graph.alias(neighbor);
