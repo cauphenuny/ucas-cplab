@@ -27,7 +27,7 @@ compiler [args]... files ...
     --ir                    Print the generated IR
     --ir-info               Print analysis result of the generated IR
 
-    --retain-ssa-value      Do not convert SSAValue to TempValue in IR
+    --retain-ssa-value      Do not convert SSAValue to TempValue in IR optimization passes
 
     --optimize-copy         Apply Copy Propagation optimization
     --optimize-const        Apply Constant Folding optimization
@@ -39,15 +39,15 @@ compiler [args]... files ...
     --optimize-exp          Apply Common Subexpression Elimination optimization
     -O1, -O2, --optimize    Apply above optimizations, --no-optimize-[...] to disable specific optimizations
 
-    --lowering-addr         Apply address lowering transformation
-    --lowering-reg          Apply register allocation transformation
+    --lowering-addr         Apply array-index lowering
+    --lowering-proxy        Apply access proxy insertion (create temp value proxy which is reg-allocatable)
+    --lowering-array        Apply array initialization lowering (lower array store to memset/memcpy)
+    --lowering-reg          Apply register allocation
     --lowering-prune        Apply redundant move elimination after register allocation
     --lowering-optim        Apply optimizations after lowering transformations
-    --lowering-proxy        Apply variable access proxy lowering
-    --lowering-array        Apply array initialization lowering (lower array store to memcpy)
     --lowering              Apply above lowering transformations
 
-    --exec                  Execute the generated IR or assembly
+    --exec                  Execute the generated IR
     --silent                Suppress all compiler output except the return value when executing
 
     --exec-debug            Enable debug mode in execution (add breakpoints, execute step by step, etc.)
@@ -56,7 +56,7 @@ compiler [args]... files ...
     -S, --asm               Generate and output RV64 assembly code (implies --lowering)
     --asm-exec              Execute the generated assembly code (implies --asm)
 
-interpreter [--help] [--silent] [--print] IR_file
+interpreter [--help] [--silent] [--print] IR-file
     --help      Show this help message
     --print     Show reconstructed IR, without executing
     --silent    Suppress all compiler output except the return value when executing
@@ -65,17 +65,36 @@ interpreter [--help] [--silent] [--print] IR_file
 
 Examples:
 
-- print IR: `build/compiler --ir source.cact`
-- print optimized IR: `build/compiler --ir --optimize source.cact`
-- output IR to file: `build/compiler --ir source.cact --output ir_code.riir`
-- execute source program: `build/compiler --exec source.cact`
-- execute source program, sliently (without any output except program IO and return code): `build/compiler --exec --silent source.cact`
-- execute IR program: `build/interpreter ir_code.riir`
-- execute IR program, silently: `build/interpreter ir_code.riir --silent`
+1. print/output
+    - print AST: `compiler --ast source.cact`
+    - print IR: `compiler --ir source.cact`
+    - print optimized IR: `compiler --ir --optimize source.cact`
+    - output IR to file: `compiler --ir source.cact -o ir_code.riir`
+    - print Assembly: `compiler -S source.cact`
+    - output Assembly code to file: `compiler -S source.cact -o asm_code.s`
+
+    > [!NOTE]
+    > When applied transformations on IR, the intermediate IR would be put into stdout (can be suppressed by --silent), only final IR would be output into file.
+
+2. interpret source program (by compiler)
+    - at IR stage: `compiler --exec source.cact`
+    - at IR stage, sliently (without any output except program IO and return code): `compiler --exec --silent source.cact`
+    - at Assembly stage: `compiler --asm-exec source.cact` (also optional `--silent`)
+
+    > [!NOTE]
+    > The optimizations and lowering transformations would be applied before IR/Assembly executing.
+
+3. interpret IR program (by interpreter)
+    - `interpreter ir_code.riir` (also optional `--silent`)
+
+4. debug
+    - print AST info (type, def loc, ...): `--ast-info`
+    - print IR info (dominance, liveness, ...): `--ir-info`
+    - execute IR with trace/debug: `--exec-trace` or `--exec-debug`
 
 ---
 
-TUI demo
+Debug TUI (launch by `--exec --exec-debug`)
 
 ![TUI](assets/tui.png)
 

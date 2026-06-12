@@ -91,7 +91,6 @@ def test(use_gcc = False):
             ret = subprocess.run(["spike", "pk", exe_file], stdout=subprocess.PIPE)
         # save return code to file
         with open(out_file, 'w') as f:
-            f.write("bbl loader\n")
             f.write(ret.stdout.decode())
             f.write(str(ret.returncode))
             f.write("\n")

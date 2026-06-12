@@ -70,7 +70,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --ir                    Print the generated IR
     --ir-info               Print analysis result of the generated IR
 
-    --retain-ssa-value      Do not convert SSAValue to TempValue in IR
+    --retain-ssa-value      Do not convert SSAValue to TempValue in IR optimization passes
 
     --optimize-copy         Apply Copy Propagation optimization
     --optimize-const        Apply Constant Folding optimization
@@ -82,15 +82,15 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --optimize-exp          Apply Common Subexpression Elimination optimization
     -O1, -O2, --optimize    Apply above optimizations, --no-optimize-[...] to disable specific optimizations
 
-    --lowering-addr         Apply address lowering transformation
-    --lowering-reg          Apply register allocation transformation
+    --lowering-addr         Apply array-index lowering
+    --lowering-proxy        Apply access proxy insertion (create temp value proxy which is reg-allocatable)
+    --lowering-array        Apply array initialization lowering (lower array store to memset/memcpy)
+    --lowering-reg          Apply register allocation
     --lowering-prune        Apply redundant move elimination after register allocation
     --lowering-optim        Apply optimizations after lowering transformations
-    --lowering-proxy        Apply variable access proxy lowering
-    --lowering-array        Apply array initialization lowering (lower array store to memcpy)
     --lowering              Apply above lowering transformations
 
-    --exec                  Execute the generated IR or assembly
+    --exec                  Execute the generated IR
     --silent                Suppress all compiler output except the return value when executing
 
     --exec-debug            Enable debug mode in execution (add breakpoints, execute step by step, etc.)
