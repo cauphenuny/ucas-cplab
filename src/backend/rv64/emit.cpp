@@ -185,6 +185,14 @@ std::string Module::toString() const {
     r += ".attribute unaligned_access, 0\n";
     r += ".attribute stack_align, 16\n";
 
+    // .text
+    r += "\n.text\n";
+    r += ".align 1\n";
+    for (auto& f : funcs) {
+        r += fmt::format("{}", f);
+        r += "\n";
+    }
+
     // .rodata: const (comptime) globals
     bool has_rodata = false;
     for (auto& g : globals) {
@@ -235,14 +243,6 @@ std::string Module::toString() const {
         }
     }
 
-    // .text
-    r += "\n.text\n";
-    r += ".align 1\n";
-    for (auto& f : funcs) {
-        r += fmt::format("{}", f);
-        r += "\n";
-    }
-
     // .rodata for float literals
     if (!float_literals.empty()) {
         r += ".section .rodata\n";
@@ -251,7 +251,7 @@ std::string Module::toString() const {
         }
     }
 
-    r += ".ident \"CACT compiler\"\n";
+    r += fmt::format(".ident \"CACT compiler ({} {})\"\n", __DATE__, __TIME__);
     return r;
 }
 

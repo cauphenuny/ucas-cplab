@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <optional>
+#include <set>
 #include <variant>
 #include <vector>
 
@@ -237,6 +238,27 @@ inline bool has_side_effect(Inst& inst) {
         [&](const UnaryInst& u) { return false; },
         [&](const BinaryInst& b) { return b.op == ir::InstOp::STORE; },
         [&](const auto&) { return false; });
+}
+
+inline std::vector<Block*> post_order(const Func& func) {
+    std::vector<Block*> order;
+    std::set<Block*> visited;
+    auto dfs = [&](auto self, Block* block) {
+        if (visited.count(block)) return;
+        visited.insert(block);
+        for (auto& target : targets(block->exit())) {
+            self(self, target.get());
+        }
+        order.push_back(block);
+    };
+    dfs(dfs, func.entrance());
+    return order;
+}
+
+inline std::vector<Block*> reverse_post_order(const Func& func) {
+    auto order = post_order(func);
+    std::reverse(order.begin(), order.end());
+    return order;
 }
 
 }  // namespace ir::analysis::utils

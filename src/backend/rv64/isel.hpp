@@ -1,6 +1,7 @@
 #pragma once
 
 #include "abi.hpp"
+#include "backend/ir/analysis/utils.hpp"
 #include "backend/ir/ir.h"
 #include "backend/ir/lowering/abi.hpp"
 #include "backend/ir/lowering/regalloc/precolorize.hpp"
@@ -990,7 +991,7 @@ inline AsmFunc translate_func(const ir::Func& func, const ir::lowering::ColorMap
     }
 
     // translate IR blocks
-    for (auto& blk : func.blocks()) {
+    for (auto blk : ir::analysis::utils::reverse_post_order(func)) {
         AsmBlock ab;
         ab.label = block_label(func.name, blk->label);
         for (auto& inst : blk->insts()) {
