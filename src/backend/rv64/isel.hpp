@@ -352,9 +352,11 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
             if (auto src = lookup_reg(regs, inst.operand)) {
                 if (src_fp && dst_fp) {
                     if (is_32bit_op(src_t) && !is_32bit_op(dst_t)) {
-                        blk.insts.emplace_back(InstFR{OpFR::FCVT_D_S, fpr(*rd), fpr(*src), fpr(0)});
+                        blk.insts.emplace_back(
+                            InstFR{OpFR::FCVT_D_S, fpr(*rd), fpr(*src), std::monostate{}});
                     } else if (!is_32bit_op(src_t) && is_32bit_op(dst_t)) {
-                        blk.insts.emplace_back(InstFR{OpFR::FCVT_S_D, fpr(*rd), fpr(*src), fpr(0)});
+                        blk.insts.emplace_back(
+                            InstFR{OpFR::FCVT_S_D, fpr(*rd), fpr(*src), std::monostate{}});
                     } else if (*rd != *src) {
                         bool is_double = !is_32bit_op(dst_t);
                         blk.insts.emplace_back(InstFR{is_double ? OpFR::FSGNJ_D : OpFR::FSGNJ_S,
@@ -366,14 +368,14 @@ inline void translate_unary(const ir::UnaryInst& inst, AsmBlock& blk, const Fram
                     blk.insts.emplace_back(InstFR{src_double
                                                       ? (dst_32 ? OpFR::FCVT_W_D : OpFR::FCVT_L_D)
                                                       : (dst_32 ? OpFR::FCVT_W_S : OpFR::FCVT_L_S),
-                                                  fpr(*rd), fpr(*src), fpr(0)});
+                                                  gpr(*rd), fpr(*src), std::monostate{}});
                 } else if (!src_fp && dst_fp) {
                     bool dst_double = !is_32bit_op(dst_t);
                     bool src_32 = is_32bit_op(src_t);
                     blk.insts.emplace_back(InstFR{dst_double
                                                       ? (src_32 ? OpFR::FCVT_D_W : OpFR::FCVT_D_L)
                                                       : (src_32 ? OpFR::FCVT_S_W : OpFR::FCVT_S_L),
-                                                  fpr(*rd), fpr(*src), fpr(0)});
+                                                  fpr(*rd), gpr(*src), std::monostate{}});
                 } else if (is_32bit_op(src_t) && !is_32bit_op(dst_t)) {
                     blk.insts.emplace_back(InstI{OpI::ADDIW, gpr(*rd), gpr(*src), 0});
                 } else {
@@ -558,27 +560,27 @@ inline void translate_binary(const ir::BinaryInst& inst, AsmBlock& blk, const Fr
                 break;
             case ir::InstOp::LT:
                 blk.insts.emplace_back(
-                    InstFR{is_double ? OpFR::FLT_D : OpFR::FLT_S, fpr(*rd), fpr(*lhs), fpr(*rhs)});
+                    InstFR{is_double ? OpFR::FLT_D : OpFR::FLT_S, gpr(*rd), fpr(*lhs), fpr(*rhs)});
                 break;
             case ir::InstOp::GT:
                 blk.insts.emplace_back(
-                    InstFR{is_double ? OpFR::FLT_D : OpFR::FLT_S, fpr(*rd), fpr(*rhs), fpr(*lhs)});
+                    InstFR{is_double ? OpFR::FLT_D : OpFR::FLT_S, gpr(*rd), fpr(*rhs), fpr(*lhs)});
                 break;
             case ir::InstOp::LEQ:
                 blk.insts.emplace_back(
-                    InstFR{is_double ? OpFR::FLE_D : OpFR::FLE_S, fpr(*rd), fpr(*lhs), fpr(*rhs)});
+                    InstFR{is_double ? OpFR::FLE_D : OpFR::FLE_S, gpr(*rd), fpr(*lhs), fpr(*rhs)});
                 break;
             case ir::InstOp::GEQ:
                 blk.insts.emplace_back(
-                    InstFR{is_double ? OpFR::FLE_D : OpFR::FLE_S, fpr(*rd), fpr(*rhs), fpr(*lhs)});
+                    InstFR{is_double ? OpFR::FLE_D : OpFR::FLE_S, gpr(*rd), fpr(*rhs), fpr(*lhs)});
                 break;
             case ir::InstOp::EQ:
                 blk.insts.emplace_back(
-                    InstFR{is_double ? OpFR::FEQ_D : OpFR::FEQ_S, fpr(*rd), fpr(*lhs), fpr(*rhs)});
+                    InstFR{is_double ? OpFR::FEQ_D : OpFR::FEQ_S, gpr(*rd), fpr(*lhs), fpr(*rhs)});
                 break;
             case ir::InstOp::NEQ: {
                 blk.insts.emplace_back(
-                    InstFR{is_double ? OpFR::FEQ_D : OpFR::FEQ_S, fpr(*rd), fpr(*lhs), fpr(*rhs)});
+                    InstFR{is_double ? OpFR::FEQ_D : OpFR::FEQ_S, gpr(*rd), fpr(*lhs), fpr(*rhs)});
                 blk.insts.emplace_back(InstI{OpI::XORI, gpr(*rd), gpr(*rd), 1});
                 break;
             }

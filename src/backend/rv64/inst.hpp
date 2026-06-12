@@ -25,7 +25,8 @@ struct InstR {
 
 struct InstFR {
     OpFR op;
-    FloatReg rd, rs1, rs2;
+    std::variant<FloatReg, GeneralReg> rd, rs1;
+    std::variant<std::monostate, FloatReg, GeneralReg> rs2;
     [[nodiscard]] std::string toString() const;
 };
 
@@ -123,12 +124,7 @@ struct Global {
     bool comptime{false};
     [[nodiscard]] bool is_zero_init() const {
         if (!init) return true;
-        bool zero = false;
-        Match{init->val}([&](std::monostate) { zero = true; }, [&](int v) { zero = (v == 0); },
-                         [&](int64_t v) { zero = (v == 0); }, [&](float v) { zero = (v == 0.0f); },
-                         [&](double v) { zero = (v == 0.0); }, [&](bool v) { zero = !v; },
-                         [&](const std::unique_ptr<std::byte[]>&) { zero = false; });
-        return zero;
+        return *init == ir::ConstexprValue::zeros_like(type);
     }
     [[nodiscard]] std::string toString() const;
 };

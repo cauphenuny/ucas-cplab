@@ -43,7 +43,7 @@ compiler [args]... files ...
     --lowering-reg          Apply register allocation transformation
     --lowering-prune        Apply redundant move elimination after register allocation
     --lowering-optim        Apply optimizations after lowering transformations
-    --lowering-global       Apply global variable access proxy lowering (implies --lowering-addr)
+    --lowering-proxy        Apply variable access proxy lowering
     --lowering-array        Apply array initialization lowering (lower array store to memcpy)
     --lowering              Apply above lowering transformations
 

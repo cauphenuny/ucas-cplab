@@ -334,88 +334,137 @@ void VirtualMachine::exec_r(const InstR& i) {
     }
 }
 
+/*
+| inst     | rd | rs1 | rs2 | frd | frs1 | frs2 |
+| -------- | -- | --- | --- | --- | ---- | ---- |
+| FADD.S   |    |     |     | ✓   | ✓    | ✓    |
+| FADD.D   |    |     |     | ✓   | ✓    | ✓    |
+| FSUB.S   |    |     |     | ✓   | ✓    | ✓    |
+| FSUB.D   |    |     |     | ✓   | ✓    | ✓    |
+| FMUL.S   |    |     |     | ✓   | ✓    | ✓    |
+| FMUL.D   |    |     |     | ✓   | ✓    | ✓    |
+| FDIV.S   |    |     |     | ✓   | ✓    | ✓    |
+| FDIV.D   |    |     |     | ✓   | ✓    | ✓    |
+| FSQRT.S  |    |     |     | ✓   | ✓    |      |
+| FSQRT.D  |    |     |     | ✓   | ✓    |      |
+| FSGNJ.S  |    |     |     | ✓   | ✓    | ✓    |
+| FSGNJ.D  |    |     |     | ✓   | ✓    | ✓    |
+| FSGNJN.S |    |     |     | ✓   | ✓    | ✓    |
+| FSGNJN.D |    |     |     | ✓   | ✓    | ✓    |
+| FEQ.S    | ✓  |     |     |     | ✓    | ✓    |
+| FEQ.D    | ✓  |     |     |     | ✓    | ✓    |
+| FLT.S    | ✓  |     |     |     | ✓    | ✓    |
+| FLT.D    | ✓  |     |     |     | ✓    | ✓    |
+| FLE.S    | ✓  |     |     |     | ✓    | ✓    |
+| FLE.D    | ✓  |     |     |     | ✓    | ✓    |
+| FCVT.W.S | ✓  |     |     |     | ✓    |      |
+| FCVT.W.D | ✓  |     |     |     | ✓    |      |
+| FCVT.L.S | ✓  |     |     |     | ✓    |      |
+| FCVT.L.D | ✓  |     |     |     | ✓    |      |
+| FCVT.S.W |    | ✓   |     | ✓   |      |      |
+| FCVT.D.W |    | ✓   |     | ✓   |      |      |
+| FCVT.S.L |    | ✓   |     | ✓   |      |      |
+| FCVT.D.L |    | ✓   |     | ✓   |      |      |
+| FCVT.S.D |    |     |     | ✓   | ✓    |      |
+| FCVT.D.S |    |     |     | ✓   | ✓    |      |
+| FMV.X.W  | ✓  |     |     |     | ✓    |      |
+| FMV.W.X  |    | ✓   |     | ✓   |      |      |
+*/
+
 void VirtualMachine::exec_fr(const InstFR& i) {
     using FR = OpFR;
+    auto id = [](auto& v) -> uint8_t {
+        return Match{v}(
+            [&](std::monostate) -> uint8_t {
+                throw COMPILER_ERROR("RV64 VM: invalid register for this instruction");
+            },
+            [&](FloatReg r) { return r.id; }, [&](GeneralReg g) -> uint8_t { return g.id; });
+    };
     switch (i.op) {
-        // Float arithmetic (single precision)
-        case FR::FADD_S: set_f(i.rd.id, get_f(i.rs1.id) + get_f(i.rs2.id)); break;
-        case FR::FSUB_S: set_f(i.rd.id, get_f(i.rs1.id) - get_f(i.rs2.id)); break;
-        case FR::FMUL_S: set_f(i.rd.id, get_f(i.rs1.id) * get_f(i.rs2.id)); break;
-        case FR::FDIV_S: set_f(i.rd.id, get_f(i.rs1.id) / get_f(i.rs2.id)); break;
-        case FR::FSQRT_S: set_f(i.rd.id, __builtin_sqrtf(get_f(i.rs1.id))); break;
+        // Float arithmetic — rd/rs1/rs2 all FloatReg
+        case FR::FADD_S: set_f(id(i.rd), get_f(id(i.rs1)) + get_f(id(i.rs2))); break;
+        case FR::FSUB_S: set_f(id(i.rd), get_f(id(i.rs1)) - get_f(id(i.rs2))); break;
+        case FR::FMUL_S: set_f(id(i.rd), get_f(id(i.rs1)) * get_f(id(i.rs2))); break;
+        case FR::FDIV_S: set_f(id(i.rd), get_f(id(i.rs1)) / get_f(id(i.rs2))); break;
 
-        // Double arithmetic (double precision)
-        case FR::FADD_D: set_d(i.rd.id, get_d(i.rs1.id) + get_d(i.rs2.id)); break;
-        case FR::FSUB_D: set_d(i.rd.id, get_d(i.rs1.id) - get_d(i.rs2.id)); break;
-        case FR::FMUL_D: set_d(i.rd.id, get_d(i.rs1.id) * get_d(i.rs2.id)); break;
-        case FR::FDIV_D: set_d(i.rd.id, get_d(i.rs1.id) / get_d(i.rs2.id)); break;
-        case FR::FSQRT_D: set_d(i.rd.id, __builtin_sqrt(get_d(i.rs1.id))); break;
+        case FR::FADD_D: set_d(id(i.rd), get_d(id(i.rs1)) + get_d(id(i.rs2))); break;
+        case FR::FSUB_D: set_d(id(i.rd), get_d(id(i.rs1)) - get_d(id(i.rs2))); break;
+        case FR::FMUL_D: set_d(id(i.rd), get_d(id(i.rs1)) * get_d(id(i.rs2))); break;
+        case FR::FDIV_D: set_d(id(i.rd), get_d(id(i.rs1)) / get_d(id(i.rs2))); break;
 
-        // Sign-injection (used for MOV/NEG of floats)
+        // FSQRT — rd/rs1=FloatReg, no rs2
+        case FR::FSQRT_S: set_f(id(i.rd), __builtin_sqrtf(get_f(id(i.rs1)))); break;
+        case FR::FSQRT_D: set_d(id(i.rd), __builtin_sqrt(get_d(id(i.rs1)))); break;
+
+        // Sign-injection — rd/rs1/rs2 all FloatReg
         case FR::FSGNJ_S: {
             uint32_t v1, v2;
-            std::memcpy(&v1, &fregs[i.rs1.id], 4);
-            std::memcpy(&v2, &fregs[i.rs2.id], 4);
+            std::memcpy(&v1, &fregs[id(i.rs1)], 4);
+            std::memcpy(&v2, &fregs[id(i.rs2)], 4);
             v1 = (v1 & 0x7FFFFFFF) | (v2 & 0x80000000);
-            std::memcpy(&fregs[i.rd.id], &v1, 4);
+            std::memcpy(&fregs[id(i.rd)], &v1, 4);
             break;
         }
         case FR::FSGNJN_S: {
             uint32_t v1, v2;
-            std::memcpy(&v1, &fregs[i.rs1.id], 4);
-            std::memcpy(&v2, &fregs[i.rs2.id], 4);
+            std::memcpy(&v1, &fregs[id(i.rs1)], 4);
+            std::memcpy(&v2, &fregs[id(i.rs2)], 4);
             v1 = (v1 & 0x7FFFFFFF) | ((v2 & 0x80000000) ^ 0x80000000);
-            std::memcpy(&fregs[i.rd.id], &v1, 4);
+            std::memcpy(&fregs[id(i.rd)], &v1, 4);
             break;
         }
         case FR::FSGNJ_D: {
             uint64_t v1, v2;
-            std::memcpy(&v1, &fregs[i.rs1.id], 8);
-            std::memcpy(&v2, &fregs[i.rs2.id], 8);
+            std::memcpy(&v1, &fregs[id(i.rs1)], 8);
+            std::memcpy(&v2, &fregs[id(i.rs2)], 8);
             v1 = (v1 & 0x7FFFFFFFFFFFFFFFULL) | (v2 & 0x8000000000000000ULL);
-            std::memcpy(&fregs[i.rd.id], &v1, 8);
+            std::memcpy(&fregs[id(i.rd)], &v1, 8);
             break;
         }
         case FR::FSGNJN_D: {
             uint64_t v1, v2;
-            std::memcpy(&v1, &fregs[i.rs1.id], 8);
-            std::memcpy(&v2, &fregs[i.rs2.id], 8);
+            std::memcpy(&v1, &fregs[id(i.rs1)], 8);
+            std::memcpy(&v2, &fregs[id(i.rs2)], 8);
             v1 = (v1 & 0x7FFFFFFFFFFFFFFFULL) |
                  ((v2 & 0x8000000000000000ULL) ^ 0x8000000000000000ULL);
-            std::memcpy(&fregs[i.rd.id], &v1, 8);
+            std::memcpy(&fregs[id(i.rd)], &v1, 8);
             break;
         }
 
-        // Float compares (produce 0/1 in integer register via fregs[rd])
-        case FR::FEQ_S: regs[i.rd.id] = get_f(i.rs1.id) == get_f(i.rs2.id); break;
-        case FR::FLT_S: regs[i.rd.id] = get_f(i.rs1.id) < get_f(i.rs2.id); break;
-        case FR::FLE_S: regs[i.rd.id] = get_f(i.rs1.id) <= get_f(i.rs2.id); break;
-        case FR::FEQ_D: regs[i.rd.id] = get_d(i.rs1.id) == get_d(i.rs2.id); break;
-        case FR::FLT_D: regs[i.rd.id] = get_d(i.rs1.id) < get_d(i.rs2.id); break;
-        case FR::FLE_D: regs[i.rd.id] = get_d(i.rs1.id) <= get_d(i.rs2.id); break;
+        // Float cmp — rd=GeneralReg, rs1/rs2=FloatReg
+        case FR::FEQ_S: regs[id(i.rd)] = get_f(id(i.rs1)) == get_f(id(i.rs2)); break;
+        case FR::FLT_S: regs[id(i.rd)] = get_f(id(i.rs1)) < get_f(id(i.rs2)); break;
+        case FR::FLE_S: regs[id(i.rd)] = get_f(id(i.rs1)) <= get_f(id(i.rs2)); break;
+        case FR::FEQ_D: regs[id(i.rd)] = get_d(id(i.rs1)) == get_d(id(i.rs2)); break;
+        case FR::FLT_D: regs[id(i.rd)] = get_d(id(i.rs1)) < get_d(id(i.rs2)); break;
+        case FR::FLE_D: regs[id(i.rd)] = get_d(id(i.rs1)) <= get_d(id(i.rs2)); break;
 
-        // FCVT: int ↔ float (note: rd=GPR, rs1=FPR or vice versa)
-        case FR::FCVT_W_S: regs[i.rd.id] = (int64_t)(int32_t)get_f(i.rs1.id); break;
-        case FR::FCVT_W_D: regs[i.rd.id] = (int64_t)(int32_t)get_d(i.rs1.id); break;
-        case FR::FCVT_L_S: regs[i.rd.id] = (int64_t)get_f(i.rs1.id); break;
-        case FR::FCVT_L_D: regs[i.rd.id] = (int64_t)get_d(i.rs1.id); break;
-        case FR::FCVT_S_W: set_f(i.rd.id, (float)(int32_t)regs[i.rs1.id]); break;
-        case FR::FCVT_D_W: set_d(i.rd.id, (double)(int32_t)regs[i.rs1.id]); break;
-        case FR::FCVT_S_L: set_f(i.rd.id, (float)(int64_t)regs[i.rs1.id]); break;
-        case FR::FCVT_D_L: set_d(i.rd.id, (double)(int64_t)regs[i.rs1.id]); break;
-        case FR::FCVT_S_D: set_f(i.rd.id, (float)get_d(i.rs1.id)); break;
-        case FR::FCVT_D_S: set_d(i.rd.id, (double)get_f(i.rs1.id)); break;
+        // FCVT fp→int — rd=GeneralReg, rs1=FloatReg, no rs2
+        case FR::FCVT_W_S: regs[id(i.rd)] = (int64_t)(int32_t)get_f(id(i.rs1)); break;
+        case FR::FCVT_W_D: regs[id(i.rd)] = (int64_t)(int32_t)get_d(id(i.rs1)); break;
+        case FR::FCVT_L_S: regs[id(i.rd)] = (int64_t)get_f(id(i.rs1)); break;
+        case FR::FCVT_L_D: regs[id(i.rd)] = (int64_t)get_d(id(i.rs1)); break;
 
-        // FMV: bitcast between freg and reg
+        // FCVT int→fp — rd=FloatReg, rs1=GeneralReg, no rs2
+        case FR::FCVT_S_W: set_f(id(i.rd), (float)(int32_t)regs[id(i.rs1)]); break;
+        case FR::FCVT_D_W: set_d(id(i.rd), (double)(int32_t)regs[id(i.rs1)]); break;
+        case FR::FCVT_S_L: set_f(id(i.rd), (float)(int64_t)regs[id(i.rs1)]); break;
+        case FR::FCVT_D_L: set_d(id(i.rd), (double)(int64_t)regs[id(i.rs1)]); break;
+
+        // FCVT fp↔fp — rd/rs1=FloatReg, no rs2
+        case FR::FCVT_S_D: set_f(id(i.rd), (float)get_d(id(i.rs1))); break;
+        case FR::FCVT_D_S: set_d(id(i.rd), (double)get_f(id(i.rs1))); break;
+
+        // FMV — rd=GeneralReg+rs1=FloatReg, or rd=FloatReg+rs1=GeneralReg
         case FR::FMV_X_W: {
             uint32_t v;
-            std::memcpy(&v, &fregs[i.rs1.id], 4);
-            regs[i.rd.id] = (int64_t)(int32_t)v;
+            std::memcpy(&v, &fregs[id(i.rs1)], 4);
+            regs[id(i.rd)] = (int64_t)(int32_t)v;
             break;
         }
         case FR::FMV_W_X: {
-            uint32_t v = (uint32_t)regs[i.rs1.id];
-            std::memcpy(&fregs[i.rd.id], &v, 4);
+            uint32_t v = (uint32_t)regs[id(i.rs1)];
+            std::memcpy(&fregs[id(i.rd)], &v, 4);
             break;
         }
     }
