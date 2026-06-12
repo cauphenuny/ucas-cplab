@@ -24,6 +24,7 @@
 #include "backend/ir/vm/vm.h"
 #include "backend/rv64/abi.hpp"
 #include "backend/rv64/isel.hpp"
+#include "backend/rv64/optim/label.hpp"
 #include "backend/rv64/optim/peephole.hpp"
 #include "backend/rv64/vm/vm.hpp"
 #include "fmt/base.h"
@@ -528,7 +529,9 @@ int main(int argc, const char* argv[]) {
                             fmt::println("Generated RV64 Assembly:\n\n```asm\n{}\n```\n", module);
 
                         if (optimize_asm) {
-                            bool changed = rv64::optim::RedundantJumpElimination().apply(module);
+                            bool changed = false;
+                            changed |= rv64::optim::RedundantJumpElimination().apply(module);
+                            changed |= rv64::optim::DeadLabelElimination().apply(module);
                             if (!silent && changed) {
                                 fmt::println("After Optimizations:\n\n```asm\n{}\n```\n", module);
                             }
