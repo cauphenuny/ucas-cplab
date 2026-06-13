@@ -3,8 +3,8 @@
 Build:
 
 ```
-$ cmake -Bbuild -DCMAKE_BUILD_TYPE=Release
-$ cmake --build build
+cmake -Bbuild -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
 
 ANTLR generation is integrated into CMake. As long as Java is available and
@@ -40,7 +40,7 @@ compiler [args]... files ...
     --optimize-exp          Apply Common Subexpression Elimination optimization
     -O1                     Apply all above optimizations
     --optimize-lowering     Apply optimizations after lowering transformations
-    --optimize-asm          Apply optimizations after assembly code generation
+    --optimize-assembly     Apply optimizations after assembly code generation
     -O2, --optimize         Apply all above optimizations
 
     --no-optimize-[name]    Disable specific optimization when -O1/-O2/--optimize is enabled
@@ -125,11 +125,11 @@ src/
 │   ├── ir/
 │   │   ├── alloc.cpp
 │   │   ├── analysis/
-│   │   │   ├── cfg.hpp:	Control Flow Graph
+│   │   │   ├── cfg.hpp: Control Flow Graph
 │   │   │   ├── dataflow/
 │   │   │   │   ├── dominance.hpp
-│   │   │   │   ├── framework.hpp:	Unified Data Flow Equation Solver
-│   │   │   │   └── liveness.hpp:	Live Variable Analysis
+│   │   │   │   ├── framework.hpp: Unified Data Flow Equation Solver
+│   │   │   │   └── liveness.hpp: Live Variable Analysis
 │   │   │   ├── dominance.hpp
 │   │   │   ├── usedef.cpp
 │   │   │   ├── usedef.h
@@ -150,7 +150,7 @@ src/
 │   │   │   ├── proxy.hpp
 │   │   │   ├── reg2mem.hpp
 │   │   │   ├── regalloc/
-│   │   │   │   ├── colorize.hpp:	Chaitin-Briggs Graph Coloring Register Allocator
+│   │   │   │   ├── colorize.hpp: Chaitin-Briggs Graph Coloring Register Allocator
 │   │   │   │   ├── graph.hpp
 │   │   │   │   ├── main.hpp
 │   │   │   │   ├── precolorize.hpp
@@ -163,17 +163,17 @@ src/
 │   │   ├── transform/
 │   │   │   ├── framework.hpp
 │   │   │   ├── optim/
-│   │   │   │   ├── common_expr.hpp:	Common Subexpressions Elimination, requires SSA
-│   │   │   │   ├── constant_fold.hpp:	Const Propagation Pass, requires SSA
-│   │   │   │   ├── copy_propagation.hpp:	Copy Propagation Pass, requires SSA
-│   │   │   │   ├── dead_alloc.hpp:	Dead Allocation Elimination Pass
-│   │   │   │   ├── dead_block.hpp:	CFG Simplification & Dead Block Elimination Pass
-│   │   │   │   ├── dead_def.hpp:	Dead Definition Elimination Pass, requires SSA
-│   │   │   │   └── inline.hpp:	Inline Pass, requires SSA
+│   │   │   │   ├── common_expr.hpp: Common Subexpressions Elimination, requires SSA
+│   │   │   │   ├── constant_fold.hpp: Const Propagation Pass, requires SSA
+│   │   │   │   ├── copy_propagation.hpp: Copy Propagation Pass, requires SSA
+│   │   │   │   ├── dead_alloc.hpp: Dead Allocation Elimination Pass
+│   │   │   │   ├── dead_block.hpp: CFG Simplification & Dead Block Elimination Pass
+│   │   │   │   ├── dead_def.hpp: Dead Definition Elimination Pass, requires SSA
+│   │   │   │   └── inline.hpp: Inline Pass, requires SSA
 │   │   │   └── ssa/
-│   │   │       ├── construct.hpp:	SSA Construct Pass
-│   │   │       └── destruct.hpp:	Exit from SSA Form by eliminating phi instructions
-│   │   ├── type.hpp:	algebraic data types for IR
+│   │   │       ├── construct.hpp: SSA Construct Pass
+│   │   │       └── destruct.hpp: Exit from SSA Form by eliminating phi instructions
+│   │   ├── type.hpp: algebraic data types for IR
 │   │   ├── value.cpp
 │   │   └── vm/
 │   │       ├── assign.cpp
@@ -274,6 +274,7 @@ enum Type {
 ---
 
 AST:
+
 ```rust
 enum ConstExp {
     Int(i32),
@@ -366,3 +367,4 @@ struct Program(Vec<Alloc>, Vec<Func>)
 ---
 
 [Tutorial](assets/tutorial.md)
+

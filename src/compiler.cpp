@@ -86,7 +86,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --optimize-exp          Apply Common Subexpression Elimination optimization
     -O1                     Apply all above optimizations
     --optimize-lowering     Apply optimizations after lowering transformations
-    --optimize-asm          Apply optimizations after assembly code generation
+    --optimize-assembly     Apply optimizations after assembly code generation
     -O2, --optimize         Apply all above optimizations
 
     --no-optimize-[name]    Disable specific optimization when -O1/-O2/--optimize is enabled
@@ -193,9 +193,11 @@ int main(int argc, const char* argv[]) {
     bool assembly_exec = false;
 
     std::vector<std::tuple<std::string, std::reference_wrapper<bool>, size_t>> optimizations = {
-        {"alloc", optimize_alloc, 1}, {"def", optimize_def, 1},     {"exp", optimize_exp, 1},
-        {"copy", optimize_copy, 1},   {"const", optimize_const, 1}, {"block", optimize_block, 1},
-        {"temp", optimize_temp, 1},   {"asm", optimize_asm, 2},     {"lower", optimize_lower, 2}};
+        {"alloc", optimize_alloc, 1},   {"def", optimize_def, 1},
+        {"exp", optimize_exp, 1},       {"copy", optimize_copy, 1},
+        {"const", optimize_const, 1},   {"block", optimize_block, 1},
+        {"temp", optimize_temp, 1},     {"assembly", optimize_asm, 2},
+        {"lowering", optimize_lower, 2}};
 
     std::vector<std::pair<std::string, std::reference_wrapper<bool>>> lowerings = {
         {"addr", lowering_addr},
@@ -597,7 +599,7 @@ int main(int argc, const char* argv[]) {
                         }
                     }
                 } else {
-                    fmt::print("\n");
+                    if (!silent) fmt::print("\n");
                 }
 
                 if (execute) {
