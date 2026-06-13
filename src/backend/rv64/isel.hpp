@@ -100,17 +100,16 @@ inline const ir::Alloc* resolve_alloc(const ir::Value& val) {
 }
 
 // Compute the byte size of the outgoing argument area needed for calls in this function.
+// RISC-V ABI requires the caller to reserve space for ALL arguments (even those passed in
+// registers), because the callee may need to spill register arguments into the caller's
+// outgoing-arg area. We size this area as max(args_count) * 8 across all call sites.
 inline size_t outgoing_arg_area(const ir::Func& func) {
     size_t max_bytes = 0;
     for (auto& blk : func.blocks()) {
         for (auto& inst : blk->insts()) {
             auto* call = std::get_if<ir::CallInst>(&inst);
             if (!call) continue;
-            auto regs = ir::lowering::assign_arg_regs(call->args, ABI);
-            size_t stack_count = 0;
-            for (auto& r : regs)
-                if (!r) stack_count++;
-            size_t area = stack_count * 8;
+            size_t area = call->args.size() * 8;
             if (area > max_bytes) max_bytes = area;
         }
     }
