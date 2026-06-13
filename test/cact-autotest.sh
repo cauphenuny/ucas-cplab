@@ -5,9 +5,9 @@
 LIBCACTIO_PATH=../build
 TEST_PATH=../test
 TEMP_PATH=../temp
-CACT_COMPILER=../build/compiler
-SPIKE=/opt/riscv/bin/spike
-RVCC=/opt/riscv/bin/riscv64-unknown-elf-gcc
+CACT_COMPILER=${CACTC:-../build/compiler}
+SPIKE=${SPIKE:-/opt/riscv/bin/spike}
+RVCC=${RVCC:-/opt/riscv/bin/riscv64-unknown-elf-gcc}
 
 PREFIX="\033[;32mINFO: \033[0m"
 if [ $# -eq 0 ]; then
@@ -48,7 +48,7 @@ echo -e $PREFIX"Generating C code..."
 cat $TEST_PATH/cactio.c $1 > $TEMP_PATH/$cfile
 
 echo -e $PREFIX"Compiling C file with gcc..."
-gcc $TEMP_PATH/$cfile -o $TEMP_PATH/$exefile_gcc
+$RVCC $RVCFLAGS $TEMP_PATH/$cfile -o $TEMP_PATH/$exefile_gcc
 
 if [ $? -ne 0 ]; then
 	exit $?
@@ -63,4 +63,4 @@ $SPIKE pk -s $TEMP_PATH/$exefile_ct
 echo -e $PREFIX"Press Enter to start the ELF file from gcc... "
 read -p "> "
 
-$TEMP_PATH/$exefile_gcc
+$SPIKE pk -s $TEMP_PATH/$exefile_gcc
