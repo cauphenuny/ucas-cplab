@@ -18,3 +18,11 @@
 = 实验中遇到的问题与解决方案
 
 #include "sections/problem.typ"
+
+= 参考文献
+
+#{
+  v(1em)
+  set text(lang: "en")
+  bibliography("sections/reference.bib", title: none)
+}
