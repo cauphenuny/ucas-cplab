@@ -19,7 +19,9 @@
 
 #include "sections/problem.typ"
 
-= 参考文献
+= 附录
+
+== 参考文献
 
 #{
   v(1em)
