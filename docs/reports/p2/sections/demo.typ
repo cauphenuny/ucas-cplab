@@ -42,7 +42,7 @@ Source
 Generated IR:
 #small[
   #grid(columns: 3)[
-    ```rust
+    ```riir
       fn ifElseIf() -> i32 {
           let mut a_0: i32;
           let mut b_0: i32;
@@ -68,7 +68,7 @@ Generated IR:
               %1: bool = @b_0 == 11;
     ```
   ][
-    ```rust
+    ```riir
               => if %1 { 'if_true_7_2 } else { 'if_false_7_2 };
           }
           'if_true_11_4: {
@@ -93,7 +93,7 @@ Generated IR:
           }
     ```
   ][
-    ```rust
+    ```riir
         'if_exit_13_9: {
             => 'if_exit_11_4;
         }
@@ -127,7 +127,7 @@ Generated IR:
 
 #small[
   #grid(columns: 3)[
-    ```rust
+    ```riir
       fn ifElseIf() -> i32 {
           let a_0: i32;
           let b_0: i32;
@@ -153,7 +153,7 @@ Generated IR:
               %1: bool = %b_0.1 == 11;
     ```
   ][
-    ```rust
+    ```riir
               => if %1 { 'if_true_7_2 } else { 'if_false_7_2 };
           }
           'if_true_11_4: {
@@ -179,7 +179,7 @@ Generated IR:
           }
     ```
   ][
-    ```rust
+    ```riir
         'if_exit_13_9: {
             %a_0.3: i32 = phi('if_false_13_9: %a_0.5, 'if_true_13_9: %a_0.4);
             => 'if_exit_11_4;
@@ -214,7 +214,7 @@ Generated IR:
 
 #small[
   #grid(columns: 3)[
-    ```rust
+    ```riir
     fn ifElseIf() -> i32 {
         let a_0: i32;
         let b_0: i32;
@@ -239,7 +239,7 @@ Generated IR:
         'L0: {
             %1: bool = 10 == 11;
     ```][
-    ```rust
+    ```riir
             => if %1 { 'if_true_7_2 } else { 'if_false_7_2 };
         }
         'if_true_11_4: {
@@ -264,7 +264,7 @@ Generated IR:
             => 'if_exit_13_9;
         }
     ```][
-    ```rust
+    ```riir
         'if_exit_13_9: {
             %a_0.3: i32 = phi('if_false_13_9: %9, 'if_true_13_9: %7);
             => 'if_exit_11_4;
@@ -298,7 +298,7 @@ Generated IR:
 \#2 Const Propagation:
 #small[
   #grid(columns: 3)[
-    ```rust
+    ```riir
     fn ifElseIf() -> i32 {
         let a_0: i32;
         let b_0: i32;
@@ -323,7 +323,7 @@ Generated IR:
         'L0: {
             %1: bool = 10 == 11;
     ```][
-    ```rust
+    ```riir
           => 'if_false_7_2;
       }
       'if_true_11_4: {
@@ -348,7 +348,7 @@ Generated IR:
           => 'if_exit_13_9;
       }
     ```][
-    ```rust
+    ```riir
         'if_exit_13_9: {
             %a_0.3: i32 = phi('if_false_13_9: -5, 'if_true_13_9: 20);
             => 'if_exit_11_4;
@@ -384,7 +384,7 @@ Generated IR:
 
 #small[
   #grid(columns: 3)[
-    ```rust
+    ```riir
     fn ifElseIf() -> i32 {
         let a_0: i32;
         let b_0: i32;
@@ -402,7 +402,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'L0: {
             => 'if_false_7_2;
         }
@@ -425,7 +425,7 @@ Generated IR:
     ```
 
   ][
-    ```rust
+    ```riir
         'if_exit_13_9: {
             %a_0.3: i32 = phi('if_false_13_9: -5, 'if_true_13_9: 20);
             => 'if_exit_11_4;
@@ -455,7 +455,7 @@ Generated IR:
 
 #small[
   #grid(columns: 3)[
-    ```rust
+    ```riir
     fn ifElseIf() -> i32 {
         let a_0: i32;
         'entry: {
@@ -478,7 +478,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'if_exit_11_4: {
             %a_0.2: i32 = phi('if_exit_13_9: %a_0.3, 'if_true_11_4: 25);
             => 'if_exit_7_2;
@@ -498,7 +498,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'if_false_13_9: {
             => 'if_exit_13_9;
         }
@@ -521,7 +521,7 @@ Generated IR:
 \#5 Dead Block Elimination:
 #small[
   #grid(columns: 3)[
-    ```rust
+    ```riir
     fn ifElseIf() -> i32 {
         let a_0: i32;
         'entry: {
@@ -538,7 +538,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'if_exit_11_4: {
             %a_0.2: i32 = phi('if_exit_13_9: %a_0.3);
             => 'if_exit_7_2;
@@ -555,7 +555,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'if_false_13_9: {
             => 'if_exit_13_9;
         }
@@ -579,7 +579,7 @@ Generated IR:
 \#6 CFG Simplification:
 #small[
   #grid(columns: 3)[
-    ```rust
+    ```riir
     fn ifElseIf() -> i32 {
         let a_0: i32;
         'entry: {
@@ -597,7 +597,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'if_exit_11_4: {
             => 'if_exit_7_2;
         }
@@ -613,7 +613,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'if_false_13_9: {
             => 'if_exit_13_9;
         }
@@ -636,7 +636,7 @@ Generated IR:
 \#7 Dead Block Elimination:
 #small[
   #grid(columns: 3)[
-    ```rust
+    ```riir
     fn ifElseIf() -> i32 {
         let a_0: i32;
         'entry: {
@@ -646,7 +646,7 @@ Generated IR:
             %a_0.2: i32 = phi('if_exit_13_9: %a_0.3);
     ```
   ][
-    ```rust
+    ```riir
             return %a_0.2;
         }
         'if_exit_13_9: {
@@ -656,7 +656,7 @@ Generated IR:
     }
     ```
   ][
-    ```rust
+    ```riir
     fn main() -> i32 {
         'entry: {
             %0: i32 = @ifElseIf();
@@ -671,7 +671,7 @@ Generated IR:
 \#8 Function Call Inlining:
 #small[
   #grid(columns: 3)[
-    ```rust
+    ```riir
     fn main() -> i32 {
         let inline_ifElseIf_0_a_0: i32;
         'entry: {
@@ -683,7 +683,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'inline_ifElseIf_0_prologue: {
             => 'inline_ifElseIf_0_entry;
         }
@@ -696,7 +696,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'inline_ifElseIf_0_if_exit_13_9: {
             %inline_ifElseIf_0_a_0.3: i32 = phi('inline_ifElseIf_0_entry: -5);
             => 'inline_ifElseIf_0_if_exit_7_2;
@@ -713,7 +713,7 @@ Generated IR:
 \#9 Copy Propagation:
 #small[
   #grid(columns: 3)[
-    ```rust
+    ```riir
     fn main() -> i32 {
         let inline_ifElseIf_0_a_0: i32;
         'entry: {
@@ -725,7 +725,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'inline_ifElseIf_0_prologue: {
             => 'inline_ifElseIf_0_entry;
         }
@@ -738,7 +738,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'inline_ifElseIf_0_if_exit_13_9: {
             %inline_ifElseIf_0_a_0.3: i32 = phi('inline_ifElseIf_0_entry: -5);
             => 'inline_ifElseIf_0_if_exit_7_2;
@@ -755,7 +755,7 @@ Generated IR:
 \#10 Const Propagation:
 #small[
   #grid(columns: 3)[
-    ```rust
+    ```riir
     fn main() -> i32 {
         let inline_ifElseIf_0_a_0: i32;
         'entry: {
@@ -767,7 +767,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'inline_ifElseIf_0_prologue: {
             => 'inline_ifElseIf_0_entry;
         }
@@ -780,7 +780,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'inline_ifElseIf_0_if_exit_13_9: {
             %inline_ifElseIf_0_a_0.3: i32 = phi('inline_ifElseIf_0_entry: -5);
             => 'inline_ifElseIf_0_if_exit_7_2;
@@ -797,7 +797,7 @@ Generated IR:
 \#11 Dead Definition Elimination:
 #small[
   #grid(columns: 3)[
-    ```rust
+    ```riir
     fn main() -> i32 {
         let inline_ifElseIf_0_a_0: i32;
         'entry: {
@@ -809,7 +809,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'inline_ifElseIf_0_prologue: {
             => 'inline_ifElseIf_0_entry;
         }
@@ -821,7 +821,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'inline_ifElseIf_0_if_exit_13_9: {
             => 'inline_ifElseIf_0_if_exit_7_2;
         }
@@ -836,7 +836,7 @@ Generated IR:
 \#12 Dead Allocation Elimination:
 #small[
   #grid(columns: 3)[
-    ```rust
+    ```riir
     fn main() -> i32 {
         'entry: {
             => 'inline_ifElseIf_0_prologue;
@@ -847,7 +847,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'inline_ifElseIf_0_prologue: {
             => 'inline_ifElseIf_0_entry;
         }
@@ -859,7 +859,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'inline_ifElseIf_0_if_exit_13_9: {
             => 'inline_ifElseIf_0_if_exit_7_2;
         }
@@ -874,7 +874,7 @@ Generated IR:
 \#13 CFG Simplification:
 #small[
   #grid(columns: 3)[
-    ```rust
+    ```riir
     fn main() -> i32 {
         'entry: {
             => 'inline_ifElseIf_0_return;
@@ -885,7 +885,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'inline_ifElseIf_0_prologue: {
             => 'inline_ifElseIf_0_return;
         }
@@ -897,7 +897,7 @@ Generated IR:
         }
     ```
   ][
-    ```rust
+    ```riir
         'inline_ifElseIf_0_if_exit_13_9: {
             => 'inline_ifElseIf_0_return;
         }
@@ -911,7 +911,7 @@ Generated IR:
 
 \#14 Dead Block Elimination:
 #small[
-  ```rust
+  ```riir
   fn main() -> i32 {
       'entry: {
           => 'inline_ifElseIf_0_return;
@@ -926,7 +926,7 @@ Generated IR:
 ---
 \#15 CFG Simplification:
 #small[
-  ```rust
+  ```riir
   fn main() -> i32 {
       'entry: {
           %1: () = @print_int(-5);
@@ -941,7 +941,7 @@ Generated IR:
 ]
 
 \#16 Dead Block Elimination:
-```rust
+```riir
 fn main() -> i32 {
     'entry: {
         %1: () = @print_int(-5);

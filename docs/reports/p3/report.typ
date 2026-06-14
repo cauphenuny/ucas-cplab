@@ -5,7 +5,7 @@
 #show: doc => conf(doc, title: "P3 实验报告")
 
 #codly(languages: (
-  rust: (name: "RIIR", icon: text(size: 0.85em)[🦀 ], color: rgb("#CE412B")),
+  riir: (name: "RIIR", icon: text(size: 0.85em)[🦀 ], color: rgb("#CE412B")),
   c: (name: "C", icon: none, color: codly-languages.c.color),
   cpp: (name: "cpp", icon: none, color: codly-languages.cpp.color),
 ))

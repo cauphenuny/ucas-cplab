@@ -4,9 +4,16 @@
 #import "@preview/codly:1.3.0": *
 #import "@preview/codly-languages:0.1.10": *
 
-== IR 结构
+#import "@preview/codly:1.3.0": *
+#import "@preview/codly-languages:0.1.10": *
+#codly(languages: (
+  riir: (name: "Rust", icon: none, color: codly-languages.rust.color),
+  rust: (name: "Rust", icon: none, color: codly-languages.rust.color),
+  c: (name: "C", icon: none, color: codly-languages.c.color),
+  cpp: (name: "cpp", icon: none, color: codly-languages.cpp.color),
+))
 
-#codly(languages: codly-languages)
+== IR 结构
 
 我们的中间表示 RIIR (acronym of "#text(red)[#strong[R]]IIR #text(red)[#strong[I]]s an #text(red)[#strong[I]]ntermediate #text(red)[#strong[R]]epresentation") 是结构化、强类型的，设计上比较类似 LLVM IR #strike[，语法参考 Rust] 。
 
@@ -43,10 +50,10 @@
 
   #show raw: text.with(size: 0.8em)
   #grid(columns: 2)[
-  ```rust
+  ```riir
   const c_0: i32 = 2;
   let ref mut d_0: i32 = 0;
-
+  
   fn foo(mut a_0: &mut[i32], mut b_0: &mut[i32]) -> i32 {
       'entry: {
           %0: &i32 = & @a_0[0];
@@ -61,7 +68,7 @@
 
   ][
 
-  ```rust
+  ```riir
   fn main() -> i32 {
       let mut a_1: [[i32; 2]; 2];
       let mut b_1: i32;
@@ -91,7 +98,7 @@
 
 优化后
 
-```rust
+```riir
 let ref mut d_0: i32 = 0;
 
 fn main() -> i32 {

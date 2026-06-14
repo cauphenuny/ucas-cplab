@@ -96,6 +96,9 @@
 
   align(center, text(1.7em)[*#course* *#title*])
   align(right, emph(author))
+    show raw.where(lang: "riir").or(raw.where(lang: "ir")).or(raw.where(lang: "RIIR")): set raw(
+      syntaxes: "../../../grammar/ir.sublime-syntax",
+    )
   show: codly-init.with()
   doc
 }

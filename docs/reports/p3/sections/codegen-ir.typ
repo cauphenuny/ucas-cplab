@@ -37,7 +37,7 @@
 
 #grid(columns: 2, gutter: 1em)[
 
-  ```rust
+  ```riir
   fn gcd(m: i32, n: i32) -> i32 {
       'entry: {
           => 'cond;
@@ -73,7 +73,7 @@
 
 简单地将phi替换为赋值指令得到 loop 基本块如下：
 
-```rust
+```riir
 'loop: {
     %1: i32 = %m.0 % %n.0;
     %n.0: i32 = %1;
@@ -356,7 +356,7 @@ Briggs 等人 @briggsPracticalImprovementsConstruction1998 提出了一个算法
 实现上来说，我们在现有的 IR 类型系统中引入新的类型 `Int, Float`，表示通用寄存器和浮点寄存器对应的类型，修改后 IR 的 Primitive Type 包含 `Int1, Int32, Int, Float32, Float64, Float`。同时我们为每一个寄存器创建一个全局变量（属性：`-comptime, -ref, +mut`），通过全局变量模拟寄存器行为
 
 寄存器分配前
-```rust
+```riir
 fn main() -> i32 {
   'entry: {
       %0: i32 = @get_int();
@@ -366,7 +366,7 @@ fn main() -> i32 {
 }
 ```
 寄存器分配后
-```rust
+```riir
 let mut __reg_ra: int;
 let mut __reg_a0: int;
 
@@ -708,7 +708,7 @@ fn main() -> i32 {
     示例
 
     考虑以下代码：
-    ```rust
+    ```riir
     fn f(a: i32, b: i32) -> i32 {
         let mut d: i32;
         let mut e: i32;
@@ -743,7 +743,7 @@ fn main() -> i32 {
     ```
 
     预着色后：
-    ```rust
+    ```riir
     let mut __reg_r0: int;
     let mut __reg_r1: int;
     let mut __reg_r2: int;
@@ -791,7 +791,7 @@ fn main() -> i32 {
 
     存在无法着色的节点 `%1, @b`，我们将它们 spill 掉，结果：
 
-    ```rust
+    ```riir
     let mut __reg_r0: int;
     let mut __reg_r1: int;
     let mut __reg_r2: int;
