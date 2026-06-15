@@ -26,8 +26,6 @@
 
 #include "sections/demo.typ"
 
-== 遇到的问题与解决方案
-
 #include "sections/problem.typ"
 
 = 附录
