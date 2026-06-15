@@ -96,7 +96,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --lowering-array        Apply array initialization lowering (lower array store to memset/memcpy)
     --lowering-reg          Apply register allocation
     --lowering-prune        Apply redundant move elimination after register allocation
-    -L, --lowering          Apply above lowering transformations
+    -L, --lowering          Apply above lowering transformations and generate RV64 assembly code
 
     --exec                  Execute the generated IR
     --exec-debug            Enable debug mode in execution (add breakpoints, execute step by step, etc.)
@@ -527,11 +527,9 @@ int main(int argc, const char* argv[]) {
                                                     "CFG Simplification");
                             }
                         }
-                        if (print_asm) {
-                            passes.emplace_back(
-                                std::make_unique<ConstantFolding<Context>>(),
-                                "Constant Folding");  // riscv asm only allows one immediate operand
-                        }
+                        passes.emplace_back(
+                            std::make_unique<ConstantFolding<Context>>(),
+                            "Constant Folding");  // riscv asm only allows one immediate operand
                         while (apply(program, ctx, passes));
                     }
 
