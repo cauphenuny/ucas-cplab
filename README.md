@@ -50,7 +50,7 @@ compiler [args]... files ...
     --lowering-array        Apply array initialization lowering (lower array store to memset/memcpy)
     --lowering-reg          Apply register allocation
     --lowering-prune        Apply redundant move elimination after register allocation
-    -L, --lowering          Apply above lowering transformations
+    -L, --lowering          Apply above lowering transformations and generate RV64 assembly code
 
     --exec                  Execute the generated IR
     --exec-debug            Enable debug mode in execution (add breakpoints, execute step by step, etc.)
