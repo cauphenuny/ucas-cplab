@@ -703,6 +703,8 @@ fn main() -> i32 {
     溢出的节点需要在下一轮迭代中处理：我们会插入实际的 spill 代码并进行 load/store 替换，然后重新构建冲突图并执行着色算法。
 
     实现上，我们为通用寄存器和浮点寄存器维护两张独立的干涉图，进行两次着色。
+
+    我们的代价模型是每一次 use/def $+10$ priority，活跃区间每包含一条指令 $-1$ priority，选择priority最小的变量 spill，目的是保留使用次数多、活跃区间短的变量。
     #v(1em)
   ][
     示例
@@ -837,6 +839,43 @@ fn main() -> i32 {
     重新分配寄存器，此时分配成功
 
     #figure(image("image-2.png", width: 60%), caption: "Final Coloring Result")
+
+    最终结果
+    ```riir
+    let mut __reg_r0: int;
+    let mut __reg_r1: int;
+    let mut __reg_r2: int;
+    let mut __reg_f0: float;
+    let mut __reg_f1: float;
+    let mut __reg_f2: float;
+
+    fn f(a: i32, ref b: i32) -> i32 {
+        let mut d: i32;
+        let mut e: i32;
+        let ref mut __spill_1: int;
+        'entry: {
+            @__spill_1 <- @__reg_r2;
+            @b <- @__reg_r1;
+            @__reg_r1: int = 0;
+            => 'cond;
+        }
+        'cond: {
+            @__reg_r2: int = @__reg_r0 > 0;
+            => if @__reg_r2 { 'then } else { 'exit };
+        }
+        'then: {
+            @__reg_r2: int = * (&i32)@b;
+            @__reg_r1: int = @__reg_r1 + @__reg_r2;
+            @__reg_r0: int = @__reg_r0 - 1;
+            => 'cond;
+        }
+        'exit: {
+            @__reg_r0: int = @__reg_r1;
+            @__reg_r2: int = * (&mut int)@__spill_1;
+            return @__reg_r0;
+        }
+    }
+    ```
   ]
 
 
