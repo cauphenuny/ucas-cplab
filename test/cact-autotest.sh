@@ -2,9 +2,9 @@
 
 # show the command executed by the script
 #set -x
-LIBCACTIO_PATH=../build
-TEST_PATH=../test
-TEMP_PATH=../temp
+LIBCACTIO_PATH=${LIBCACTIO_PATH:-../build}
+TEST_PATH=${TEST_PATH:-../test}
+TEMP_PATH=${TEMP_PATH:-../temp}
 CACT_COMPILER=${CACTC:-../build/compiler}
 SPIKE=${SPIKE:-/opt/riscv/bin/spike}
 RVCC=${RVCC:-/opt/riscv/bin/riscv64-unknown-elf-gcc}

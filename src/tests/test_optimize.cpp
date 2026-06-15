@@ -12,6 +12,7 @@
 #include "backend/ir/transform/optim/dead_block.hpp"
 #include "backend/ir/transform/optim/dead_def.hpp"
 #include "backend/ir/transform/optim/inline.hpp"
+#include "backend/ir/transform/optim/strength_reduce.hpp"
 #include "backend/ir/transform/ssa/construct.hpp"
 #include "backend/ir/transform/ssa/destruct.hpp"
 #include "backend/ir/vm/vm.h"
@@ -136,6 +137,11 @@ int main(int argc, const char* argv[]) {
                  ir::transform::SSAPassContext,
                  ir::transform::SimplifyCFG<ir::transform::SSAPassContext>,
                  ir::transform::DeadBlockElimination<ir::transform::SSAPassContext>>>();
+         }},
+        {"arith",
+         []() {
+             return std::make_unique<
+                 ir::transform::ArithmeticStrengthReduction<ir::transform::SSAPassContext>>();
          }},
         {"addr", []() { return std::make_unique<ir::lowering::AddressLowering>(rv64::ABI); }},
     };

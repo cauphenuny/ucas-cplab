@@ -638,6 +638,9 @@ inline void translate_binary(const ir::BinaryInst& inst, Block& blk, const Frame
             case ir::InstOp::MUL: emit_r(OpR::MUL, OpR::MULW); break;
             case ir::InstOp::DIV: emit_r(OpR::DIV, OpR::DIVW); break;
             case ir::InstOp::MOD: emit_r(OpR::REM, OpR::REMW); break;
+            case ir::InstOp::SHL: emit_r(OpR::SLL, OpR::SLLW); break;
+            case ir::InstOp::SHRL: emit_r(OpR::SRL, OpR::SRLW); break;
+            case ir::InstOp::SHRA: emit_r(OpR::SRA, OpR::SRAW); break;
             case ir::InstOp::AND:
                 blk.insts.emplace_back(InstR{OpR::AND, gpr(*rd), gpr(*lhs), gpr(*rhs)});
                 break;
@@ -737,6 +740,15 @@ inline void translate_binary(const ir::BinaryInst& inst, Block& blk, const Frame
                 blk.insts.emplace_back(PseudoR{PseudoR::SNEZ, gpr(*rd), gpr(*rd)});
                 break;
             case ir::InstOp::SUB: emit_add_reg_imm(blk, gpr(*rd), gpr(*lhs), -*imm_opt, w); break;
+            case ir::InstOp::SHL:
+                blk.insts.emplace_back(InstI{w ? OpI::SLLIW : OpI::SLLI, gpr(*rd), gpr(*lhs), imm});
+                break;
+            case ir::InstOp::SHRL:
+                blk.insts.emplace_back(InstI{w ? OpI::SRLIW : OpI::SRLI, gpr(*rd), gpr(*lhs), imm});
+                break;
+            case ir::InstOp::SHRA:
+                blk.insts.emplace_back(InstI{w ? OpI::SRAIW : OpI::SRAI, gpr(*rd), gpr(*lhs), imm});
+                break;
             case ir::InstOp::MUL:
             case ir::InstOp::DIV:
             case ir::InstOp::MOD:

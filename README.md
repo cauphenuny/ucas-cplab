@@ -44,6 +44,7 @@ compiler [args]... files ...
     --optimize-block        Apply Dead/Trivial Block Elimination optimization
     --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts)
     --optimize-exp          Apply Common Subexpression Elimination optimization
+    --optimize-arith        Apply Arithmetic Strength Reduction optimization
     -O1                     Apply all above optimizations
     --optimize-lowering     Apply optimizations after lowering transformations
     --optimize-assembly     Apply optimizations after assembly code generation
@@ -176,7 +177,8 @@ src/
 │   │   │   │   ├── dead_alloc.hpp:	Dead Allocation Elimination Pass
 │   │   │   │   ├── dead_block.hpp:	CFG Simplification & Dead Block Elimination Pass
 │   │   │   │   ├── dead_def.hpp:	Dead Definition Elimination Pass, requires SSA
-│   │   │   │   └── inline.hpp:	Inline Pass, requires SSA
+│   │   │   │   ├── inline.hpp:	Inline Pass, requires SSA
+│   │   │   │   └── strength_reduce.hpp:	Arithmetic Strength Reduction Pass
 │   │   │   └── ssa/
 │   │   │       ├── construct.hpp:	SSA Construct Pass
 │   │   │       └── destruct.hpp:	Exit from SSA Form by eliminating phi instructions
@@ -249,7 +251,7 @@ src/
     ├── traits.hpp
     └── tui.h
 
-22 directories, 99 files
+22 directories, 100 files
 ```
 <!--/source_tree-->
 

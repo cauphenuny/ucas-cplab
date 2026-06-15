@@ -19,6 +19,7 @@
 #include "backend/ir/transform/optim/dead_block.hpp"
 #include "backend/ir/transform/optim/dead_def.hpp"
 #include "backend/ir/transform/optim/inline.hpp"
+#include "backend/ir/transform/optim/strength_reduce.hpp"
 #include "backend/ir/transform/ssa/construct.hpp"
 #include "backend/ir/transform/ssa/destruct.hpp"
 #include "backend/ir/vm/vm.h"
@@ -84,6 +85,7 @@ auto usage(const char* prog_name, int ret = 0) -> std::string {
     --optimize-block        Apply Dead/Trivial Block Elimination optimization
     --optimize-inline [N=8] Apply Function Call Inlining optimization (threshold: N insts)
     --optimize-exp          Apply Common Subexpression Elimination optimization
+    --optimize-arith        Apply Arithmetic Strength Reduction optimization
     -O1                     Apply all above optimizations
     --optimize-lowering     Apply optimizations after lowering transformations
     --optimize-assembly     Apply optimizations after assembly code generation
@@ -176,6 +178,7 @@ int main(int argc, const char* argv[]) {
     bool optimize_const = false;
     bool optimize_block = false;
     bool optimize_temp = false;
+    bool optimize_arith = false;
     bool optimize_lower = false;
     bool optimize_asm = false;
 
@@ -193,10 +196,9 @@ int main(int argc, const char* argv[]) {
     bool assembly_exec = false;
 
     std::vector<std::tuple<std::string, std::reference_wrapper<bool>, size_t>> optimizations = {
-        {"alloc", optimize_alloc, 1},   {"def", optimize_def, 1},
-        {"exp", optimize_exp, 1},       {"copy", optimize_copy, 1},
-        {"const", optimize_const, 1},   {"block", optimize_block, 1},
-        {"temp", optimize_temp, 1},     {"assembly", optimize_asm, 2},
+        {"alloc", optimize_alloc, 1},   {"def", optimize_def, 1},     {"exp", optimize_exp, 1},
+        {"copy", optimize_copy, 1},     {"const", optimize_const, 1}, {"block", optimize_block, 1},
+        {"temp", optimize_temp, 1},     {"arith", optimize_arith, 1}, {"assembly", optimize_asm, 2},
         {"lowering", optimize_lower, 2}};
 
     std::vector<std::pair<std::string, std::reference_wrapper<bool>>> lowerings = {
@@ -407,23 +409,23 @@ int main(int argc, const char* argv[]) {
                     ConstructSSA().apply(program);
                     echo(program, "Construct SSA");
                     SSAPassContext ctx(program);
+                    using Ctx = SSAPassContext;
                     if (lowering) {
-                        AddStandardLib<SSAPassContext>().apply(program, ctx);
+                        AddStandardLib<Ctx>().apply(program, ctx);
                     }
                     if (optimize || lowering) {
                         using namespace ir::transform;
                         std::vector<std::pair<std::unique_ptr<SSAPass>, std::string>> passes;
                         if (!retain_ssa_value) {
-                            passes.emplace_back(
-                                std::make_unique<SSAValue2TempValue<SSAPassContext>>(),
-                                "SSAValue to TempValue");
+                            passes.emplace_back(std::make_unique<SSAValue2TempValue<Ctx>>(),
+                                                "SSAValue to TempValue");
                         }
                         if (optimize_copy) {
                             passes.emplace_back(std::make_unique<CopyPropagation>(),
                                                 "Copy Propagation");
                         }
                         if (optimize_const) {
-                            passes.emplace_back(std::make_unique<ConstantFolding<SSAPassContext>>(),
+                            passes.emplace_back(std::make_unique<ConstantFolding<Ctx>>(),
                                                 "Constant Folding");
                         }
                         if (optimize_def) {
@@ -431,28 +433,29 @@ int main(int argc, const char* argv[]) {
                                                 "Dead Definition Elimination");
                         }
                         if (optimize_alloc) {
-                            passes.emplace_back(
-                                std::make_unique<DeadAllocElimination<SSAPassContext>>(),
-                                "Dead Allocation Elimination");
+                            passes.emplace_back(std::make_unique<DeadAllocElimination<Ctx>>(),
+                                                "Dead Allocation Elimination");
                         }
                         if (optimize_temp) {
-                            passes.emplace_back(
-                                std::make_unique<DeadTempElimination<SSAPassContext>>(),
-                                "Dead Temporary Value Elimination");
+                            passes.emplace_back(std::make_unique<DeadTempElimination<Ctx>>(),
+                                                "Dead Temporary Value Elimination");
                         }
                         if (optimize_exp) {
-                            passes.emplace_back(
-                                std::make_unique<DeadBlockElimination<SSAPassContext>>(),
-                                "Dead Block Elimination");
+                            passes.emplace_back(std::make_unique<DeadBlockElimination<Ctx>>(),
+                                                "Dead Block Elimination");
                             passes.emplace_back(std::make_unique<CommonSubexprElimination>(),
                                                 "Common Subexpression Elimination");
                         }
-                        if (optimize_block) {
-                            passes.emplace_back(std::make_unique<SimplifyCFG<SSAPassContext>>(),
-                                                "CFG Simplification");
+                        if (optimize_arith) {
                             passes.emplace_back(
-                                std::make_unique<DeadBlockElimination<SSAPassContext>>(),
-                                "Dead Block Elimination");
+                                std::make_unique<ArithmeticStrengthReduction<Ctx>>(),
+                                "Arithmetic Strength Reduction");
+                        }
+                        if (optimize_block) {
+                            passes.emplace_back(std::make_unique<SimplifyCFG<Ctx>>(),
+                                                "CFG Simplification");
+                            passes.emplace_back(std::make_unique<DeadBlockElimination<Ctx>>(),
+                                                "Dead Block Elimination");
                         }
                         if (optimize_inline) {
                             passes.emplace_back(std::make_unique<Inlining>(optimize_inline),
