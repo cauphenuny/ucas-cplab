@@ -160,8 +160,10 @@ struct InterfereGraph {
             for (auto& block : func->blocks()) {
 
                 auto block_liveout = liveness.out.at(block.get());
-                if (auto exit_use = utils::used_var(block->exit())) {
+                if (auto exit_use = utils::used_var(block->exit());
+                    exit_use && need_register(*exit_use)) {
                     block_liveout.insert(*exit_use);
+                    graph_of(*exit_use).ensure(*exit_use);
                     graph_of(*exit_use).prior[*exit_use]++;
                 }
 
@@ -175,8 +177,11 @@ struct InterfereGraph {
                 for (auto inst_it = block->insts().rbegin(); inst_it != block->insts().rend();
                      ++inst_it) {
                     auto& inst = *inst_it;
-                    for (auto var : utils::vars(inst))
+                    for (auto var : utils::vars(inst)) {
+                        if (!need_register(*var)) continue;
+                        graph_of(*var).ensure(*var);
                         graph_of(*var).prior[*var] += USEDEF_PRIORITY;
+                    }
 
                     if (auto mov = std::get_if<UnaryInst>(&inst);
                         mov && (mov->op == UnaryInstOp::MOV || mov->op == UnaryInstOp::CONVERT)) {
@@ -287,7 +292,7 @@ private:
         nodes_[v_].move.insert(u_);
     }
 
-    bool need_register(const LeftValue& v) {
+    static bool need_register(const LeftValue& v) {
         if (auto named = std::get_if<NamedValue>(&v)) {
             if (auto alloc = std::get_if<const Alloc*>(&named->def)) {
                 return !(*alloc)->reference && !(*alloc)->comptime;
