@@ -75,6 +75,34 @@ private:
         });
     }
 
+    template <typename T> struct shift_left {
+        T operator()(T a, T b) const {
+            if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {
+                return a << b;
+            } else {
+                throw COMPILER_ERROR("shift operations are only defined for integral types");
+            }
+        }
+    };
+    template <typename T> struct shift_right_arithmetic {
+        T operator()(T a, T b) const {
+            if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {
+                return a >> b;
+            } else {
+                throw COMPILER_ERROR("shift operations are only defined for integral types");
+            }
+        }
+    };
+    template <typename T> struct shift_right_logical {
+        T operator()(T a, T b) const {
+            if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {
+                return static_cast<T>(static_cast<std::make_unsigned_t<T>>(a) >> b);
+            } else {
+                throw COMPILER_ERROR("shift operations are only defined for integral types");
+            }
+        }
+    };
+
     void eval(InstOp op, View& dest, const View& lhs, const View& rhs) const {
         auto it = binary_ops.find(op);
         if (it != binary_ops.end()) {
@@ -389,6 +417,16 @@ public:
         binary_ops[InstOp::BORROW_ELEM_MUT] = [borrow_elem](View& dest, const View& lhs,
                                                             const View& rhs) {
             borrow_elem(dest, lhs, rhs, false);
+        };
+
+        binary_ops[InstOp::SHL] = [this](View& dest, const View& lhs, const View& rhs) {
+            eval_binary<shift_left>(dest, lhs, rhs);
+        };
+        binary_ops[InstOp::SHRL] = [this](View& dest, const View& lhs, const View& rhs) {
+            eval_binary<shift_right_logical>(dest, lhs, rhs);
+        };
+        binary_ops[InstOp::SHRA] = [this](View& dest, const View& lhs, const View& rhs) {
+            eval_binary<shift_right_arithmetic>(dest, lhs, rhs);
         };
 
         binary_ops[InstOp::STORE] = [this, check_ref](View& dest, const View& lhs,

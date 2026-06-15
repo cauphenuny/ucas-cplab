@@ -23,6 +23,9 @@ enum class InstOp : uint8_t {
     NEQ,  //
     AND,
     OR,
+    SHL,
+    SHRL,
+    SHRA,  //
     STORE,
     LOAD_ELEM,
     BORROW_ELEM,
@@ -57,6 +60,9 @@ inline std::string toString(InstOp op) {
         case InstOp::AND: return "&&";
         case InstOp::OR: return "||";
         case InstOp::STORE: return "<-";
+        case InstOp::SHL: return "<<";
+        case InstOp::SHRL: return ">>";
+        case InstOp::SHRA: return ">>>";
         case InstOp::LOAD_ELEM: return "[]";
         case InstOp::BORROW_ELEM: return "& ";
         case InstOp::BORROW_ELEM_MUT: return "&mut ";

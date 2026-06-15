@@ -56,6 +56,22 @@ struct ConstexprFolder {
                         } else {
                             return std::nullopt;
                         }
+                    case InstOp::SHL:
+                        if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>)
+                            return ConstexprValue(l << r);
+                        else
+                            return std::nullopt;
+                    case InstOp::SHRL:
+                        if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>) {
+                            using U = std::make_unsigned_t<T>;
+                            return ConstexprValue(static_cast<T>(static_cast<U>(l) >> r));
+                        } else
+                            return std::nullopt;
+                    case InstOp::SHRA:
+                        if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>)
+                            return ConstexprValue(l >> r);
+                        else
+                            return std::nullopt;
                     case InstOp::LT: return ConstexprValue(l < r);
                     case InstOp::GT: return ConstexprValue(l > r);
                     case InstOp::LEQ: return ConstexprValue(l <= r);

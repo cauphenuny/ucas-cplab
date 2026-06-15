@@ -671,6 +671,9 @@ private:
         if (t == "&&") return ir::InstOp::AND;
         if (t == "||") return ir::InstOp::OR;
         if (t == "<-") return ir::InstOp::STORE;
+        if (t == "<<") return ir::InstOp::SHL;
+        if (t == ">>") return ir::InstOp::SHRL;
+        if (t == ">>>") return ir::InstOp::SHRA;
         throw COMPILER_ERROR(fmt::format("Unknown binary op {}", t));
     }
 };
