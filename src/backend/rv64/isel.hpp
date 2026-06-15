@@ -199,10 +199,13 @@ inline void translate_unary(const ir::UnaryInst& inst, Block& blk, const FrameLa
                             std::vector<FloatLiteral>& float_literals) {
     using namespace ir::type;
 
-    if (!inst.result) return;  // no destination, skip (shouldn't happen for non-STORE)
+    if (!inst.result)
+        throw COMPILER_ERROR(
+            fmt::format("Unary inst has no result (should not reach isel): {}", inst));
 
     auto rd = lookup_reg(regs, *inst.result);
-    if (!rd) return;
+    if (!rd)
+        throw COMPILER_ERROR(fmt::format("Unary inst result has no register assigned: {}", inst));
     bool fp = is_fp_op(ir::type_of(*inst.result));
 
     switch (inst.op) {
@@ -246,6 +249,9 @@ inline void translate_unary(const ir::UnaryInst& inst, Block& blk, const FrameLa
                     // global alloc: rd = address of symbol
                     blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(*rd), alloc->name});
                 }
+            } else {
+                throw COMPILER_ERROR(
+                    fmt::format("MOV operand is neither register, const, nor alloc: {}", inst));
             }
             break;
         }
@@ -256,6 +262,8 @@ inline void translate_unary(const ir::UnaryInst& inst, Block& blk, const FrameLa
                     bool is_double = !is_32bit_op(ir::type_of(*inst.result));
                     blk.insts.emplace_back(InstFR{is_double ? OpFR::FSGNJN_D : OpFR::FSGNJN_S,
                                                   fpr(*rd), fpr(*src), fpr(*src)});
+                } else {
+                    throw COMPILER_ERROR(fmt::format("FP NEG operand has no register: {}", inst));
                 }
             } else {
                 auto src = lookup_reg(regs, inst.operand);
@@ -268,7 +276,13 @@ inline void translate_unary(const ir::UnaryInst& inst, Block& blk, const FrameLa
                 } else if (auto* cv = std::get_if<ir::ConstexprValue>(&inst.operand)) {
                     if (auto imm = extract_imm(*cv)) {
                         blk.insts.emplace_back(PseudoLI{gpr(*rd), -*imm});
+                    } else {
+                        throw COMPILER_ERROR(
+                            fmt::format("Int NEG constexpr operand not extractable: {}", inst));
                     }
+                } else {
+                    throw COMPILER_ERROR(fmt::format(
+                        "Int NEG operand has no register and is not constexpr: {}", inst));
                 }
             }
             break;
@@ -285,7 +299,13 @@ inline void translate_unary(const ir::UnaryInst& inst, Block& blk, const FrameLa
             } else if (auto* cv = std::get_if<ir::ConstexprValue>(&inst.operand)) {
                 if (auto imm = extract_imm(*cv)) {
                     blk.insts.emplace_back(PseudoLI{gpr(*rd), *imm ? 0 : 1});
+                } else {
+                    throw COMPILER_ERROR(
+                        fmt::format("NOT constexpr operand not extractable: {}", inst));
                 }
+            } else {
+                throw COMPILER_ERROR(
+                    fmt::format("NOT operand has no register and is not constexpr: {}", inst));
             }
             break;
         }
@@ -339,6 +359,9 @@ inline void translate_unary(const ir::UnaryInst& inst, Block& blk, const FrameLa
                         blk.insts.emplace_back(pi);
                     }
                 }
+            } else {
+                throw COMPILER_ERROR(
+                    fmt::format("LOAD operand is neither alloc nor register: {}", inst));
             }
             break;
         }
@@ -390,6 +413,9 @@ inline void translate_unary(const ir::UnaryInst& inst, Block& blk, const FrameLa
                     // global alloc: rd = address of symbol
                     blk.insts.emplace_back(PseudoL{PseudoL::LA, gpr(*rd), alloc->name});
                 }
+            } else {
+                throw COMPILER_ERROR(
+                    fmt::format("CONVERT operand is neither register nor alloc: {}", inst));
             }
             break;
         }
@@ -460,10 +486,13 @@ inline void translate_binary(const ir::BinaryInst& inst, Block& blk, const Frame
 
     if (!inst.result) {
         // STORE instruction
-        if (inst.op != ir::InstOp::STORE) return;
+        if (inst.op != ir::InstOp::STORE)
+            throw COMPILER_ERROR(
+                fmt::format("Binary inst with no result that is not STORE: {}", inst));
         auto* ref_alloc = resolve_alloc(inst.lhs);
         auto val = lookup_reg(regs, inst.rhs);
-        if (!val) return;
+        if (!val)
+            throw COMPILER_ERROR(fmt::format("STORE value has no register assigned: {}", inst));
 
         // int store op: Int1→sb, Int32/Float32→sw, Int/Float64→sd
         auto int_store_op = [](const ir::Type& t) -> OpI {
@@ -507,12 +536,16 @@ inline void translate_binary(const ir::BinaryInst& inst, Block& blk, const Frame
                 blk.insts.emplace_back(
                     InstI{int_store_op(ir::type_of(inst.rhs)), gpr(*val), reg_t0, 0});
             }
+        } else {
+            throw COMPILER_ERROR(
+                fmt::format("STORE target is neither alloc nor register: {}", inst));
         }
         return;
     }
 
     auto rd = lookup_reg(regs, *inst.result);
-    if (!rd) return;
+    if (!rd)
+        throw COMPILER_ERROR(fmt::format("Binary inst result has no register assigned: {}", inst));
     auto lt = ir::type_of(inst.lhs);
     auto rt = ir::type_of(inst.rhs);
     bool fp = is_fp_op(lt) || is_fp_op(rt);
@@ -646,7 +679,9 @@ inline void translate_binary(const ir::BinaryInst& inst, Block& blk, const Frame
     // Integer with immediate operand
     if (lhs && rhs_cv) {
         auto imm_opt = extract_imm(*rhs_cv);
-        if (!imm_opt) return;
+        if (!imm_opt)
+            throw COMPILER_ERROR(
+                fmt::format("Binary op RHS constexpr is not an extractable integer: {}", inst));
         auto imm = (int32_t)*imm_opt;
         switch (inst.op) {
             case ir::InstOp::ADD: emit_add_reg_imm(blk, gpr(*rd), gpr(*lhs), *imm_opt, w); break;
@@ -749,7 +784,9 @@ inline void translate_binary(const ir::BinaryInst& inst, Block& blk, const Frame
     // register RHS + constexpr LHS
     if (lhs_cv && rhs) {
         auto imm_opt = extract_imm(*lhs_cv);
-        if (!imm_opt) return;
+        if (!imm_opt)
+            throw COMPILER_ERROR(
+                fmt::format("Binary op LHS constexpr is not an extractable integer: {}", inst));
         int64_t cv = *imm_opt;
         switch (inst.op) {
             // commutative — treat like register+const on RHS
@@ -850,6 +887,9 @@ inline void translate_binary(const ir::BinaryInst& inst, Block& blk, const Frame
         }
         return;
     }
+    throw COMPILER_ERROR(fmt::format("Binary inst has no translatable operand pattern "
+                                     "(both constexpr? missing register?): {}",
+                                     inst));
 }
 
 inline void translate_call(const ir::CallInst& inst, Block& blk, const ir::lowering::TargetABI& abi,
