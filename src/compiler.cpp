@@ -571,10 +571,12 @@ int main(int argc, const char* argv[]) {
                             auto rje = rv64::optim::RedundantJumpElimination();
                             auto dle = rv64::optim::DeadLabelElimination();
                             auto bcs = rv64::optim::BranchCondSimplification();
+                            auto rle = rv64::optim::RedundantLoadElimination();
                             std::vector<std::pair<rv64::optim::Pass*, std::string>> passes = {
                                 {&rje, "Redundant Jump Elimination"},
                                 {&dle, "Dead Label Elimination"},
                                 {&bcs, "Branch Condition Simplification"},
+                                {&rle, "Redundant Load Elimination"},
                             };
                             while (apply(passes));
                         }

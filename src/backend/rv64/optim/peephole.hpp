@@ -173,4 +173,92 @@ private:
     }
 };
 
+// ---------------------------------------------------------------------------
+// RedundantLoadElimination
+// ---------------------------------------------------------------------------
+
+/*
+sd/sw/sh/sb x, offset(y)
+ld/lw/lwu/lh/lhu/lb/lbu z, offset(y)
+    =>
+sd/sw/sh/sb x, offset(y)
+<extract z, x>          ; when load width <= store width
+
+Extraction uses:
+  ld  (8B)            → addi z, x, 0
+  lw  (signed 4B)     → addiw z, x, 0
+  lwu (unsigned 4B)   → slli z, x, 32; srli z, z, 32
+  lh  (signed 2B)     → slli z, x, 48; srai z, z, 48
+  lhu (unsigned 2B)   → slli z, x, 48; srli z, z, 48
+  lb  (signed 1B)     → slli z, x, 56; srai z, z, 56
+  lbu (unsigned 1B)   → andi z, x, 0xff
+*/
+struct RedundantLoadElimination : Pass {
+    bool apply(Module& mod) override {
+        bool changed = false;
+        for (auto& func : mod.funcs) {
+            for (auto& block : func.blocks) {
+                changed |= peephole_apply(block.insts, 2, rule);
+            }
+        }
+        return changed;
+    }
+
+private:
+    using Opt = std::optional<std::vector<Inst>>;
+
+    static auto store_width(OpI op) -> int {
+        switch (op) {
+            case OpI::SD: return 8;
+            case OpI::SW: return 4;
+            case OpI::SH: return 2;
+            case OpI::SB: return 1;
+            default: return 0;
+        }
+    }
+
+    static auto load_width(OpI op) -> int {
+        switch (op) {
+            case OpI::LD: return 8;
+            case OpI::LW:
+            case OpI::LWU: return 4;
+            case OpI::LH:
+            case OpI::LHU: return 2;
+            case OpI::LB:
+            case OpI::LBU: return 1;
+            default: return 0;
+        }
+    }
+
+    static auto gen_extract(OpI load_op, GeneralReg dst, GeneralReg src) -> std::vector<Inst> {
+        switch (load_op) {
+            case OpI::LD: return {InstI{OpI::ADDI, dst, src, 0}};
+            case OpI::LW: return {InstI{OpI::ADDIW, dst, src, 0}};
+            case OpI::LWU: return {InstI{OpI::SLLI, dst, src, 32}, InstI{OpI::SRLI, dst, dst, 32}};
+            case OpI::LH: return {InstI{OpI::SLLI, dst, src, 48}, InstI{OpI::SRAI, dst, dst, 48}};
+            case OpI::LHU: return {InstI{OpI::SLLI, dst, src, 48}, InstI{OpI::SRLI, dst, dst, 48}};
+            case OpI::LB: return {InstI{OpI::SLLI, dst, src, 56}, InstI{OpI::SRAI, dst, dst, 56}};
+            case OpI::LBU: return {InstI{OpI::ANDI, dst, src, 0xff}};
+            default: return {};
+        }
+    }
+
+    static Opt rule(const std::vector<Inst>& ii, int i) {
+        auto* st = std::get_if<InstI>(&ii[i]);
+        auto* ld = std::get_if<InstI>(&ii[i + 1]);
+        if (!st || !ld) return {};
+
+        int sw = store_width(st->op);
+        int lw = load_width(ld->op);
+        if (sw == 0 || lw == 0) return {};
+        if (lw > sw) return {};
+        if (st->rs1.id != ld->rs1.id || st->imm != ld->imm) return {};
+
+        std::vector<Inst> repl = {*st};
+        auto extr = gen_extract(ld->op, ld->rd, st->rd);
+        repl.insert(repl.end(), extr.begin(), extr.end());
+        return repl;
+    }
+};
+
 }  // namespace rv64::optim
