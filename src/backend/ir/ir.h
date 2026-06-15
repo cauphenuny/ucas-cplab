@@ -134,18 +134,22 @@ auto type_of(const Value& value) -> Type;
 inline auto fmt_result(const std::optional<LeftValue>& result) {
     return result ? fmt::format("{}: {} = ", *result, type_of(*result)) : "";
 }
+inline auto fmt_val(const Value& value) {
+    return fmt::format("({}){}", type_of(value), value);
+}
+inline auto fmt_val(const LeftValue& value) {
+    return fmt::format("({}){}", type_of(value), value);
+}
 
 struct UnaryInst {
     UnaryInstOp op;
     std::optional<LeftValue> result;
     Value operand;
 
-    SIMPLE_TO_STRING(
-        op != UnaryInstOp::LOAD
-            ? (op != UnaryInstOp::CONVERT
-                   ? fmt::format("{}{}{};", fmt_result(result), op, operand)
-                   : fmt::format("{}{} as {};", fmt_result(result), operand, type_of(*result)))
-            : fmt::format("{}{}({}){};", fmt_result(result), op, type_of(operand), operand));
+    SIMPLE_TO_STRING((op != UnaryInstOp::CONVERT
+                          ? fmt::format("{}{}{};", fmt_result(result), op, fmt_val(operand))
+                          : fmt::format("{}{} as {};", fmt_result(result), fmt_val(operand),
+                                        type_of(*result))));
 };
 
 struct BinaryInst {
@@ -157,7 +161,8 @@ struct BinaryInst {
                          ? fmt::format("{}{}{}[{}];", fmt_result(result), op, lhs, rhs)
                      : op == InstOp::LOAD_ELEM
                          ? fmt::format("{}{}[{}];", fmt_result(result), lhs, rhs)
-                         : fmt::format("{}{} {} {};", fmt_result(result), lhs, op, rhs))
+                         : fmt::format("{}{} {} {};", fmt_result(result), fmt_val(lhs), op,
+                                       fmt_val(rhs)))
 };
 
 struct CallInst {

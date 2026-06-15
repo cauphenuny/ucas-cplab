@@ -72,24 +72,26 @@ exit:
 block: label ':' '{' phiInst* inst* exit '}';
 
 def: var ':' type '=' ;
+useValue: ('(' type ')')? value;
+useVar: ('(' type ')')? var;
 
 inst
-	: def? name '(' (argList)? ')' ';'							# callInst
-	| def '*' '(' type ')' var ';'								# loadInst
-	| def '&' MUT? var ';'										# borrowInst
-	| def value '[' value ']' ';'								# loadElemInst
-	| def '&' MUT? var '[' value ']' ';'						# borrowElemInst
-	| def? value binop value ';'								# binaryInst
-	| def ('!' value | '-' value | value) ';'					# unaryInst
-	| def value AS type ';'										# asInst
+	: def? name '(' (argList)? ')' ';'					# callInst
+	| def '*' useVar ';'								# loadInst
+	| def '&' MUT? useVar ';'							# borrowInst
+	| def useValue '[' useValue ']' ';'					# loadElemInst
+	| def '&' MUT? useVar '[' useValue ']' ';'			# borrowElemInst
+	| def? useValue binop useValue ';'					# binaryInst
+	| def ('!' useValue | '-' useValue | useValue) ';'	# unaryInst
+	| def useValue AS type ';'							# asInst
 	;
 
 phiInst:
-	var ':' type '=' PHI '(' (
-		label ':' value (',' label ':' value)*
+	def PHI '(' (
+		label ':' useValue (',' label ':' useValue)*
 	)? ')' ';';
 
-argList: value (',' value)*;
+argList: useValue (',' useValue)*;
 
 binop:
 	'*'

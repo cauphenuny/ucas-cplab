@@ -242,6 +242,25 @@ public:
         return {};
     }
 
+    std::any visitUseValue(IRParser::UseValueContext* ctx) override {
+        auto val = take<ir::Value>(visit(ctx->value()));
+        if (ctx->type()) {
+            auto type = take<ir::type::TypeBox>(visit(ctx->type()));
+            Match{val}([&](ConstexprValue& v) { v.type = type; },
+                       [&](LeftValue& l) { Match{l}([&](auto& inner) { inner.type = type; }); });
+        }
+        return wrap(std::move(val));
+    }
+
+    std::any visitUseVar(IRParser::UseVarContext* ctx) override {
+        auto lv = resolveLValue(ctx->var());
+        if (ctx->type()) {
+            auto type = take<ir::type::TypeBox>(visit(ctx->type()));
+            Match{lv}([&](auto& v) { v.type = type; });
+        }
+        return wrap(std::move(lv));
+    }
+
     std::any visitCallInst(IRParser::CallInstContext* ctx) override {
         auto result = resolveDef(ctx->def());
         auto func_name = ctx->name()->ID()->getText();
@@ -259,10 +278,19 @@ public:
         return {};
     }
 
+    std::any visitLoadInst(IRParser::LoadInstContext* ctx) override {
+        auto result = resolveDef(ctx->def());
+        auto operand = take<ir::LeftValue>(visitUseVar(ctx->useVar()));
+        current_block_->append(ir::UnaryInst{.op = ir::UnaryInstOp::LOAD,
+                                             .result = std::move(result),
+                                             .operand = ir::Value(std::move(operand))});
+        return {};
+    }
+
     std::any visitLoadElemInst(IRParser::LoadElemInstContext* ctx) override {
         auto result = resolveDef(ctx->def());
-        auto base = take<ir::Value>(visit(ctx->value(0)));
-        auto index = take<ir::Value>(visit(ctx->value(1)));
+        auto base = take<ir::Value>(visitUseValue(ctx->useValue(0)));
+        auto index = take<ir::Value>(visitUseValue(ctx->useValue(1)));
         current_block_->append(ir::BinaryInst{.op = ir::InstOp::LOAD_ELEM,
                                               .result = std::move(result),
                                               .lhs = std::move(base),
@@ -272,7 +300,7 @@ public:
 
     std::any visitBorrowInst(IRParser::BorrowInstContext* ctx) override {
         auto result = resolveDef(ctx->def());
-        auto operand = resolveLValue(ctx->var());
+        auto operand = take<ir::LeftValue>(visitUseVar(ctx->useVar()));
         current_block_->append(
             ir::UnaryInst{.op = ctx->MUT() ? ir::UnaryInstOp::BORROW_MUT : ir::UnaryInstOp::BORROW,
                           .result = std::move(result),
@@ -282,8 +310,8 @@ public:
 
     std::any visitBorrowElemInst(IRParser::BorrowElemInstContext* ctx) override {
         auto result = resolveDef(ctx->def());
-        auto base = ir::Value(resolveLValue(ctx->var()));
-        auto index = take<ir::Value>(visit(ctx->value()));
+        auto base = ir::Value(take<ir::LeftValue>(visitUseVar(ctx->useVar())));
+        auto index = take<ir::Value>(visitUseValue(ctx->useValue()));
         current_block_->append(
             ir::BinaryInst{.op = ctx->MUT() ? ir::InstOp::BORROW_ELEM_MUT : ir::InstOp::BORROW_ELEM,
                            .result = std::move(result),
@@ -292,37 +320,13 @@ public:
         return {};
     }
 
-    std::any visitLoadInst(IRParser::LoadInstContext* ctx) override {
-        auto result = resolveDef(ctx->def());
-        auto type = take<ir::type::TypeBox>(visit(ctx->type()));
-        auto operand = resolveLValue(ctx->var());
-        Match{operand}([&](auto& v) { v.type = type; });
-        current_block_->append(ir::UnaryInst{.op = ir::UnaryInstOp::LOAD,
-                                             .result = std::move(result),
-                                             .operand = ir::Value(std::move(operand))});
-        return {};
-    }
-
     std::any visitBinaryInst(IRParser::BinaryInstContext* ctx) override {
         auto result = resolveDef(ctx->def());
-        auto lhs = take<ir::Value>(visit(ctx->value(0)));
-        auto rhs = take<ir::Value>(visit(ctx->value(1)));
+        auto lhs = take<ir::Value>(visitUseValue(ctx->useValue(0)));
+        auto rhs = take<ir::Value>(visitUseValue(ctx->useValue(1)));
         auto op = getBinOp(ctx->binop());
         current_block_->append(ir::BinaryInst{
             .op = op, .result = std::move(result), .lhs = std::move(lhs), .rhs = std::move(rhs)});
-        return {};
-    }
-
-    std::any visitPhiInst(IRParser::PhiInstContext* ctx) override {
-        // var ':' type '=' PHI '(' (label ':' value (',' label ':' value)*)? ')' ';'
-        auto result = resolveDef(ctx->var(), take<ir::type::TypeBox>(visit(ctx->type())));
-        ir::PhiInst phi{.result = std::move(result)};
-        for (size_t i = 0; i < ctx->label().size(); ++i) {
-            auto label_str = ctx->label(i)->ID()->getText();
-            auto val = take<ir::Value>(visit(ctx->value(i)));
-            phi.args.emplace_back(block_map_.at(label_str), std::move(val));
-        }
-        current_block_->append(std::move(phi));
         return {};
     }
 
@@ -339,7 +343,7 @@ public:
         auto op = has_not   ? ir::UnaryInstOp::NOT
                   : has_neg ? ir::UnaryInstOp::NEG
                             : ir::UnaryInstOp::MOV;
-        auto val = take<ir::Value>(visit(ctx->value()));
+        auto val = take<ir::Value>(visitUseValue(ctx->useValue()));
         current_block_->append(
             ir::UnaryInst{.op = op, .result = std::move(result), .operand = std::move(val)});
         return {};
@@ -347,7 +351,7 @@ public:
 
     std::any visitAsInst(IRParser::AsInstContext* ctx) override {
         auto result = resolveDef(ctx->def());
-        auto operand = take<ir::Value>(visit(ctx->value()));
+        auto operand = take<ir::Value>(visitUseValue(ctx->useValue()));
         auto target_type = take<ir::type::TypeBox>(visit(ctx->type()));
         match(
             operand, [&](ConstexprValue& c) { c.type = target_type; },
@@ -355,6 +359,18 @@ public:
         current_block_->append(ir::UnaryInst{.op = ir::UnaryInstOp::CONVERT,
                                              .result = std::move(result),
                                              .operand = std::move(operand)});
+        return {};
+    }
+
+    std::any visitPhiInst(IRParser::PhiInstContext* ctx) override {
+        auto result = resolveDef(ctx->def());
+        ir::PhiInst phi{.result = std::move(result)};
+        for (size_t i = 0; i < ctx->label().size(); ++i) {
+            auto label_str = ctx->label(i)->ID()->getText();
+            auto val = take<ir::Value>(visitUseValue(ctx->useValue(i)));
+            phi.args.emplace_back(block_map_.at(label_str), std::move(val));
+        }
+        current_block_->append(std::move(phi));
         return {};
     }
 
@@ -385,8 +401,8 @@ public:
 
     std::any visitArgList(IRParser::ArgListContext* ctx) override {
         std::vector<ir::Value> args;
-        for (auto* val_ctx : ctx->value()) {
-            args.push_back(take<ir::Value>(visit(val_ctx)));
+        for (auto* val_ctx : ctx->useValue()) {
+            args.push_back(take<ir::Value>(visitUseValue(val_ctx)));
         }
         return wrap_ptr(std::move(args));
     }

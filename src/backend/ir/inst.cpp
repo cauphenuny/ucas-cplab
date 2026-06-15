@@ -11,7 +11,7 @@ namespace {}  // namespace
 auto CallInst::toString() const -> std::string {
     std::string arg_str;
     for (auto&& arg : args) {
-        arg_str += fmt::format("{}, ", arg);
+        arg_str += fmt::format("{}, ", fmt_val(arg));
     }
     if (!arg_str.empty()) arg_str.pop_back(), arg_str.pop_back();
     return fmt::format("{}{}({});", fmt_result(result), func, arg_str);
@@ -20,7 +20,7 @@ auto CallInst::toString() const -> std::string {
 auto PhiInst::toString() const -> std::string {
     std::string arg_str;
     for (auto&& [block, val] : args) {
-        arg_str += fmt::format("'{}: {}, ", block->label, val);
+        arg_str += fmt::format("'{}: {}, ", block->label, fmt_val(val));
     }
     if (!arg_str.empty()) arg_str.pop_back(), arg_str.pop_back();
     return fmt::format("{}phi({});", fmt_result(result), arg_str);
