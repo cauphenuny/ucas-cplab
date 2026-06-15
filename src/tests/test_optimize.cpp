@@ -263,87 +263,120 @@ int main(int argc, const char* argv[]) {
                     label += combo[i];
                 }
                 if (label.empty()) label = "none";
+                try {
 
-                // fresh program from ast for each combination
-                auto combo_prog_box =
-                    std::shared_ptr<ir::Program>(ir::gen::generate(ast).release());
-                auto& combo_prog = *combo_prog_box;
+                    // fresh program from ast for each combination
+                    auto combo_prog_box =
+                        std::shared_ptr<ir::Program>(ir::gen::generate(ast).release());
+                    auto& combo_prog = *combo_prog_box;
 
-                ir::transform::ConstructSSA().apply(combo_prog);
+                    ir::transform::ConstructSSA().apply(combo_prog);
 
-                {
-                    ir::transform::SSAPassContext ctx(combo_prog);
-                    ir::transform::SSAValue2TempValue<ir::transform::SSAPassContext>().apply(
-                        combo_prog, ctx);
+                    {
+                        ir::transform::SSAPassContext ctx(combo_prog);
+                        ir::transform::SSAValue2TempValue<ir::transform::SSAPassContext>().apply(
+                            combo_prog, ctx);
 
-                    std::vector<std::unique_ptr<ir::transform::SSAPass>> passes;
-                    for (const auto& name : combo) {
-                        auto it = factories.find(name);
-                        if (it != factories.end()) {
-                            passes.push_back(it->second());
-                        } else {
-                            fmt::println(stderr, "Unknown pass: {} (skipping)", name);
+                        std::vector<std::unique_ptr<ir::transform::SSAPass>> passes;
+                        for (const auto& name : combo) {
+                            auto it = factories.find(name);
+                            if (it != factories.end()) {
+                                passes.push_back(it->second());
+                            } else {
+                                fmt::println(stderr, "Unknown pass: {} (skipping)", name);
+                            }
+                        }
+
+                        auto apply =
+                            [&](ir::transform::SSAPassContext& ctx2,
+                                const std::vector<std::unique_ptr<ir::transform::SSAPass>>& ps) {
+                                bool changed = false;
+                                for (auto& pass : ps) {
+                                    try {
+                                        bool pass_changed = pass->apply(combo_prog, ctx2);
+                                        if (pass_changed) {
+                                            log << fmt::format("----------\n{}\n", combo_prog);
+                                            ctx2.ud.verify();
+                                        }
+                                        changed |= pass_changed;
+                                    } catch (const std::exception& e) {
+                                        fmt::println(stderr, "(during pass '{}')",
+                                                     typeid(*pass).name());
+                                        throw e;
+                                    }
+                                }
+                                return changed;
+                            };
+                        log.str("");
+                        log.clear();
+                        log << fmt::format("{}\n\n", combo_prog);
+                        while (apply(ctx, passes));
+                        if (apply_regalloc) {
+                            auto changed =
+                                ir::lowering::AddressLowering(rv64::ABI).apply(combo_prog, ctx);
+                            if (changed)
+                                log << fmt::format("----------\n// After AddressLowering:\n{}\n\n",
+                                                   combo_prog);
                         }
                     }
 
-                    auto apply =
-                        [&](ir::transform::SSAPassContext& ctx2,
-                            const std::vector<std::unique_ptr<ir::transform::SSAPass>>& ps) {
-                            bool changed = false;
-                            for (auto& pass : ps) {
-                                bool pass_changed = pass->apply(combo_prog, ctx2);
-                                if (pass_changed) {
-                                    log << fmt::format("----------\n{}\n", combo_prog);
-                                    ctx2.ud.verify();
-                                }
-                                changed |= pass_changed;
+                    if (exit_ssa) {
+                        using namespace ir::lowering;
+                        using namespace ir::transform;
+                        NonSSAPassContext ctx(combo_prog);
+                        try {
+                            auto changed = DestructSSA().apply(combo_prog, ctx);
+                            if (changed)
+                                log << fmt::format("----------\n// After DestructSSA:\n{}\n\n",
+                                                   combo_prog);
+                        } catch (std::exception& e) {
+                            fmt::println(stderr, "(during DestructSSA)");
+                            throw e;
+                        }
+
+                        if (apply_regalloc) {
+                            try {
+                                AccessProxyLowering<NonSSAPassContext>().apply(combo_prog, ctx);
+                                RegToMem(rv64::ABI).apply(combo_prog, ctx);
+                                auto regalloc = RegisterAllocation(rv64::ABI);
+                                regalloc.apply(combo_prog, ctx);
+                                RegisterReplacement<NonSSAPassContext>(regalloc.colored,
+                                                                       regalloc.precolored)
+                                    .apply(combo_prog, ctx);
+                                RedundantMoveElimination<NonSSAPassContext>().apply(combo_prog,
+                                                                                    ctx);
+                            } catch (std::exception& e) {
+                                fmt::println(stderr, "(during register allocation)");
+                                throw e;
                             }
-                            return changed;
-                        };
-                    log.clear();
-                    log << fmt::format("{}\n\n", combo_prog);
-                    while (apply(ctx, passes));
-                    if (apply_regalloc) {
-                        ir::lowering::AddressLowering(rv64::ABI).apply(combo_prog, ctx);
-                        log << fmt::format("----------\n// After AddressLowering:\n{}\n\n",
-                                           combo_prog);
+                            try {
+                                DeadAllocElimination<NonSSAPassContext>().apply(combo_prog, ctx);
+                                DeadTempElimination<NonSSAPassContext>().apply(combo_prog, ctx);
+                            } catch (std::exception& e) {
+                                fmt::println(stderr, "(during post-regalloc optimization)");
+                                throw e;
+                            }
+                            log << fmt::format("----------\n// After register allocation:\n{}\n\n",
+                                               combo_prog);
+                        }
                     }
-                }
 
-                if (exit_ssa) {
-                    using namespace ir::lowering;
-                    using namespace ir::transform;
-                    NonSSAPassContext ctx(combo_prog);
-                    DestructSSA().apply(combo_prog, ctx);
-                    log << fmt::format("----------\n// After DestructSSA:\n{}\n\n", combo_prog);
-
-                    if (apply_regalloc) {
-                        AccessProxyLowering<NonSSAPassContext>().apply(combo_prog, ctx);
-                        RegToMem(rv64::ABI).apply(combo_prog, ctx);
-                        auto regalloc = RegisterAllocation(rv64::ABI);
-                        regalloc.apply(combo_prog, ctx);
-                        RegisterReplacement<NonSSAPassContext>(regalloc.colored,
-                                                               regalloc.precolored)
-                            .apply(combo_prog, ctx);
-                        RedundantMoveElimination<NonSSAPassContext>().apply(combo_prog, ctx);
-                        DeadAllocElimination<NonSSAPassContext>().apply(combo_prog, ctx);
-                        DeadTempElimination<NonSSAPassContext>().apply(combo_prog, ctx);
-                        log << fmt::format("----------\n// After register allocation:\n{}\n\n",
-                                           combo_prog);
+                    auto result_after = run_with_timeout(combo_prog_box);
+                    if (!result_after) {
+                        fmt::println(stderr, "  [{}]: Timeout after optimization (>{}s), skipping",
+                                     label, timeout_sec);
+                        continue;
                     }
+                    size_t after = *result_after;
+                    double improvement =
+                        before > 0 ? ((ssize_t)before - (ssize_t)after) * 100.0 / before : 0.0;
+                    fmt::println(stderr, "  [{}]: {} -> {}, improvement: {:.2f}%", label, before,
+                                 after, improvement);
+                } catch (const std::exception& e) {
+                    fmt::println(stderr, "  [{}]: Exception during optimization: {}", label,
+                                 e.what());
+                    throw e;
                 }
-
-                auto result_after = run_with_timeout(combo_prog_box);
-                if (!result_after) {
-                    fmt::println(stderr, "  [{}]: Timeout after optimization (>{}s), skipping",
-                                 label, timeout_sec);
-                    continue;
-                }
-                size_t after = *result_after;
-                double improvement =
-                    before > 0 ? ((ssize_t)before - (ssize_t)after) * 100.0 / before : 0.0;
-                fmt::println(stderr, "  [{}]: {} -> {}, improvement: {:.2f}%", label, before, after,
-                             improvement);
             }
 
         } catch (const std::exception& e) {

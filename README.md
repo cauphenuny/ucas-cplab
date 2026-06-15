@@ -11,6 +11,12 @@ ANTLR generation is integrated into CMake. As long as Java is available and
 `deps/antlr-4.13.1-complete.jar` exists, parser sources are generated automatically
 during the build.
 
+Test:
+
+```
+bash scripts/test_all.sh
+```
+
 Usage:
 
 <!--usage-->
