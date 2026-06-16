@@ -112,19 +112,17 @@ Debug TUI (launch by `--exec --exec-debug`)
 
 ---
 
-Design Notes:
-
-- [Comprehensive Note of IR](docs/reports/p2.pdf)
-
-- [IR lowering and Assembly Code Generation](docs/reports/p3.pdf)
-
-- [Other Notes](docs/)
-
 Pipeline:
 
-```
-source(c) -> IR(RIIR) -> Construct SSA -> optimize... -> Destruct SSA -> target(rv64)
-```
+![pipeline](assets/pipeline.png)
+
+Design Notes:
+
+- [IR Structure and Optimizations](docs/reports/p2.pdf)
+
+- [IR Lowering and Assembly Code Generation](docs/reports/p3.pdf)
+
+- [Other Notes](docs/)
 
 ---
 
@@ -132,7 +130,6 @@ source(c) -> IR(RIIR) -> Construct SSA -> optimize... -> Destruct SSA -> target(
 ```
 src/
 ├── backend/
-│   ├── esir/
 │   ├── ir/
 │   │   ├── alloc.cpp
 │   │   ├── analysis/
@@ -254,7 +251,7 @@ src/
     ├── traits.hpp
     └── tui.h
 
-22 directories, 100 files
+21 directories, 100 files
 ```
 <!--/source_tree-->
 
