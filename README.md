@@ -1,15 +1,18 @@
 # Code of Compiler Lab of UCAS, 2026
 
+Prerequisites:
+
+- C++ compiler supports C++17
+- Java Runtime Environment
+- RISC-V Toolchain: `riscv64-unknown-elf-gcc`, `spike` (optional)
+
+
 Build:
 
 ```
 cmake -Bbuild -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
-
-ANTLR generation is integrated into CMake. As long as Java is available and
-`deps/antlr-4.13.1-complete.jar` exists, parser sources are generated automatically
-during the build.
 
 Test:
 
@@ -106,15 +109,13 @@ Examples:
 
 ---
 
-Debug TUI (launch by `--exec --exec-debug`)
-
-![TUI](assets/tui.png)
-
----
-
 Pipeline:
 
 ![pipeline](assets/pipeline.png)
+
+The IR of Compiler: *RIIR*
+
+![ir](assets/riir.png)
 
 Design Notes:
 
@@ -123,6 +124,12 @@ Design Notes:
 - [IR Lowering and Assembly Code Generation](docs/reports/p3.pdf)
 
 - [Other Notes](docs/)
+
+---
+
+Debug TUI (launch by `--exec --exec-debug`)
+
+![TUI](assets/tui.png)
 
 ---
 
@@ -273,9 +280,9 @@ enum Type {
     Bottom,
     Sum(Vec<Type>),
     Product(Vec<Type>),
-    Func(Product, Box<Type>),
+    Func(Box<Type>, Box<Type>),
     Array(Box<Type>, usize),
-    Reference(Box<Type>, bool, bool),
+    Reference(Box<Type>, bool, bool, bool),
     Primitive(PrimitiveType),
 }
 ```
