@@ -7,7 +7,7 @@
 考虑以下IR：
 
 #grid(columns: 2, gutter: 1em)[
-  ```rust
+  ```riir
   fn mod() {
       let mut rem: i32;
       let mut m: i32;
@@ -41,7 +41,7 @@
 
 变换成 SSA 形式：
 
-```rust
+```riir
 fn mod() {
     let rem: i32;
     let m: i32;
@@ -66,7 +66,7 @@ fn mod() {
 
 复制传播+死代码消除：
 
-```rust
+```riir
 fn mod() {
     let rem: i32;
     let m: i32;
@@ -97,7 +97,7 @@ fn mod() {
 
 事实上，一些 SSA IR （MLIR, Switft IR）不使用 Phi 指令，而是将基本块视为一个函数，通过基本块参数实现值的合并，传参天然具有同时赋值的语义，对应 IR 如下：
 
-```rust
+```riir
     'entry() {
         %m.0: i32 = 10;
         %n.0: i32 = 3;
