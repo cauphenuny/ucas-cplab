@@ -317,7 +317,7 @@ Briggs 等人 @briggsPracticalImprovementsConstruction1998 提出了一个算法
 
 我们将操作数类型为 `Array` 的 `STORE` 指令转换为 `memset/memcpy`
 
-前端生成IR时能保证这样的 `STORE` 源操作数一定是编译器常量，因此我们不考虑 `STORE` 的源操作数是变量的情况
+前端生成IR时能保证这样的 `STORE` 源操作数一定是编译期常量，因此我们不考虑 `STORE` 的源操作数是变量的情况
 
 #algorithm-figure(
   "Array Initialization Lowering",
@@ -351,7 +351,7 @@ Briggs 等人 @briggsPracticalImprovementsConstruction1998 提出了一个算法
 
 通过预着色过程，图着色能自然地处理后端的abi要求，而不需要在寄存器分配时引入额外的 if-else 逻辑处理。
 
-由于我们想要复用 IR 的分析基础设施（活跃变量分析等），因此我们选择直接在 IR 上进行寄存器分配，保留一个寄存器用于指令选择阶段的临时变量，其他寄存器用于分配给 IR 变量
+由于我们想要复用 IR 的分析基础设施（活跃变量分析等），我们选择直接在 IR 上进行寄存器分配，保留一个寄存器用于指令选择阶段的临时变量，其他寄存器用于分配给 IR 变量
 
 实现上来说，我们在现有的 IR 类型系统中引入新的类型 `Int, Float`，表示通用寄存器和浮点寄存器对应的类型，修改后 IR 的 Primitive Type 包含 `Int1, Int32, Int, Float32, Float64, Float`。同时我们为每一个寄存器创建一个全局变量（属性：`-comptime, -ref, +mut`），通过全局变量模拟寄存器行为
 

@@ -101,7 +101,8 @@ Examples:
 4. debug
     - print AST info (type, def loc, ...): `--ast-info`
     - print IR info (dominance, liveness, ...): `--ir-info`
-    - execute IR with trace/debug: `--exec-trace` or `--exec-debug`
+    - execute IR with trace: `--exec-trace`
+    - execute IR with a debug TUI: `--exec-debug`
 
 ---
 
@@ -114,6 +115,8 @@ Debug TUI (launch by `--exec --exec-debug`)
 Design Notes:
 
 - [Comprehensive Note of IR](docs/reports/p2.pdf)
+
+- [IR lowering and Assembly Code Generation](docs/reports/p3.pdf)
 
 - [Other Notes](docs/)
 

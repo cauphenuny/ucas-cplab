@@ -6,7 +6,7 @@
 
 由于我们是在IR内部进行降级，因此降级前和降级后都可以应用为IR实现的优化
 
-降级后使用的优化如下（由 `--optimize-lowering` 守卫，该 flag 为 level-2，`-O1` 不启用）：
+降级后使用的优化如下（由 `--optimize-lowering` 控制整体开关，该 flag 为 level-2，`-O1` 不启用）：
 
 ```cpp
 std::vector<std::pair<std::unique_ptr<NonSSAPass>, std::string>> passes;
@@ -86,24 +86,3 @@ while (apply(program, ctx, passes));
     sw  a0, 8(sp)                  sw   a0, 8(sp)
     lw  t0, 8(sp)                  addiw t0, a0, 0
 ```
-
-=== O0、O1 与 O2 对比
-
-以 `069_greatest_common_divisor.cact`（欧几里得算法）为例。O0 下 `fun` 作为独立函数，`main` 通过 `call fun` 调用，含完整的栈帧保存恢复，共 58 行。O1 下 `fun` 被内联到 `main` 中，死变量消除移除未使用的中间值，CFG 简化合并冗余基本块，共 41 行，缩减约 29%。
-
-O1 的核心循环（内联在 `main` 中）：
-
-```asm
-.L_main_inline_fun_0_while_cond_3_1:
-    slti t5, t6, 1
-    xori t5, t5, 1
-    bne  t5, zero, .L_main_inline_fun_0_while_body_3_1
-    j    .L_main_inline_fun_0_return
-.L_main_inline_fun_0_while_body_3_1:
-    rem  t5, a0, t6
-    addi a0, t6, 0
-    addi t6, t5, 0
-    j    .L_main_inline_fun_0_while_cond_3_1
-```
-
-对比 O0 的独立 `fun` 函数版本，内联消除了 `call`/`ret` 和参数通过寄存器 `a0`/`a1` 来回传递的开销。O0 中 `main` 需要先把 `get_int` 的返回值保存到 `s0`、设置 `a0`/`a1`、再 `call fun`；O1 直接在 `main` 的上下文中操作变量。
