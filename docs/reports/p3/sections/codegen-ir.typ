@@ -258,7 +258,7 @@ Briggs 等人 @briggsPracticalImprovementsConstruction1998 提出了一个算法
 
 ==== 计算内存访问地址
 
-对于数组访问，我们的IR中存在 `BORROR_ELEM/BORROW_ELEM_MUT` 指令，用于从数组下标计算数组元素地址，然而这依赖于数组的类型信息，rv64汇编中也不存在直接的数组访问指令，需要把数组元素的大小算出来乘下标得到偏移量，从偏移量和基地址得到元素地址。
+对于数组访问，我们的IR中存在 `BORROW_ELEM/BORROW_ELEM_MUT` 指令，用于从数组下标计算数组元素地址，然而这依赖于数组的类型信息，rv64汇编中也不存在直接的数组访问指令，需要把数组元素的大小算出来乘下标得到偏移量，从偏移量和基地址得到元素地址。
 
 #let ForWithCond(kw, cond, pattern, ..body) = (
   (
@@ -430,7 +430,7 @@ fn main() -> i32 {
           [return _retval_],
           {
             Assign[_reg_id_][_ABI.return_register(retval.type)_]
-            Fn[append][_insts_, #assign[retval][_registers[reg_id]_]]
+            Fn[append][_insts_, #assign[_registers[reg_id]_][retval]]
             Fn[replace][_exit_, #encode[return _register[reg_id]_]]
           },
         )
@@ -706,7 +706,7 @@ fn main() -> i32 {
 
     实现上，我们为通用寄存器和浮点寄存器维护两张独立的干涉图，进行两次着色。
 
-    我们的代价模型是每一次 use/def $+10$ priority，活跃区间每包含一条指令 $-1$ priority，选择priority最小的变量 spill，目的是保留使用次数多、活跃区间短的变量。
+    我们的代价模型是每一次 use/def $+3$ priority，活跃区间每包含一条指令 $-1$ priority，选择priority最小的变量 spill，目的是保留使用次数多、活跃区间短的变量。
     #v(1em)
   ][
     示例

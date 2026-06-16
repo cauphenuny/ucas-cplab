@@ -30,8 +30,10 @@ R 型——三个寄存器：
 struct InstR  { OpR op; GeneralReg rd, rs1, rs2; };
 // add t0, t1, t2
 
-struct InstFR { OpFR op; FloatReg rd, rs1, rs2; };
-// fadd.s fa0, ft0, ft1
+struct InstFR { OpFR op; std::variant<FloatReg, GeneralReg> rd, rs1;
+               std::variant<std::monostate, FloatReg, GeneralReg> rs2; };
+// fadd.s fa0, ft0, ft1    (三个都是 FloatReg)
+// fcvt.w.s t0, fa0        (rd 是 GeneralReg, rs2 是 monostate)
 ```
 
 I 型——两个寄存器加一个 12 位有符号立即数。Load/Store 也走 I 型格式，`toString()` 根据 op 自动选输出格式：
@@ -44,6 +46,14 @@ struct InstI  { OpI op; GeneralReg rd, rs1; int32_t imm; };
 
 struct InstFI { OpFI op; FloatReg rd; GeneralReg rs1; int32_t imm; };
 // fld fa0, 0(t0)      (浮点 Load/Store 用整数寄存器做基址)
+```
+
+B 型——条件分支，两个源寄存器加字符串标签：
+
+```cpp
+struct InstB  { OpB op; GeneralReg rs1, rs2; std::string target; };
+// beq t0, t1, .L_then
+// bne t0, zero, .L_loop
 ```
 
 J 型——无条件跳转，目标用字符串标签：
@@ -130,33 +140,33 @@ struct PseudoL {
 };
 ```
 
-返回伪指令 (`PseudoRet`)，展开为 `jalr zero, ra, 0`。
+返回伪指令 (`PseudoRet`)，输出 `ret`，由汇编器展开。
 
 所有指令类型用 `std::variant` 统一：
 
 ```cpp
-using Inst = std::variant<InstR, InstFR, InstI, InstFI, InstJ, InstU,
+using Inst = std::variant<InstR, InstFR, InstI, InstB, InstFI, InstJ, InstU,
                           PseudoR, PseudoLI, PseudoL, PseudoB, PseudoJ, PseudoRet>;
 ```
 
 ==== 模块结构
 
-汇编程序组织为四层。`Module` 是顶层，输出时会按 `.rodata` → `.data` → `.bss` → `.text` 的顺序排列各节。`AsmFunc` 包含栈帧布局和基本块列表。`AsmBlock` 是标签加指令序列。`Global` 包含变量名、IR 类型、初始值和 `comptime` 属性，`is_zero_init()` 判断变量该放哪个节。`FrameLayout` 记录栈帧总大小和每个被 spill 的局部变量相对 `sp` 的偏移。`FloatLiteral` 存浮点常量，写进 `.rodata`。
+汇编程序组织为四层。`Module` 是顶层，输出时会按 `.text` → `.rodata` → `.data` → `.bss` → `.rodata`(浮点常量) 的顺序排列各节。`Func` 包含栈帧布局和基本块列表。`Block` 是标签加指令序列。`Global` 包含变量名、IR 类型、初始值和 `comptime` 属性，`is_zero_init()`（实现为 `*init == ConstexprValue::zeros_like(type)`）判断变量该放哪个节。`FrameLayout` 记录栈帧总大小和每个被 spill 的局部变量相对 `sp` 的偏移。`FloatLiteral` 存浮点常量，写进 `.rodata`。
 
 ```cpp
 struct Module {
     std::vector<Global> globals;
-    std::vector<AsmFunc> funcs;
+    std::vector<Func> funcs;
     std::vector<FloatLiteral> float_literals;
 };
 
-struct AsmFunc {
+struct Func {
     std::string name;
     FrameLayout frame;
-    std::vector<AsmBlock> blocks;
+    std::vector<Block> blocks;
 };
 
-struct AsmBlock {
+struct Block {
     std::string label;
     std::vector<Inst> insts;
 };
@@ -164,7 +174,7 @@ struct AsmBlock {
 
 ==== 操作码枚举
 
-`op.hpp` 中按指令格式用 `enum class : uint8_t` 定义所有操作码。`OpR`（整数 R 型）含 ADD/SUB/MUL/DIV/REM/SLT/AND/OR/XOR/SLL/SRL/SRA 及对应 32 位变体。`OpFR`（浮点 R 型）含 FADD/FSUB/FMUL/FDIV/FEQ/FLT/FLE/FCVT 等。`OpI`（整数 I 型）含 ADDI/SLTI/XORI/ORI/ANDI 等算术立即数、LD/LW/LB/LBU/LH/LHU 等 Load、SD/SW/SB/SH 等 Store、BEQ/BNE/BLT/BGE 等 Branch。`OpFI` 是四条浮点 Load/Store，`OpJ` 仅 JAL，`OpU` 是 LUI/AUIPC。每个枚举配有 `toString()` 返回汇编助记符。
+`op.hpp` 中按指令格式用 `enum class : uint8_t` 定义所有操作码。`OpR`（整数 R 型）含 ADD/SUB/MUL/DIV/REM/SLT/AND/OR/XOR/SLL/SRL/SRA 及对应 32 位变体（ADDW 等）。`OpFR`（浮点 R 型）含 FADD/FSUB/FMUL/FDIV/FEQ/FLT/FLE/FCVT 等。`OpI`（整数 I 型）含 ADDI/SLTI/XORI/ORI/ANDI 等算术立即数、LD/LW/LB/LBU/LH/LHU 等 Load、SD/SW/SB/SH 等 Store、JALR，以及 32 位变体 ADDIW 等。`OpB`（分支）含 BEQ/BNE/BLT/BGE/BLTU/BGEU。`OpFI` 是四条浮点 Load/Store，`OpJ` 仅 JAL，`OpU` 是 LUI/AUIPC。每个枚举配有 `toString()` 返回汇编助记符。
 
 === 指令选择
 
@@ -173,14 +183,14 @@ struct AsmBlock {
 `lower()` 作为入口，先收集全局变量（跳过已分配寄存器的），再逐个翻译函数：
 
 ```cpp
-Module lower(const Program& prog, const ColorMap& regs, const TargetABI& abi) {
+Module lower(const Program& prog, const ColorMap& regs) {
     Module mod;
     for (auto& g : prog.globals()) {
         if (regs.count(g->value())) continue;
-        mod.globals.emplace_back(g->name, g->type, g->init, g->comptime);
+        mod.globals.emplace_back(Global{g->name, g->type, g->init, g->comptime});
     }
     for (auto& f : prog.funcs())
-        mod.funcs.emplace_back(translate_func(*f, abi, regs, mod.float_literals));
+        mod.funcs.emplace_back(translate_func(*f, regs, mod.float_literals));
     return mod;
 }
 ```
@@ -190,12 +200,12 @@ Module lower(const Program& prog, const ColorMap& regs, const TargetABI& abi) {
 `translate_func` 依次生成三段代码。prologue：函数标签 + 开辟栈帧（`addi sp, sp, -N`）+ 有初始值的局部变量的 Store。主体：遍历 IR 基本块，逐条翻译指令和出口，标签名用 `".L" + 函数名 + "_" + 块标签`。epilogue：释放栈帧 + `ret`，return 指令统一跳到这里。
 
 ```cpp
-AsmFunc translate_func(const Func& func, ...) {
-    AsmFunc af;
-    af.frame = compute_frame(func, abi);
+Func translate_func(const ir::Func& func, ...) {
+    Func af;
+    af.frame = compute_frame(func);
 
     // prologue
-    AsmBlock entry;
+    Block entry;
     entry.label = func.name;
     if (af.frame.total_size > 0) emit_add_sp(entry, -(int64_t)af.frame.total_size);
     for (auto& local : func.locals()) { /* emit init stores */ }
@@ -204,7 +214,7 @@ AsmFunc translate_func(const Func& func, ...) {
 
     // body
     for (auto& blk : func.blocks()) {
-        AsmBlock ab;
+        Block ab;
         ab.label = block_label(func.name, blk->label);
         for (auto& inst : blk->insts()) translate_inst(inst, ab, ...);
         translate_exit(blk->exit(), ab, func.name, regs);
@@ -212,7 +222,7 @@ AsmFunc translate_func(const Func& func, ...) {
     }
 
     // epilogue
-    AsmBlock epi;
+    Block epi;
     epi.label = epilogue_label;
     if (af.frame.total_size > 0) emit_add_sp(epi, (int64_t)af.frame.total_size);
     epi.insts.emplace_back(PseudoRet{});
@@ -225,9 +235,9 @@ AsmFunc translate_func(const Func& func, ...) {
 
 ```cpp
 Match{inst}(
-    [&](const UnaryInst& u)  { translate_unary(u, ...); },
-    [&](const BinaryInst& b) { translate_binary(b, ...); },
-    [&](const CallInst& c)   { translate_call(c, blk); },
+    [&](const UnaryInst& u)  { translate_unary(u, blk, frame, abi, regs, float_literals); },
+    [&](const BinaryInst& b) { translate_binary(b, blk, frame, abi, regs, float_literals); },
+    [&](const CallInst& c)   { translate_call(c, blk, abi, regs, float_literals); },
     [&](const PhiInst&)      { /* 应在 isel 前被消除 */ }
 );
 ```
@@ -252,7 +262,7 @@ STORE（`result` 为空）把值写入引用目标。同样分三种地址源—
 
 整数运算按操作数类型分级。双寄存器直接 R 型。寄存器加立即数，若立即数在 12 位范围内直接用 I 型（`ADDI`/`SLTI` 等），否则 `LI` 到临时寄存器再 R 型。`rd == lhs` 时用 `t0`(x5) 做中转避免覆盖。
 
-比较运算的映射有些绕。RISC-V 只有 `SLT`（小于）和 `SLTU`（无符号小于）。`x > y` 即 `y < x`，交换操作数。`x >= y` 即 `!(x < y)`，用 `SLT + XORI 1`。`x == y` 用 `SUB + SEQZ`（`x-y == 0`）。`x != y` 用 `SUB + SNEZ`。立即数版本同理，能 `SLTI` 就不 `LI+SLT`。
+RISC-V 只提供 `SLT`（小于）和 `SLTU`（无符号小于），其他比较通过变换实现：`x > y` 即 `y < x`，交换操作数。`x >= y` 即 `!(x < y)`，用 `SLT + XORI 1`。`x == y` 用 `SUB + SEQZ`（`x-y == 0`）。`x != y` 用 `SUB + SNEZ`。立即数版本同理，能 `SLTI` 就不 `LI+SLT`。
 
 左操作数是常量时，交换律成立的运算（ADD/MUL/AND/OR/EQ/NEQ）直接交换，不等价的（SUB/DIV/MOD）先 `LI` 加载常量再 R 型。比较中 `c < x` 即 `x > c`，走 `SLTI + XORI`。
 
@@ -275,26 +285,38 @@ void translate_exit(const Exit& exit, ...) {
 }
 ```
 
-函数调用生成 `PseudoJ(CALL)`，汇编器展开为 `auipc ra, ...; jalr ra, ...`。返回值寄存器 `a0`/`fa0` 的赋值由寄存器分配阶段的预着色 Pass 完成，isel 不参与。
+函数调用生成 `PseudoJ(CALL)`，汇编器展开为 `auipc ra, ...; jalr ra, ...`。部分参数可能没有分配到寄存器（超出了 8 个参数寄存器 a0-a7/fa0-fa7 的限额），此时需要生成 STORE 指令将这些参数写到栈上传给被调用函数。返回值寄存器 `a0`/`fa0` 的赋值由寄存器分配阶段的预着色 Pass 完成，isel 不参与。
 
 ==== 栈帧计算
 
-`compute_frame` 遍历局部变量，对有 `reference` 属性的（被 spill 的）分配栈空间。每个变量按其类型大小对齐（对齐等于大小，RISC-V 自然对齐），最终总大小按 16 字节对齐：
+`compute_frame` 首先计算函数内所有 `call` 指令所需的传出参数区最大值，然后遍历局部变量，对有 `reference` 属性的（被 spill 的）分配栈空间。每个变量按其类型大小对齐（对齐等于大小，RISC-V 自然对齐），最终总大小按 16 字节对齐。此外还要为通过栈传入的参数（`reference` 属性且无寄存器分配的形参）计算偏移。实现中直接使用全局 `ABI` 常量：
 
 ```cpp
-FrameLayout compute_frame(const Func& func, const TargetABI& abi) {
+FrameLayout compute_frame(const Func& func) {
     FrameLayout layout;
-    size_t offset = 0;
+    size_t outgoing = outgoing_arg_area(func);
+    size_t offset = outgoing;
     for (auto& local : func.locals()) {
         if (!local->reference) continue;
-        size_t sz = abi.mem.size(local->type);
-        size_t al = abi.mem.align(local->type);
-        if (al > 1) offset = (offset + al - 1) & ~(al - 1);
+        size_t sz = ABI.mem.size(local->type);
+        size_t align = ABI.mem.align(local->type);
+        if (align > 1) offset = (offset + align - 1) & ~(align - 1);
         layout.spill_offsets[local.get()] = offset;
         offset += sz;
     }
-    offset = (offset + abi.mem.stack_alignment - 1) & ~(abi.mem.stack_alignment - 1);
+    size_t align = ABI.mem.stack_alignment;
+    if (align > 1) offset = (offset + align - 1) & ~(align - 1);
     layout.total_size = offset;
+
+    // 处理通过栈传入的参数 (无寄存器分配的 reference 形参)
+    constexpr size_t xlen = 8;
+    offset = layout.total_size;
+    for (auto& param : func.params) {
+        if (!param->reference) continue;
+        offset = (offset + xlen - 1) & ~(xlen - 1);
+        layout.spill_offsets[param.get()] = offset;
+        offset += xlen;
+    }
     return layout;
 }
 ```

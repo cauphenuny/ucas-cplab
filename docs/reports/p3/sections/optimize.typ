@@ -6,22 +6,27 @@
 
 由于我们是在IR内部进行降级，因此降级前和降级后都可以应用为IR实现的优化
 
-降级后使用的优化如下：
+降级后使用的优化如下（由 `--optimize-lowering` 守卫，该 flag 为 level-2，`-O1` 不启用）：
 
 ```cpp
 std::vector<std::pair<std::unique_ptr<NonSSAPass>, std::string>> passes;
-if (optimize_alloc)
-    passes.emplace_back(std::make_unique<DeadAllocElimination<Context>>(),
-                        "Dead Allocation Elimination");
-if (optimize_temp)
-    passes.emplace_back(std::make_unique<DeadTempElimination<Context>>(),
-                        "Dead Temporary Elimination");
-if (optimize_block) {
-    passes.emplace_back(std::make_unique<DeadBlockElimination<Context>>(),
-                        "Dead Block Elimination");
-    passes.emplace_back(std::make_unique<SimplifyCFG<Context>>(),
-                        "CFG Simplification");
+if (optimize_lower) {
+    if (optimize_alloc)
+        passes.emplace_back(std::make_unique<DeadAllocElimination<Context>>(),
+                            "Dead Allocation Elimination");
+    if (optimize_temp)
+        passes.emplace_back(std::make_unique<DeadTempElimination<Context>>(),
+                            "Dead Temporary Elimination");
+    if (optimize_block) {
+        passes.emplace_back(std::make_unique<DeadBlockElimination<Context>>(),
+                            "Dead Block Elimination");
+        passes.emplace_back(std::make_unique<SimplifyCFG<Context>>(),
+                            "CFG Simplification");
+    }
 }
+// ConstantFolding 始终运行，因为 RISC-V 汇编 I 型指令只能接受一个立即数操作数
+passes.emplace_back(std::make_unique<ConstantFolding<Context>>(),
+                    "Constant Folding");
 while (apply(program, ctx, passes));
 ```
 
@@ -43,7 +48,9 @@ while (apply(program, ctx, passes));
 
 === 汇编代码生成后的优化
 
-==== 死代码消除
+汇编层面共实现了四个优化 Pass：
+
+==== 冗余跳转消除 (RedundantJumpElimination)
 
 寄存器分配和 CFG 简化后，汇编层面仍然可能产生冗余指令。跳转到只包含跳转指令的块可以被折叠：
 
@@ -56,13 +63,31 @@ while (apply(program, ctx, passes));
     ...
 ```
 
-此外，不再被任何跳转引用的标签可以从输出中移除（指令序列保留，因为可能通过 fall-through 执行）。
+此外，紧接在下一个基本块标签前的无条件跳转（`j next_label`）也可以直接删除，因为 fall-through 自然到达。
 
-==== 窥孔优化
+==== 死标签消除 (DeadLabelElimination)
 
-对特定指令模式做局部替换。比较 `SLTI`/`XORI` 组合中若立即数为 0，可简化为 `SEQZ`/`SNEZ`。
+不再被任何跳转引用的标签可以从输出中移除。该标签下的指令序列合并到前一个基本块中（因为可能通过 fall-through 执行）。
 
-=== O0 与 O1 对比
+==== 分支条件简化 (BranchCondSimplification)
+
+三条 Peephole 规则对比较 + 分支模式进行简化：
+
+1. `SLT/SLTI/SEQZ + XORI x,x,1 + BNEZ/BNEQ x, L` → `CMP + BEQZ/BNEZ x, L`（翻转分支条件，省略 XORI）
+2. `SLT/SLTU x, y, z + BNEZ/BEQZ x, L` → `BLT/BGE/BLTU/BGEU y, z, L`（合并比较和分支为单条 RISC-V 分支指令）
+3. `SEQZ/SNEZ x, y + BNEZ/BEQZ x, L` → `BEQZ/BNEZ y, L`（直接对原始操作数分支）
+
+==== 冗余 Load 消除 (RedundantLoadElimination)
+
+若 Store 指令后紧跟对同一地址相同偏移的 Load，用位操作提取 Store 值替代 Load：
+
+```asm
+// 优化前:                     // 优化后:
+    sw  a0, 8(sp)                  sw   a0, 8(sp)
+    lw  t0, 8(sp)                  addiw t0, a0, 0
+```
+
+=== O0、O1 与 O2 对比
 
 以 `069_greatest_common_divisor.cact`（欧几里得算法）为例。O0 下 `fun` 作为独立函数，`main` 通过 `call fun` 调用，含完整的栈帧保存恢复，共 58 行。O1 下 `fun` 被内联到 `main` 中，死变量消除移除未使用的中间值，CFG 简化合并冗余基本块，共 41 行，缩减约 29%。
 

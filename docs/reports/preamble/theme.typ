@@ -29,8 +29,8 @@
   //import "@preview/cuti:0.2.1": show-cn-fakebold
   //show: show-cn-fakebold
 
-  set text(font: ("Libertinus Serif", "Songti SC"), lang: lang)
-  show emph: text.with(font: ("Libertinus Serif", "STKaiti"))
+  set text(font: ("Libertinus Serif", "Songti SC", "Noto Serif CJK SC"), lang: lang)
+  show emph: text.with(font: ("Libertinus Serif", "STKaiti", "Noto Serif CJK SC"))
   show: thmrules
 
   set heading(numbering: numbering)
@@ -76,7 +76,7 @@
   set enum(numbering: enum-numbering)
 
   // show math.equation: eq => $eq$
-  show math.equation: set text(font: ("New Computer Modern Math", "Songti SC"))
+  show math.equation: set text(font: ("New Computer Modern Math", "Songti SC", "Noto Serif CJK SC"))
   let numbered-eq(content) = math.equation(
     block: true,
     numbering: "(1.1.1)",
@@ -89,7 +89,7 @@
     inset: 0.6em,
     stroke: 0.05em,
   )
-  show raw: set text(font: ("Liga Menlo", "FiraCode Nerd Font", "Menlo", "Consolas"))
+  show raw: set text(font: ("Liga Menlo", "FiraCode Nerd Font", "Menlo", "Consolas", "DejaVu Sans Mono", "Liberation Mono"))
   show raw.where(block: true): set text(size: 0.8em)
 
   show: show-theorion
